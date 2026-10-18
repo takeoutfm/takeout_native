@@ -89,10 +89,14 @@ private fun AppContent(
                         type = NavType.StringType
                     }
                 )
-            ) {
+            ) { backStackEntry ->
+                val movieId = backStackEntry.arguments
+                    ?.getString(MovieDetailsScreen.MovieIdBundleKey)
                 MovieDetailsScreen(
                     goToMoviePlayer = {
-                        navController.navigate(Screens.VideoPlayer())
+                        if (movieId != null) {
+                            navController.navigate(Screens.VideoPlayer.withArgs(movieId))
+                        }
                     },
                     refreshScreenWithNewMovie = { movie ->
                         navController.navigate(
@@ -122,8 +126,8 @@ private fun AppContent(
                             Screens.MovieDetails.withArgs(movieId)
                         )
                     },
-                    openVideoPlayer = {
-                        navController.navigate(Screens.VideoPlayer())
+                    openVideoPlayer = { movie ->
+                        navController.navigate(Screens.VideoPlayer.withArgs(movie.id))
                     },
                     onBackPressed = onBackPressed,
                     isComingBackFromDifferentScreen = isComingBackFromDifferentScreen,
@@ -132,7 +136,14 @@ private fun AppContent(
                     }
                 )
             }
-            composable(route = Screens.VideoPlayer()) {
+            composable(
+                route = Screens.VideoPlayer(),
+                arguments = listOf(
+                    navArgument(VideoPlayerScreen.MovieIdBundleKey) {
+                        type = NavType.StringType
+                    }
+                )
+            ) {
                 VideoPlayerScreen(
                     onBackPressed = {
                         if (navController.navigateUp()) {

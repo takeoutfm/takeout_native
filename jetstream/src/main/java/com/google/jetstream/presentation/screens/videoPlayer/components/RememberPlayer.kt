@@ -49,8 +49,8 @@ fun rememberPlayer(context: Context) = remember {
         }
     )
     ExoPlayer.Builder(context)
-        .setSeekForwardIncrementMs(10)
-        .setSeekBackIncrementMs(10)
+        .setSeekForwardIncrementMs(10_000)
+        .setSeekBackIncrementMs(10_000)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(dataSourceFactory)
         )

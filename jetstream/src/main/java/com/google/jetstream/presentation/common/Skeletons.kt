@@ -150,7 +150,7 @@ fun HomeSkeleton(modifier: Modifier = Modifier) {
     }
 }
 
-/** Movies, Shows, Favourites and genre pages: a 6-column poster grid. */
+/** Movies, Shows, Favorites and genre pages: a 6-column poster grid. */
 @Composable
 fun PosterGridSkeleton(modifier: Modifier = Modifier, showHeader: Boolean = false) {
     val childPadding = rememberChildPadding()

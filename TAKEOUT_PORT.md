@@ -35,7 +35,7 @@ directly where needed.
 | Shared 6-column poster grid | `presentation/common/PosterGrid.kt` |
 | Movie/series details, Resume / Start over / Favorite | `.../screens/movies/MovieDetails*.kt` |
 | Home rows incl. Continue Watching (progress bars on cards) | `.../screens/home/*`, `presentation/common/MoviesRow.kt` |
-| Favourites tab | `.../screens/favourites/*` |
+| Favorites tab | `.../screens/favourites/*` |
 | Season/episode rows | `.../screens/movies/EpisodesList.kt` |
 | Cast & Crew row (photos, opens person page) | `.../screens/movies/CastAndCrewList.kt` |
 | Person page | `.../screens/person/*` |
@@ -76,7 +76,7 @@ directly where needed.
 | `GET /api/profiles/{peid}` | Person page (bio + movie/TV credits) |
 | `GET /api/search?q=` | Search (movies and TV episodes; series are matched in the app) |
 | `GET/POST /api/progress` | Watch progress |
-| `GET /api/favorite` | Favourites tab (movies + shows) |
+| `GET /api/favorite` | Favorites tab (movies + shows) |
 | `PUT/DELETE /api/favorite/movies/{imid}`, `/api/favorite/shows/{tvid}` | Favorite button |
 | `GET /img/tm/{size}/{path}` | TMDB images via the server (posters w342, backdrops w1280, stills w300, profiles w185/w342) |
 | `Location` URLs (`/api/movies/{uuid}/location`, ...) | Streams; redirect to the media file |
@@ -96,7 +96,7 @@ Accounts (server, Sign out), Continue Watching (window setting) and About (app v
 application ID). JetStream's placeholder sections were removed.
 
 ### Top bar
-Home · *one tab per current recommendation set* · Genres · Movies · Shows · Favourites · Search,
+Home · *one tab per current recommendation set* · Genres · Movies · Shows · Favorites · Search,
 plus the profile avatar. Recommendation sets come from the server config and depend on the date
 (e.g. "Halloween Movies" in October); with none, the tab bar is the fixed set. The tab list is a
 `DashboardTab` list (fixed `Screens` tabs + recommendation tabs) with focus requesters sized to
@@ -124,7 +124,7 @@ the title); recommendation sets are A–Z too. A–Z ignores case, accents and p
 "Airplane!" comes before "Airplane II". Genre pages add a title header and start focused on
 the first poster.
 
-### Favourites
+### Favorites
 The user's favorite movies and shows from `/api/favorite` (not cached; favorites change from the
 other Takeout apps), together A–Z in `PosterGrid`. Movies / TV Shows chips filter by kind (neither
 selected = all). With no favorites the tab says so.
@@ -192,7 +192,7 @@ paragraph at a time.
 | `260a4e7` | Genre pages sorted A–Z |
 | `ce4ef78` | A top bar tab per recommendation set |
 | `3c2a2c6` | Design doc rewrite |
-| `9b4f7dd` | Favourites tab from `/api/favorite` |
+| `9b4f7dd` | Favorites tab from `/api/favorite` |
 | `a66daf2` | Favorite button on details |
 | `b11363f` | Continue Watching row on Home + window setting |
 

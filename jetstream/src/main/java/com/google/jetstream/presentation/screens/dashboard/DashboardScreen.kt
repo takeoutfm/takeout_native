@@ -304,7 +304,7 @@ private fun Body(
                 isTopBarVisible = isTopBarVisible
             )
         }
-        composable(Screens.Favourites()) {
+        composable(Screens.Favorites()) {
             FavouritesScreen(
                 onMovieClick = openMovieDetailsScreen,
                 onScroll = updateTopBarVisibility,

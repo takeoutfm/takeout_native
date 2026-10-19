@@ -79,7 +79,7 @@ const val RecommendedRouteName = "Recommended"
 const val RecommendedIndexKey = "index"
 const val RecommendedRoutePattern = "$RecommendedRouteName/{$RecommendedIndexKey}"
 
-/** Home, then a tab per recommendation set, then Genres, Movies, Shows, Favourites, Search. */
+/** Home, then a tab per recommendation set, then Genres, Movies, Shows, Favorites, Search. */
 fun dashboardTabs(recommendations: List<Recommendation>): List<DashboardTab> {
     val fixed = Screens.entries.filter { it.isTabItem }
         .map { DashboardTab(route = it(), label = it(), icon = it.tabIcon) }

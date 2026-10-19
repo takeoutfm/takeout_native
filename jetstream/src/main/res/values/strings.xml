@@ -52,6 +52,7 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="playback_speed">Playback speed</string>
     <string name="speed_normal">Normal</string>
     <string name="subtitles_off">Off</string>
+    <string name="track_not_supported">Not supported on this device</string>
     <string name="no_tracks">This file has no tracks of this kind.</string>
     <string name="playback_error_title">Can\'t play this title</string>
     <string name="playback_error_back">Press Back to return.</string>

@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -32,6 +33,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.google.jetstream.R
 import com.google.jetstream.presentation.theme.JetStreamCardShape
 import java.util.Locale
 
@@ -44,6 +46,8 @@ data class TrackOption(
     val isSelected: Boolean,
     /** The track's language, if it has one ("" for the subtitles Off option). */
     val language: String? = null,
+    /** False when this device can't decode it; listed (greyed out) but not selectable. */
+    val isSupported: Boolean = true,
     val select: (Player) -> Unit,
 )
 
@@ -102,14 +106,14 @@ private fun trackOptions(player: Player, type: @C.TrackType Int): List<TrackOpti
     val groups = player.currentTracks.groups.filter { it.type == type }
     var number = 0
     return groups.flatMap { group ->
-        (0 until group.length).mapNotNull { i ->
+        (0 until group.length).map { i ->
             number++
-            if (!group.isTrackSupported(i)) return@mapNotNull null
             val override = TrackSelectionOverride(group.mediaTrackGroup, i)
             TrackOption(
                 label = group.getTrackFormat(i).describe(type, number),
                 isSelected = group.isTrackSelected(i),
                 language = group.getTrackFormat(i).language,
+                isSupported = group.isTrackSupported(i),
                 select = { p ->
                     p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
                         .setTrackTypeDisabled(type, false)
@@ -207,8 +211,14 @@ fun TrackPickerDialog(
                     itemsIndexed(options) { index, option ->
                         ListItem(
                             selected = option.isSelected,
+                            enabled = option.isSupported,
                             onClick = { onSelect(option) },
                             headlineContent = { Text(option.label) },
+                            supportingContent = if (option.isSupported) {
+                                null
+                            } else {
+                                { Text(stringResource(R.string.track_not_supported)) }
+                            },
                             trailingContent = if (option.isSelected) {
                                 { Icon(Icons.Default.Check, contentDescription = null) }
                             } else {

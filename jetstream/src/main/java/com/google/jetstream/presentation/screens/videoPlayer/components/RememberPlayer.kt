@@ -28,6 +28,8 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.util.EventLogger
+import com.google.jetstream.BuildConfig
 import com.google.jetstream.data.takeout.TakeoutSessionEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 
@@ -62,5 +64,7 @@ fun rememberPlayer(context: Context) = remember {
         .apply {
             playWhenReady = true
             repeatMode = Player.REPEAT_MODE_OFF
+            // Logs tracks (with decoder support), formats and errors to logcat as "EventLogger".
+            if (BuildConfig.DEBUG) addAnalyticsListener(EventLogger())
         }
 }

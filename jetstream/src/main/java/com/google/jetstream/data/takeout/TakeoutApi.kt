@@ -135,6 +135,9 @@ class TakeoutApi @Inject constructor(
     suspend fun index(): ApiIndexView =
         json.decodeFromString(ApiIndexView.serializer(), getText("/api/index"))
 
+    suspend fun favorites(): ApiFavoriteView =
+        json.decodeFromString(ApiFavoriteView.serializer(), getText("/api/favorite"))
+
     suspend fun home(): ApiHomeView =
         json.decodeFromString(ApiHomeView.serializer(), getText("/api/home"))
 

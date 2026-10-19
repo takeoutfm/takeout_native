@@ -138,6 +138,13 @@ data class ApiHomeView(
     @SerialName("RecommendMovies") val recommendMovies: List<ApiRecommend>? = null,
 )
 
+/** The user's favorites; the server also returns Artists and Tracks, which the TV app ignores. */
+@Serializable
+data class ApiFavoriteView(
+    @SerialName("Movies") val movies: List<ApiMovie>? = null,
+    @SerialName("Shows") val shows: List<ApiSeries>? = null,
+)
+
 /** Server summary; only what the TV app needs. */
 @Serializable
 data class ApiIndexView(

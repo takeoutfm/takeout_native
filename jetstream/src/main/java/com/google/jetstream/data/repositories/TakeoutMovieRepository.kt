@@ -392,8 +392,16 @@ class TakeoutMovieRepository @Inject constructor(
         cached("tv-recent") { api.tvList() }.series.orEmpty().map { it.toMovie(endpoint, long = true) }
     }
 
-    /** Not backed by anything yet (Takeout has watch progress, not favourites). */
-    override fun getFavouriteMovies(): Flow<MovieList> = flow { emit(emptyList()) }
+    /**
+     * Favorite movies and TV shows together, A–Z. Not cached: favorites can change from the
+     * other Takeout apps at any time.
+     */
+    override fun getFavouriteMovies(): Flow<MovieList> = listFlow {
+        val view = api.favorites()
+        val movies = view.movies.orEmpty().map { it.sortTitle.ifEmpty { it.title } to it.toMovie(endpoint) }
+        val shows = view.shows.orEmpty().map { it.sortName.ifEmpty { it.name } to it.toMovie(endpoint) }
+        (movies + shows).sortedBy { it.first.lowercase(Locale.ROOT) }.map { it.second }
+    }
 
     // ---- Helpers ----
 

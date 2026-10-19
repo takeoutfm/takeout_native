@@ -21,6 +21,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.R
+import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.repositories.MovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,11 +43,13 @@ class FavouriteScreenViewModel @Inject constructor(
         selectedFilterList,
         movieRepository.getFavouriteMovies()
     ) { filterList, movieList ->
-        val idList = filterList.toIdList()
-        val filtered = movieList.filterIndexed { index, _ ->
-            idList.contains(index)
+        // No chip selected shows everything.
+        val filtered = if (filterList.items.isEmpty()) {
+            movieList
+        } else {
+            movieList.filter { movie -> filterList.items.any { it.matches(movie) } }
         }
-        FavouriteScreenUiState.Ready(filtered, filterList)
+        FavouriteScreenUiState.Ready(filtered, filterList, hasFavourites = movieList.isNotEmpty())
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -58,42 +61,28 @@ class FavouriteScreenViewModel @Inject constructor(
     }
 
     companion object {
-        val filterList = FilterList(
-            listOf(
-                FilterCondition.Movies,
-                FilterCondition.TvShows,
-                FilterCondition.AddedLastWeek,
-                FilterCondition.AvailableIn4K
-            )
-        )
+        val filterList = FilterList(FilterCondition.entries)
     }
 }
 
 sealed interface FavouriteScreenUiState {
     data object Loading : FavouriteScreenUiState
-    data class Ready(val favouriteMovieList: MovieList, val selectedFilterList: FilterList) :
-        FavouriteScreenUiState
+    data class Ready(
+        val favouriteMovieList: MovieList,
+        val selectedFilterList: FilterList,
+        /** False when the user has no favorites at all (as opposed to none matching a chip). */
+        val hasFavourites: Boolean,
+    ) : FavouriteScreenUiState
 }
 
 @Immutable
-data class FilterList(val items: List<FilterCondition> = emptyList()) {
-    fun toIdList(): List<Int> {
-        if (items.isEmpty()) {
-            return FilterCondition.None.idList
-        }
-        return items.asSequence().map {
-            it.idList
-        }.fold(emptyList()) { acc, ints ->
-            acc + ints
-        }
-    }
-}
+data class FilterList(val items: List<FilterCondition> = emptyList())
 
+/** A chip on the Favourites tab; matches by the id prefix of the kind of title. */
 @Immutable
-enum class FilterCondition(val idList: List<Int>, @StringRes val labelId: Int) {
-    None((0..28).toList(), R.string.favorites_unknown),
-    Movies((0..9).toList(), R.string.favorites_movies),
-    TvShows((10..17).toList(), R.string.favorites_tv_shows),
-    AddedLastWeek((18..23).toList(), R.string.favorites_added_last_week),
-    AvailableIn4K((24..28).toList(), R.string.favorites_available_in_4k),
+enum class FilterCondition(private val idPrefix: String, @StringRes val labelId: Int) {
+    Movies("m-", R.string.favorites_movies),
+    TvShows("s-", R.string.favorites_tv_shows);
+
+    fun matches(movie: Movie) = movie.id.startsWith(idPrefix)
 }

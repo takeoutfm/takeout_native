@@ -16,24 +16,24 @@
 
 package com.google.jetstream.presentation.screens.favourites
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.jetstream.data.entities.MovieList
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
+import com.google.jetstream.R
 import com.google.jetstream.presentation.common.Loading
-import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import com.google.jetstream.presentation.common.PosterGrid
 
 @Composable
 fun FavouritesScreen(
@@ -48,65 +48,38 @@ fun FavouritesScreen(
             Loading(modifier = Modifier.fillMaxSize())
         }
         is FavouriteScreenUiState.Ready -> {
-            Catalog(
-                favouriteMovieList = s.favouriteMovieList,
-                onMovieClick = onMovieClick,
-                onScroll = onScroll,
-                isTopBarVisible = isTopBarVisible,
-                modifier = Modifier.fillMaxSize(),
-                filterList = FavouriteScreenViewModel.filterList,
-                selectedFilterList = s.selectedFilterList,
-                onSelectedFilterListUpdated = favouriteScreenViewModel::updateSelectedFilterList
-            )
+            if (!s.hasFavourites) {
+                NoFavourites(modifier = Modifier.fillMaxSize())
+            } else {
+                PosterGrid(
+                    movieList = s.favouriteMovieList,
+                    onMovieClick = { movie -> onMovieClick(movie.id) },
+                    onScroll = onScroll,
+                    isTopBarVisible = isTopBarVisible,
+                    modifier = Modifier.fillMaxSize(),
+                    header = {
+                        MovieFilterChipRow(
+                            filterList = FavouriteScreenViewModel.filterList,
+                            selectedFilterList = s.selectedFilterList,
+                            onSelectedFilterListUpdated =
+                            favouriteScreenViewModel::updateSelectedFilterList
+                        )
+                    }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun Catalog(
-    favouriteMovieList: MovieList,
-    filterList: FilterList,
-    selectedFilterList: FilterList,
-    onMovieClick: (movieId: String) -> Unit,
-    onScroll: (isTopBarVisible: Boolean) -> Unit,
-    onSelectedFilterListUpdated: (FilterList) -> Unit,
-    isTopBarVisible: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val childPadding = rememberChildPadding()
-    val filteredMoviesGridState = rememberLazyGridState()
-    val shouldShowTopBar by remember {
-        derivedStateOf {
-            filteredMoviesGridState.firstVisibleItemIndex == 0 &&
-                filteredMoviesGridState.firstVisibleItemScrollOffset < 100
-        }
-    }
-
-    LaunchedEffect(shouldShowTopBar) {
-        onScroll(shouldShowTopBar)
-    }
-    LaunchedEffect(isTopBarVisible) {
-        if (isTopBarVisible) filteredMoviesGridState.animateScrollToItem(0)
-    }
-
-    val chipRowTopPadding by animateDpAsState(
-        targetValue = if (shouldShowTopBar) 0.dp else childPadding.top, label = ""
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.padding(horizontal = childPadding.start)
-    ) {
-        MovieFilterChipRow(
-            filterList = filterList,
-            selectedFilterList = selectedFilterList,
-            modifier = Modifier.padding(top = chipRowTopPadding),
-            onSelectedFilterListUpdated = onSelectedFilterListUpdated
-        )
-        FilteredMoviesGrid(
-            state = filteredMoviesGridState,
-            movieList = favouriteMovieList,
-            onMovieClick = onMovieClick
+private fun NoFavourites(modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Text(
+            text = stringResource(R.string.favorites_empty),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .padding(horizontal = 64.dp)
+                .alpha(0.75f)
         )
     }
 }

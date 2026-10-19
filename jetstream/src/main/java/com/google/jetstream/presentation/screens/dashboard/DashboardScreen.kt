@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -38,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -51,12 +53,18 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.jetstream.data.entities.Movie
+import com.google.jetstream.data.entities.Recommendation
+import com.google.jetstream.presentation.common.PosterGrid
 import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.screens.categories.CategoriesScreen
 import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
@@ -88,7 +96,8 @@ fun DashboardScreen(
     openVideoPlayer: (Movie) -> Unit,
     isComingBackFromDifferentScreen: Boolean,
     resetIsComingBackFromDifferentScreen: () -> Unit,
-    onBackPressed: () -> Unit
+    onBackPressed: () -> Unit,
+    dashboardViewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
@@ -97,16 +106,26 @@ fun DashboardScreen(
     var isTopBarVisible by remember { mutableStateOf(true) }
     var isTopBarFocused by remember { mutableStateOf(false) }
 
+    val recommendations by dashboardViewModel.recommendations.collectAsStateWithLifecycle()
+    val tabs = remember(recommendations) { dashboardTabs(recommendations) }
+    // +1 for the profile avatar, which comes first.
+    val topBarFocusRequesters = remember(tabs.size) { List(tabs.size + 1) { FocusRequester() } }
+
+    // The current tab's route, with a recommendation page's index filled in.
     var currentDestination: String? by remember { mutableStateOf(null) }
-    val currentTopBarSelectedTabIndex by remember(currentDestination) {
+    val currentTopBarSelectedTabIndex by remember(currentDestination, tabs) {
         derivedStateOf {
-            currentDestination?.let { TopBarTabs.indexOf(Screens.valueOf(it)) } ?: 0
+            currentDestination?.let { route -> tabs.indexOfFirst { it.route == route } } ?: 0
         }
     }
 
     DisposableEffect(Unit) {
-        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
-            currentDestination = destination.route
+        val listener = NavController.OnDestinationChangedListener { _, destination, arguments ->
+            currentDestination = if (destination.route == RecommendedRoutePattern) {
+                recommendedRoute(arguments?.getInt(RecommendedIndexKey) ?: 0)
+            } else {
+                destination.route
+            }
         }
 
         navController.addOnDestinationChangedListener(listener)
@@ -124,11 +143,11 @@ fun DashboardScreen(
         onBackPressed = {
             if (!isTopBarVisible) {
                 isTopBarVisible = true
-                TopBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
+                topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
             } else if (currentTopBarSelectedTabIndex == 0) onBackPressed()
             else if (!isTopBarFocused) {
-                TopBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
-            } else TopBarFocusRequesters[1].requestFocus()
+                topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
+            } else topBarFocusRequesters[1].requestFocus()
         }
     ) {
         // We do not want to focus the TopBar everytime we come back from another screen e.g.
@@ -159,7 +178,7 @@ fun DashboardScreen(
 
         LaunchedEffect(Unit) {
             if (!wasTopBarFocusRequestedBefore) {
-                TopBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
+                topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
                 wasTopBarFocusRequestedBefore = true
             }
         }
@@ -179,17 +198,19 @@ fun DashboardScreen(
                     bottom = ParentPadding.calculateBottomPadding()
                 ),
             selectedTabIndex = currentTopBarSelectedTabIndex,
-        ) { screen ->
-            val targetRoute = screen()
+            tabs = tabs,
+            focusRequesters = topBarFocusRequesters,
+        ) { targetRoute ->
             if (currentDestination != targetRoute) {
                 navController.navigate(targetRoute) {
-                    if (screen == TopBarTabs[0]) popUpTo(TopBarTabs[0].invoke())
+                    if (targetRoute == tabs[0].route) popUpTo(tabs[0].route)
                     launchSingleTop = true
                 }
             }
         }
 
         Body(
+            recommendations = recommendations,
             openCategoryMovieList = openCategoryMovieList,
             openMovieDetailsScreen = openMovieDetailsScreen,
             openVideoPlayer = openVideoPlayer,
@@ -223,6 +244,7 @@ private fun BackPressHandledArea(
 
 @Composable
 private fun Body(
+    recommendations: List<Recommendation>,
     openCategoryMovieList: (categoryId: String) -> Unit,
     openMovieDetailsScreen: (movieId: String) -> Unit,
     openVideoPlayer: (Movie) -> Unit,
@@ -247,6 +269,19 @@ private fun Body(
                 goToVideoPlayer = openVideoPlayer,
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible
+            )
+        }
+        composable(
+            route = RecommendedRoutePattern,
+            arguments = listOf(navArgument(RecommendedIndexKey) { type = NavType.IntType })
+        ) { backStackEntry ->
+            val index = backStackEntry.arguments?.getInt(RecommendedIndexKey) ?: 0
+            PosterGrid(
+                movieList = recommendations.getOrNull(index)?.movies.orEmpty(),
+                onMovieClick = { movie -> openMovieDetailsScreen(movie.id) },
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+                modifier = Modifier.fillMaxSize(),
             )
         }
         composable(Screens.Genres()) {

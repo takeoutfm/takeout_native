@@ -12,6 +12,7 @@ import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.MovieReviewsAndRatings
 import com.google.jetstream.data.entities.PersonDetails
+import com.google.jetstream.data.entities.Recommendation
 import com.google.jetstream.data.entities.Season
 import com.google.jetstream.data.takeout.ApiCast
 import com.google.jetstream.data.takeout.ApiEpisode
@@ -70,7 +71,7 @@ class TakeoutMovieRepository @Inject constructor(
         return value
     }
 
-    private fun listFlow(block: suspend () -> MovieList): Flow<MovieList> = flow {
+    private fun <T> listFlow(block: suspend () -> List<T>): Flow<List<T>> = flow {
         val list = try {
             block()
         } catch (e: CancellationException) {
@@ -299,6 +300,18 @@ class TakeoutMovieRepository @Inject constructor(
         similarMovies = emptyList(),
         reviewsAndRatings = emptyList(),
     )
+
+    // ---- Recommendations ----
+
+    /**
+     * The server's current recommendation sets (they depend on the date), each A–Z.
+     * Empty when there are none or the server can't be reached.
+     */
+    fun getRecommendations(): Flow<List<Recommendation>> = listFlow {
+        home().recommendMovies.orEmpty()
+            .filter { it.name.isNotBlank() && it.movies.isNotEmpty() }
+            .map { r -> Recommendation(r.name, r.movies.sortedAZ().map { it.toMovie(endpoint) }) }
+    }
 
     // ---- People ----
 

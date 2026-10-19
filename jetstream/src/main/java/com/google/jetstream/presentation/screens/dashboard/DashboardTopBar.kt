@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
@@ -56,16 +58,36 @@ import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import com.google.jetstream.R
 import com.google.jetstream.data.util.StringConstants
+import com.google.jetstream.data.entities.Recommendation
 import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.theme.IconSize
 import com.google.jetstream.presentation.theme.JetStreamCardShape
 import com.google.jetstream.presentation.theme.LexendExa
 import com.google.jetstream.presentation.utils.occupyScreenSize
 
-val TopBarTabs = Screens.entries.toList().filter { it.isTabItem }
+/** A top bar tab: one of the fixed [Screens] tabs, or one of the server's recommendation sets. */
+@Immutable
+data class DashboardTab(
+    val route: String,
+    val label: String,
+    val icon: ImageVector? = null,
+)
 
-// +1 for ProfileTab
-val TopBarFocusRequesters = List(size = TopBarTabs.size + 1) { FocusRequester() }
+/** Route of the page for the [index]th recommendation set. */
+fun recommendedRoute(index: Int) = "$RecommendedRouteName/$index"
+const val RecommendedRouteName = "Recommended"
+const val RecommendedIndexKey = "index"
+const val RecommendedRoutePattern = "$RecommendedRouteName/{$RecommendedIndexKey}"
+
+/** Home, then a tab per recommendation set, then Genres, Movies, Shows, Favourites, Search. */
+fun dashboardTabs(recommendations: List<Recommendation>): List<DashboardTab> {
+    val fixed = Screens.entries.filter { it.isTabItem }
+        .map { DashboardTab(route = it(), label = it(), icon = it.tabIcon) }
+    val recommended = recommendations.mapIndexed { index, r ->
+        DashboardTab(route = recommendedRoute(index), label = r.name)
+    }
+    return listOf(fixed.first()) + recommended + fixed.drop(1)
+}
 
 private const val PROFILE_SCREEN_INDEX = -1
 
@@ -74,9 +96,10 @@ private const val PROFILE_SCREEN_INDEX = -1
 fun DashboardTopBar(
     modifier: Modifier = Modifier,
     selectedTabIndex: Int,
-    screens: List<Screens> = TopBarTabs,
-    focusRequesters: List<FocusRequester> = remember { TopBarFocusRequesters },
-    onScreenSelection: (screen: Screens) -> Unit
+    tabs: List<DashboardTab>,
+    /** One per tab, plus the profile avatar's first. */
+    focusRequesters: List<FocusRequester>,
+    onRouteSelection: (route: String) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     Box(modifier = modifier) {
@@ -98,7 +121,7 @@ fun DashboardTopBar(
                     },
                 selected = selectedTabIndex == PROFILE_SCREEN_INDEX,
                 onClick = {
-                    onScreenSelection(Screens.Profile)
+                    onRouteSelection(Screens.Profile())
                 }
             )
             Row(
@@ -124,19 +147,19 @@ fun DashboardTopBar(
                     },
                     separator = { Spacer(modifier = Modifier) }
                 ) {
-                    screens.forEachIndexed { index, screen ->
+                    tabs.forEachIndexed { index, tab ->
                         key(index) {
                             Tab(
                                 modifier = Modifier
                                     .height(32.dp)
                                     .focusRequester(focusRequesters[index + 1]),
                                 selected = index == selectedTabIndex,
-                                onFocus = { onScreenSelection(screen) },
+                                onFocus = { onRouteSelection(tab.route) },
                                 onClick = { focusManager.moveFocus(FocusDirection.Down) },
                             ) {
-                                if (screen.tabIcon != null) {
+                                if (tab.icon != null) {
                                     Icon(
-                                        screen.tabIcon,
+                                        tab.icon,
                                         modifier = Modifier.padding(4.dp),
                                         contentDescription = StringConstants.Composable
                                             .ContentDescription.DashboardSearchButton,
@@ -147,7 +170,7 @@ fun DashboardTopBar(
                                         modifier = Modifier
                                             .occupyScreenSize()
                                             .padding(horizontal = 16.dp),
-                                        text = screen(),
+                                        text = tab.label,
                                         style = MaterialTheme.typography.titleSmall.copy(
                                             color = LocalContentColor.current
                                         )

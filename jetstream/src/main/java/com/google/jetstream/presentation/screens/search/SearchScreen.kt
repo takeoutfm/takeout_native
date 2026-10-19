@@ -37,6 +37,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -87,32 +89,42 @@ fun SearchScreen(
         onScroll(shouldShowTopBar)
     }
 
-    when (val s = searchState) {
-        is SearchState.Searching -> {
-            Text(text = "Searching...")
-        }
+    // Kept here, not in SearchResult, so the query survives while results load.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var lastResults by remember { mutableStateOf(SearchResults()) }
+    val s = searchState
+    if (s is SearchState.Done) lastResults = s.results
 
-        is SearchState.Done -> {
-            SearchResult(
-                results = s.results,
-                searchMovies = searchScreenViewModel::query,
-                onMovieClick = onMovieClick
-            )
-        }
-    }
+    SearchResult(
+        query = searchQuery,
+        onQueryChange = { searchQuery = it },
+        results = lastResults,
+        isSearching = s is SearchState.Searching,
+        searchMovies = searchScreenViewModel::query,
+        onMovieClick = onMovieClick,
+        lazyColumnState = lazyColumnState,
+    )
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SearchResult(
+    query: String,
+    onQueryChange: (String) -> Unit,
     results: SearchResults,
+    isSearching: Boolean,
     searchMovies: (queryString: String) -> Unit,
     onMovieClick: (movie: Movie) -> Unit,
     modifier: Modifier = Modifier,
     lazyColumnState: LazyListState = rememberLazyListState(),
 ) {
     val childPadding = rememberChildPadding()
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery = query
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val submit = {
+        keyboardController?.hide()
+        searchMovies(searchQuery)
+    }
     val tfFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val tfInteractionSource = remember { MutableInteractionSource() }
@@ -154,7 +166,7 @@ fun SearchResult(
             ) {
                 BasicTextField(
                     value = searchQuery,
-                    onValueChange = { updatedQuery -> searchQuery = updatedQuery },
+                    onValueChange = onQueryChange,
                     decorationBox = {
                         Box(
                             modifier = Modifier
@@ -179,22 +191,26 @@ fun SearchResult(
                         )
                         .focusRequester(tfFocusRequester)
                         .onKeyEvent {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
+                            // Only consume the keys handled here: swallowing everything also ate
+                            // Enter (so a hardware keyboard couldn't search) and Left/Right.
+                            val handled = when (it.nativeKeyEvent.keyCode) {
+                                KeyEvent.KEYCODE_DPAD_DOWN,
+                                KeyEvent.KEYCODE_DPAD_UP,
+                                KeyEvent.KEYCODE_ENTER,
+                                KeyEvent.KEYCODE_NUMPAD_ENTER,
+                                KeyEvent.KEYCODE_SEARCH -> true
+                                else -> false
+                            }
+                            if (handled && it.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
                                 when (it.nativeKeyEvent.keyCode) {
-                                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                    KeyEvent.KEYCODE_DPAD_DOWN ->
                                         focusManager.moveFocus(FocusDirection.Down)
-                                    }
-
-                                    KeyEvent.KEYCODE_DPAD_UP -> {
+                                    KeyEvent.KEYCODE_DPAD_UP ->
                                         focusManager.moveFocus(FocusDirection.Up)
-                                    }
-
-                                    KeyEvent.KEYCODE_BACK -> {
-                                        focusManager.moveFocus(FocusDirection.Exit)
-                                    }
+                                    else -> submit()
                                 }
                             }
-                            true
+                            handled
                         },
                     cursorBrush = Brush.verticalGradient(
                         colors = listOf(
@@ -207,9 +223,9 @@ fun SearchResult(
                         imeAction = ImeAction.Search
                     ),
                     keyboardActions = KeyboardActions(
-                        onSearch = {
-                            searchMovies(searchQuery)
-                        }
+                        onSearch = { submit() },
+                        onDone = { submit() },
+                        onGo = { submit() },
                     ),
                     maxLines = 1,
                     interactionSource = tfInteractionSource,
@@ -220,6 +236,15 @@ fun SearchResult(
             }
         }
 
+        if (isSearching) {
+            item(key = "searching") {
+                Text(
+                    text = stringResource(R.string.searching),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = childPadding.start, top = childPadding.top * 2)
+                )
+            }
+        }
         val rows = listOf(
             Triple(R.string.favorites_movies, results.movies, ItemDirection.Vertical),
             Triple(R.string.favorites_tv_shows, results.shows, ItemDirection.Vertical),

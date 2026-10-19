@@ -418,11 +418,17 @@ class TakeoutMovieRepository @Inject constructor(
         val q = sortKey(query)
         if (q.isEmpty()) return SearchResults()
         return try {
-            val view = api.search(query)
+            val view = api.search(allWordsQuery(query))
             val tv = cached("tv-recent") { api.tvList() }
             val seriesByTvid = tv.series.orEmpty().associateBy { it.tvid }
             SearchResults(
-                movies = view.movies.orEmpty().map { it.toMovie(endpoint) },
+                // Titles containing the whole phrase first, then the rest, each A–Z.
+                movies = view.movies.orEmpty()
+                    .sortedWith(
+                        compareBy<ApiMovie> { q !in sortKey(it.title) }
+                            .thenBy { sortKey(it.sortTitle.ifEmpty { it.title }) }
+                    )
+                    .map { it.toMovie(endpoint) },
                 shows = tv.series.orEmpty()
                     .filter { q in sortKey(it.name) }
                     .sortedBy { sortKey(it.sortName.ifEmpty { it.name }) }
@@ -566,6 +572,15 @@ class TakeoutMovieRepository @Inject constructor(
                 )
             )
         }
+
+    /**
+     * The server takes a Bleve query string, where "evil dead" means evil OR dead; require every
+     * word instead ("+evil +dead"). Query syntax characters are dropped from what the user typed.
+     */
+    private fun allWordsQuery(query: String): String =
+        query.replace(Regex("""[+\-=&|><!(){}\[\]^"~*?:\\/]"""), " ")
+            .split(Regex("\\s+")).filter { it.isNotBlank() }
+            .joinToString(" ") { "+$it" }
 
     /**
      * A–Z key: case- and accent-insensitive, with punctuation ignored, so "Airplane!" sorts

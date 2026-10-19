@@ -51,6 +51,9 @@ import com.google.jetstream.presentation.common.MovieCard
 import com.google.jetstream.presentation.common.TileGridSkeleton
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.utils.GradientBg
+import com.google.jetstream.presentation.utils.rememberFocus
+import com.google.jetstream.presentation.utils.rememberFocusMemory
+import com.google.jetstream.presentation.utils.restoreFocus
 
 @Composable
 fun CategoriesScreen(
@@ -90,6 +93,8 @@ private fun Catalog(
 ) {
     val childPadding = rememberChildPadding()
     val lazyGridState = rememberLazyGridState()
+    // Back from a genre returns focus to its tile, not the nearest one to the tab bar.
+    val focusMemory = rememberFocusMemory()
     val shouldShowTopBar by remember {
         derivedStateOf {
             lazyGridState.firstVisibleItemIndex == 0 &&
@@ -109,7 +114,7 @@ private fun Catalog(
     ) { it ->
         LazyVerticalGrid(
             state = lazyGridState,
-            modifier = modifier,
+            modifier = modifier.restoreFocus(focusMemory),
             columns = GridCells.Fixed(gridColumns),
         ) {
             itemsIndexed(it) { index, movieCategory ->
@@ -119,6 +124,7 @@ private fun Catalog(
                         onCategoryClick(movieCategory.id)
                     },
                     modifier = Modifier
+                        .rememberFocus(focusMemory, movieCategory.id)
                         .padding(8.dp)
                         .aspectRatio(16 / 9f)
                         .onFocusChanged {

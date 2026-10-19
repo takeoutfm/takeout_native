@@ -31,6 +31,9 @@ import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.utils.focusOnInitialVisibility
+import com.google.jetstream.presentation.utils.rememberFocus
+import com.google.jetstream.presentation.utils.rememberFocusMemory
+import com.google.jetstream.presentation.utils.restoreFocus
 
 /**
  * A 6-column poster grid, for the Movies and Shows tabs and the genre pages.
@@ -52,6 +55,8 @@ fun PosterGrid(
     val childPadding = rememberChildPadding()
     val gridState = rememberLazyGridState()
     val firstItemFocused = remember { mutableStateOf(false) }
+    // Back from a title returns focus to its poster, not the nearest one to the tab bar.
+    val focusMemory = rememberFocusMemory()
     val shouldShowTopBar by remember {
         derivedStateOf {
             gridState.firstVisibleItemIndex == 0 &&
@@ -77,7 +82,7 @@ fun PosterGrid(
             top = childPadding.top,
             bottom = 104.dp
         ),
-        modifier = modifier,
+        modifier = modifier.restoreFocus(focusMemory),
     ) {
         if (header != null) {
             item(span = { GridItemSpan(maxLineSpan) }) { header() }
@@ -88,11 +93,15 @@ fun PosterGrid(
                 onClick = { onMovieClick(movie) },
                 // Focus once the first poster is actually laid out; requesting it earlier
                 // (before the lazy grid places it) throws.
-                modifier = if (focusFirstItem && index == 0) {
-                    Modifier.focusOnInitialVisibility(firstItemFocused)
-                } else {
-                    Modifier
-                }
+                modifier = Modifier
+                    .rememberFocus(focusMemory, movie.id)
+                    .then(
+                        if (focusFirstItem && index == 0) {
+                            Modifier.focusOnInitialVisibility(firstItemFocused)
+                        } else {
+                            Modifier
+                        }
+                    )
             )
         }
     }

@@ -40,6 +40,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -143,6 +144,7 @@ fun VideoPlayerScreenContent(
     onPlayEpisode: (episodeId: String) -> Unit,
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val exoPlayer = rememberPlayer(context)
 
     val videoPlayerState = rememberVideoPlayerState(
@@ -193,6 +195,9 @@ fun VideoPlayerScreenContent(
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) hasPlayed.value = true else saveProgress()
+                // Keep the TV's screensaver away only while video is actually playing;
+                // paused or stopped, the normal timeout applies again.
+                view.keepScreenOn = isPlaying
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -206,6 +211,7 @@ fun VideoPlayerScreenContent(
         }
         exoPlayer.addListener(listener)
         onDispose {
+            view.keepScreenOn = false
             exoPlayer.removeListener(listener)
             saveProgress()
             exoPlayer.release()

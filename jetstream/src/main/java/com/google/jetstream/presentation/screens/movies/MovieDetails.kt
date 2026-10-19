@@ -16,11 +16,13 @@
 
 package com.google.jetstream.presentation.screens.movies
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -243,30 +245,34 @@ private fun DirectorScreenplayMusicRow(
     screenplay: String,
     music: String
 ) {
+    // Director always shows; Screenplay and Music only when the server has names. A missing
+    // column keeps its width, so the layout doesn't shift when names are present.
     Row(modifier = Modifier.padding(top = 32.dp)) {
-        TitleValueText(
-            modifier = Modifier
-                .padding(end = 32.dp)
-                .weight(1f),
-            title = stringResource(R.string.director),
-            value = director
-        )
-
-        TitleValueText(
-            modifier = Modifier
-                .padding(end = 32.dp)
-                .weight(1f),
-            title = stringResource(R.string.screenplay),
-            value = screenplay
-        )
-
-        TitleValueText(
-            modifier = Modifier.weight(1f),
-            title = stringResource(R.string.music),
-            value = music
-        )
+        CreditColumn(R.string.director, director, alwaysShow = true)
+        CreditColumn(R.string.screenplay, screenplay, endPadding = true)
+        CreditColumn(R.string.music, music, endPadding = false)
     }
 }
+
+@Composable
+private fun RowScope.CreditColumn(
+    @StringRes title: Int,
+    value: String,
+    alwaysShow: Boolean = false,
+    endPadding: Boolean = true,
+) {
+    val modifier = Modifier
+        .then(if (endPadding) Modifier.padding(end = 32.dp) else Modifier)
+        .weight(1f)
+    if (alwaysShow || hasCredit(value)) {
+        TitleValueText(modifier = modifier, title = stringResource(title), value = value)
+    } else {
+        Spacer(modifier)
+    }
+}
+
+/** "—" is the repository's placeholder for "no names". */
+private fun hasCredit(value: String) = value.isNotBlank() && value != "—"
 
 @Composable
 private fun MovieDescription(description: String) {

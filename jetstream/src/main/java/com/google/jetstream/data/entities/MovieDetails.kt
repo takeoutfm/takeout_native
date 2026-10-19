@@ -41,4 +41,7 @@ data class MovieDetails(
     val etag: String = "",
     /** For a TV series: its episodes, by season. */
     val seasons: List<Season> = emptyList(),
+    val isFavorite: Boolean = false,
+    /** Where to add/remove the favorite ("movies/<imid>", "shows/<tvid>"); null if it can't be. */
+    val favoritePath: String? = null,
 )

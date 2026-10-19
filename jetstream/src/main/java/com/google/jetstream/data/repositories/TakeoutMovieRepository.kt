@@ -195,6 +195,8 @@ class TakeoutMovieRepository @Inject constructor(
             similarMovies = view.other.orEmpty().map { it.toMovie(endpoint) },
             reviewsAndRatings = ratings(m.voteAverage, m.voteCount),
             etag = m.etag,
+            isFavorite = view.isFavorite,
+            favoritePath = m.imid.ifEmpty { null }?.let { "movies/$it" },
         )
     }
 
@@ -246,6 +248,8 @@ class TakeoutMovieRepository @Inject constructor(
             reviewsAndRatings = ratings(s.voteAverage, s.voteCount),
             etag = first?.etag.orEmpty(),
             seasons = seasons,
+            isFavorite = view.isFavorite,
+            favoritePath = s.tvid.takeIf { it > 0 }?.let { "shows/$it" },
         )
     }
 
@@ -312,6 +316,11 @@ class TakeoutMovieRepository @Inject constructor(
             .filter { it.name.isNotBlank() && it.movies.isNotEmpty() }
             .map { r -> Recommendation(r.name, r.movies.sortedAZ().map { it.toMovie(endpoint) }) }
     }
+
+    // ---- Favorites ----
+
+    suspend fun setFavorite(favoritePath: String, favorite: Boolean) =
+        api.setFavorite(favoritePath, favorite)
 
     // ---- People ----
 

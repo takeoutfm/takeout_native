@@ -94,11 +94,15 @@ data class ApiMovie(
     @SerialName("BackdropPath") val backdropPath: String = "",
     @SerialName("PosterPath") val posterPath: String = "",
     @SerialName("ETag") val etag: String = "",
+    /** IMDB id; favorites are keyed by it. */
+    @SerialName("IMID") val imid: String = "",
 )
 
 @Serializable
 data class ApiSeries(
     @SerialName("ID") val id: Int = 0,
+    /** TMDB TV id; favorites are keyed by it. */
+    @SerialName("TVID") val tvid: Long = 0,
     @SerialName("Name") val name: String = "",
     @SerialName("SortName") val sortName: String = "",
     @SerialName("Overview") val overview: String = "",
@@ -166,6 +170,7 @@ data class ApiMovieView(
     @SerialName("Directing") val directing: List<ApiPerson>? = null,
     @SerialName("Writing") val writing: List<ApiPerson>? = null,
     @SerialName("Genres") val genres: List<String>? = null,
+    @SerialName("IsFavorite") val isFavorite: Boolean = false,
 )
 
 @Serializable
@@ -187,6 +192,7 @@ data class ApiTvSeriesView(
     @SerialName("Directing") val directing: List<ApiPerson>? = null,
     @SerialName("Writing") val writing: List<ApiPerson>? = null,
     @SerialName("Genres") val genres: List<String>? = null,
+    @SerialName("IsFavorite") val isFavorite: Boolean = false,
 )
 
 @Serializable

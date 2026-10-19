@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.runtime.Composable
@@ -69,6 +71,8 @@ import kotlinx.coroutines.launch
 fun MovieDetails(
     movieDetails: MovieDetails,
     resumePositionMs: Long,
+    isFavorite: Boolean,
+    onToggleFavorite: (favoritePath: String) -> Unit,
     goToMoviePlayer: (startOver: Boolean) -> Unit
 ) {
     val childPadding = rememberChildPadding()
@@ -132,6 +136,13 @@ fun MovieDetails(
                             onClick = { goToMoviePlayer(true) }
                         )
                     }
+                    movieDetails.favoritePath?.let { path ->
+                        FavoriteButton(
+                            isFavorite = isFavorite,
+                            modifier = bringIntoViewOnFocus,
+                            onClick = { onToggleFavorite(path) }
+                        )
+                    }
                 }
             }
         }
@@ -184,6 +195,31 @@ private fun StartOverButton(
         Spacer(Modifier.size(8.dp))
         Text(
             text = stringResource(R.string.start_over),
+            style = MaterialTheme.typography.titleSmall
+        )
+    }
+}
+
+/** "♡ Add to favorites", or "♥ Favorite" once it is one; styled like [StartOverButton]. */
+@Composable
+private fun FavoriteButton(
+    isFavorite: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape)
+    ) {
+        Icon(
+            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = null
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(if (isFavorite) R.string.favorite else R.string.add_to_favorites),
             style = MaterialTheme.typography.titleSmall
         )
     }

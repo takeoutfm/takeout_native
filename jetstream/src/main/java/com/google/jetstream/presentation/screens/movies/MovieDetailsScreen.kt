@@ -76,6 +76,7 @@ fun MovieDetailsScreen(
         is MovieDetailsScreenUiState.Done -> {
             val resumePositionMs by movieDetailsScreenViewModel.resumePositionMs
                 .collectAsStateWithLifecycle()
+            val isFavorite by movieDetailsScreenViewModel.isFavorite.collectAsStateWithLifecycle()
             // Re-runs when coming back from the player, so the button reflects the new position.
             LaunchedEffect(s.movieDetails.etag) {
                 movieDetailsScreenViewModel.refreshResumePosition(s.movieDetails.etag)
@@ -83,6 +84,8 @@ fun MovieDetailsScreen(
             Details(
                 movieDetails = s.movieDetails,
                 resumePositionMs = resumePositionMs,
+                isFavorite = isFavorite,
+                onToggleFavorite = movieDetailsScreenViewModel::toggleFavorite,
                 goToMoviePlayer = goToMoviePlayer,
                 openPerson = openPerson,
                 playEpisode = playEpisode,
@@ -100,6 +103,8 @@ fun MovieDetailsScreen(
 private fun Details(
     movieDetails: MovieDetails,
     resumePositionMs: Long,
+    isFavorite: Boolean,
+    onToggleFavorite: (favoritePath: String) -> Unit,
     goToMoviePlayer: (startOver: Boolean) -> Unit,
     openPerson: (personId: String) -> Unit,
     playEpisode: (episodeId: String) -> Unit,
@@ -118,6 +123,8 @@ private fun Details(
             MovieDetails(
                 movieDetails = movieDetails,
                 resumePositionMs = resumePositionMs,
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
                 goToMoviePlayer = goToMoviePlayer
             )
         }

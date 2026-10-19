@@ -135,6 +135,13 @@ class TakeoutApi @Inject constructor(
     suspend fun index(): ApiIndexView =
         json.decodeFromString(ApiIndexView.serializer(), getText("/api/index"))
 
+    /** [path] is "movies/<imid>" or "shows/<tvid>"; PUT adds the favorite, DELETE removes it. */
+    suspend fun setFavorite(path: String, favorite: Boolean) {
+        authed("/api/favorite/$path") {
+            if (favorite) put(ByteArray(0).toRequestBody()) else delete()
+        }
+    }
+
     suspend fun favorites(): ApiFavoriteView =
         json.decodeFromString(ApiFavoriteView.serializer(), getText("/api/favorite"))
 

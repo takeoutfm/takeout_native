@@ -113,12 +113,30 @@ class TakeoutMovieRepository @Inject constructor(
 
     // ---- Categories (genres) ----
 
+    /** The genres that actually occur in this server's movie library, A–Z. */
+    private suspend fun genres(): List<String> =
+        cached("index", ttlMs = 300_000) { api.index() }.movieGenres.orEmpty()
+            .distinct().sortedBy { it.lowercase(Locale.ROOT) }
+
     override fun getMovieCategories(): Flow<MovieCategoryList> = flow {
-        emit(Genres.map { MovieCategory(id = slug(it), name = it) })
+        val genres = try {
+            genres()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+        emit(genres.map { MovieCategory(id = slug(it), name = it) })
     }
 
     override suspend fun getMovieCategoryDetails(categoryId: String): MovieCategoryDetails {
-        val name = Genres.firstOrNull { slug(it) == categoryId } ?: Genres.first()
+        val name = try {
+            genres().firstOrNull { slug(it) == categoryId }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: categoryId
         val movies = try {
             cached("genre:$name", ttlMs = 300_000) { api.genre(name) }
                 .movies.orEmpty().map { it.toMovie(endpoint) }
@@ -450,12 +468,5 @@ class TakeoutMovieRepository @Inject constructor(
 
     private companion object {
         const val Dash = "—"
-
-        // Standard TMDB movie genres (Takeout stores TMDB metadata).
-        val Genres = listOf(
-            "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama",
-            "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance",
-            "Science Fiction", "Thriller", "War", "Western",
-        )
     }
 }

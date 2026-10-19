@@ -138,6 +138,12 @@ data class ApiHomeView(
     @SerialName("RecommendMovies") val recommendMovies: List<ApiRecommend>? = null,
 )
 
+/** Server summary; only what the TV app needs. */
+@Serializable
+data class ApiIndexView(
+    @SerialName("MovieGenres") val movieGenres: List<String>? = null,
+)
+
 @Serializable
 data class ApiMoviesView(
     @SerialName("Movies") val movies: List<ApiMovie>? = null,

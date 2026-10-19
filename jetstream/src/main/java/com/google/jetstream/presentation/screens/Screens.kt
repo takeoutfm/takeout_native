@@ -31,7 +31,7 @@ enum class Screens(
 ) {
     Profile,
     Home(isTabItem = true),
-    Categories(isTabItem = true),
+    Genres(isTabItem = true),
     Movies(isTabItem = true),
     Shows(isTabItem = true),
     Favourites(isTabItem = true),

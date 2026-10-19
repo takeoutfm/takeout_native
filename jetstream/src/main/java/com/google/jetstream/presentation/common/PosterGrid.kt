@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,21 +34,25 @@ import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 
 /**
- * A whole library as a 6-column poster grid, for the Movies and Shows tabs.
+ * A 6-column poster grid, for the Movies and Shows tabs and the genre pages.
  *
- * Like the tabs' original lists, it reports via [onScroll] whether it is scrolled to the top
- * (so the dashboard can show its top bar) and scrolls back up when [isTopBarVisible] turns true.
+ * On the dashboard tabs it reports via [onScroll] whether it is scrolled to the top (so the
+ * dashboard can show its top bar) and scrolls back up when [isTopBarVisible] turns true.
+ * A standalone page can add a full-width [header] and start with the first poster focused.
  */
 @Composable
 fun PosterGrid(
     movieList: MovieList,
     onMovieClick: (movie: Movie) -> Unit,
-    onScroll: (isTopBarVisible: Boolean) -> Unit,
-    isTopBarVisible: Boolean,
     modifier: Modifier = Modifier,
+    onScroll: (isTopBarVisible: Boolean) -> Unit = {},
+    isTopBarVisible: Boolean = false,
+    focusFirstItem: Boolean = false,
+    header: (@Composable () -> Unit)? = null,
 ) {
     val childPadding = rememberChildPadding()
     val gridState = rememberLazyGridState()
+    val firstItem = remember { FocusRequester() }
     val shouldShowTopBar by remember {
         derivedStateOf {
             gridState.firstVisibleItemIndex == 0 &&
@@ -73,21 +80,35 @@ fun PosterGrid(
         ),
         modifier = modifier,
     ) {
-        items(movieList, key = { it.id }) { movie ->
-            PosterGridItem(movie = movie, onClick = { onMovieClick(movie) })
+        if (header != null) {
+            item(span = { GridItemSpan(maxLineSpan) }) { header() }
         }
+        itemsIndexed(movieList, key = { _, movie -> movie.id }) { index, movie ->
+            PosterGridItem(
+                movie = movie,
+                onClick = { onMovieClick(movie) },
+                modifier = if (focusFirstItem && index == 0) {
+                    Modifier.focusRequester(firstItem)
+                } else {
+                    Modifier
+                }
+            )
+        }
+    }
+    if (focusFirstItem && movieList.isNotEmpty()) {
+        LaunchedEffect(Unit) { firstItem.requestFocus() }
     }
 }
 
 @Composable
-private fun PosterGridItem(movie: Movie, onClick: () -> Unit) {
+private fun PosterGridItem(movie: Movie, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var isFocused by remember { mutableStateOf(false) }
     // Titles only show for the focused poster, as in the rows.
     val titleAlpha by animateFloatAsState(if (isFocused) 1f else 0f, label = "")
 
     MovieCard(
         onClick = onClick,
-        modifier = Modifier.onFocusChanged { isFocused = it.isFocused },
+        modifier = modifier.onFocusChanged { isFocused = it.isFocused },
         title = {
             Text(
                 text = movie.name,

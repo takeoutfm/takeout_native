@@ -17,22 +17,14 @@
 package com.google.jetstream.presentation.screens.categories
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -41,11 +33,8 @@ import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieCategoryDetails
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.Loading
-import com.google.jetstream.presentation.common.MovieCard
-import com.google.jetstream.presentation.common.PosterImage
+import com.google.jetstream.presentation.common.PosterGrid
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
-import com.google.jetstream.presentation.theme.JetStreamBottomListPadding
-import com.google.jetstream.presentation.utils.focusOnInitialVisibility
 
 object CategoryMovieListScreen {
     const val CategoryIdBundleKey = "categoryId"
@@ -87,47 +76,25 @@ private fun CategoryDetails(
     modifier: Modifier = Modifier
 ) {
     val childPadding = rememberChildPadding()
-    val isFirstItemVisible = remember { mutableStateOf(false) }
 
     BackHandler(onBack = onBackPressed)
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    PosterGrid(
+        movieList = categoryDetails.movies,
+        onMovieClick = onMovieSelected,
+        focusFirstItem = true,
         modifier = modifier,
-    ) {
-        Text(
-            text = categoryDetails.name,
-            style = MaterialTheme.typography.displaySmall.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            modifier = Modifier.padding(
-                vertical = childPadding.top.times(3.5f)
+        header = {
+            Text(
+                text = categoryDetails.name,
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = childPadding.top.times(2.5f))
             )
-        )
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(6),
-            contentPadding = PaddingValues(bottom = JetStreamBottomListPadding)
-        ) {
-            itemsIndexed(
-                categoryDetails.movies,
-                key = { _, movie ->
-                    movie.id
-                }
-            ) { index, movie ->
-                MovieCard(
-                    onClick = { onMovieSelected(movie) },
-                    modifier = Modifier
-                        .aspectRatio(1 / 1.5f)
-                        .padding(8.dp)
-                        .then(
-                            if (index == 0)
-                                Modifier.focusOnInitialVisibility(isFirstItemVisible)
-                            else Modifier
-                        ),
-                ) {
-                    PosterImage(movie = movie, modifier = Modifier.fillMaxSize())
-                }
-            }
         }
-    }
+    )
 }

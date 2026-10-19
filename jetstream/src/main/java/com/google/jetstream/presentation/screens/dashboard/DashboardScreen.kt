@@ -249,7 +249,7 @@ private fun Body(
                 isTopBarVisible = isTopBarVisible
             )
         }
-        composable(Screens.Categories()) {
+        composable(Screens.Genres()) {
             CategoriesScreen(
                 onCategoryClick = openCategoryMovieList,
                 onScroll = updateTopBarVisibility

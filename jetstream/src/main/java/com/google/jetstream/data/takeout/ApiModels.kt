@@ -66,6 +66,7 @@ data class ApiMovie(
     @SerialName("VoteCount") val voteCount: Int? = null,
     @SerialName("BackdropPath") val backdropPath: String = "",
     @SerialName("PosterPath") val posterPath: String = "",
+    @SerialName("ETag") val etag: String = "",
 )
 
 @Serializable
@@ -90,6 +91,10 @@ data class ApiEpisode(
     @SerialName("Season") val season: Int = 0,
     @SerialName("Episode") val episode: Int = 0,
     @SerialName("Runtime") val runtime: Int = 0,
+    @SerialName("Overview") val overview: String = "",
+    @SerialName("Date") val date: String = "",
+    @SerialName("StillPath") val stillPath: String = "",
+    @SerialName("ETag") val etag: String = "",
 )
 
 @Serializable
@@ -145,6 +150,7 @@ data class ApiTvSeriesView(
 
 @Serializable
 data class ApiTvEpisodeView(
+    @SerialName("Series") val series: ApiSeries = ApiSeries(),
     @SerialName("Episode") val episode: ApiEpisode = ApiEpisode(),
     @SerialName("Location") val location: String = "",
 )
@@ -153,4 +159,18 @@ data class ApiTvEpisodeView(
 data class ApiSearchView(
     @SerialName("Movies") val movies: List<ApiMovie>? = null,
     @SerialName("Query") val query: String = "",
+)
+
+/** Watch progress for one media file. Offset and Duration are seconds; Date is ISO-8601 UTC. */
+@Serializable
+data class ApiOffset(
+    @SerialName("ETag") val etag: String = "",
+    @SerialName("Offset") val offset: Int = 0,
+    @SerialName("Duration") val duration: Int = 0,
+    @SerialName("Date") val date: String = "",
+)
+
+@Serializable
+data class ApiOffsets(
+    @SerialName("Offsets") val offsets: List<ApiOffset> = emptyList(),
 )

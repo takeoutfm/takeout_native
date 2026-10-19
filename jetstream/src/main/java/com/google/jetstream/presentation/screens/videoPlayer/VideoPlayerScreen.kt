@@ -19,28 +19,47 @@ package com.google.jetstream.presentation.screens.videoPlayer
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
+import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieDetails
+import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerControls
@@ -54,6 +73,7 @@ import com.google.jetstream.presentation.screens.videoPlayer.components.remember
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerPulseState
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerState
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
+import kotlinx.coroutines.delay
 
 object VideoPlayerScreen {
     const val MovieIdBundleKey = "movieId"
@@ -84,6 +104,7 @@ fun VideoPlayerScreen(
         is VideoPlayerScreenUiState.Done -> {
             VideoPlayerScreenContent(
                 movieDetails = s.movieDetails,
+                progress = videoPlayerScreenViewModel.progress,
                 onBackPressed = onBackPressed
             )
         }
@@ -92,7 +113,11 @@ fun VideoPlayerScreen(
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerScreenContent(movieDetails: MovieDetails, onBackPressed: () -> Unit) {
+fun VideoPlayerScreenContent(
+    movieDetails: MovieDetails,
+    progress: TakeoutProgress,
+    onBackPressed: () -> Unit,
+) {
     val context = LocalContext.current
     val exoPlayer = rememberPlayer(context)
 
@@ -100,10 +125,51 @@ fun VideoPlayerScreenContent(movieDetails: MovieDetails, onBackPressed: () -> Un
         hideSeconds = 4,
     )
 
+    val playbackError = remember { mutableStateOf<String?>(null) }
+    // Only save progress once playback really started, so a failed load never resets it to 0.
+    val hasPlayed = remember { mutableStateOf(false) }
+    val saveProgress = remember(exoPlayer, movieDetails) {
+        {
+            if (hasPlayed.value && playbackError.value == null) {
+                progress.report(movieDetails.etag, exoPlayer.currentPosition, exoPlayer.duration)
+            }
+        }
+    }
+
     LaunchedEffect(exoPlayer, movieDetails) {
+        if (movieDetails.videoUri.isEmpty()) {
+            playbackError.value = "The server has no playable file for this title."
+            return@LaunchedEffect
+        }
         // Only the selected title: list items don't carry a stream URL until details load.
-        exoPlayer.addMediaItem(movieDetails.intoMediaItem())
+        val resumeMs = progress.resumePositionMs(movieDetails.etag)
+        exoPlayer.setMediaItem(movieDetails.intoMediaItem(), resumeMs)
         exoPlayer.prepare()
+    }
+
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            delay(ProgressSaveIntervalMs)
+            if (exoPlayer.isPlaying) saveProgress()
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) hasPlayed.value = true else saveProgress()
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                playbackError.value = error.toUserMessage()
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+            saveProgress()
+            exoPlayer.release()
+        }
     }
 
     BackHandler(onBack = onBackPressed)
@@ -146,8 +212,67 @@ fun VideoPlayerScreenContent(movieDetails: MovieDetails, onBackPressed: () -> Un
                 )
             }
         )
+
+        playbackError.value?.let { message ->
+            PlaybackErrorMessage(message, Modifier.align(Alignment.Center))
+        }
     }
 }
+
+@Composable
+private fun PlaybackErrorMessage(message: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .widthIn(max = 640.dp)
+            .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+            .padding(32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.playback_error_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White
+        )
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.85f)
+        )
+        Text(
+            text = stringResource(R.string.playback_error_back),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+private fun PlaybackException.toUserMessage(): String {
+    if (this is ExoPlaybackException && type == ExoPlaybackException.TYPE_RENDERER) {
+        val format = rendererFormat
+        val what = listOfNotNull(
+            format?.sampleMimeType?.substringAfter('/')?.uppercase(),
+            format?.codecs
+        ).joinToString(" ")
+        return if (what.isEmpty()) {
+            "This device can't decode this video."
+        } else {
+            "This device can't decode this video ($what)."
+        }
+    }
+    val http = generateSequence(cause) { it.cause }
+        .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+        .firstOrNull()
+    return when {
+        http != null -> "The server returned HTTP ${http.responseCode} for this video."
+        errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+            "Couldn't reach the server. Check your connection."
+        else -> "Playback failed ($errorCodeName)."
+    }
+}
+
+private const val ProgressSaveIntervalMs = 30_000L
 
 private fun Modifier.dPadEvents(
     exoPlayer: ExoPlayer,

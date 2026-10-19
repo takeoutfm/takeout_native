@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,6 +56,7 @@ object MovieDetailsScreen {
 @Composable
 fun MovieDetailsScreen(
     goToMoviePlayer: () -> Unit,
+    playEpisode: (episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
     movieDetailsScreenViewModel: MovieDetailsScreenViewModel = hiltViewModel()
@@ -70,9 +73,17 @@ fun MovieDetailsScreen(
         }
 
         is MovieDetailsScreenUiState.Done -> {
+            val resumePositionMs by movieDetailsScreenViewModel.resumePositionMs
+                .collectAsStateWithLifecycle()
+            // Re-runs when coming back from the player, so the button reflects the new position.
+            LaunchedEffect(s.movieDetails.etag) {
+                movieDetailsScreenViewModel.refreshResumePosition(s.movieDetails.etag)
+            }
             Details(
                 movieDetails = s.movieDetails,
+                resumePositionMs = resumePositionMs,
                 goToMoviePlayer = goToMoviePlayer,
+                playEpisode = playEpisode,
                 onBackPressed = onBackPressed,
                 refreshScreenWithNewMovie = refreshScreenWithNewMovie,
                 modifier = Modifier
@@ -86,7 +97,9 @@ fun MovieDetailsScreen(
 @Composable
 private fun Details(
     movieDetails: MovieDetails,
+    resumePositionMs: Long,
     goToMoviePlayer: () -> Unit,
+    playEpisode: (episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
     modifier: Modifier = Modifier,
@@ -101,7 +114,15 @@ private fun Details(
         item {
             MovieDetails(
                 movieDetails = movieDetails,
+                resumePositionMs = resumePositionMs,
                 goToMoviePlayer = goToMoviePlayer
+            )
+        }
+
+        items(movieDetails.seasons, key = { "season-${it.number}" }) { season ->
+            SeasonEpisodesRow(
+                season = season,
+                onEpisodeSelected = { playEpisode(it.id) }
             )
         }
 
@@ -111,7 +132,7 @@ private fun Details(
             )
         }
 
-        item {
+        if (movieDetails.similarMovies.isNotEmpty()) item {
             MoviesRow(
                 title = StringConstants
                     .Composable

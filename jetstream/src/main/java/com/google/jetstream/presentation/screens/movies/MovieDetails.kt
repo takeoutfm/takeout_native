@@ -64,6 +64,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MovieDetails(
     movieDetails: MovieDetails,
+    resumePositionMs: Long,
     goToMoviePlayer: () -> Unit
 ) {
     val childPadding = rememberChildPadding()
@@ -113,6 +114,7 @@ fun MovieDetails(
                             coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
                         }
                     },
+                    resumePositionMs = resumePositionMs,
                     goToMoviePlayer = goToMoviePlayer
                 )
             }
@@ -122,6 +124,7 @@ fun MovieDetails(
 
 @Composable
 private fun WatchTrailerButton(
+    resumePositionMs: Long,
     modifier: Modifier = Modifier,
     goToMoviePlayer: () -> Unit
 ) {
@@ -137,7 +140,11 @@ private fun WatchTrailerButton(
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            text = stringResource(R.string.watch_trailer),
+            text = if (resumePositionMs > 0) {
+                stringResource(R.string.resume_from, formatPosition(resumePositionMs))
+            } else {
+                stringResource(R.string.watch_trailer)
+            },
             style = MaterialTheme.typography.titleSmall
         )
     }
@@ -236,4 +243,13 @@ private fun MovieImageWithGradients(
             )
         }
     )
+}
+
+/** 33_000 -> "0:33", 3_723_000 -> "1:02:03" */
+private fun formatPosition(ms: Long): String {
+    val total = ms / 1000
+    val h = total / 3600
+    val m = total % 3600 / 60
+    val sec = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }

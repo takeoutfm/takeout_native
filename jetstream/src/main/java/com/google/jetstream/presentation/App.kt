@@ -98,6 +98,9 @@ private fun AppContent(
                             navController.navigate(Screens.VideoPlayer.withArgs(movieId))
                         }
                     },
+                    playEpisode = { episodeId ->
+                        navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
+                    },
                     refreshScreenWithNewMovie = { movie ->
                         navController.navigate(
                             Screens.MovieDetails.withArgs(movie.id)

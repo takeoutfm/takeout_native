@@ -37,4 +37,8 @@ data class MovieDetails(
     val revenue: String,
     val similarMovies: MovieList,
     val reviewsAndRatings: List<MovieReviewsAndRatings>,
+    /** ETag of the file [videoUri] plays; keys watch progress. */
+    val etag: String = "",
+    /** For a TV series: its episodes, by season. */
+    val seasons: List<Season> = emptyList(),
 )

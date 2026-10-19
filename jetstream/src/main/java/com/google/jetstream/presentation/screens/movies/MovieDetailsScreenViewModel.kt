@@ -21,17 +21,32 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.repositories.MovieRepository
+import com.google.jetstream.data.takeout.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class MovieDetailsScreenViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     repository: MovieRepository,
+    private val progress: TakeoutProgress,
 ) : ViewModel() {
+    private val _resumePositionMs = MutableStateFlow(0L)
+
+    /** Where Play would resume the title, in ms; 0 when it would start from the beginning. */
+    val resumePositionMs: StateFlow<Long> = _resumePositionMs.asStateFlow()
+
+    fun refreshResumePosition(etag: String) {
+        viewModelScope.launch { _resumePositionMs.value = progress.resumePositionMs(etag) }
+    }
+
     val uiState = savedStateHandle
         .getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null)
         .map { id ->

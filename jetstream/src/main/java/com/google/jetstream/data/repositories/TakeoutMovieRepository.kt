@@ -1,5 +1,6 @@
 package com.google.jetstream.data.repositories
 
+import com.google.jetstream.data.entities.Episode
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieCast
 import com.google.jetstream.data.entities.MovieCategory
@@ -8,7 +9,9 @@ import com.google.jetstream.data.entities.MovieCategoryList
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.MovieReviewsAndRatings
+import com.google.jetstream.data.entities.Season
 import com.google.jetstream.data.takeout.ApiCast
+import com.google.jetstream.data.takeout.ApiEpisode
 import com.google.jetstream.data.takeout.ApiMovie
 import com.google.jetstream.data.takeout.ApiPerson
 import com.google.jetstream.data.takeout.ApiSeries
@@ -27,7 +30,7 @@ import kotlinx.coroutines.sync.withLock
  * [MovieRepository] backed by a Takeout server.
  *
  * Ids are prefixed by kind so one id space covers everything JetStream's screens navigate with:
- * movies are "m-<id>", TV series are "s-<id>".
+ * movies are "m-<id>", TV series are "s-<id>", TV episodes are "e-<id>".
  *
  * List items carry an empty videoUri; the stream location is only resolved in [getMovieDetails],
  * which is what the details and player screens call.
@@ -130,6 +133,8 @@ class TakeoutMovieRepository @Inject constructor(
         return try {
             if (movieId.startsWith("s-")) {
                 seriesDetails(movieId.removePrefix("s-").toInt())
+            } else if (movieId.startsWith("e-")) {
+                episodeDetails(movieId.removePrefix("e-").toInt())
             } else {
                 movieDetails(movieId.removePrefix("m-").toInt())
             }
@@ -167,10 +172,11 @@ class TakeoutMovieRepository @Inject constructor(
             revenue = m.revenue.ifEmpty { Dash },
             similarMovies = view.other.orEmpty().map { it.toMovie(endpoint) },
             reviewsAndRatings = ratings(m.voteAverage, m.voteCount),
+            etag = m.etag,
         )
     }
 
-    /** Series details play the first episode; episode browsing is a follow-up. */
+    /** Series details list every episode by season; Play starts the first one. */
     private suspend fun seriesDetails(id: Int): MovieDetails {
         val view = api.tvSeries(id)
         val s = view.series
@@ -189,6 +195,12 @@ class TakeoutMovieRepository @Inject constructor(
                 ""
             }
         }
+        val seasons = episodes
+            .sortedWith(compareBy({ it.season }, { it.episode }))
+            .groupBy { it.season }
+            // Specials (season 0) go last.
+            .toSortedMap(compareBy({ it == 0 }, { it }))
+            .map { (number, list) -> Season(number, list.map { it.toEpisode() }) }
         return MovieDetails(
             id = "s-${s.id}",
             videoUri = absolute(location),
@@ -210,6 +222,37 @@ class TakeoutMovieRepository @Inject constructor(
             revenue = Dash,
             similarMovies = emptyList(),
             reviewsAndRatings = ratings(s.voteAverage, s.voteCount),
+            etag = first?.etag.orEmpty(),
+            seasons = seasons,
+        )
+    }
+
+    private suspend fun episodeDetails(id: Int): MovieDetails {
+        val view = api.tvEpisode(id)
+        val e = view.episode
+        val s = view.series
+        return MovieDetails(
+            id = "e-${e.id}",
+            videoUri = absolute(view.location),
+            subtitleUri = null,
+            posterUri = imageUrl("w1280", e.stillPath.ifEmpty { s.backdropPath }),
+            name = "${s.name} · S${e.season}E${e.episode} ${e.name}".trim(),
+            description = e.overview,
+            pgRating = s.rating.ifEmpty { "NR" },
+            releaseDate = e.date.take(4),
+            categories = emptyList(),
+            duration = durationOf(e.runtime),
+            director = Dash,
+            screenplay = Dash,
+            music = Dash,
+            castAndCrew = emptyList(),
+            status = "Available",
+            originalLanguage = Dash,
+            budget = Dash,
+            revenue = Dash,
+            similarMovies = emptyList(),
+            reviewsAndRatings = emptyList(),
+            etag = e.etag,
         )
     }
 
@@ -315,6 +358,16 @@ class TakeoutMovieRepository @Inject constructor(
             description = overview,
         )
     }
+
+    private fun ApiEpisode.toEpisode() = Episode(
+        id = "e-$id",
+        season = season,
+        episode = episode,
+        name = name,
+        description = overview,
+        stillUri = imageUrl("w300", stillPath),
+        duration = durationOf(runtime),
+    )
 
     private fun ApiCast.toMovieCast() = MovieCast(
         id = peid.toString(),

@@ -25,6 +25,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.google.jetstream.data.takeout.TakeoutSessionEntryPoint
@@ -48,7 +49,9 @@ fun rememberPlayer(context: Context) = remember {
             }
         }
     )
-    ExoPlayer.Builder(context)
+    // Try another decoder before failing, e.g. when the hardware one can't init this stream.
+    val renderersFactory = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+    ExoPlayer.Builder(context, renderersFactory)
         .setSeekForwardIncrementMs(10_000)
         .setSeekBackIncrementMs(10_000)
         .setMediaSourceFactory(

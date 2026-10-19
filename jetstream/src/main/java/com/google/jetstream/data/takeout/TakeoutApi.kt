@@ -98,13 +98,17 @@ class TakeoutApi @Inject constructor(
         }
     }
 
-    // ---- Authenticated GET ----
+    // ---- Authenticated requests ----
 
-    private suspend fun getText(path: String): String {
+    private suspend fun authed(
+        path: String,
+        configure: Request.Builder.() -> Request.Builder = { this },
+    ): String {
         val state = session.state.value
         val token = state.tokens?.accessToken ?: throw IllegalStateException("Not signed in")
         val req = request(state.endpoint + path)
             .header("Authorization", "Bearer $token")
+            .configure()
             .build()
         return try {
             execute(req)
@@ -115,6 +119,7 @@ class TakeoutApi @Inject constructor(
                 execute(
                     request(state.endpoint + path)
                         .header("Authorization", "Bearer $fresh")
+                        .configure()
                         .build()
                 )
             } else {
@@ -122,6 +127,8 @@ class TakeoutApi @Inject constructor(
             }
         }
     }
+
+    private suspend fun getText(path: String): String = authed(path)
 
     // ---- Endpoints ----
 
@@ -154,6 +161,16 @@ class TakeoutApi @Inject constructor(
     suspend fun search(query: String): ApiSearchView = json.decodeFromString(
         ApiSearchView.serializer(), getText("/api/search?q=${Uri.encode(query)}")
     )
+
+    /** All of the user's watch offsets. */
+    suspend fun progress(): ApiOffsets =
+        json.decodeFromString(ApiOffsets.serializer(), getText("/api/progress"))
+
+    suspend fun updateProgress(offsets: ApiOffsets) {
+        val body = json.encodeToString(ApiOffsets.serializer(), offsets)
+            .toRequestBody("application/json".toMediaType())
+        authed("/api/progress") { post(body) }
+    }
 
     companion object {
         /** "takeout.fm/" -> "https://takeout.fm" */

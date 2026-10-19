@@ -18,7 +18,6 @@ package com.google.jetstream.presentation.screens.movies
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -29,8 +28,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.res.stringResource
@@ -42,6 +44,8 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ClassicCard
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.MovieCast
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
@@ -123,11 +127,19 @@ private fun CastAndCrewItem(
             )
         },
         image = {
-            Box(
+            // The colour shows while loading and for people without a photo.
+            val placeholder = remember(castMember.id) { ourColors.random() }
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .crossfade(true)
+                    .data(castMember.avatarUrl.ifEmpty { null })
+                    .build(),
+                contentDescription = castMember.realName,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.725f)
-                    .background(ourColors.random())
+                    .background(placeholder)
             )
         },
         onClick = {}

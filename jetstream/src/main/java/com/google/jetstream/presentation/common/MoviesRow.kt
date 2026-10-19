@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -59,9 +60,13 @@ import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 
-enum class ItemDirection(val aspectRatio: Float) {
-    Vertical(10.5f / 16f),
-    Horizontal(16f / 9f);
+/**
+ * [cardWidth] is fixed so a long focused title is ellipsized rather than widening the card
+ * (and shoving the rest of the row aside).
+ */
+enum class ItemDirection(val aspectRatio: Float, val cardWidth: Dp) {
+    Vertical(10.5f / 16f, 172.dp),
+    Horizontal(16f / 9f, 172.dp);
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -249,6 +254,7 @@ private fun MoviesRowItem(
                 }
             }
             .then(modifier)
+            .width(itemDirection.cardWidth)
     ) {
         MoviesRowItemImage(
             modifier = Modifier.aspectRatio(itemDirection.aspectRatio),

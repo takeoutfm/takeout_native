@@ -36,6 +36,13 @@ class TakeoutSettings @Inject constructor(
         prefs.edit().putString(KEY_SUBTITLE_LANGUAGE, language).apply()
     }
 
+    /** Language of the last audio track picked in the player (e.g. "en"); null if never picked. */
+    val audioLanguage: String? get() = prefs.getString(KEY_AUDIO_LANGUAGE, null)
+
+    fun setAudioLanguage(language: String) {
+        prefs.edit().putString(KEY_AUDIO_LANGUAGE, language).apply()
+    }
+
     companion object {
         const val AllTime = 0
         const val DefaultContinueWatchingDays = 30
@@ -43,5 +50,6 @@ class TakeoutSettings @Inject constructor(
 
         private const val KEY_CONTINUE_WATCHING_DAYS = "continue_watching_days"
         private const val KEY_SUBTITLE_LANGUAGE = "subtitle_language"
+        private const val KEY_AUDIO_LANGUAGE = "audio_language"
     }
 }

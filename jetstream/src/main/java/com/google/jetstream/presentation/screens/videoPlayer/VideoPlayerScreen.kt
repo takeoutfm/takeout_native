@@ -48,6 +48,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlaybackException
@@ -76,9 +77,11 @@ import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPla
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerState
 import com.google.jetstream.presentation.screens.videoPlayer.components.applySubtitlePreference
 import com.google.jetstream.presentation.screens.videoPlayer.components.audioTrackOptions
+import com.google.jetstream.presentation.screens.videoPlayer.components.normalizeLanguage
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberPlayer
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerPulseState
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerState
+import com.google.jetstream.presentation.screens.videoPlayer.components.selectBestAudioTrack
 import com.google.jetstream.presentation.screens.videoPlayer.components.speedOptions
 import com.google.jetstream.presentation.screens.videoPlayer.components.subtitleTrackOptions
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
@@ -172,7 +175,15 @@ fun VideoPlayerScreenContent(
     }
 
     DisposableEffect(exoPlayer) {
+        // Pick the best audio track once per title; after that the user's ♪ choice stands.
+        var audioChosen = false
         val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                if (!audioChosen) {
+                    audioChosen = selectBestAudioTrack(exoPlayer, settings.audioLanguage)
+                }
+            }
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) hasPlayed.value = true else saveProgress()
             }
@@ -264,8 +275,11 @@ fun VideoPlayerScreenContent(
             onSelect = { option ->
                 option.select(exoPlayer)
                 // Remember the subtitle choice for the next title.
+                // Remember the audio language for the next title's best-track choice.
                 if (picker == TrackPicker.Subtitles) {
                     settings.setSubtitleLanguage(option.language ?: C.LANGUAGE_UNDETERMINED)
+                } else if (picker == TrackPicker.Audio) {
+                    normalizeLanguage(option.language)?.let(settings::setAudioLanguage)
                 }
                 trackPicker = null
             },

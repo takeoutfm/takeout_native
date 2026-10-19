@@ -276,3 +276,26 @@ fun PlayerSubtitles(player: Player, modifier: Modifier = Modifier) {
     }
     AndroidView(factory = { view }, modifier = modifier)
 }
+
+/**
+ * Selects the best playable audio track for this title (see [bestAudioTrack]). Returns false
+ * while there are no audio tracks yet, so the caller can try again on the next tracks change.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+fun selectBestAudioTrack(player: Player, preferredLanguage: String?): Boolean {
+    val playable = player.currentTracks.groups
+        .filter { it.type == C.TRACK_TYPE_AUDIO }
+        .flatMap { group -> (0 until group.length).filter { group.isTrackSupported(it) }.map { group to it } }
+    if (playable.isEmpty()) return false
+    val best = bestAudioTrack(
+        playable.map { (group, i) -> AudioCandidate.from(group.getTrackFormat(i)) },
+        preferredLanguage ?: java.util.Locale.getDefault().toLanguageTag()
+    )
+    val (group, index) = playable[best]
+    if (!group.isTrackSelected(index)) {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, index))
+            .build()
+    }
+    return true
+}

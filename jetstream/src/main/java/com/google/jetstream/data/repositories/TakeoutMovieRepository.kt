@@ -29,10 +29,17 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * [MovieRepository] backed by a Takeout server.
@@ -55,7 +62,13 @@ class TakeoutMovieRepository @Inject constructor(
     private class CacheEntry(val at: Long, val value: Any)
 
     private val cache = HashMap<String, CacheEntry>()
+
+    /** Loads in progress, so callers asking for the same thing at once share one request. */
+    private val inFlight = HashMap<String, Deferred<Any>>()
     private val cacheLock = Mutex()
+
+    /** Shared loads outlive any one caller, so a caller leaving doesn't cancel it for the rest. */
+    private val loadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private suspend fun <T : Any> cached(
         key: String,
@@ -64,18 +77,31 @@ class TakeoutMovieRepository @Inject constructor(
     ): T {
         // Scope the cache to the signed-in user so a new sign-in never sees old data.
         val scopedKey = "${session.tokens?.mediaToken}:$key"
-        cacheLock.withLock {
+        val deferred = cacheLock.withLock {
             val hit = cache[scopedKey]
             if (hit != null && System.currentTimeMillis() - hit.at < ttlMs) {
                 @Suppress("UNCHECKED_CAST")
                 return hit.value as T
             }
+            inFlight.getOrPut(scopedKey) {
+                loadScope.async {
+                    try {
+                        val value: Any = load()
+                        cacheLock.withLock {
+                            cache[scopedKey] = CacheEntry(System.currentTimeMillis(), value)
+                        }
+                        value
+                    } finally {
+                        cacheLock.withLock { inFlight.remove(scopedKey) }
+                    }
+                }
+            }
         }
-        val value = load()
-        cacheLock.withLock { cache[scopedKey] = CacheEntry(System.currentTimeMillis(), value) }
-        return value
+        @Suppress("UNCHECKED_CAST")
+        return deferred.await() as T
     }
 
+    /** Runs [block] on a background thread: parsing and sorting a big library is too slow for main. */
     private fun <T> listFlow(block: suspend () -> List<T>): Flow<List<T>> = flow {
         val list = try {
             block()
@@ -85,7 +111,7 @@ class TakeoutMovieRepository @Inject constructor(
             emptyList()
         }
         emit(list)
-    }
+    }.flowOn(Dispatchers.Default)
 
     private suspend fun home() = cached("home") { api.home() }
 
@@ -122,7 +148,7 @@ class TakeoutMovieRepository @Inject constructor(
     /** The genres that actually occur in this server's movie library, A–Z. */
     private suspend fun genres(): List<String> =
         cached("index", ttlMs = 300_000) { api.index() }.movieGenres.orEmpty()
-            .distinct().sortedBy { sortKey(it) }
+            .distinct().sortedByTitle { it }
 
     override fun getMovieCategories(): Flow<MovieCategoryList> = flow {
         val genres = try {
@@ -135,7 +161,10 @@ class TakeoutMovieRepository @Inject constructor(
         emit(genres.map { MovieCategory(id = slug(it), name = it) })
     }
 
-    override suspend fun getMovieCategoryDetails(categoryId: String): MovieCategoryDetails {
+    override suspend fun getMovieCategoryDetails(categoryId: String): MovieCategoryDetails =
+        withContext(Dispatchers.Default) { categoryDetails(categoryId) }
+
+    private suspend fun categoryDetails(categoryId: String): MovieCategoryDetails {
         val name = try {
             genres().firstOrNull { slug(it) == categoryId }
         } catch (e: CancellationException) {
@@ -436,7 +465,9 @@ class TakeoutMovieRepository @Inject constructor(
      * Movies and TV episodes come from /api/search. The server doesn't search TV series, so those
      * are matched here against the (cached) series list by name.
      */
-    suspend fun search(query: String): SearchResults {
+    suspend fun search(query: String): SearchResults = withContext(Dispatchers.Default) { doSearch(query) }
+
+    private suspend fun doSearch(query: String): SearchResults {
         val q = sortKey(query)
         if (q.isEmpty()) return SearchResults()
         return try {
@@ -445,15 +476,12 @@ class TakeoutMovieRepository @Inject constructor(
             val seriesByTvid = tv.series.orEmpty().associateBy { it.tvid }
             SearchResults(
                 // Titles containing the whole phrase first, then the rest, each A–Z.
-                movies = view.movies.orEmpty()
-                    .sortedWith(
-                        compareBy<ApiMovie> { q !in sortKey(it.title) }
-                            .thenBy { sortKey(it.sortTitle.ifEmpty { it.title }) }
-                    )
+                movies = view.movies.orEmpty().sortedAZ()
+                    .sortedBy { q !in sortKey(it.title) } // stable: A–Z within each group
                     .map { it.toMovie(endpoint) },
                 shows = tv.series.orEmpty()
                     .filter { q in sortKey(it.name) }
-                    .sortedBy { sortKey(it.sortName.ifEmpty { it.name }) }
+                    .sortedByTitle { it.sortName.ifEmpty { it.name } }
                     .map { it.toMovie(endpoint) },
                 episodes = view.tvEpisodes.orEmpty().map { it.toEpisodeCard(seriesByTvid[it.tvid]) },
             )
@@ -492,7 +520,7 @@ class TakeoutMovieRepository @Inject constructor(
     /** Every TV series, A–Z. */
     override fun getTVShows(): Flow<MovieList> = listFlow {
         cached("tv-shows") { api.tvShows() }.series.orEmpty()
-            .sortedBy { sortKey(it.sortName.ifEmpty { it.name }) }
+            .sortedByTitle { it.sortName.ifEmpty { it.name } }
             .map { it.toMovie(endpoint) }
     }
 
@@ -508,7 +536,7 @@ class TakeoutMovieRepository @Inject constructor(
         val view = api.favorites()
         val movies = view.movies.orEmpty().map { it.sortTitle.ifEmpty { it.title } to it.toMovie(endpoint) }
         val shows = view.shows.orEmpty().map { it.sortName.ifEmpty { it.name } to it.toMovie(endpoint) }
-        (movies + shows).sortedBy { sortKey(it.first) }.map { it.second }
+        (movies + shows).sortedByTitle { it.first }.map { it.second }
     }
 
     // ---- Helpers ----
@@ -521,7 +549,7 @@ class TakeoutMovieRepository @Inject constructor(
 
     /** By the server's sort title (e.g. without a leading "The"), falling back to the title. */
     private fun List<ApiMovie>.sortedAZ(): List<ApiMovie> =
-        sortedBy { sortKey(it.sortTitle.ifEmpty { it.title }) }
+        sortedByTitle { it.sortTitle.ifEmpty { it.title } }
 
     private fun imageUrl(size: String, path: String): String =
         if (path.isEmpty()) "" else "$endpoint/img/tm/$size$path"
@@ -610,15 +638,22 @@ class TakeoutMovieRepository @Inject constructor(
      */
     private fun sortKey(title: String): String =
         Normalizer.normalize(title, Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
+            .replace(Accents, "")
             .lowercase(Locale.ROOT)
-            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+            .replace(NonAlphanumerics, " ")
             .trim()
+
+    /** Sorts by [sortKey] of [title], computing each key once rather than per comparison. */
+    private fun <T> List<T>.sortedByTitle(title: (T) -> String): List<T> =
+        map { sortKey(title(it)) to it }.sortedBy { it.first }.map { it.second }
 
     private fun slug(name: String) = name.lowercase(Locale.US).replace(' ', '-')
 
     companion object {
         const val Dash = "—"
+
+        private val Accents = Regex("\\p{M}+")
+        private val NonAlphanumerics = Regex("[^\\p{L}\\p{N}]+")
 
         /** "325000" -> "$325,000"; empty, zero or unparseable (TMDB's "unknown") -> "—". */
         fun formatDollars(amount: String): String {

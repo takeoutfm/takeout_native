@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -37,6 +38,10 @@ class TakeoutApi @Inject constructor(
 
     private val refreshLock = Mutex()
 
+    /** JSON decoding off the main thread; /api/movies for a big library is large. */
+    private suspend fun <T> decode(serializer: KSerializer<T>, text: String): T =
+        withContext(Dispatchers.Default) { json.decodeFromString(serializer, text) }
+
     private val userAgent = "TakeoutFM-TV/1.0 (takeoutfm.com; Android ${Build.VERSION.RELEASE})"
 
     private fun request(url: String) = Request.Builder()
@@ -56,7 +61,7 @@ class TakeoutApi @Inject constructor(
 
     suspend fun requestCode(endpoint: String): ApiAccessCode {
         val req = request("$endpoint/api/code").build()
-        return json.decodeFromString(ApiAccessCode.serializer(), execute(req))
+        return decode(ApiAccessCode.serializer(), execute(req))
     }
 
     /** Returns tokens once the user has approved the code, or null if not approved yet. */
@@ -68,7 +73,7 @@ class TakeoutApi @Inject constructor(
             .post(body)
             .build()
         return try {
-            json.decodeFromString(ApiTokens.serializer(), execute(req)).takeIf { it.isValid() }
+            decode(ApiTokens.serializer(), execute(req)).takeIf { it.isValid() }
         } catch (e: HttpException) {
             null
         }
@@ -84,7 +89,7 @@ class TakeoutApi @Inject constructor(
                 val req = request("${state.endpoint}/api/token")
                     .header("Authorization", "Bearer ${tokens.refreshToken}")
                     .build()
-                val result = json.decodeFromString(ApiRefreshTokens.serializer(), execute(req))
+                val result = decode(ApiRefreshTokens.serializer(), execute(req))
                 if (result.accessToken.isNotEmpty() && result.refreshToken.isNotEmpty()) {
                     session.updateTokens(result.accessToken, result.refreshToken)
                     true
@@ -133,7 +138,7 @@ class TakeoutApi @Inject constructor(
     // ---- Endpoints ----
 
     suspend fun index(): ApiIndexView =
-        json.decodeFromString(ApiIndexView.serializer(), getText("/api/index"))
+        decode(ApiIndexView.serializer(), getText("/api/index"))
 
     /** [path] is "movies/<imid>" or "shows/<tvid>"; PUT adds the favorite, DELETE removes it. */
     suspend fun setFavorite(path: String, favorite: Boolean) {
@@ -143,45 +148,45 @@ class TakeoutApi @Inject constructor(
     }
 
     suspend fun favorites(): ApiFavoriteView =
-        json.decodeFromString(ApiFavoriteView.serializer(), getText("/api/favorite"))
+        decode(ApiFavoriteView.serializer(), getText("/api/favorite"))
 
     suspend fun home(): ApiHomeView =
-        json.decodeFromString(ApiHomeView.serializer(), getText("/api/home"))
+        decode(ApiHomeView.serializer(), getText("/api/home"))
 
     suspend fun movies(): ApiMoviesView =
-        json.decodeFromString(ApiMoviesView.serializer(), getText("/api/movies"))
+        decode(ApiMoviesView.serializer(), getText("/api/movies"))
 
     suspend fun movie(id: Int): ApiMovieView =
-        json.decodeFromString(ApiMovieView.serializer(), getText("/api/movies/$id"))
+        decode(ApiMovieView.serializer(), getText("/api/movies/$id"))
 
-    suspend fun genre(name: String): ApiGenreView = json.decodeFromString(
+    suspend fun genre(name: String): ApiGenreView = decode(
         ApiGenreView.serializer(), getText("/api/movie-genres/${Uri.encode(name)}")
     )
 
     /** Recently added series and episodes. */
     suspend fun tvList(): ApiTvListView =
-        json.decodeFromString(ApiTvListView.serializer(), getText("/api/tv"))
+        decode(ApiTvListView.serializer(), getText("/api/tv"))
 
     suspend fun tvShows(): ApiTvListView =
-        json.decodeFromString(ApiTvListView.serializer(), getText("/api/tv/series"))
+        decode(ApiTvListView.serializer(), getText("/api/tv/series"))
 
     suspend fun tvSeries(id: Int): ApiTvSeriesView =
-        json.decodeFromString(ApiTvSeriesView.serializer(), getText("/api/tv/series/$id"))
+        decode(ApiTvSeriesView.serializer(), getText("/api/tv/series/$id"))
 
     suspend fun tvEpisode(id: Int): ApiTvEpisodeView =
-        json.decodeFromString(ApiTvEpisodeView.serializer(), getText("/api/tv/episodes/$id"))
+        decode(ApiTvEpisodeView.serializer(), getText("/api/tv/episodes/$id"))
 
     /** A person and their movie and TV credits; [peid] is the TMDB person id. */
     suspend fun profile(peid: Int): ApiProfileView =
-        json.decodeFromString(ApiProfileView.serializer(), getText("/api/profiles/$peid"))
+        decode(ApiProfileView.serializer(), getText("/api/profiles/$peid"))
 
-    suspend fun search(query: String): ApiSearchView = json.decodeFromString(
+    suspend fun search(query: String): ApiSearchView = decode(
         ApiSearchView.serializer(), getText("/api/search?q=${Uri.encode(query)}")
     )
 
     /** All of the user's watch offsets. */
     suspend fun progress(): ApiOffsets =
-        json.decodeFromString(ApiOffsets.serializer(), getText("/api/progress"))
+        decode(ApiOffsets.serializer(), getText("/api/progress"))
 
     suspend fun updateProgress(offsets: ApiOffsets) {
         val body = json.encodeToString(ApiOffsets.serializer(), offsets)

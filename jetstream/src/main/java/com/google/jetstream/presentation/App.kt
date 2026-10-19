@@ -34,6 +34,7 @@ import com.google.jetstream.presentation.screens.dashboard.DashboardScreen
 import com.google.jetstream.presentation.screens.login.LoginScreen
 import com.google.jetstream.presentation.screens.login.SessionViewModel
 import com.google.jetstream.presentation.screens.movies.MovieDetailsScreen
+import com.google.jetstream.presentation.screens.person.PersonScreen
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
 
 @Composable
@@ -105,6 +106,9 @@ private fun AppContent(
                             )
                         }
                     },
+                    openPerson = { personId ->
+                        navController.navigate(Screens.Person.withArgs(personId))
+                    },
                     playEpisode = { episodeId ->
                         navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
                     },
@@ -121,6 +125,25 @@ private fun AppContent(
                         if (navController.navigateUp()) {
                             isComingBackFromDifferentScreen = true
                         }
+                    }
+                )
+            }
+            composable(
+                route = Screens.Person(),
+                arguments = listOf(
+                    navArgument(PersonScreen.PersonIdBundleKey) {
+                        type = NavType.StringType
+                    }
+                )
+            ) {
+                PersonScreen(
+                    onBackPressed = {
+                        if (navController.navigateUp()) {
+                            isComingBackFromDifferentScreen = true
+                        }
+                    },
+                    onMovieSelected = { movie ->
+                        navController.navigate(Screens.MovieDetails.withArgs(movie.id))
                     }
                 )
             }

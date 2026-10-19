@@ -158,6 +158,10 @@ class TakeoutApi @Inject constructor(
     suspend fun tvEpisode(id: Int): ApiTvEpisodeView =
         json.decodeFromString(ApiTvEpisodeView.serializer(), getText("/api/tv/episodes/$id"))
 
+    /** A person and their movie and TV credits; [peid] is the TMDB person id. */
+    suspend fun profile(peid: Int): ApiProfileView =
+        json.decodeFromString(ApiProfileView.serializer(), getText("/api/profiles/$peid"))
+
     suspend fun search(query: String): ApiSearchView = json.decodeFromString(
         ApiSearchView.serializer(), getText("/api/search?q=${Uri.encode(query)}")
     )

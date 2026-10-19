@@ -26,6 +26,12 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="watch_trailer">Play</string>
     <string name="resume_from">Resume from %1$s</string>
     <string name="start_over">Start over</string>
+    <string name="person_movies_acting">Movies</string>
+    <string name="person_movies_directing">Movies · Director</string>
+    <string name="person_movies_writing">Movies · Writer</string>
+    <string name="person_shows_acting">TV Shows</string>
+    <string name="person_shows_directing">TV Shows · Director</string>
+    <string name="person_shows_writing">TV Shows · Writer</string>
     <string name="audio_tracks">Audio</string>
     <string name="subtitles">Subtitles</string>
     <string name="subtitles_off">Off</string>

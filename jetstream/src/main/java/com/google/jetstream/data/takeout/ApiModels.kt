@@ -34,6 +34,31 @@ data class ApiPerson(
     @SerialName("PEID") val peid: Int = 0,
     @SerialName("Name") val name: String = "",
     @SerialName("ProfilePath") val profilePath: String? = null,
+    @SerialName("Bio") val bio: String = "",
+    @SerialName("Birthplace") val birthplace: String = "",
+    @SerialName("Birthday") val birthday: String = "",
+    @SerialName("Deathday") val deathday: String = "",
+)
+
+@Serializable
+data class ApiMovieCredits(
+    @SerialName("Starring") val starring: List<ApiMovie>? = null,
+    @SerialName("Directing") val directing: List<ApiMovie>? = null,
+    @SerialName("Writing") val writing: List<ApiMovie>? = null,
+)
+
+@Serializable
+data class ApiTvCredits(
+    @SerialName("Starring") val starring: List<ApiSeries>? = null,
+    @SerialName("Directing") val directing: List<ApiSeries>? = null,
+    @SerialName("Writing") val writing: List<ApiSeries>? = null,
+)
+
+@Serializable
+data class ApiProfileView(
+    @SerialName("Person") val person: ApiPerson = ApiPerson(),
+    @SerialName("Movies") val movies: ApiMovieCredits = ApiMovieCredits(),
+    @SerialName("Shows") val shows: ApiTvCredits = ApiTvCredits(),
 )
 
 @Serializable

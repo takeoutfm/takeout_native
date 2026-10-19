@@ -1,5 +1,7 @@
 package com.google.jetstream.data.repositories
 
+import com.google.jetstream.data.entities.CreditKind
+import com.google.jetstream.data.entities.Credits
 import com.google.jetstream.data.entities.Episode
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieCast
@@ -9,6 +11,7 @@ import com.google.jetstream.data.entities.MovieCategoryList
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.MovieReviewsAndRatings
+import com.google.jetstream.data.entities.PersonDetails
 import com.google.jetstream.data.entities.Season
 import com.google.jetstream.data.takeout.ApiCast
 import com.google.jetstream.data.takeout.ApiEpisode
@@ -278,6 +281,47 @@ class TakeoutMovieRepository @Inject constructor(
         similarMovies = emptyList(),
         reviewsAndRatings = emptyList(),
     )
+
+    // ---- People ----
+
+    /** [personId] is the TMDB person id, as carried by [MovieCast.id]. */
+    suspend fun getPersonDetails(personId: String): PersonDetails {
+        val view = api.profile(personId.toInt())
+        val p = view.person
+        val born = p.birthday.year()
+        val died = p.deathday.year()
+        val years = when {
+            born != null && died != null -> "$born–$died"
+            born != null -> "Born $born"
+            else -> null
+        }
+        val credits = listOf(
+            CreditKind.MoviesActing to view.movies.starring.toMovies(),
+            CreditKind.MoviesDirecting to view.movies.directing.toMovies(),
+            CreditKind.MoviesWriting to view.movies.writing.toMovies(),
+            CreditKind.ShowsActing to view.shows.starring.toShows(),
+            CreditKind.ShowsDirecting to view.shows.directing.toShows(),
+            CreditKind.ShowsWriting to view.shows.writing.toShows(),
+        ).filter { it.second.isNotEmpty() }.map { (kind, titles) -> Credits(kind, titles) }
+        return PersonDetails(
+            id = p.peid.toString(),
+            name = p.name,
+            photoUri = p.profilePath?.let { imageUrl("w342", it) }.orEmpty(),
+            lifeSummary = listOfNotNull(years, p.birthplace.ifEmpty { null }).joinToString(" · "),
+            bio = p.bio,
+            credits = credits,
+        )
+    }
+
+    /** Newest first, like a filmography. */
+    private fun List<ApiMovie>?.toMovies(): MovieList =
+        orEmpty().distinctBy { it.id }.sortedByDescending { it.date }.map { it.toMovie(endpoint) }
+
+    private fun List<ApiSeries>?.toShows(): MovieList =
+        orEmpty().distinctBy { it.id }.sortedByDescending { it.date }.map { it.toMovie(endpoint) }
+
+    /** Go's zero time ("0001-01-01T...") means unknown. */
+    private fun String.year(): Int? = take(4).toIntOrNull()?.takeIf { it > 1000 }
 
     // ---- Search ----
 

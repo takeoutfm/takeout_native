@@ -56,6 +56,7 @@ object MovieDetailsScreen {
 @Composable
 fun MovieDetailsScreen(
     goToMoviePlayer: (startOver: Boolean) -> Unit,
+    openPerson: (personId: String) -> Unit,
     playEpisode: (episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
@@ -83,6 +84,7 @@ fun MovieDetailsScreen(
                 movieDetails = s.movieDetails,
                 resumePositionMs = resumePositionMs,
                 goToMoviePlayer = goToMoviePlayer,
+                openPerson = openPerson,
                 playEpisode = playEpisode,
                 onBackPressed = onBackPressed,
                 refreshScreenWithNewMovie = refreshScreenWithNewMovie,
@@ -99,6 +101,7 @@ private fun Details(
     movieDetails: MovieDetails,
     resumePositionMs: Long,
     goToMoviePlayer: (startOver: Boolean) -> Unit,
+    openPerson: (personId: String) -> Unit,
     playEpisode: (episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
@@ -128,7 +131,8 @@ private fun Details(
 
         item {
             CastAndCrewList(
-                castAndCrew = movieDetails.castAndCrew
+                castAndCrew = movieDetails.castAndCrew,
+                onPersonSelected = { openPerson(it.id) }
             )
         }
 

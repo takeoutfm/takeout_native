@@ -55,7 +55,10 @@ import com.google.jetstream.presentation.utils.ourColors
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun CastAndCrewList(castAndCrew: List<MovieCast>) {
+fun CastAndCrewList(
+    castAndCrew: List<MovieCast>,
+    onPersonSelected: (MovieCast) -> Unit = {},
+) {
     val childPadding = rememberChildPadding()
 
     Column(
@@ -76,7 +79,11 @@ fun CastAndCrewList(castAndCrew: List<MovieCast>) {
             contentPadding = PaddingValues(start = childPadding.start)
         ) {
             items(castAndCrew, key = { it.id }) {
-                CastAndCrewItem(it, modifier = Modifier.width(144.dp))
+                CastAndCrewItem(
+                    castMember = it,
+                    onClick = { onPersonSelected(it) },
+                    modifier = Modifier.width(144.dp)
+                )
             }
         }
     }
@@ -85,6 +92,7 @@ fun CastAndCrewList(castAndCrew: List<MovieCast>) {
 @Composable
 private fun CastAndCrewItem(
     castMember: MovieCast,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ClassicCard(
@@ -142,6 +150,6 @@ private fun CastAndCrewItem(
                     .background(placeholder)
             )
         },
-        onClick = {}
+        onClick = onClick
     )
 }

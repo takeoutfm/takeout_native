@@ -188,8 +188,8 @@ class TakeoutMovieRepository @Inject constructor(
             castAndCrew = view.cast.orEmpty().map { it.toMovieCast() },
             status = "Available",
             originalLanguage = Dash,
-            budget = m.budget.ifEmpty { Dash },
-            revenue = m.revenue.ifEmpty { Dash },
+            budget = formatDollars(m.budget),
+            revenue = formatDollars(m.revenue),
             similarMovies = view.other.orEmpty().map { it.toMovie(endpoint) },
             reviewsAndRatings = ratings(m.voteAverage, m.voteCount),
             etag = m.etag,
@@ -598,7 +598,13 @@ class TakeoutMovieRepository @Inject constructor(
 
     private fun slug(name: String) = name.lowercase(Locale.US).replace(' ', '-')
 
-    private companion object {
+    companion object {
         const val Dash = "—"
+
+        /** "325000" -> "$325,000"; empty, zero or unparseable (TMDB's "unknown") -> "—". */
+        fun formatDollars(amount: String): String {
+            val value = amount.trim().toLongOrNull()?.takeIf { it > 0 } ?: return Dash
+            return "$" + String.format(Locale.US, "%,d", value)
+        }
     }
 }

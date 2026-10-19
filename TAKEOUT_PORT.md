@@ -1,48 +1,178 @@
 # Takeout TV (JetStream-based)
 
-A fresh Android TV app for Takeout built on Google's **JetStreamCompose** sample
-(Compose for TV, Hilt, Media3, Coil). The old Leanback/Fragments app was used only as a
-reference for the Takeout server API.
+An Android TV app for the Takeout media server, built on Google's **JetStreamCompose** sample
+(Compose for TV, Hilt, Media3/ExoPlayer, Coil). The old Leanback/Fragments app
+(Google's Leanback `ReferenceAppKotlin` sample adapted for Takeout) is used only as a reference for the Takeout server
+API, its icon/banner assets, and screen ideas.
+
+## Status (2026-10-18)
+
+Builds, installs and runs on an Android TV (Google TV, API 34) emulator against
+`https://takeout.fm`. Sign-in, browsing, playback, resume, episodes, audio/subtitle tracks, person
+pages, poster grids and recommendation tabs have all been exercised on the emulator. It has
+not yet been run on real TV hardware.
+
+All work is committed on `master` (no remote yet). See [Progress](#progress) for the history.
 
 ## How it fits together
 
-JetStream's screens talk to one interface, `MovieRepository`. That interface is now bound
-to `TakeoutMovieRepository`, which maps Takeout data onto JetStream's existing entities
-(`Movie`, `MovieDetails`, ...). The stock screens are otherwise unchanged.
+JetStream's screens talk to one interface, `MovieRepository`, which is bound to
+`TakeoutMovieRepository`. That class maps Takeout's JSON onto JetStream's existing entities
+(`Movie`, `MovieDetails`, ...), so most stock screens work unchanged. Features JetStream doesn't
+have (people, episodes, recommendations) are extra methods on `TakeoutMovieRepository`, injected
+directly where needed.
 
 | Piece | File |
 |---|---|
-| Wire models (Takeout JSON) | `data/takeout/ApiModels.kt` |
+| Wire models (Takeout JSON, PascalCase, all fields defaulted) | `data/takeout/ApiModels.kt` |
+| HTTP client, bearer auth, refresh on 401 | `data/takeout/TakeoutApi.kt` |
 | Encrypted token storage | `data/takeout/TakeoutSession.kt` |
-| HTTP client + token refresh | `data/takeout/TakeoutApi.kt` |
-| Takeout -> JetStream mapping | `data/repositories/TakeoutMovieRepository.kt` |
-| Device-code sign-in UI | `presentation/screens/login/*` |
-| Sign-in gate | `presentation/App.kt` |
-| Stream auth (media token) | `.../videoPlayer/components/RememberPlayer.kt` |
-| Watch progress (resume, sync) | `data/takeout/TakeoutProgress.kt` |
+| Watch progress (resume + sync) | `data/takeout/TakeoutProgress.kt` |
+| Takeout → JetStream mapping, small TTL cache | `data/repositories/TakeoutMovieRepository.kt` |
+| Device-code sign-in UI / sign-in gate | `presentation/screens/login/*`, `presentation/App.kt` |
+| Top bar tabs (fixed + recommendation tabs) | `.../dashboard/DashboardTopBar.kt`, `DashboardScreen.kt`, `DashboardViewModel.kt` |
+| Shared 6-column poster grid | `presentation/common/PosterGrid.kt` |
+| Movie/series details, Resume / Start over | `.../screens/movies/MovieDetails*.kt` |
 | Season/episode rows | `.../screens/movies/EpisodesList.kt` |
+| Cast & Crew row (photos, opens person page) | `.../screens/movies/CastAndCrewList.kt` |
+| Person page | `.../screens/person/*` |
+| Player (stream auth, progress, errors, release) | `.../videoPlayer/VideoPlayerScreen.kt`, `components/RememberPlayer.kt` |
+| Audio/subtitle pickers, subtitle rendering | `.../videoPlayer/components/TrackSelection.kt` |
 | Server info + Sign out | `.../profile/AccountsSection.kt` |
 
-- Package/namespace is still `com.google.jetstream` (to keep the first build low-risk);
-  `applicationId` is `com.takeoutfm.tv`. Use Android Studio's Refactor > Rename on the package
-  later if you want them to match.
-- IDs: movies are `m-<id>`, TV series are `s-<id>`, TV episodes are `e-<id>`.
-- Watch progress uses `/api/progress`, keyed by the media file's ETag (seconds, ISO UTC date).
-  Saved every 30 s, on pause and on leaving the player; Play becomes "Resume from m:ss".
-- Home rows: Featured = new releases, Recently Added, Recommended, New Releases.
-- Categories = standard TMDB genre list -> `/api/movie-genres/<name>`.
-- Sign-in: device code. Enter server, press Get code, approve at `<server>/link`.
+### Identity and build
+- `applicationId` is `com.takeoutfm.tv`; the Kotlin package/namespace is still
+  `com.google.jetstream` (kept to make the first build low-risk; rename later with Android
+  Studio's Refactor > Rename).
+- `versionCode` is 1. The old Leanback app on devices is `com.takeoutfm.tv` **version 403** with
+  a different signing key, so it must be uninstalled first; to ship as an update instead, the
+  version code must exceed 403 and the release must use the old app's signing key.
+- Branding: launcher icon, TV banner (`mipmap/ic_banner`) and top bar text "TAKEOUT" come from
+  the old app. Google TV's launcher caches icons, so an emulator may keep showing the old one.
 
-## NOT built yet / known gaps
-- Series Play starts the first episode, not the next unwatched one.
+### Navigation and IDs
+- One ID space for everything the screens navigate with: movies `m-<id>`, TV series `s-<id>`,
+  TV episodes `e-<id>`. `getMovieDetails()` dispatches on the prefix.
+- Routes: `MovieDetails/{id}`, `VideoPlayer/{id}?startOver={bool}`, `Person/{peid}`,
+  `CategoryMovieList/{genre}`, and on the dashboard `Recommended/{index}`.
+- The player gets the real ID (stock JetStream navigated with the literal `{movieId}`
+  placeholder, which is why playback first failed).
+
+### Server API used
+| Endpoint | Used for |
+|---|---|
+| `GET /api/code`, `POST /api/code` | Device-code sign-in (approve at `<server>/link`) |
+| `GET /api/token` | Refresh tokens (on 401) |
+| `GET /api/index` | `MovieGenres` for the Genres tab |
+| `GET /api/home` | Home rows and recommendation sets (`RecommendMovies`) |
+| `GET /api/movies`, `/api/movies/{id}` | Movies tab, movie details (`Location`, `ETag`) |
+| `GET /api/movie-genres/{name}` | Genre pages |
+| `GET /api/tv/series`, `/api/tv/series/{id}`, `/api/tv/episodes/{id}` | Shows tab, series details + episodes, episode stream |
+| `GET /api/profiles/{peid}` | Person page (bio + movie/TV credits) |
+| `GET /api/search?q=` | Search (movies only) |
+| `GET/POST /api/progress` | Watch progress |
+| `GET /img/tm/{size}/{path}` | TMDB images via the server (posters w342, backdrops w1280, stills w300, profiles w185/w342) |
+| `Location` URLs (`/api/movies/{uuid}/location`, ...) | Streams; redirect to the media file |
+
+Auth: API calls use the **access token**; streams use the **media token**, attached only to
+URLs on the signed-in server (`TakeoutSession.mediaAuthorization`).
+
+## Screens
+
+### Top bar
+Home · *one tab per current recommendation set* · Genres · Movies · Shows · Favourites · Search,
+plus the profile avatar. Recommendation sets come from the server config and depend on the date
+(e.g. "Halloween Movies" in October); with none, the tab bar is the fixed set. The tab list is a
+`DashboardTab` list (fixed `Screens` tabs + recommendation tabs) with focus requesters sized to
+it. Many simultaneous sets could crowd the bar.
+
+### Home
+Featured carousel = new releases (8) · Recently Added row · Top 10 list = the first
+recommendation set (else recently added) · New Releases row.
+
+### Poster grids (Movies, Shows, genre pages, recommendation tabs)
+`PosterGrid`: 6 columns, focused poster shows its title, dashboard top bar hides on scroll.
+Movies, Shows and genre pages are A–Z by the server's `SortTitle` / `SortName` (falling back to
+the title); recommendation sets are A–Z too. Genre pages add a title header and start focused on
+the first poster.
+
+### Genres
+Formerly JetStream's "Categories". The list comes from `/api/index` (only genres present in the
+library), A–Z.
+
+### Details (movies and series)
+- **Play** when there's no saved progress; otherwise **Resume from m:ss** plus **Start over**
+  (plays from 0:00 via `startOver=true`).
+- Series: one row per season (specials last), episode cards with still, number, name, runtime;
+  selecting an episode plays it. Series **Play** starts the first episode.
+- Cast & Crew cards show TMDB profile photos (coloured block if none) and open the person page.
+- Row cards have a fixed width so a long focused title ellipsizes instead of shoving the row.
+
+### Person page
+Photo, name, birth (and death) year · birthplace, and the bio, followed by one poster row per
+credit type: Movies, Movies · Director, Movies · Writer, TV Shows, TV Shows · Director,
+TV Shows · Writer (non-empty only, newest first). Only titles in the library appear. Focus
+starts on the bio (keeps the header on screen); selecting it opens the full bio, scrollable a
+paragraph at a time.
+
+### Player
+- ExoPlayer with decoder fallback; seek steps 10 s; player released on exit.
+- **Progress**: `/api/progress`, keyed by the media file's ETag; offset/duration in seconds, ISO
+  UTC date, newest wins. Saved every 30 s while playing, on pause and on leaving the player —
+  only after playback actually started, so a failed load never resets progress. Resume if ≥ 10 s
+  in and not within the last 2 minutes. Recent saves are also kept in memory so reopening right
+  away resumes even before the server has the update.
+- **Errors**: a "Can't play this title" overlay with the reason (unsupported codec, HTTP status,
+  network) instead of a stalled player.
+- **Audio / subtitles**: embedded tracks only (no server subtitles, by design). ♪ button = audio
+  picker, CC = subtitle picker with Off. Tracks are labelled by language, name, channel layout or
+  Forced/SDH, and codec. Subtitles render with Media3's `SubtitleView` (text and PGS/VobSub
+  bitmaps), full-screen so they don't move with the controls. Pickers sit outside the
+  auto-hiding controls.
+
+## Progress
+
+| Commit | Change |
+|---|---|
+| `0548968` | Initial import of the JetStream-based port; builds first time |
+| `e51d9f6` | Playback fixed (real ID to the player); 10 s seeks; "Play" label |
+| `2931b8f` | Watch progress resume/sync, season/episode browser, playback error overlay, Takeout branding |
+| `883d733` | Embedded audio track and subtitle selection; subtitle rendering |
+| `2ff9a10` | Cast photos; fixed-width row cards |
+| `e89bb81` | Start over button next to Resume |
+| `e372eb5` | Person page from Cast & Crew |
+| `29bee73` | Movies and Shows tabs as A–Z poster grids |
+| `cfe586b` | Categories → Genres, list from `/api/index`; genre pages use PosterGrid |
+| `260a4e7` | Genre pages sorted A–Z |
+| `ce4ef78` | A top bar tab per recommendation set |
+
+## Known gaps / next steps
+- Series **Play** starts the first episode, not the next unwatched one.
+- No Continue Watching row on Home, Android TV Watch Next, home-screen channels or Cast Connect.
 - Favourites tab is empty (Takeout has watch progress, not favourites).
-- No Continue Watching row, Watch Next, home channels, Cast Connect.
 - Search covers movies only (what `/api/search` returns for video).
+- The player's Settings button does nothing; the subtitle choice isn't remembered between titles.
 - Profile screen's other sections (About, Language, ...) are JetStream placeholders.
 - Failed detail loads show an "Unable to load" stub rather than a proper error state.
+- Details Director/Screenplay fields cut off long multi-person values.
+- Strict A–Z puts e.g. "Airplane II" before "Airplane!" (space sorts before "!").
+- Not yet tested on real TV hardware; `versionCode`/signing not set up for replacing the old app.
 
-- The emulator can't decode 10-bit HEVC; such titles show a "Can't play this title" message there.
+## Testing notes
+- The emulator can't decode 10-bit HEVC (e.g. Superman 2025, The Phoenician Scheme); those show
+  the error overlay there but should play on real Google TV hardware.
+- H.264 titles that play on the emulator: Breaking Bad episodes (multiple audio/subtitle tracks),
+  Godzilla (1954).
 
-## Build
-Open this folder in Android Studio (JDK 17), sync, run the `jetstream` configuration on an
-Android TV emulator (API 28+).
+## Build and run
+Open this folder in Android Studio (JDK 17), sync, and run the `jetstream` configuration on an
+Android TV emulator (API 28+). From the command line (with `local.properties` pointing at the
+SDK):
+
+```
+emulator -avd <android-tv-avd> &
+./gradlew :jetstream:installDebug
+adb shell monkey -p com.takeoutfm.tv -c android.intent.category.LEANBACK_LAUNCHER 1
+```
+
+On the emulator, a server on the host machine is `http://10.0.2.2:<port>` (cleartext is allowed).

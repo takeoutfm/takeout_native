@@ -74,11 +74,7 @@ object StringConstants {
         const val VideoPlayerControlSettingsButton = "Playback speed"
         const val VideoPlayerControlPlayPauseButton = "Playlist Button"
         const val VideoPlayerControlForward = "Fast forward 10 seconds"
-        const val VideoPlayerControlSkipNextButton = "Skip to the next movie"
-        const val VideoPlayerControlSkipPreviousButton = "Skip to the previous movie"
-        const val VideoPlayerControlRepeatAll = "Repeat all movies"
-        const val VideoPlayerControlRepeatOne = "Repeat movie"
-        const val VideoPlayerControlRepeatNone = "No repeat"
-        const val VideoPlayerControlRepeatButton = "Repeat Button"
+        const val VideoPlayerControlSkipNextButton = "Next episode"
+        const val VideoPlayerControlSkipPreviousButton = "Previous episode"
     }
 }

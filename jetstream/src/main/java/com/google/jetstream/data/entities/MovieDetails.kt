@@ -48,4 +48,7 @@ data class MovieDetails(
     val playTarget: String? = null,
     /** Short marketing line, e.g. "The Night HE Came Home!"; "" if none. */
     val tagline: String = "",
+    /** For an episode: the ones before and after it in play order ("e-<id>"), if any. */
+    val previousEpisodeId: String? = null,
+    val nextEpisodeId: String? = null,
 )

@@ -187,6 +187,12 @@ private fun AppContent(
                         if (navController.navigateUp()) {
                             isComingBackFromDifferentScreen = true
                         }
+                    },
+                    onPlayEpisode = { episodeId ->
+                        // Replace this player rather than stacking one per episode, so Back
+                        // still returns to where playback started.
+                        navController.popBackStack()
+                        navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
                     }
                 )
             }

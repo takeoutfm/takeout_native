@@ -103,6 +103,7 @@ object VideoPlayerScreen {
 @Composable
 fun VideoPlayerScreen(
     onBackPressed: () -> Unit,
+    onPlayEpisode: (episodeId: String) -> Unit,
     videoPlayerScreenViewModel: VideoPlayerScreenViewModel = hiltViewModel()
 ) {
     val uiState by videoPlayerScreenViewModel.uiState.collectAsStateWithLifecycle()
@@ -122,7 +123,8 @@ fun VideoPlayerScreen(
                 progress = videoPlayerScreenViewModel.progress,
                 startOver = videoPlayerScreenViewModel.startOver,
                 settings = videoPlayerScreenViewModel.settings,
-                onBackPressed = onBackPressed
+                onBackPressed = onBackPressed,
+                onPlayEpisode = onPlayEpisode
             )
         }
     }
@@ -136,6 +138,7 @@ fun VideoPlayerScreenContent(
     startOver: Boolean,
     settings: TakeoutSettings,
     onBackPressed: () -> Unit,
+    onPlayEpisode: (episodeId: String) -> Unit,
 ) {
     val context = LocalContext.current
     val exoPlayer = rememberPlayer(context)
@@ -242,6 +245,7 @@ fun VideoPlayerScreenContent(
                     focusRequester = focusRequester,
                     onShowControls = { videoPlayerState.showControls(exoPlayer.isPlaying) },
                     onOpenTrackPicker = { trackPicker = it },
+                    onPlayEpisode = onPlayEpisode,
                 )
             }
         )

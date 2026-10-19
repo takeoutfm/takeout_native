@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +41,7 @@ fun VideoPlayerControls(
     focusRequester: FocusRequester,
     onShowControls: () -> Unit = {},
     onOpenTrackPicker: (TrackPicker) -> Unit = {},
+    onPlayEpisode: (episodeId: String) -> Unit = {},
 ) {
     val isPlaying = player.isPlaying
 
@@ -57,18 +60,27 @@ fun VideoPlayerControls(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                PreviousButton(
-                    player = player,
-                    onShowControls = onShowControls
-                )
-                NextButton(
-                    player = player,
-                    onShowControls = onShowControls
-                )
-                RepeatButton(
-                    player = player,
-                    onShowControls = onShowControls,
-                )
+                // Only episodes have previous/next; movies just get the track and speed buttons.
+                movieDetails.previousEpisodeId?.let { id ->
+                    VideoPlayerControlsIcon(
+                        icon = Icons.Default.SkipPrevious,
+                        isPlaying = isPlaying,
+                        contentDescription =
+                        StringConstants.Composable.VideoPlayerControlSkipPreviousButton,
+                        onShowControls = onShowControls,
+                        onClick = { onPlayEpisode(id) }
+                    )
+                }
+                movieDetails.nextEpisodeId?.let { id ->
+                    VideoPlayerControlsIcon(
+                        icon = Icons.Default.SkipNext,
+                        isPlaying = isPlaying,
+                        contentDescription =
+                        StringConstants.Composable.VideoPlayerControlSkipNextButton,
+                        onShowControls = onShowControls,
+                        onClick = { onPlayEpisode(id) }
+                    )
+                }
                 VideoPlayerControlsIcon(
                     icon = Icons.Default.Audiotrack,
                     isPlaying = isPlaying,

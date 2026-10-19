@@ -258,8 +258,7 @@ class TakeoutMovieRepository @Inject constructor(
      * only play when there are no regular episodes.
      */
     private suspend fun nextEpisode(episodes: List<ApiEpisode>): ApiEpisode? {
-        val ordered = episodes.filter { it.season > 0 }.sortedWith(compareBy({ it.season }, { it.episode }))
-            .ifEmpty { episodes.sortedBy { it.episode } }
+        val ordered = playOrder(episodes)
         if (ordered.isEmpty()) return null
         val offsets = try {
             progress.latest()
@@ -280,10 +279,24 @@ class TakeoutMovieRepository @Inject constructor(
         }
     }
 
+    /** Seasons in order, then episodes; specials (season 0) only when there's nothing else. */
+    private fun playOrder(episodes: List<ApiEpisode>): List<ApiEpisode> =
+        episodes.filter { it.season > 0 }.sortedWith(compareBy({ it.season }, { it.episode }))
+            .ifEmpty { episodes.sortedBy { it.episode } }
+
     private suspend fun episodeDetails(id: Int): MovieDetails {
         val view = api.tvEpisode(id)
         val e = view.episode
         val s = view.series
+        // Neighbours for the player's previous/next episode buttons; none if the series won't load.
+        val order = try {
+            playOrder(api.tvSeries(s.id).episodes.orEmpty())
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (ex: Exception) {
+            emptyList()
+        }
+        val index = order.indexOfFirst { it.id == e.id }
         return MovieDetails(
             id = "e-${e.id}",
             videoUri = absolute(view.location),
@@ -308,6 +321,8 @@ class TakeoutMovieRepository @Inject constructor(
             etag = e.etag,
             // Episodes have none of their own; use the series'.
             tagline = s.tagline,
+            previousEpisodeId = order.getOrNull(index - 1)?.takeIf { index > 0 }?.let { "e-${it.id}" },
+            nextEpisodeId = order.getOrNull(index + 1)?.takeIf { index >= 0 }?.let { "e-${it.id}" },
         )
     }
 

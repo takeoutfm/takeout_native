@@ -21,7 +21,10 @@ import com.google.jetstream.data.takeout.ApiMovie
 import com.google.jetstream.data.takeout.ApiOffset
 import com.google.jetstream.data.takeout.ApiPerson
 import com.google.jetstream.data.takeout.ApiSeries
+import com.google.jetstream.data.takeout.ApiTvListView
+import com.google.jetstream.data.takeout.LibraryIndex
 import com.google.jetstream.data.takeout.TakeoutApi
+import com.google.jetstream.data.takeout.TakeoutLibrary
 import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.data.takeout.TakeoutSession
 import java.text.Normalizer
@@ -35,8 +38,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -55,6 +60,7 @@ class TakeoutMovieRepository @Inject constructor(
     private val api: TakeoutApi,
     private val session: TakeoutSession,
     private val progress: TakeoutProgress,
+    private val library: TakeoutLibrary,
 ) : MovieRepository {
 
     // ---- tiny in-memory TTL cache so one Home load doesn't hit /api/home four times ----
@@ -113,7 +119,13 @@ class TakeoutMovieRepository @Inject constructor(
         emit(list)
     }.flowOn(Dispatchers.Default)
 
-    private suspend fun home() = cached("home") { api.home() }
+    private suspend fun home() = library.home()
+
+    /** The library index, fetching it first if there isn't one yet. Null if that fails. */
+    private suspend fun index(): LibraryIndex? {
+        if (library.index.value == null) library.refresh()
+        return library.index.value
+    }
 
     private val endpoint get() = session.endpoint
 
@@ -147,8 +159,7 @@ class TakeoutMovieRepository @Inject constructor(
 
     /** The genres that actually occur in this server's movie library, A–Z. */
     private suspend fun genres(): List<String> =
-        cached("index", ttlMs = 300_000) { api.index() }.movieGenres.orEmpty()
-            .distinct().sortedByTitle { it }
+        index()?.movieGenres.orEmpty().distinct().sortedByTitle { it }
 
     override fun getMovieCategories(): Flow<MovieCategoryList> = flow {
         val genres = try {
@@ -366,9 +377,15 @@ class TakeoutMovieRepository @Inject constructor(
     fun getContinueWatching(days: Int): Flow<MovieList> = listFlow {
         val offsets = progress.inProgress(days)
         if (offsets.isEmpty()) return@listFlow emptyList()
-        val movies = cached("movies") { api.movies() }.movies.orEmpty()
-            .filter { it.etag.isNotEmpty() }.associateBy { it.etag }
-        val tv = cached("tv-recent") { api.tvList() }
+        // Only fetch the libraries the server says it has.
+        val index = index()
+        val movies = if (index?.hasMovies != false) {
+            cached("movies") { api.movies() }.movies.orEmpty()
+                .filter { it.etag.isNotEmpty() }.associateBy { it.etag }
+        } else {
+            emptyMap()
+        }
+        val tv = if (index?.hasShows != false) cached("tv-recent") { api.tvList() } else ApiTvListView()
         val episodes = tv.episodes.orEmpty().filter { it.etag.isNotEmpty() }.associateBy { it.etag }
         val seriesByTvid = tv.series.orEmpty().associateBy { it.tvid }
         offsets.mapNotNull { o ->
@@ -405,13 +422,22 @@ class TakeoutMovieRepository @Inject constructor(
      * Empty when there are none or the server can't be reached.
      */
     /** [long] gives landscape backdrops instead of posters, for wide cards. */
-    fun getRecommendations(long: Boolean = false): Flow<List<Recommendation>> = listFlow {
-        home().recommendMovies.orEmpty()
-            .filter { it.name.isNotBlank() && it.movies.isNotEmpty() }
-            .map { r ->
-                Recommendation(r.name, r.movies.sortedAZ().map { it.toMovie(endpoint, long) })
+    /**
+     * The current recommendation sets, following the library index (empty when the server has
+     * none). Starts from the saved index, so tabs can appear before anything is fetched.
+     */
+    fun getRecommendations(long: Boolean = false): Flow<List<Recommendation>> =
+        library.index
+            .map { index ->
+                index?.recommendations.orEmpty()
+                    .takeIf { index?.hasRecommendations == true }.orEmpty()
+                    .filter { it.name.isNotBlank() && it.movies.isNotEmpty() }
+                    .map { r ->
+                        Recommendation(r.name, r.movies.sortedAZ().map { it.toMovie(endpoint, long) })
+                    }
             }
-    }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
 
     // ---- Favorites ----
 
@@ -472,7 +498,7 @@ class TakeoutMovieRepository @Inject constructor(
         if (q.isEmpty()) return SearchResults()
         return try {
             val view = api.search(allWordsQuery(query))
-            val tv = cached("tv-recent") { api.tvList() }
+            val tv = if (index()?.hasShows != false) cached("tv-recent") { api.tvList() } else ApiTvListView()
             val seriesByTvid = tv.series.orEmpty().associateBy { it.tvid }
             SearchResults(
                 // Titles containing the whole phrase first, then the rest, each A–Z.

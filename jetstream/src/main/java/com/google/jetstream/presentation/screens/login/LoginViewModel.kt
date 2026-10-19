@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.takeout.SessionState
 import com.google.jetstream.data.takeout.TakeoutApi
+import com.google.jetstream.data.takeout.TakeoutLibrary
 import com.google.jetstream.data.takeout.TakeoutSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -21,8 +22,14 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     session: TakeoutSession,
+    private val library: TakeoutLibrary,
 ) : ViewModel() {
     val state: StateFlow<SessionState> = session.state
+
+    /** On launch, sign-in and return to the foreground; skipped if refreshed in the last 30 s. */
+    fun refreshLibrary() {
+        viewModelScope.launch { library.refresh(maxAgeMs = 30_000) }
+    }
 }
 
 data class LoginUiState(

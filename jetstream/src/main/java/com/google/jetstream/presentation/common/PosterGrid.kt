@@ -20,8 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +30,7 @@ import androidx.tv.material3.Text
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import com.google.jetstream.presentation.utils.focusOnInitialVisibility
 
 /**
  * A 6-column poster grid, for the Movies and Shows tabs and the genre pages.
@@ -52,7 +51,7 @@ fun PosterGrid(
 ) {
     val childPadding = rememberChildPadding()
     val gridState = rememberLazyGridState()
-    val firstItem = remember { FocusRequester() }
+    val firstItemFocused = remember { mutableStateOf(false) }
     val shouldShowTopBar by remember {
         derivedStateOf {
             gridState.firstVisibleItemIndex == 0 &&
@@ -87,16 +86,15 @@ fun PosterGrid(
             PosterGridItem(
                 movie = movie,
                 onClick = { onMovieClick(movie) },
+                // Focus once the first poster is actually laid out; requesting it earlier
+                // (before the lazy grid places it) throws.
                 modifier = if (focusFirstItem && index == 0) {
-                    Modifier.focusRequester(firstItem)
+                    Modifier.focusOnInitialVisibility(firstItemFocused)
                 } else {
                     Modifier
                 }
             )
         }
-    }
-    if (focusFirstItem && movieList.isNotEmpty()) {
-        LaunchedEffect(Unit) { firstItem.requestFocus() }
     }
 }
 

@@ -22,29 +22,36 @@ import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.Recommendation
 import com.google.jetstream.data.repositories.MovieRepository
 import com.google.jetstream.data.repositories.TakeoutMovieRepository
+import com.google.jetstream.data.takeout.TakeoutLibrary
 import com.google.jetstream.data.takeout.TakeoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class HomeScreeViewModel @Inject constructor(
     movieRepository: MovieRepository,
     takeout: TakeoutMovieRepository,
     settings: TakeoutSettings,
+    private val library: TakeoutLibrary,
 ) : ViewModel() {
 
     private val refreshes = MutableStateFlow(0)
 
-    /** Re-reads progress, e.g. when Home is shown again after watching something. */
+    /**
+     * Re-reads progress, e.g. when Home is shown again after watching something, and refreshes
+     * the library index if it's more than a few minutes old.
+     */
     fun refreshContinueWatching() {
         refreshes.value++
+        viewModelScope.launch { library.refresh(maxAgeMs = 5 * 60_000) }
     }
 
     /** Movies and episodes in progress, most recently watched first. */

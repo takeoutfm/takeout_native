@@ -155,6 +155,10 @@ data class ApiFavoriteView(
 /** Server summary; only what the TV app needs. */
 @Serializable
 data class ApiIndexView(
+    // Null when an older server doesn't send the flag; treated as "yes" so nothing is hidden.
+    @SerialName("HasMovies") val hasMovies: Boolean? = null,
+    @SerialName("HasShows") val hasShows: Boolean? = null,
+    @SerialName("HasRecommendMovies") val hasRecommendMovies: Boolean? = null,
     @SerialName("MovieGenres") val movieGenres: List<String>? = null,
 )
 

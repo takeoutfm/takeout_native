@@ -37,13 +37,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -57,8 +57,9 @@ import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import com.google.jetstream.R
-import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.data.entities.Recommendation
+import com.google.jetstream.data.takeout.LibraryIndex
+import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.theme.IconSize
 import com.google.jetstream.presentation.theme.JetStreamCardShape
@@ -80,8 +81,14 @@ const val RecommendedIndexKey = "index"
 const val RecommendedRoutePattern = "$RecommendedRouteName/{$RecommendedIndexKey}"
 
 /** Home, then a tab per recommendation set, then Genres, Movies, Shows, Favorites, Search. */
-fun dashboardTabs(recommendations: List<Recommendation>): List<DashboardTab> {
-    val fixed = Screens.entries.filter { it.isTabItem }
+fun dashboardTabs(recommendations: List<Recommendation>, index: LibraryIndex?): List<DashboardTab> {
+    // Before the first index is known, show everything rather than guess.
+    fun has(screen: Screens) = when (screen) {
+        Screens.Genres, Screens.Movies -> index?.hasMovies != false
+        Screens.Shows -> index?.hasShows != false
+        else -> true
+    }
+    val fixed = Screens.entries.filter { it.isTabItem && has(it) }
         .map { DashboardTab(route = it(), label = it(), icon = it.tabIcon) }
     val recommended = recommendations.mapIndexed { index, r ->
         DashboardTab(route = recommendedRoute(index), label = r.name)

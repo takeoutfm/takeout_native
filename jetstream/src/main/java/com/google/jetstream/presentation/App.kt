@@ -22,6 +22,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -44,6 +46,8 @@ fun App(
     val sessionViewModel: SessionViewModel = hiltViewModel()
     val session by sessionViewModel.state.collectAsStateWithLifecycle()
     if (session.isLoggedIn) {
+        // Also fires right after sign-in, when this first composes in an already-started app.
+        LifecycleEventEffect(Lifecycle.Event.ON_START) { sessionViewModel.refreshLibrary() }
         AppContent(onBackPressed = onBackPressed)
     } else {
         LoginScreen()

@@ -54,6 +54,18 @@ directly where needed.
 - Branding: launcher icon, TV banner (`mipmap/ic_banner`) and top bar text "TAKEOUT" come from
   the old app. Google TV's launcher caches icons, so an emulator may keep showing the old one.
 
+### Library index
+`TakeoutLibrary` holds what the server's library has, from `/api/index` (`HasMovies`,
+`HasShows`, `HasRecommendMovies`, `MovieGenres`), plus the current recommendation sets from
+`/api/home`. It shapes the UI and which requests are made:
+- Tabs: Movies and Genres only with movies, Shows only with shows, a tab per recommendation set
+  only when there are recommendations. If the shown tab disappears, the app goes to Home.
+- Continue Watching and Search skip `/api/movies` / `/api/tv` when the library lacks them.
+- It is saved on the device, so the tab bar is right immediately on launch, then refreshed:
+  on launch, sign-in and return to the foreground (if older than 30 s) and when Home is shown
+  (if older than 5 min). Signing out or changing servers clears it.
+- It is also the one place `/api/home` is fetched (shared by Home's rows and the tabs).
+
 ### Navigation and IDs
 - One ID space for everything the screens navigate with: movies `m-<id>`, TV series `s-<id>`,
   TV episodes `e-<id>`. `getMovieDetails()` dispatches on the prefix.
@@ -67,7 +79,7 @@ directly where needed.
 |---|---|
 | `GET /api/code`, `POST /api/code` | Device-code sign-in (approve at `<server>/link`) |
 | `GET /api/token` | Refresh tokens (on 401) |
-| `GET /api/index` | `MovieGenres` for the Genres tab |
+| `GET /api/index` | Library index: which tabs/requests apply, `MovieGenres` for Genres |
 | `GET /api/home` | Home rows and recommendation sets (`RecommendMovies`) |
 | `GET /api/movies`, `/api/movies/{id}` | Movies tab (and ETag → movie for progress), movie details (`Location`, `ETag`, `IsFavorite`) |
 | `GET /api/movie-genres/{name}` | Genre pages |

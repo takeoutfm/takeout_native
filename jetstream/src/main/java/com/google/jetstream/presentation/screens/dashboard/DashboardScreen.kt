@@ -106,8 +106,10 @@ fun DashboardScreen(
     var isTopBarVisible by remember { mutableStateOf(true) }
     var isTopBarFocused by remember { mutableStateOf(false) }
 
-    val recommendations by dashboardViewModel.recommendations.collectAsStateWithLifecycle()
-    val tabs = remember(recommendations) { dashboardTabs(recommendations) }
+    val recommendationsOrNull by dashboardViewModel.recommendations.collectAsStateWithLifecycle()
+    val recommendations = recommendationsOrNull.orEmpty()
+    val libraryIndex by dashboardViewModel.libraryIndex.collectAsStateWithLifecycle()
+    val tabs = remember(recommendations, libraryIndex) { dashboardTabs(recommendations, libraryIndex) }
     // +1 for the profile avatar, which comes first.
     val topBarFocusRequesters = remember(tabs.size) { List(tabs.size + 1) { FocusRequester() } }
 
@@ -116,6 +118,18 @@ fun DashboardScreen(
     val currentTopBarSelectedTabIndex by remember(currentDestination, tabs) {
         derivedStateOf {
             currentDestination?.let { route -> tabs.indexOfFirst { it.route == route } } ?: 0
+        }
+    }
+
+    // If the library index drops the tab being shown (e.g. a seasonal set ends), go Home.
+    LaunchedEffect(tabs, currentDestination, recommendationsOrNull) {
+        val destination = currentDestination ?: return@LaunchedEffect
+        if (recommendationsOrNull == null || destination == Screens.Profile()) return@LaunchedEffect
+        if (tabs.none { it.route == destination }) {
+            navController.navigate(tabs[0].route) {
+                popUpTo(tabs[0].route)
+                launchSingleTop = true
+            }
         }
     }
 

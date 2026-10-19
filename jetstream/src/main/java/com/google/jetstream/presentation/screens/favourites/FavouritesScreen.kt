@@ -32,8 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.google.jetstream.R
-import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.PosterGrid
+import com.google.jetstream.presentation.common.PosterGridSkeleton
 
 @Composable
 fun FavouritesScreen(
@@ -45,7 +45,7 @@ fun FavouritesScreen(
     val uiState by favouriteScreenViewModel.uiState.collectAsStateWithLifecycle()
     when (val s = uiState) {
         is FavouriteScreenUiState.Loading -> {
-            Loading(modifier = Modifier.fillMaxSize())
+            PosterGridSkeleton(modifier = Modifier.fillMaxSize())
         }
         is FavouriteScreenUiState.Ready -> {
             if (!s.hasFavourites) {

@@ -63,8 +63,10 @@ import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.data.takeout.TakeoutSettings
+import com.google.jetstream.presentation.common.DelayedLoading
 import com.google.jetstream.presentation.common.Error
-import com.google.jetstream.presentation.common.Loading
+import com.google.jetstream.presentation.common.PlayerLoading
+import com.google.jetstream.presentation.common.Spinner
 import com.google.jetstream.presentation.screens.videoPlayer.components.PlayerSubtitles
 import com.google.jetstream.presentation.screens.videoPlayer.components.TrackPicker
 import com.google.jetstream.presentation.screens.videoPlayer.components.TrackPickerDialog
@@ -110,7 +112,7 @@ fun VideoPlayerScreen(
 
     when (val s = uiState) {
         is VideoPlayerScreenUiState.Loading -> {
-            Loading(modifier = Modifier.fillMaxSize())
+            PlayerLoading(modifier = Modifier.fillMaxSize())
         }
 
         is VideoPlayerScreenUiState.Error -> {
@@ -148,6 +150,8 @@ fun VideoPlayerScreenContent(
     )
 
     val playbackError = remember { mutableStateOf<String?>(null) }
+    // True until the first frames are ready, and whenever playback stalls to buffer.
+    val isBuffering = remember { mutableStateOf(true) }
     // Only save progress once playback really started, so a failed load never resets it to 0.
     val hasPlayed = remember { mutableStateOf(false) }
     val saveProgress = remember(exoPlayer, movieDetails) {
@@ -193,6 +197,11 @@ fun VideoPlayerScreenContent(
 
             override fun onPlayerError(error: PlaybackException) {
                 playbackError.value = error.toUserMessage()
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering.value = playbackState == Player.STATE_BUFFERING ||
+                    playbackState == Player.STATE_IDLE
             }
         }
         exoPlayer.addListener(listener)
@@ -249,6 +258,11 @@ fun VideoPlayerScreenContent(
                 )
             }
         )
+
+        if (isBuffering.value && playbackError.value == null) {
+            // Re-entered on every stall, so each gets the short delay before showing.
+            DelayedLoading(Modifier.align(Alignment.Center)) { Spinner() }
+        }
 
         playbackError.value?.let { message ->
             PlaybackErrorMessage(message, Modifier.align(Alignment.Center))

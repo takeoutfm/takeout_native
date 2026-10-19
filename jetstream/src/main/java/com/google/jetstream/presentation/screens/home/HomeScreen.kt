@@ -42,8 +42,8 @@ import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.Recommendation
 import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.presentation.common.Error
+import com.google.jetstream.presentation.common.HomeSkeleton
 import com.google.jetstream.presentation.common.ItemDirection
-import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.MoviesRow
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 
@@ -76,7 +76,7 @@ fun HomeScreen(
             )
         }
 
-        is HomeScreenUiState.Loading -> Loading(modifier = Modifier.fillMaxSize())
+        is HomeScreenUiState.Loading -> HomeSkeleton(modifier = Modifier.fillMaxSize())
         is HomeScreenUiState.Error -> Error(modifier = Modifier.fillMaxSize())
     }
 }

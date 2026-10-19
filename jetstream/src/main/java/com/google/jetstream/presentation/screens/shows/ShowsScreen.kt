@@ -22,8 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.jetstream.data.entities.Movie
-import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.PosterGrid
+import com.google.jetstream.presentation.common.PosterGridSkeleton
 
 @Composable
 fun ShowsScreen(
@@ -35,7 +35,7 @@ fun ShowsScreen(
     val uiState = showScreenViewModel.uiState.collectAsStateWithLifecycle()
     when (val currentState = uiState.value) {
         is ShowScreenUiState.Loading -> {
-            Loading(modifier = Modifier.fillMaxSize())
+            PosterGridSkeleton(modifier = Modifier.fillMaxSize())
         }
 
         is ShowScreenUiState.Ready -> {

@@ -78,7 +78,6 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="favorites_empty">No favorites yet. Movies and shows you mark as favorites in Takeout will show up here.</string>
     <string name="ad">Ad</string>
     <string name="live">Live</string>
-    <string name="message_loading">Loading…</string>
     <string name="message_error">Couldn\'t load this</string>
     <string name="message_error_detail">Check your connection and Takeout server, then try again.</string>
     <string name="try_again">Try again</string>

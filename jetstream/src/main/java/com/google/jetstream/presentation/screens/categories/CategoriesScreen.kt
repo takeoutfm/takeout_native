@@ -47,8 +47,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.google.jetstream.data.entities.MovieCategoryList
-import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.MovieCard
+import com.google.jetstream.presentation.common.TileGridSkeleton
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.utils.GradientBg
 
@@ -64,7 +64,7 @@ fun CategoriesScreen(
 
     when (val s = uiState) {
         CategoriesScreenUiState.Loading -> {
-            Loading(modifier = Modifier.fillMaxSize())
+            TileGridSkeleton(modifier = Modifier.fillMaxSize(), columns = gridColumns)
         }
 
         is CategoriesScreenUiState.Ready -> {

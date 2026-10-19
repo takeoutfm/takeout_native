@@ -50,8 +50,8 @@ import com.google.jetstream.data.entities.CreditKind
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.PersonDetails
 import com.google.jetstream.presentation.common.Error
-import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.MoviesRow
+import com.google.jetstream.presentation.common.PersonSkeleton
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.theme.JetStreamCardShape
 
@@ -68,7 +68,7 @@ fun PersonScreen(
     val uiState by personScreenViewModel.uiState.collectAsStateWithLifecycle()
 
     when (val s = uiState) {
-        is PersonScreenUiState.Loading -> Loading(modifier = Modifier.fillMaxSize())
+        is PersonScreenUiState.Loading -> PersonSkeleton(modifier = Modifier.fillMaxSize())
         is PersonScreenUiState.Error -> Error(modifier = Modifier.fillMaxSize(), onRetry = personScreenViewModel::retry)
         is PersonScreenUiState.Done -> PersonDetailsContent(
             person = s.person,

@@ -356,10 +356,13 @@ class TakeoutMovieRepository @Inject constructor(
      * The server's current recommendation sets (they depend on the date), each A–Z.
      * Empty when there are none or the server can't be reached.
      */
-    fun getRecommendations(): Flow<List<Recommendation>> = listFlow {
+    /** [long] gives landscape backdrops instead of posters, for wide cards. */
+    fun getRecommendations(long: Boolean = false): Flow<List<Recommendation>> = listFlow {
         home().recommendMovies.orEmpty()
             .filter { it.name.isNotBlank() && it.movies.isNotEmpty() }
-            .map { r -> Recommendation(r.name, r.movies.sortedAZ().map { it.toMovie(endpoint) }) }
+            .map { r ->
+                Recommendation(r.name, r.movies.sortedAZ().map { it.toMovie(endpoint, long) })
+            }
     }
 
     // ---- Favorites ----

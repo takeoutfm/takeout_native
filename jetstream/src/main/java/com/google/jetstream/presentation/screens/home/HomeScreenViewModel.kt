@@ -19,6 +19,7 @@ package com.google.jetstream.presentation.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.entities.MovieList
+import com.google.jetstream.data.entities.Recommendation
 import com.google.jetstream.data.repositories.MovieRepository
 import com.google.jetstream.data.repositories.TakeoutMovieRepository
 import com.google.jetstream.data.takeout.TakeoutSettings
@@ -56,13 +57,13 @@ class HomeScreeViewModel @Inject constructor(
     val uiState: StateFlow<HomeScreenUiState> = combine(
         movieRepository.getFeaturedMovies(),
         movieRepository.getTrendingMovies(),
-        movieRepository.getTop10Movies(),
+        takeout.getRecommendations(long = true),
         movieRepository.getNowPlayingMovies(),
-    ) { featuredMovieList, trendingMovieList, top10MovieList, nowPlayingMovieList ->
+    ) { featuredMovieList, trendingMovieList, recommendations, nowPlayingMovieList ->
         HomeScreenUiState.Ready(
             featuredMovieList,
             trendingMovieList,
-            top10MovieList,
+            recommendations.firstOrNull(),
             nowPlayingMovieList
         )
     }.stateIn(
@@ -78,7 +79,8 @@ sealed interface HomeScreenUiState {
     data class Ready(
         val featuredMovieList: MovieList,
         val trendingMovieList: MovieList,
-        val top10MovieList: MovieList,
+        /** The server's first current recommendation set, if any (each also has its own tab). */
+        val recommended: Recommendation?,
         val nowPlayingMovieList: MovieList
     ) : HomeScreenUiState
 }

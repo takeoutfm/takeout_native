@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
+import com.google.jetstream.data.entities.Recommendation
 import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.ItemDirection
@@ -64,7 +65,7 @@ fun HomeScreen(
             Catalog(
                 featuredMovies = s.featuredMovieList,
                 trendingMovies = s.trendingMovieList,
-                top10Movies = s.top10MovieList,
+                recommended = s.recommended,
                 nowPlayingMovies = s.nowPlayingMovieList,
                 continueWatching = continueWatching,
                 onMovieClick = onMovieClick,
@@ -84,7 +85,7 @@ fun HomeScreen(
 private fun Catalog(
     featuredMovies: MovieList,
     trendingMovies: MovieList,
-    top10Movies: MovieList,
+    recommended: Recommendation?,
     nowPlayingMovies: MovieList,
     continueWatching: MovieList,
     onMovieClick: (movie: Movie) -> Unit,
@@ -152,9 +153,10 @@ private fun Catalog(
                 onMovieSelected = onMovieClick
             )
         }
-        item(contentType = "Top10MoviesList") {
-            Top10MoviesList(
-                movieList = top10Movies,
+        if (recommended != null) item(contentType = "RecommendedMoviesList") {
+            RecommendedMoviesList(
+                title = recommended.name,
+                movieList = recommended.movies,
                 onMovieClick = onMovieClick,
                 modifier = Modifier.onFocusChanged {
                     immersiveListHasFocus = it.hasFocus

@@ -43,12 +43,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.presentation.common.ImmersiveListMoviesRow
@@ -57,21 +56,23 @@ import com.google.jetstream.presentation.common.PosterImage
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.utils.bringIntoViewIfChildrenAreFocused
 
+/**
+ * A server recommendation set (e.g. "Halloween Movies") as a row of wide cards; focusing it fills
+ * the area behind with the focused movie's backdrop and description.
+ */
 @Composable
-fun Top10MoviesList(
+fun RecommendedMoviesList(
+    title: String,
     movieList: MovieList,
     modifier: Modifier = Modifier,
     gradientColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
     onMovieClick: (movie: Movie) -> Unit
 ) {
     var isListFocused by remember { mutableStateOf(false) }
+    if (movieList.isEmpty()) return
     var selectedMovie by remember(movieList) { mutableStateOf(movieList.first()) }
 
-    val sectionTitle = if (isListFocused) {
-        null
-    } else {
-        stringResource(R.string.top_10_movies_title)
-    }
+    val sectionTitle = if (isListFocused) null else title
 
     ImmersiveList(
         selectedMovie = selectedMovie,
@@ -131,7 +132,7 @@ private fun ImmersiveList(
                 itemDirection = ItemDirection.Horizontal,
                 title = sectionTitle,
                 showItemTitle = !isListFocused,
-                showIndexOverImage = true,
+                showIndexOverImage = false,
                 onMovieSelected = onMovieClick,
                 onMovieFocused = onMovieFocused,
                 modifier = Modifier.onFocusChanged(onFocusChanged)
@@ -177,6 +178,9 @@ private fun MovieDescription(
             text = movie.description,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+            // Long overviews would push the title off the top of the screen.
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Light
         )
     }

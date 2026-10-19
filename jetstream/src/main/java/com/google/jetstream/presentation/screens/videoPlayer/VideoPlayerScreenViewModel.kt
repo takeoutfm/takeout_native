@@ -35,6 +35,9 @@ class VideoPlayerScreenViewModel @Inject constructor(
     repository: MovieRepository,
     val progress: TakeoutProgress,
 ) : ViewModel() {
+    val startOver: Boolean =
+        savedStateHandle.get<Boolean>(VideoPlayerScreen.StartOverBundleKey) ?: false
+
     val uiState = savedStateHandle
         .getStateFlow<String?>(VideoPlayerScreen.MovieIdBundleKey, null)
         .map { id ->

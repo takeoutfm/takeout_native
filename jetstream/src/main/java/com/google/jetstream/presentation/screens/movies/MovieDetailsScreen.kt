@@ -55,7 +55,7 @@ object MovieDetailsScreen {
 
 @Composable
 fun MovieDetailsScreen(
-    goToMoviePlayer: () -> Unit,
+    goToMoviePlayer: (startOver: Boolean) -> Unit,
     playEpisode: (episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
@@ -98,7 +98,7 @@ fun MovieDetailsScreen(
 private fun Details(
     movieDetails: MovieDetails,
     resumePositionMs: Long,
-    goToMoviePlayer: () -> Unit,
+    goToMoviePlayer: (startOver: Boolean) -> Unit,
     playEpisode: (episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,

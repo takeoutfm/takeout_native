@@ -17,6 +17,7 @@
 package com.google.jetstream.presentation.screens.movies
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +52,8 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
+import androidx.tv.material3.OutlinedButtonDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -65,7 +69,7 @@ import kotlinx.coroutines.launch
 fun MovieDetails(
     movieDetails: MovieDetails,
     resumePositionMs: Long,
-    goToMoviePlayer: () -> Unit
+    goToMoviePlayer: (startOver: Boolean) -> Unit
 ) {
     val childPadding = rememberChildPadding()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -108,15 +112,27 @@ fun MovieDetails(
                         music = movieDetails.music
                     )
                 }
-                WatchTrailerButton(
-                    modifier = Modifier.onFocusChanged {
-                        if (it.isFocused) {
-                            coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
-                        }
-                    },
-                    resumePositionMs = resumePositionMs,
-                    goToMoviePlayer = goToMoviePlayer
-                )
+                val bringIntoViewOnFocus = Modifier.onFocusChanged {
+                    if (it.isFocused) {
+                        coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+                    }
+                }
+                Row(
+                    modifier = Modifier.padding(top = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    WatchTrailerButton(
+                        modifier = bringIntoViewOnFocus,
+                        resumePositionMs = resumePositionMs,
+                        goToMoviePlayer = { goToMoviePlayer(false) }
+                    )
+                    if (resumePositionMs > 0) {
+                        StartOverButton(
+                            modifier = bringIntoViewOnFocus,
+                            onClick = { goToMoviePlayer(true) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -130,7 +146,7 @@ private fun WatchTrailerButton(
 ) {
     Button(
         onClick = goToMoviePlayer,
-        modifier = modifier.padding(top = 24.dp),
+        modifier = modifier,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
         shape = ButtonDefaults.shape(shape = JetStreamButtonShape)
     ) {
@@ -145,6 +161,29 @@ private fun WatchTrailerButton(
             } else {
                 stringResource(R.string.watch_trailer)
             },
+            style = MaterialTheme.typography.titleSmall
+        )
+    }
+}
+
+@Composable
+private fun StartOverButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Replay,
+            contentDescription = null
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(R.string.start_over),
             style = MaterialTheme.typography.titleSmall
         )
     }

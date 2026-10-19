@@ -83,6 +83,9 @@ import kotlinx.coroutines.delay
 
 object VideoPlayerScreen {
     const val MovieIdBundleKey = "movieId"
+
+    /** Optional: true to ignore saved progress and play from the beginning. */
+    const val StartOverBundleKey = "startOver"
 }
 
 /**
@@ -111,6 +114,7 @@ fun VideoPlayerScreen(
             VideoPlayerScreenContent(
                 movieDetails = s.movieDetails,
                 progress = videoPlayerScreenViewModel.progress,
+                startOver = videoPlayerScreenViewModel.startOver,
                 onBackPressed = onBackPressed
             )
         }
@@ -122,6 +126,7 @@ fun VideoPlayerScreen(
 fun VideoPlayerScreenContent(
     movieDetails: MovieDetails,
     progress: TakeoutProgress,
+    startOver: Boolean,
     onBackPressed: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -148,7 +153,7 @@ fun VideoPlayerScreenContent(
             return@LaunchedEffect
         }
         // Only the selected title: list items don't carry a stream URL until details load.
-        val resumeMs = progress.resumePositionMs(movieDetails.etag)
+        val resumeMs = if (startOver) 0 else progress.resumePositionMs(movieDetails.etag)
         exoPlayer.setMediaItem(movieDetails.intoMediaItem(), resumeMs)
         exoPlayer.prepare()
     }

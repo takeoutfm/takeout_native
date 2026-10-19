@@ -93,9 +93,16 @@ private fun AppContent(
                 val movieId = backStackEntry.arguments
                     ?.getString(MovieDetailsScreen.MovieIdBundleKey)
                 MovieDetailsScreen(
-                    goToMoviePlayer = {
+                    goToMoviePlayer = { startOver ->
                         if (movieId != null) {
-                            navController.navigate(Screens.VideoPlayer.withArgs(movieId))
+                            val route = Screens.VideoPlayer.withArgs(movieId)
+                            navController.navigate(
+                                if (startOver) {
+                                    "$route?${VideoPlayerScreen.StartOverBundleKey}=true"
+                                } else {
+                                    route
+                                }
+                            )
                         }
                     },
                     playEpisode = { episodeId ->
@@ -140,10 +147,15 @@ private fun AppContent(
                 )
             }
             composable(
-                route = Screens.VideoPlayer(),
+                route = Screens.VideoPlayer() +
+                    "?${VideoPlayerScreen.StartOverBundleKey}={${VideoPlayerScreen.StartOverBundleKey}}",
                 arguments = listOf(
                     navArgument(VideoPlayerScreen.MovieIdBundleKey) {
                         type = NavType.StringType
+                    },
+                    navArgument(VideoPlayerScreen.StartOverBundleKey) {
+                        type = NavType.BoolType
+                        defaultValue = false
                     }
                 )
             ) {

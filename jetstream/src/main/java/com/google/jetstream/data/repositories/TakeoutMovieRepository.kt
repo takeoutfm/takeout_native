@@ -1,0 +1,358 @@
+package com.google.jetstream.data.repositories
+
+import com.google.jetstream.data.entities.Movie
+import com.google.jetstream.data.entities.MovieCast
+import com.google.jetstream.data.entities.MovieCategory
+import com.google.jetstream.data.entities.MovieCategoryDetails
+import com.google.jetstream.data.entities.MovieCategoryList
+import com.google.jetstream.data.entities.MovieDetails
+import com.google.jetstream.data.entities.MovieList
+import com.google.jetstream.data.entities.MovieReviewsAndRatings
+import com.google.jetstream.data.takeout.ApiCast
+import com.google.jetstream.data.takeout.ApiMovie
+import com.google.jetstream.data.takeout.ApiPerson
+import com.google.jetstream.data.takeout.ApiSeries
+import com.google.jetstream.data.takeout.TakeoutApi
+import com.google.jetstream.data.takeout.TakeoutSession
+import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+/**
+ * [MovieRepository] backed by a Takeout server.
+ *
+ * Ids are prefixed by kind so one id space covers everything JetStream's screens navigate with:
+ * movies are "m-<id>", TV series are "s-<id>".
+ *
+ * List items carry an empty videoUri; the stream location is only resolved in [getMovieDetails],
+ * which is what the details and player screens call.
+ */
+@Singleton
+class TakeoutMovieRepository @Inject constructor(
+    private val api: TakeoutApi,
+    private val session: TakeoutSession,
+) : MovieRepository {
+
+    // ---- tiny in-memory TTL cache so one Home load doesn't hit /api/home four times ----
+
+    private class CacheEntry(val at: Long, val value: Any)
+
+    private val cache = HashMap<String, CacheEntry>()
+    private val cacheLock = Mutex()
+
+    private suspend fun <T : Any> cached(
+        key: String,
+        ttlMs: Long = 60_000,
+        load: suspend () -> T,
+    ): T {
+        // Scope the cache to the signed-in user so a new sign-in never sees old data.
+        val scopedKey = "${session.tokens?.mediaToken}:$key"
+        cacheLock.withLock {
+            val hit = cache[scopedKey]
+            if (hit != null && System.currentTimeMillis() - hit.at < ttlMs) {
+                @Suppress("UNCHECKED_CAST")
+                return hit.value as T
+            }
+        }
+        val value = load()
+        cacheLock.withLock { cache[scopedKey] = CacheEntry(System.currentTimeMillis(), value) }
+        return value
+    }
+
+    private fun listFlow(block: suspend () -> MovieList): Flow<MovieList> = flow {
+        val list = try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+        emit(list)
+    }
+
+    private suspend fun home() = cached("home") { api.home() }
+
+    private val endpoint get() = session.endpoint
+
+    // ---- Home ----
+
+    override fun getFeaturedMovies(): Flow<MovieList> = listFlow {
+        val h = home()
+        (h.newMovies ?: h.addedMovies).orEmpty().take(8).map { it.toMovie(endpoint, long = true) }
+    }
+
+    /** Shown as "Recently Added". */
+    override fun getTrendingMovies(): Flow<MovieList> = listFlow {
+        val h = home()
+        (h.addedMovies ?: h.newMovies).orEmpty().map { it.toMovie(endpoint) }
+    }
+
+    /** Shown as "Recommended". */
+    override fun getTop10Movies(): Flow<MovieList> = listFlow {
+        val h = home()
+        val recommended = h.recommendMovies?.firstOrNull()?.movies
+        (recommended ?: h.addedMovies).orEmpty().take(10).map { it.toMovie(endpoint) }
+    }
+
+    /** Shown as "New Releases". */
+    override fun getNowPlayingMovies(): Flow<MovieList> = listFlow {
+        val h = home()
+        (h.newMovies ?: h.addedMovies).orEmpty().map { it.toMovie(endpoint) }
+    }
+
+    // ---- Categories (genres) ----
+
+    override fun getMovieCategories(): Flow<MovieCategoryList> = flow {
+        emit(Genres.map { MovieCategory(id = slug(it), name = it) })
+    }
+
+    override suspend fun getMovieCategoryDetails(categoryId: String): MovieCategoryDetails {
+        val name = Genres.firstOrNull { slug(it) == categoryId } ?: Genres.first()
+        val movies = try {
+            cached("genre:$name", ttlMs = 300_000) { api.genre(name) }
+                .movies.orEmpty().map { it.toMovie(endpoint) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+        return MovieCategoryDetails(id = slug(name), name = name, movies = movies)
+    }
+
+    // ---- Details ----
+
+    override suspend fun getMovieDetails(movieId: String): MovieDetails {
+        return try {
+            if (movieId.startsWith("s-")) {
+                seriesDetails(movieId.removePrefix("s-").toInt())
+            } else {
+                movieDetails(movieId.removePrefix("m-").toInt())
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // JetStream's view models expect this call not to throw, so degrade to a stub.
+            unavailableDetails(movieId)
+        }
+    }
+
+    private suspend fun movieDetails(id: Int): MovieDetails {
+        val view = api.movie(id)
+        val m = view.movie
+        return MovieDetails(
+            id = "m-${m.id}",
+            videoUri = absolute(view.location),
+            subtitleUri = null,
+            posterUri = imageUrl("w1280", m.backdropPath.ifEmpty { m.posterPath }),
+            name = m.title,
+            description = m.overview.ifEmpty { m.tagline },
+            pgRating = m.rating.ifEmpty { "NR" },
+            releaseDate = m.date.take(4),
+            categories = view.genres.orEmpty(),
+            duration = durationOf(m.runtime),
+            director = view.directing.names(),
+            screenplay = view.writing.names(),
+            music = view.crew.orEmpty()
+                .filter { it.job.contains("Composer", true) || it.job.contains("Music", true) }
+                .map { it.person.name }.distinct().joinToString(", ").ifEmpty { Dash },
+            castAndCrew = view.cast.orEmpty().map { it.toMovieCast() },
+            status = "Available",
+            originalLanguage = Dash,
+            budget = m.budget.ifEmpty { Dash },
+            revenue = m.revenue.ifEmpty { Dash },
+            similarMovies = view.other.orEmpty().map { it.toMovie(endpoint) },
+            reviewsAndRatings = ratings(m.voteAverage, m.voteCount),
+        )
+    }
+
+    /** Series details play the first episode; episode browsing is a follow-up. */
+    private suspend fun seriesDetails(id: Int): MovieDetails {
+        val view = api.tvSeries(id)
+        val s = view.series
+        val episodes = view.episodes.orEmpty()
+        val first = episodes.filter { it.season > 0 }
+            .minWithOrNull(compareBy({ it.season }, { it.episode }))
+            ?: episodes.firstOrNull()
+        val location = if (first == null) {
+            ""
+        } else {
+            try {
+                api.tvEpisode(first.id).location
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ""
+            }
+        }
+        return MovieDetails(
+            id = "s-${s.id}",
+            videoUri = absolute(location),
+            subtitleUri = null,
+            posterUri = imageUrl("w1280", s.backdropPath.ifEmpty { s.posterPath }),
+            name = s.name,
+            description = s.overview,
+            pgRating = s.rating.ifEmpty { "NR" },
+            releaseDate = s.date.take(4),
+            categories = view.genres.orEmpty(),
+            duration = "${s.seasonCount} seasons · ${s.episodeCount} episodes",
+            director = view.directing.names(),
+            screenplay = view.writing.names(),
+            music = Dash,
+            castAndCrew = view.cast.orEmpty().map { it.toMovieCast() },
+            status = "Available",
+            originalLanguage = Dash,
+            budget = Dash,
+            revenue = Dash,
+            similarMovies = emptyList(),
+            reviewsAndRatings = ratings(s.voteAverage, s.voteCount),
+        )
+    }
+
+    private fun unavailableDetails(movieId: String) = MovieDetails(
+        id = movieId,
+        videoUri = "",
+        subtitleUri = null,
+        posterUri = "",
+        name = "Unable to load",
+        description = "Check your connection and server, then try again.",
+        pgRating = Dash,
+        releaseDate = Dash,
+        categories = emptyList(),
+        duration = Dash,
+        director = Dash,
+        screenplay = Dash,
+        music = Dash,
+        castAndCrew = emptyList(),
+        status = Dash,
+        originalLanguage = Dash,
+        budget = Dash,
+        revenue = Dash,
+        similarMovies = emptyList(),
+        reviewsAndRatings = emptyList(),
+    )
+
+    // ---- Search ----
+
+    override suspend fun searchMovies(query: String): MovieList = try {
+        api.search(query).movies.orEmpty().map { it.toMovie(endpoint) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    // ---- Movies / TV tabs ----
+
+    override fun getMoviesWithLongThumbnail(): Flow<MovieList> = listFlow {
+        cached("movies") { api.movies() }.movies.orEmpty().map { it.toMovie(endpoint, long = true) }
+    }
+
+    override fun getMovies(): Flow<MovieList> = listFlow {
+        cached("movies") { api.movies() }.movies.orEmpty().map { it.toMovie(endpoint) }
+    }
+
+    override fun getPopularFilmsThisWeek(): Flow<MovieList> = listFlow {
+        val h = home()
+        (h.recommendMovies?.getOrNull(1)?.movies ?: h.addedMovies).orEmpty()
+            .map { it.toMovie(endpoint) }
+    }
+
+    override fun getTVShows(): Flow<MovieList> = listFlow {
+        cached("tv-shows") { api.tvShows() }.series.orEmpty().map { it.toMovie(endpoint) }
+    }
+
+    override fun getBingeWatchDramas(): Flow<MovieList> = listFlow {
+        cached("tv-recent") { api.tvList() }.series.orEmpty().map { it.toMovie(endpoint, long = true) }
+    }
+
+    /** Not backed by anything yet (Takeout has watch progress, not favourites). */
+    override fun getFavouriteMovies(): Flow<MovieList> = flow { emit(emptyList()) }
+
+    // ---- Helpers ----
+
+    private fun absolute(location: String): String = when {
+        location.isEmpty() -> ""
+        location.startsWith("http://") || location.startsWith("https://") -> location
+        else -> endpoint + location
+    }
+
+    private fun imageUrl(size: String, path: String): String =
+        if (path.isEmpty()) "" else "$endpoint/img/tm/$size$path"
+
+    private fun ApiMovie.toMovie(endpoint: String, long: Boolean = false): Movie {
+        val poster = if (long) {
+            imageUrl("w1280", backdropPath.ifEmpty { posterPath })
+        } else {
+            imageUrl("w342", posterPath.ifEmpty { backdropPath })
+        }
+        return Movie(
+            id = "m-$id",
+            videoUri = "",
+            subtitleUri = null,
+            posterUri = poster,
+            name = title,
+            description = overview.ifEmpty { tagline },
+        )
+    }
+
+    private fun ApiSeries.toMovie(endpoint: String, long: Boolean = false): Movie {
+        val poster = if (long) {
+            imageUrl("w1280", backdropPath.ifEmpty { posterPath })
+        } else {
+            imageUrl("w342", posterPath.ifEmpty { backdropPath })
+        }
+        return Movie(
+            id = "s-$id",
+            videoUri = "",
+            subtitleUri = null,
+            posterUri = poster,
+            name = name,
+            description = overview,
+        )
+    }
+
+    private fun ApiCast.toMovieCast() = MovieCast(
+        id = peid.toString(),
+        characterName = character,
+        realName = person.name,
+        avatarUrl = person.profilePath?.let { imageUrl("w185", it) }.orEmpty(),
+    )
+
+    private fun List<ApiPerson>?.names(): String =
+        this.orEmpty().map { it.name }.distinct().joinToString(", ").ifEmpty { Dash }
+
+    private fun durationOf(minutes: Int): String =
+        if (minutes <= 0) Dash else "${minutes / 60}h ${minutes % 60}m"
+
+    private fun ratings(average: Float?, count: Int?): List<MovieReviewsAndRatings> =
+        if (average == null || average <= 0f) {
+            emptyList()
+        } else {
+            listOf(
+                MovieReviewsAndRatings(
+                    reviewerName = "TMDB",
+                    reviewerIconUri = "",
+                    reviewCount = (count ?: 0).toString(),
+                    reviewRating = String.format(Locale.US, "%.1f / 10", average),
+                )
+            )
+        }
+
+    private fun slug(name: String) = name.lowercase(Locale.US).replace(' ', '-')
+
+    private companion object {
+        const val Dash = "—"
+
+        // Standard TMDB movie genres (Takeout stores TMDB metadata).
+        val Genres = listOf(
+            "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama",
+            "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance",
+            "Science Fiction", "Thriller", "War", "Western",
+        )
+    }
+}

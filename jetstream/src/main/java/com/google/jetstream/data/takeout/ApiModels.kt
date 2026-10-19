@@ -105,6 +105,7 @@ data class ApiSeries(
     @SerialName("TVID") val tvid: Long = 0,
     @SerialName("Name") val name: String = "",
     @SerialName("SortName") val sortName: String = "",
+    @SerialName("Tagline") val tagline: String = "",
     @SerialName("Overview") val overview: String = "",
     @SerialName("Date") val date: String = "",
     @SerialName("SeasonCount") val seasonCount: Int = 0,

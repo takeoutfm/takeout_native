@@ -47,7 +47,7 @@ fun VideoPlayerControls(
             VideoPlayerMediaTitle(
                 title = movieDetails.name,
                 secondaryText = movieDetails.releaseDate,
-                tertiaryText = movieDetails.director,
+                tertiaryText = movieDetails.tagline,
                 type = VideoPlayerMediaTitleType.DEFAULT
             )
         },

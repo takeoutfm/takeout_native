@@ -46,4 +46,6 @@ data class MovieDetails(
     val favoritePath: String? = null,
     /** For a series: which episode Play starts, e.g. "S1E3". */
     val playTarget: String? = null,
+    /** Short marketing line, e.g. "The Night HE Came Home!"; "" if none. */
+    val tagline: String = "",
 )

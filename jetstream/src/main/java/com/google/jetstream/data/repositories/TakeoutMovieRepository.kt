@@ -195,6 +195,7 @@ class TakeoutMovieRepository @Inject constructor(
             etag = m.etag,
             isFavorite = view.isFavorite,
             favoritePath = m.imid.ifEmpty { null }?.let { "movies/$it" },
+            tagline = m.tagline,
         )
     }
 
@@ -245,6 +246,7 @@ class TakeoutMovieRepository @Inject constructor(
             etag = first?.etag.orEmpty(),
             seasons = seasons,
             playTarget = first?.let { "S${it.season}E${it.episode}" },
+            tagline = s.tagline,
             isFavorite = view.isFavorite,
             favoritePath = s.tvid.takeIf { it > 0 }?.let { "shows/$it" },
         )
@@ -304,6 +306,8 @@ class TakeoutMovieRepository @Inject constructor(
             similarMovies = emptyList(),
             reviewsAndRatings = emptyList(),
             etag = e.etag,
+            // Episodes have none of their own; use the series'.
+            tagline = s.tagline,
         )
     }
 

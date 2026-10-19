@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -62,7 +63,12 @@ import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.Loading
+import com.google.jetstream.presentation.screens.videoPlayer.components.PlayerSubtitles
+import com.google.jetstream.presentation.screens.videoPlayer.components.TrackPicker
+import com.google.jetstream.presentation.screens.videoPlayer.components.TrackPickerDialog
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerControls
+import com.google.jetstream.presentation.screens.videoPlayer.components.audioTrackOptions
+import com.google.jetstream.presentation.screens.videoPlayer.components.subtitleTrackOptions
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerOverlay
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.BACK
@@ -175,6 +181,7 @@ fun VideoPlayerScreenContent(
     BackHandler(onBack = onBackPressed)
 
     val pulseState = rememberVideoPlayerPulseState()
+    var trackPicker by remember { mutableStateOf<TrackPicker?>(null) }
 
     Box(
         Modifier
@@ -194,6 +201,9 @@ fun VideoPlayerScreenContent(
             )
         )
 
+        // Full screen rather than in the overlay's slot, so cues don't move with the controls.
+        PlayerSubtitles(player = exoPlayer, modifier = Modifier.fillMaxSize())
+
         val focusRequester = remember { FocusRequester() }
         VideoPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -201,7 +211,7 @@ fun VideoPlayerScreenContent(
             isPlaying = exoPlayer.isPlaying,
             isControlsVisible = videoPlayerState.isControlsVisible,
             centerButton = { VideoPlayerPulse(pulseState) },
-            subtitles = { /* TODO Implement subtitles */ },
+            subtitles = {},
             showControls = videoPlayerState::showControls,
             controls = {
                 VideoPlayerControls(
@@ -209,6 +219,7 @@ fun VideoPlayerScreenContent(
                     movieDetails = movieDetails,
                     focusRequester = focusRequester,
                     onShowControls = { videoPlayerState.showControls(exoPlayer.isPlaying) },
+                    onOpenTrackPicker = { trackPicker = it },
                 )
             }
         )
@@ -216,6 +227,29 @@ fun VideoPlayerScreenContent(
         playbackError.value?.let { message ->
             PlaybackErrorMessage(message, Modifier.align(Alignment.Center))
         }
+    }
+
+    // Outside the overlay: the controls auto-hide, which would otherwise close the dialog.
+    trackPicker?.let { picker ->
+        val offLabel = stringResource(R.string.subtitles_off)
+        val options = remember(picker) {
+            when (picker) {
+                TrackPicker.Audio -> audioTrackOptions(exoPlayer)
+                TrackPicker.Subtitles -> subtitleTrackOptions(exoPlayer, offLabel)
+            }
+        }
+        TrackPickerDialog(
+            title = stringResource(
+                if (picker == TrackPicker.Audio) R.string.audio_tracks else R.string.subtitles
+            ),
+            options = options,
+            emptyText = stringResource(R.string.no_tracks),
+            onSelect = { option ->
+                option.select(exoPlayer)
+                trackPicker = null
+            },
+            onDismissRequest = { trackPicker = null }
+        )
     }
 }
 

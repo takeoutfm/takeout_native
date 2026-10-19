@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesomeMotion
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -38,6 +38,7 @@ fun VideoPlayerControls(
     movieDetails: MovieDetails,
     focusRequester: FocusRequester,
     onShowControls: () -> Unit = {},
+    onOpenTrackPicker: (TrackPicker) -> Unit = {},
 ) {
     val isPlaying = player.isPlaying
 
@@ -69,18 +70,20 @@ fun VideoPlayerControls(
                     onShowControls = onShowControls,
                 )
                 VideoPlayerControlsIcon(
-                    icon = Icons.Default.AutoAwesomeMotion,
+                    icon = Icons.Default.Audiotrack,
                     isPlaying = isPlaying,
                     contentDescription =
-                    StringConstants.Composable.VideoPlayerControlPlaylistButton,
-                    onShowControls = onShowControls
+                    StringConstants.Composable.VideoPlayerControlAudioButton,
+                    onShowControls = onShowControls,
+                    onClick = { onOpenTrackPicker(TrackPicker.Audio) }
                 )
                 VideoPlayerControlsIcon(
                     icon = Icons.Default.ClosedCaption,
                     isPlaying = isPlaying,
                     contentDescription =
                     StringConstants.Composable.VideoPlayerControlClosedCaptionsButton,
-                    onShowControls = onShowControls
+                    onShowControls = onShowControls,
+                    onClick = { onOpenTrackPicker(TrackPicker.Subtitles) }
                 )
                 VideoPlayerControlsIcon(
                     icon = Icons.Default.Settings,

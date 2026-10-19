@@ -25,6 +25,10 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music">Music</string>
     <string name="watch_trailer">Play</string>
     <string name="resume_from">Resume from %1$s</string>
+    <string name="audio_tracks">Audio</string>
+    <string name="subtitles">Subtitles</string>
+    <string name="subtitles_off">Off</string>
+    <string name="no_tracks">This file has no tracks of this kind.</string>
     <string name="playback_error_title">Can\'t play this title</string>
     <string name="playback_error_back">Press Back to return.</string>
     <string name="episodes_season">Season %1$d</string>

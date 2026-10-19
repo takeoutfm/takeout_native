@@ -104,6 +104,8 @@ dependencies {
     // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
+    // SubtitleView: renders text and bitmap (PGS/VobSub) subtitle cues
+    implementation(libs.androidx.media3.ui.views)
 
     // SplashScreen
     implementation(libs.androidx.core.splashscreen)

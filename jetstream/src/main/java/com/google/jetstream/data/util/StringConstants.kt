@@ -121,7 +121,8 @@ object StringConstants {
         }
 
         const val VideoPlayerControlPlaylistButton = "Playlist Button"
-        const val VideoPlayerControlClosedCaptionsButton = "Playlist Button"
+        const val VideoPlayerControlAudioButton = "Audio track"
+        const val VideoPlayerControlClosedCaptionsButton = "Subtitles"
         const val VideoPlayerControlSettingsButton = "Playlist Button"
         const val VideoPlayerControlPlayPauseButton = "Playlist Button"
         const val VideoPlayerControlForward = "Fast forward 10 seconds"

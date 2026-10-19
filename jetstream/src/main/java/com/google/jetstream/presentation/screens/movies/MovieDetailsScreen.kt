@@ -70,7 +70,7 @@ fun MovieDetailsScreen(
         }
 
         is MovieDetailsScreenUiState.Error -> {
-            Error(modifier = Modifier.fillMaxSize())
+            Error(modifier = Modifier.fillMaxSize(), onRetry = movieDetailsScreenViewModel::retry)
         }
 
         is MovieDetailsScreenUiState.Done -> {

@@ -69,7 +69,7 @@ fun PersonScreen(
 
     when (val s = uiState) {
         is PersonScreenUiState.Loading -> Loading(modifier = Modifier.fillMaxSize())
-        is PersonScreenUiState.Error -> Error(modifier = Modifier.fillMaxSize())
+        is PersonScreenUiState.Error -> Error(modifier = Modifier.fillMaxSize(), onRetry = personScreenViewModel::retry)
         is PersonScreenUiState.Done -> PersonDetailsContent(
             person = s.person,
             onBackPressed = onBackPressed,

@@ -209,6 +209,7 @@ data class ApiTvEpisodeView(
 @Serializable
 data class ApiSearchView(
     @SerialName("Movies") val movies: List<ApiMovie>? = null,
+    @SerialName("TVEpisodes") val tvEpisodes: List<ApiEpisode>? = null,
     @SerialName("Query") val query: String = "",
 )
 

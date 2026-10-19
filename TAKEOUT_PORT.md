@@ -74,7 +74,7 @@ directly where needed.
 | `GET /api/tv` | Every series and episode (with ETags); used to match episode progress |
 | `GET /api/tv/series`, `/api/tv/series/{id}`, `/api/tv/episodes/{id}` | Shows tab, series details + episodes (`IsFavorite`), episode stream |
 | `GET /api/profiles/{peid}` | Person page (bio + movie/TV credits) |
-| `GET /api/search?q=` | Search (movies only) |
+| `GET /api/search?q=` | Search (movies and TV episodes; series are matched in the app) |
 | `GET/POST /api/progress` | Watch progress |
 | `GET /api/favorite` | Favourites tab (movies + shows) |
 | `PUT/DELETE /api/favorite/movies/{imid}`, `/api/favorite/shows/{tvid}` | Favorite button |
@@ -85,6 +85,15 @@ Auth: API calls use the **access token**; streams use the **media token**, attac
 URLs on the signed-in server (`TakeoutSession.mediaAuthorization`).
 
 ## Screens
+
+### Search
+Movies and TV episodes from `/api/search`, plus TV series whose names match (the server doesn't
+search series, so the app matches the cached series list). Up to three rows: Movies, TV Shows,
+Episodes; empty ones are hidden.
+
+### Profile
+Accounts (server, Sign out), Continue Watching (window setting) and About (app version and
+application ID). JetStream's placeholder sections were removed.
 
 ### Top bar
 Home · *one tab per current recommendation set* · Genres · Movies · Shows · Favourites · Search,
@@ -111,7 +120,8 @@ is hidden when empty. How far back it looks is a per-device setting on the Profi
 ### Poster grids (Movies, Shows, genre pages, recommendation tabs)
 `PosterGrid`: 6 columns, focused poster shows its title, dashboard top bar hides on scroll.
 Movies, Shows and genre pages are A–Z by the server's `SortTitle` / `SortName` (falling back to
-the title); recommendation sets are A–Z too. Genre pages add a title header and start focused on
+the title); recommendation sets are A–Z too. A–Z ignores case, accents and punctuation, so
+"Airplane!" comes before "Airplane II". Genre pages add a title header and start focused on
 the first poster.
 
 ### Favourites
@@ -126,6 +136,12 @@ library), A–Z.
 ### Details (movies and series)
 - **Play** when there's no saved progress; otherwise **Resume from m:ss** plus **Start over**
   (plays from 0:00 via `startOver=true`).
+- Series: Play targets the next episode to watch and says so ("Play S1E3", "Resume S1E1 from
+  30:33"): the most recently watched episode if unfinished, else the one after it; with no
+  progress (or after the finale) S1E1. Specials only play when there are no regular seasons.
+- Long titles step down a size and wrap to two lines; credits wrap to three, with "…".
+- A failed load shows "Couldn't load this" with a focused **Try again** (details, player and
+  person pages).
 - **♡ Add to favorites** / **♥ Favorite**: an outlined button after those, from the view's
   `IsFavorite`; toggles with PUT/DELETE (keyed by the movie's IMID or the series' TVID), flipping
   immediately and reverting if the server call fails.
@@ -151,7 +167,10 @@ paragraph at a time.
   away resumes even before the server has the update.
 - **Errors**: a "Can't play this title" overlay with the reason (unsupported codec, HTTP status,
   network) instead of a stalled player.
-- **Audio / subtitles**: embedded tracks only (no server subtitles, by design). ♪ button = audio
+- **Speed**: the gear button opens a picker: 0.5×, 0.75×, Normal, 1.25×, 1.5×, 2×.
+- **Audio / subtitles**: embedded tracks only (no server subtitles, by design). The subtitle
+  choice is remembered on the device: Off stays off; picking a track makes its language the
+  preferred subtitle language for later titles. ♪ button = audio
   picker, CC = subtitle picker with Off. Tracks are labelled by language, name, channel layout or
   Forced/SDH, and codec. Subtitles render with Media3's `SubtitleView` (text and PGS/VobSub
   bitmaps), full-screen so they don't move with the controls. Pickers sit outside the
@@ -178,20 +197,16 @@ paragraph at a time.
 | `b11363f` | Continue Watching row on Home + window setting |
 
 ## Known gaps / next steps
-- Series **Play** starts the first episode, not the next unwatched one.
-- No Android TV Watch Next, home-screen channels or Cast Connect.
-- The Continue Watching window filter has only been seen with recent progress (no offsets older
-  than 7 days to drop yet).
-- Episode titles on details are cut to one line (e.g. "Breaking Bad · S1E1" without "Pilot").
-- Search covers movies only (what `/api/search` returns for video).
-- The player's Settings button does nothing; the subtitle choice isn't remembered between titles.
-- Profile screen's other sections (About, Language, ...) are JetStream placeholders.
-- Failed detail loads show an "Unable to load" stub rather than a proper error state.
-- Details Director/Screenplay fields cut off long multi-person values.
-- Strict A–Z puts e.g. "Airplane II" before "Airplane!" (space sorts before "!").
-- Not yet tested on real TV hardware; `versionCode`/signing not set up for replacing the old app.
+- No Android TV Watch Next row or home-screen channels (proposed as a separate task), and no
+  Cast Connect (needs a Cast receiver app first).
+- Not yet tested on real TV hardware. `versionCode` is still 1 and there's no release signing,
+  so it can't yet install as an update over the old Leanback app (version 403, different key).
+- Only the subtitle choice is remembered between titles, not the audio track.
+- Playback speed resets to Normal for each title.
 
 ## Testing notes
+- Unit tests: `./gradlew :jetstream:testDebugUnitTest` (JUnit 4; covers the Continue Watching
+  window and "in progress"/"finished" rules in `TakeoutProgress`).
 - The emulator can't decode 10-bit HEVC (e.g. Superman 2025, The Phoenician Scheme); those show
   the error overlay there but should play on real Google TV hardware.
 - H.264 titles that play on the emulator: Breaking Bad episodes (multiple audio/subtitle tracks),

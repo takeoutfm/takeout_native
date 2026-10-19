@@ -90,7 +90,8 @@ fun VideoPlayerControls(
                     isPlaying = isPlaying,
                     contentDescription =
                     StringConstants.Composable.VideoPlayerControlSettingsButton,
-                    onShowControls = onShowControls
+                    onShowControls = onShowControls,
+                    onClick = { onOpenTrackPicker(TrackPicker.Speed) }
                 )
             }
         },

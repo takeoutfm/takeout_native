@@ -26,12 +26,14 @@ import com.google.jetstream.data.takeout.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -69,16 +71,34 @@ class MovieDetailsScreenViewModel @Inject constructor(
         viewModelScope.launch { _resumePositionMs.value = progress.resumePositionMs(etag) }
     }
 
-    val uiState = savedStateHandle
-        .getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null)
-        .map { id ->
+    private val retries = MutableStateFlow(0)
+
+    /** Loads again after a failure (the error screen's Try again). */
+    fun retry() {
+        retries.value++
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState = combine(
+        savedStateHandle.getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null),
+        retries,
+    ) { id, _ -> id }
+        .transformLatest { id ->
             if (id == null) {
-                MovieDetailsScreenUiState.Error
-            } else {
+                emit(MovieDetailsScreenUiState.Error)
+                return@transformLatest
+            }
+            emit(MovieDetailsScreenUiState.Loading)
+            val state = try {
                 val details = repository.getMovieDetails(movieId = id)
                 _isFavorite.value = details.isFavorite
                 MovieDetailsScreenUiState.Done(movieDetails = details)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                MovieDetailsScreenUiState.Error
             }
+            emit(state)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

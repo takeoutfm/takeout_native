@@ -61,6 +61,8 @@ import androidx.tv.material3.Text
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
+import com.google.jetstream.data.entities.SearchResults
+import com.google.jetstream.presentation.common.ItemDirection
 import com.google.jetstream.presentation.common.MoviesRow
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.theme.JetStreamCardShape
@@ -91,9 +93,8 @@ fun SearchScreen(
         }
 
         is SearchState.Done -> {
-            val movieList = s.movieList
             SearchResult(
-                movieList = movieList,
+                results = s.results,
                 searchMovies = searchScreenViewModel::query,
                 onMovieClick = onMovieClick
             )
@@ -104,7 +105,7 @@ fun SearchScreen(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SearchResult(
-    movieList: MovieList,
+    results: SearchResults,
     searchMovies: (queryString: String) -> Unit,
     onMovieClick: (movie: Movie) -> Unit,
     modifier: Modifier = Modifier,
@@ -219,13 +220,23 @@ fun SearchResult(
             }
         }
 
-        item {
-            MoviesRow(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = childPadding.top * 2),
-                movieList = movieList
-            ) { selectedMovie -> onMovieClick(selectedMovie) }
+        val rows = listOf(
+            Triple(R.string.favorites_movies, results.movies, ItemDirection.Vertical),
+            Triple(R.string.favorites_tv_shows, results.shows, ItemDirection.Vertical),
+            Triple(R.string.search_episodes, results.episodes, ItemDirection.Horizontal),
+        ).filter { it.second.isNotEmpty() }
+        rows.forEachIndexed { index, (titleRes, list, direction) ->
+            item(key = titleRes) {
+                MoviesRow(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = if (index == 0) childPadding.top * 2 else 0.dp),
+                    title = stringResource(titleRes),
+                    titleStyle = MaterialTheme.typography.titleMedium,
+                    itemDirection = direction,
+                    movieList = list
+                ) { selectedMovie -> onMovieClick(selectedMovie) }
+            }
         }
     }
 }

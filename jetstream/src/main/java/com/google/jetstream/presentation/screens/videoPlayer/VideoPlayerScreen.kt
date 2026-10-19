@@ -18,22 +18,22 @@ package com.google.jetstream.presentation.screens.videoPlayer
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -61,23 +61,26 @@ import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.takeout.TakeoutProgress
+import com.google.jetstream.data.takeout.TakeoutSettings
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.screens.videoPlayer.components.PlayerSubtitles
 import com.google.jetstream.presentation.screens.videoPlayer.components.TrackPicker
 import com.google.jetstream.presentation.screens.videoPlayer.components.TrackPickerDialog
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerControls
-import com.google.jetstream.presentation.screens.videoPlayer.components.audioTrackOptions
-import com.google.jetstream.presentation.screens.videoPlayer.components.subtitleTrackOptions
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerOverlay
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.BACK
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.FORWARD
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulseState
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerState
+import com.google.jetstream.presentation.screens.videoPlayer.components.applySubtitlePreference
+import com.google.jetstream.presentation.screens.videoPlayer.components.audioTrackOptions
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberPlayer
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerPulseState
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerState
+import com.google.jetstream.presentation.screens.videoPlayer.components.speedOptions
+import com.google.jetstream.presentation.screens.videoPlayer.components.subtitleTrackOptions
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
 import kotlinx.coroutines.delay
 
@@ -107,7 +110,7 @@ fun VideoPlayerScreen(
         }
 
         is VideoPlayerScreenUiState.Error -> {
-            Error(modifier = Modifier.fillMaxSize())
+            Error(modifier = Modifier.fillMaxSize(), onRetry = videoPlayerScreenViewModel::retry)
         }
 
         is VideoPlayerScreenUiState.Done -> {
@@ -115,6 +118,7 @@ fun VideoPlayerScreen(
                 movieDetails = s.movieDetails,
                 progress = videoPlayerScreenViewModel.progress,
                 startOver = videoPlayerScreenViewModel.startOver,
+                settings = videoPlayerScreenViewModel.settings,
                 onBackPressed = onBackPressed
             )
         }
@@ -127,6 +131,7 @@ fun VideoPlayerScreenContent(
     movieDetails: MovieDetails,
     progress: TakeoutProgress,
     startOver: Boolean,
+    settings: TakeoutSettings,
     onBackPressed: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -154,6 +159,7 @@ fun VideoPlayerScreenContent(
         }
         // Only the selected title: list items don't carry a stream URL until details load.
         val resumeMs = if (startOver) 0 else progress.resumePositionMs(movieDetails.etag)
+        applySubtitlePreference(exoPlayer, settings.subtitleLanguage)
         exoPlayer.setMediaItem(movieDetails.intoMediaItem(), resumeMs)
         exoPlayer.prepare()
     }
@@ -237,20 +243,30 @@ fun VideoPlayerScreenContent(
     // Outside the overlay: the controls auto-hide, which would otherwise close the dialog.
     trackPicker?.let { picker ->
         val offLabel = stringResource(R.string.subtitles_off)
+        val normalLabel = stringResource(R.string.speed_normal)
         val options = remember(picker) {
             when (picker) {
                 TrackPicker.Audio -> audioTrackOptions(exoPlayer)
                 TrackPicker.Subtitles -> subtitleTrackOptions(exoPlayer, offLabel)
+                TrackPicker.Speed -> speedOptions(exoPlayer, normalLabel)
             }
         }
         TrackPickerDialog(
             title = stringResource(
-                if (picker == TrackPicker.Audio) R.string.audio_tracks else R.string.subtitles
+                when (picker) {
+                    TrackPicker.Audio -> R.string.audio_tracks
+                    TrackPicker.Subtitles -> R.string.subtitles
+                    TrackPicker.Speed -> R.string.playback_speed
+                }
             ),
             options = options,
             emptyText = stringResource(R.string.no_tracks),
             onSelect = { option ->
                 option.select(exoPlayer)
+                // Remember the subtitle choice for the next title.
+                if (picker == TrackPicker.Subtitles) {
+                    settings.setSubtitleLanguage(option.language ?: C.LANGUAGE_UNDETERMINED)
+                }
                 trackPicker = null
             },
             onDismissRequest = { trackPicker = null }

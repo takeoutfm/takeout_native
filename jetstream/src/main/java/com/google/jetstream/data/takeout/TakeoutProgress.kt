@@ -43,21 +43,17 @@ class TakeoutProgress @Inject constructor(
      * Started-but-unfinished offsets updated within the last [days] days ([TakeoutSettings.AllTime]
      * for no limit), most recent first. Merges in local saves the server may not have yet.
      */
-    suspend fun inProgress(days: Int): List<ApiOffset> {
-        val remote = api.progress().offsets
+    suspend fun inProgress(days: Int): List<ApiOffset> =
+        selectInProgress(latest().values, days, Instant.now())
+
+    /** The newest offset for every ETag, from the server plus local saves. */
+    suspend fun latest(): Map<String, ApiOffset> {
         val newest = HashMap<String, ApiOffset>()
-        for (o in remote + local.values) {
+        for (o in api.progress().offsets + local.values) {
             val current = newest[o.etag]
             if (current == null || o.instant() > current.instant()) newest[o.etag] = o
         }
-        val since = if (days == TakeoutSettings.AllTime) {
-            Instant.EPOCH
-        } else {
-            Instant.now().minus(Duration.ofDays(days.toLong()))
-        }
-        return newest.values
-            .filter { shouldResume(it.offset, it.duration) && it.instant().isAfter(since) }
-            .sortedByDescending { it.instant() }
+        return newest
     }
 
     fun report(etag: String, positionMs: Long, durationMs: Long) {
@@ -80,10 +76,7 @@ class TakeoutProgress @Inject constructor(
         }
     }
 
-    private fun ApiOffset.instant(): Instant =
-        runCatching { Instant.parse(date) }.getOrDefault(Instant.EPOCH)
-
-    private companion object {
+    companion object {
         const val MinResumeSeconds = 10
 
         /** Within this much of the end counts as finished, so the title starts over. */
@@ -91,5 +84,26 @@ class TakeoutProgress @Inject constructor(
 
         fun shouldResume(offset: Int, duration: Int): Boolean =
             offset >= MinResumeSeconds && (duration <= 0 || offset < duration - FinishedSeconds)
+
+        fun isFinished(o: ApiOffset): Boolean =
+            o.duration > 0 && o.offset >= o.duration - FinishedSeconds
+
+        /**
+         * Offsets that are started but not finished and were updated within [days] days of [now]
+         * ([TakeoutSettings.AllTime] for no limit), most recent first.
+         */
+        fun selectInProgress(offsets: Collection<ApiOffset>, days: Int, now: Instant): List<ApiOffset> {
+            val since = if (days == TakeoutSettings.AllTime) {
+                Instant.EPOCH
+            } else {
+                now.minus(Duration.ofDays(days.toLong()))
+            }
+            return offsets
+                .filter { shouldResume(it.offset, it.duration) && it.instant().isAfter(since) }
+                .sortedByDescending { it.instant() }
+        }
+
+        fun ApiOffset.instant(): Instant =
+            runCatching { Instant.parse(date) }.getOrDefault(Instant.EPOCH)
     }
 }

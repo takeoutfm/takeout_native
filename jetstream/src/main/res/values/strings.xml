@@ -25,10 +25,16 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music">Music</string>
     <string name="watch_trailer">Play</string>
     <string name="resume_from">Resume from %1$s</string>
+    <string name="play_episode">Play %1$s</string>
+    <string name="resume_episode_from">Resume %1$s from %2$s</string>
     <string name="start_over">Start over</string>
     <string name="continue_watching">Continue Watching</string>
     <string name="continue_watching_setting_desc">Show titles you started watching within:</string>
     <string name="continue_watching_all_time">All time</string>
+    <string name="about_title">About Takeout TV</string>
+    <string name="about_description">Takeout TV plays movies and TV shows from your Takeout server. It is built on Google\'s JetStream sample for Compose for TV.</string>
+    <string name="about_version">App version</string>
+    <string name="about_app_id">Application ID</string>
     <plurals name="continue_watching_last_days">
         <item quantity="one">Last %d day</item>
         <item quantity="other">Last %d days</item>
@@ -43,6 +49,8 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="person_shows_writing">TV Shows · Writer</string>
     <string name="audio_tracks">Audio</string>
     <string name="subtitles">Subtitles</string>
+    <string name="playback_speed">Playback speed</string>
+    <string name="speed_normal">Normal</string>
     <string name="subtitles_off">Off</string>
     <string name="no_tracks">This file has no tracks of this kind.</string>
     <string name="playback_error_title">Can\'t play this title</string>
@@ -65,9 +73,12 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="movie_category_desc">movie category %s</string>
     <string name="favorites_movies">Movies</string>
     <string name="favorites_tv_shows">TV Shows</string>
+    <string name="search_episodes">Episodes</string>
     <string name="favorites_empty">No favorites yet. Movies and shows you mark as favorites in Takeout will show up here.</string>
     <string name="ad">Ad</string>
     <string name="live">Live</string>
     <string name="message_loading">Loading…</string>
-    <string name="message_error">Wops, something went wrong…</string>
+    <string name="message_error">Couldn\'t load this</string>
+    <string name="message_error_detail">Check your connection and Takeout server, then try again.</string>
+    <string name="try_again">Try again</string>
 </resources>

@@ -107,6 +107,8 @@ dependencies {
     // SubtitleView: renders text and bitmap (PGS/VobSub) subtitle cues
     implementation(libs.androidx.media3.ui.views)
 
+    testImplementation(libs.junit4)
+
     // SplashScreen
     implementation(libs.androidx.core.splashscreen)
 

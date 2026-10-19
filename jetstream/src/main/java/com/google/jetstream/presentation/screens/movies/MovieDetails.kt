@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
@@ -48,6 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
@@ -122,12 +125,16 @@ fun MovieDetails(
                     }
                 }
                 Row(
-                    modifier = Modifier.padding(top = 24.dp),
+                    // The text column is 55% wide; let the buttons run past it rather than squash.
+                    modifier = Modifier
+                        .padding(top = 24.dp)
+                        .wrapContentWidth(align = Alignment.Start, unbounded = true),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     WatchTrailerButton(
                         modifier = bringIntoViewOnFocus,
                         resumePositionMs = resumePositionMs,
+                        playTarget = movieDetails.playTarget,
                         goToMoviePlayer = { goToMoviePlayer(false) }
                     )
                     if (resumePositionMs > 0) {
@@ -152,6 +159,7 @@ fun MovieDetails(
 @Composable
 private fun WatchTrailerButton(
     resumePositionMs: Long,
+    playTarget: String?,
     modifier: Modifier = Modifier,
     goToMoviePlayer: () -> Unit
 ) {
@@ -167,10 +175,14 @@ private fun WatchTrailerButton(
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            text = if (resumePositionMs > 0) {
-                stringResource(R.string.resume_from, formatPosition(resumePositionMs))
-            } else {
-                stringResource(R.string.watch_trailer)
+            text = when {
+                playTarget != null && resumePositionMs > 0 -> stringResource(
+                    R.string.resume_episode_from, playTarget, formatPosition(resumePositionMs)
+                )
+                playTarget != null -> stringResource(R.string.play_episode, playTarget)
+                resumePositionMs > 0 ->
+                    stringResource(R.string.resume_from, formatPosition(resumePositionMs))
+                else -> stringResource(R.string.watch_trailer)
             },
             style = MaterialTheme.typography.titleSmall
         )
@@ -271,14 +283,21 @@ private fun MovieDescription(description: String) {
 
 @Composable
 private fun MovieLargeTitle(movieTitle: String) {
+    // Long titles (e.g. "Series · S1E1 Episode name") step down a size and may wrap once.
+    val style = if (movieTitle.length > LongTitleLength) {
+        MaterialTheme.typography.displaySmall
+    } else {
+        MaterialTheme.typography.displayMedium
+    }
     Text(
         text = movieTitle,
-        style = MaterialTheme.typography.displayMedium.copy(
-            fontWeight = FontWeight.Bold
-        ),
-        maxLines = 1
+        style = style.copy(fontWeight = FontWeight.Bold),
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
     )
 }
+
+private const val LongTitleLength = 22
 
 @Composable
 private fun MovieImageWithGradients(

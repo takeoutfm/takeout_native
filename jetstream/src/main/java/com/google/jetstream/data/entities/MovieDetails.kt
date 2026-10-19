@@ -44,4 +44,6 @@ data class MovieDetails(
     val isFavorite: Boolean = false,
     /** Where to add/remove the favorite ("movies/<imid>", "shows/<tvid>"); null if it can't be. */
     val favoritePath: String? = null,
+    /** For a series: which episode Play starts, e.g. "S1E3". */
+    val playTarget: String? = null,
 )

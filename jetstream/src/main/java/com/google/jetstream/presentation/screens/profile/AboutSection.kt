@@ -16,8 +16,6 @@
 
 package com.google.jetstream.presentation.screens.profile
 
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,61 +23,57 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.google.jetstream.data.util.StringConstants
+import com.google.jetstream.BuildConfig
+import com.google.jetstream.R
 
 @Composable
 fun AboutSection() {
-    val context = LocalContext.current
-    val versionNumber = remember(context) {
-        context.getVersionNumber()
-    }
-
-    with(StringConstants.Composable.Placeholders) {
-        Column(modifier = Modifier.padding(horizontal = 72.dp)) {
-            Text(
-                text = AboutSectionTitle,
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Text(
-                modifier = Modifier
-                    .graphicsLayer { alpha = 0.8f }
-                    .padding(top = 16.dp),
-                text = AboutSectionDescription,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(MaterialTheme.colorScheme.border.copy(alpha = 0.6f))
-            )
-            Text(
-                modifier = Modifier
-                    .graphicsLayer { alpha = 0.6f }
-                    .padding(top = 16.dp),
-                text = AboutSectionAppVersionTitle,
-                style = MaterialTheme.typography.labelMedium
-            )
-            Text(
-                modifier = Modifier.padding(top = 8.dp),
-                text = versionNumber,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
+    Column(modifier = Modifier.padding(horizontal = 72.dp)) {
+        Text(
+            text = stringResource(R.string.about_title),
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Text(
+            modifier = Modifier
+                .alpha(0.8f)
+                .padding(top = 16.dp),
+            text = stringResource(R.string.about_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Box(
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(MaterialTheme.colorScheme.border.copy(alpha = 0.6f))
+        )
+        AboutValue(
+            title = stringResource(R.string.about_version),
+            value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        )
+        AboutValue(title = stringResource(R.string.about_app_id), value = BuildConfig.APPLICATION_ID)
     }
 }
 
-private fun Context.getVersionNumber(): String {
-    val packageName = packageName
-    val metaData = packageManager.getPackageInfo(packageName, PackageManager.GET_META_DATA)
-    return metaData.versionName!!
+@Composable
+private fun AboutValue(title: String, value: String) {
+    Text(
+        modifier = Modifier
+            .alpha(0.6f)
+            .padding(top = 16.dp),
+        text = title,
+        style = MaterialTheme.typography.labelMedium
+    )
+    Text(
+        modifier = Modifier.padding(top = 8.dp),
+        text = value,
+        style = MaterialTheme.typography.labelLarge
+    )
 }

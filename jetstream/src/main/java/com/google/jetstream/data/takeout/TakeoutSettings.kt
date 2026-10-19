@@ -26,11 +26,22 @@ class TakeoutSettings @Inject constructor(
         prefs.edit().putInt(KEY_CONTINUE_WATCHING_DAYS, days).apply()
     }
 
+    /**
+     * The last subtitle choice: null = never chosen (player default), "" = off, otherwise the
+     * preferred language tag (e.g. "en").
+     */
+    val subtitleLanguage: String? get() = prefs.getString(KEY_SUBTITLE_LANGUAGE, null)
+
+    fun setSubtitleLanguage(language: String) {
+        prefs.edit().putString(KEY_SUBTITLE_LANGUAGE, language).apply()
+    }
+
     companion object {
         const val AllTime = 0
         const val DefaultContinueWatchingDays = 30
         val ContinueWatchingDayOptions = listOf(7, 14, 30, 90, AllTime)
 
         private const val KEY_CONTINUE_WATCHING_DAYS = "continue_watching_days"
+        private const val KEY_SUBTITLE_LANGUAGE = "subtitle_language"
     }
 }

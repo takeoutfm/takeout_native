@@ -13,6 +13,7 @@ import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.MovieReviewsAndRatings
 import com.google.jetstream.data.entities.PersonDetails
 import com.google.jetstream.data.entities.Recommendation
+import com.google.jetstream.data.entities.SearchResults
 import com.google.jetstream.data.entities.Season
 import com.google.jetstream.data.takeout.ApiCast
 import com.google.jetstream.data.takeout.ApiEpisode
@@ -23,6 +24,7 @@ import com.google.jetstream.data.takeout.ApiSeries
 import com.google.jetstream.data.takeout.TakeoutApi
 import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.data.takeout.TakeoutSession
+import java.text.Normalizer
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -120,7 +122,7 @@ class TakeoutMovieRepository @Inject constructor(
     /** The genres that actually occur in this server's movie library, A–Z. */
     private suspend fun genres(): List<String> =
         cached("index", ttlMs = 300_000) { api.index() }.movieGenres.orEmpty()
-            .distinct().sortedBy { it.lowercase(Locale.ROOT) }
+            .distinct().sortedBy { sortKey(it) }
 
     override fun getMovieCategories(): Flow<MovieCategoryList> = flow {
         val genres = try {
@@ -154,22 +156,15 @@ class TakeoutMovieRepository @Inject constructor(
 
     // ---- Details ----
 
-    override suspend fun getMovieDetails(movieId: String): MovieDetails {
-        return try {
-            if (movieId.startsWith("s-")) {
-                seriesDetails(movieId.removePrefix("s-").toInt())
-            } else if (movieId.startsWith("e-")) {
-                episodeDetails(movieId.removePrefix("e-").toInt())
-            } else {
-                movieDetails(movieId.removePrefix("m-").toInt())
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // JetStream's view models expect this call not to throw, so degrade to a stub.
-            unavailableDetails(movieId)
+    /** Throws if the server can't be reached or the title is gone; screens show an error. */
+    override suspend fun getMovieDetails(movieId: String): MovieDetails =
+        if (movieId.startsWith("s-")) {
+            seriesDetails(movieId.removePrefix("s-").toInt())
+        } else if (movieId.startsWith("e-")) {
+            episodeDetails(movieId.removePrefix("e-").toInt())
+        } else {
+            movieDetails(movieId.removePrefix("m-").toInt())
         }
-    }
 
     private suspend fun movieDetails(id: Int): MovieDetails {
         val view = api.movie(id)
@@ -208,9 +203,7 @@ class TakeoutMovieRepository @Inject constructor(
         val view = api.tvSeries(id)
         val s = view.series
         val episodes = view.episodes.orEmpty()
-        val first = episodes.filter { it.season > 0 }
-            .minWithOrNull(compareBy({ it.season }, { it.episode }))
-            ?: episodes.firstOrNull()
+        val first = nextEpisode(episodes)
         val location = if (first == null) {
             ""
         } else {
@@ -251,9 +244,38 @@ class TakeoutMovieRepository @Inject constructor(
             reviewsAndRatings = ratings(s.voteAverage, s.voteCount),
             etag = first?.etag.orEmpty(),
             seasons = seasons,
+            playTarget = first?.let { "S${it.season}E${it.episode}" },
             isFavorite = view.isFavorite,
             favoritePath = s.tvid.takeIf { it > 0 }?.let { "shows/$it" },
         )
+    }
+
+    /**
+     * The episode Play should start: the most recently watched episode if it's unfinished, else
+     * the one after it; with no progress (or after the last one), the first. Specials (season 0)
+     * only play when there are no regular episodes.
+     */
+    private suspend fun nextEpisode(episodes: List<ApiEpisode>): ApiEpisode? {
+        val ordered = episodes.filter { it.season > 0 }.sortedWith(compareBy({ it.season }, { it.episode }))
+            .ifEmpty { episodes.sortedBy { it.episode } }
+        if (ordered.isEmpty()) return null
+        val offsets = try {
+            progress.latest()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyMap()
+        }
+        val lastIndex = ordered.indices
+            .filter { offsets[ordered[it].etag] != null }
+            .maxByOrNull { with(TakeoutProgress) { offsets.getValue(ordered[it].etag).instant() } }
+            ?: return ordered.first()
+        val last = offsets.getValue(ordered[lastIndex].etag)
+        return if (TakeoutProgress.isFinished(last)) {
+            ordered.getOrNull(lastIndex + 1) ?: ordered.first()
+        } else {
+            ordered[lastIndex]
+        }
     }
 
     private suspend fun episodeDetails(id: Int): MovieDetails {
@@ -285,29 +307,6 @@ class TakeoutMovieRepository @Inject constructor(
         )
     }
 
-    private fun unavailableDetails(movieId: String) = MovieDetails(
-        id = movieId,
-        videoUri = "",
-        subtitleUri = null,
-        posterUri = "",
-        name = "Unable to load",
-        description = "Check your connection and server, then try again.",
-        pgRating = Dash,
-        releaseDate = Dash,
-        categories = emptyList(),
-        duration = Dash,
-        director = Dash,
-        screenplay = Dash,
-        music = Dash,
-        castAndCrew = emptyList(),
-        status = Dash,
-        originalLanguage = Dash,
-        budget = Dash,
-        revenue = Dash,
-        similarMovies = emptyList(),
-        reviewsAndRatings = emptyList(),
-    )
-
     // ---- Continue Watching ----
     // Progress is keyed by media file ETag only, so titles are found by matching ETags against
     // the (cached) movie and TV libraries.
@@ -330,20 +329,20 @@ class TakeoutMovieRepository @Inject constructor(
                 return@mapNotNull m.toMovie(endpoint, long = true).copy(progress = fraction(o, m.runtime))
             }
             val e = episodes[o.etag] ?: return@mapNotNull null
-            val series = seriesByTvid[e.tvid]
-            Movie(
-                id = "e-${e.id}",
-                videoUri = "",
-                subtitleUri = null,
-                posterUri = imageUrl("w300", e.stillPath)
-                    .ifEmpty { imageUrl("w780", series?.backdropPath.orEmpty()) },
-                name = listOfNotNull(series?.name, "S${e.season}E${e.episode} ${e.name}".trim())
-                    .joinToString(" · "),
-                description = e.overview,
-                progress = fraction(o, e.runtime),
-            )
+            e.toEpisodeCard(seriesByTvid[e.tvid]).copy(progress = fraction(o, e.runtime))
         }
     }
+
+    /** A landscape card for an episode: its still, titled "Series · S1E2 Name". */
+    private fun ApiEpisode.toEpisodeCard(series: ApiSeries?) = Movie(
+        id = "e-$id",
+        videoUri = "",
+        subtitleUri = null,
+        posterUri = imageUrl("w300", stillPath)
+            .ifEmpty { imageUrl("w780", series?.backdropPath.orEmpty()) },
+        name = listOfNotNull(series?.name, "S${season}E$episode $name".trim()).joinToString(" · "),
+        description = overview,
+    )
 
     /** Offset over duration, falling back to the runtime (minutes) when the duration is unknown. */
     private fun fraction(o: ApiOffset, runtimeMinutes: Int): Float? {
@@ -411,6 +410,32 @@ class TakeoutMovieRepository @Inject constructor(
 
     // ---- Search ----
 
+    /**
+     * Movies and TV episodes come from /api/search. The server doesn't search TV series, so those
+     * are matched here against the (cached) series list by name.
+     */
+    suspend fun search(query: String): SearchResults {
+        val q = sortKey(query)
+        if (q.isEmpty()) return SearchResults()
+        return try {
+            val view = api.search(query)
+            val tv = cached("tv-recent") { api.tvList() }
+            val seriesByTvid = tv.series.orEmpty().associateBy { it.tvid }
+            SearchResults(
+                movies = view.movies.orEmpty().map { it.toMovie(endpoint) },
+                shows = tv.series.orEmpty()
+                    .filter { q in sortKey(it.name) }
+                    .sortedBy { sortKey(it.sortName.ifEmpty { it.name }) }
+                    .map { it.toMovie(endpoint) },
+                episodes = view.tvEpisodes.orEmpty().map { it.toEpisodeCard(seriesByTvid[it.tvid]) },
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            SearchResults()
+        }
+    }
+
     override suspend fun searchMovies(query: String): MovieList = try {
         api.search(query).movies.orEmpty().map { it.toMovie(endpoint) }
     } catch (e: CancellationException) {
@@ -439,7 +464,7 @@ class TakeoutMovieRepository @Inject constructor(
     /** Every TV series, A–Z. */
     override fun getTVShows(): Flow<MovieList> = listFlow {
         cached("tv-shows") { api.tvShows() }.series.orEmpty()
-            .sortedBy { it.sortName.ifEmpty { it.name }.lowercase(Locale.ROOT) }
+            .sortedBy { sortKey(it.sortName.ifEmpty { it.name }) }
             .map { it.toMovie(endpoint) }
     }
 
@@ -455,7 +480,7 @@ class TakeoutMovieRepository @Inject constructor(
         val view = api.favorites()
         val movies = view.movies.orEmpty().map { it.sortTitle.ifEmpty { it.title } to it.toMovie(endpoint) }
         val shows = view.shows.orEmpty().map { it.sortName.ifEmpty { it.name } to it.toMovie(endpoint) }
-        (movies + shows).sortedBy { it.first.lowercase(Locale.ROOT) }.map { it.second }
+        (movies + shows).sortedBy { sortKey(it.first) }.map { it.second }
     }
 
     // ---- Helpers ----
@@ -468,7 +493,7 @@ class TakeoutMovieRepository @Inject constructor(
 
     /** By the server's sort title (e.g. without a leading "The"), falling back to the title. */
     private fun List<ApiMovie>.sortedAZ(): List<ApiMovie> =
-        sortedBy { it.sortTitle.ifEmpty { it.title }.lowercase(Locale.ROOT) }
+        sortedBy { sortKey(it.sortTitle.ifEmpty { it.title }) }
 
     private fun imageUrl(size: String, path: String): String =
         if (path.isEmpty()) "" else "$endpoint/img/tm/$size$path"
@@ -541,6 +566,17 @@ class TakeoutMovieRepository @Inject constructor(
                 )
             )
         }
+
+    /**
+     * A–Z key: case- and accent-insensitive, with punctuation ignored, so "Airplane!" sorts
+     * before "Airplane II" and "Amélie" with the A's.
+     */
+    private fun sortKey(title: String): String =
+        Normalizer.normalize(title, Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+            .lowercase(Locale.ROOT)
+            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+            .trim()
 
     private fun slug(name: String) = name.lowercase(Locale.US).replace(' ', '-')
 

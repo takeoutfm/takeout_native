@@ -36,14 +36,46 @@ import com.google.jetstream.presentation.theme.JetStreamCardShape
 import java.util.Locale
 
 /** Which track picker is open. */
-enum class TrackPicker { Audio, Subtitles }
+enum class TrackPicker { Audio, Subtitles, Speed }
 
 /** One choice in a track picker; [select] applies it to the player. */
 data class TrackOption(
     val label: String,
     val isSelected: Boolean,
+    /** The track's language, if it has one ("" for the subtitles Off option). */
+    val language: String? = null,
     val select: (Player) -> Unit,
 )
+
+val PlaybackSpeeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+/** "0.5×" … "2×", with "Normal" for 1×. */
+fun speedOptions(player: Player, normalLabel: String): List<TrackOption> {
+    val current = player.playbackParameters.speed
+    return PlaybackSpeeds.map { speed ->
+        TrackOption(
+            label = if (speed == 1f) normalLabel else "${speed.toString().removeSuffix(".0")}×",
+            isSelected = kotlin.math.abs(current - speed) < 0.01f,
+            select = { p -> p.setPlaybackSpeed(speed) }
+        )
+    }
+}
+
+/** Applies the remembered subtitle choice ([TakeoutSettings.subtitleLanguage]) to [player]. */
+fun applySubtitlePreference(player: Player, language: String?) {
+    language ?: return
+    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+        .apply {
+            if (language.isEmpty()) {
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            } else {
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                setPreferredTextLanguage(language)
+            }
+        }
+        .build()
+}
 
 /** Embedded audio tracks, one option per playable track. */
 fun audioTrackOptions(player: Player): List<TrackOption> =
@@ -55,6 +87,7 @@ fun subtitleTrackOptions(player: Player, offLabel: String): List<TrackOption> {
     val off = TrackOption(
         label = offLabel,
         isSelected = tracks.none { it.isSelected },
+        language = "",
         select = { p ->
             p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
                 .clearOverridesOfType(C.TRACK_TYPE_TEXT)
@@ -76,6 +109,7 @@ private fun trackOptions(player: Player, type: @C.TrackType Int): List<TrackOpti
             TrackOption(
                 label = group.getTrackFormat(i).describe(type, number),
                 isSelected = group.isTrackSelected(i),
+                language = group.getTrackFormat(i).language,
                 select = { p ->
                     p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
                         .setTrackTypeDisabled(type, false)

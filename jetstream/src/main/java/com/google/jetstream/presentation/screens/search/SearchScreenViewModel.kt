@@ -18,8 +18,8 @@ package com.google.jetstream.presentation.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.jetstream.data.entities.MovieList
-import com.google.jetstream.data.repositories.MovieRepository
+import com.google.jetstream.data.entities.SearchResults
+import com.google.jetstream.data.repositories.TakeoutMovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class SearchScreenViewModel @Inject constructor(
-    private val movieRepository: MovieRepository
+    private val repository: TakeoutMovieRepository
 ) : ViewModel() {
 
     private val internalSearchState = MutableSharedFlow<SearchState>()
@@ -40,18 +40,18 @@ class SearchScreenViewModel @Inject constructor(
 
     private suspend fun postQuery(queryString: String) {
         internalSearchState.emit(SearchState.Searching)
-        val result = movieRepository.searchMovies(query = queryString)
+        val result = repository.search(query = queryString)
         internalSearchState.emit(SearchState.Done(result))
     }
 
     val searchState = internalSearchState.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = SearchState.Done(emptyList())
+        initialValue = SearchState.Done(SearchResults())
     )
 }
 
 sealed interface SearchState {
     data object Searching : SearchState
-    data class Done(val movieList: MovieList) : SearchState
+    data class Done(val results: SearchResults) : SearchState
 }

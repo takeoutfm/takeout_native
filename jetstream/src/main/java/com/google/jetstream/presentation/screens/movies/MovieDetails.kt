@@ -16,6 +16,7 @@
 
 package com.google.jetstream.presentation.screens.movies
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
@@ -198,7 +200,8 @@ private fun StartOverButton(
         onClick = onClick,
         modifier = modifier,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape)
+        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape),
+        border = outlinedButtonBorder()
     ) {
         Icon(
             imageVector = Icons.Outlined.Replay,
@@ -223,7 +226,8 @@ private fun FavoriteButton(
         onClick = onClick,
         modifier = modifier,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape)
+        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape),
+        border = outlinedButtonBorder()
     ) {
         Icon(
             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
@@ -236,6 +240,26 @@ private fun FavoriteButton(
         )
     }
 }
+
+/**
+ * Outlines in the buttons' own shape. By default the outline is a pill while the focused fill
+ * uses [JetStreamButtonShape], so focus showed a rectangle over a rounded outline.
+ */
+@Composable
+private fun outlinedButtonBorder() = OutlinedButtonDefaults.border(
+    border = Border(
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.border),
+        shape = JetStreamButtonShape
+    ),
+    focusedBorder = Border(
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface),
+        shape = JetStreamButtonShape
+    ),
+    pressedBorder = Border(
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface),
+        shape = JetStreamButtonShape
+    ),
+)
 
 @Composable
 private fun DirectorScreenplayMusicRow(

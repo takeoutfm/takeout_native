@@ -23,7 +23,7 @@ import com.google.jetstream.data.repositories.MovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
@@ -31,14 +31,8 @@ class MoviesScreenViewModel @Inject constructor(
     movieRepository: MovieRepository
 ) : ViewModel() {
 
-    val uiState = combine(
-        movieRepository.getMoviesWithLongThumbnail(),
-        movieRepository.getPopularFilmsThisWeek(),
-    ) { (movieList, popularFilmsThisWeek) ->
-        MoviesScreenUiState.Ready(
-            movieList = movieList,
-            popularFilmsThisWeek = popularFilmsThisWeek
-        )
+    val uiState = movieRepository.getMovies().map { movieList ->
+        MoviesScreenUiState.Ready(movieList = movieList)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -48,8 +42,5 @@ class MoviesScreenViewModel @Inject constructor(
 
 sealed interface MoviesScreenUiState {
     data object Loading : MoviesScreenUiState
-    data class Ready(
-        val movieList: MovieList,
-        val popularFilmsThisWeek: MovieList
-    ) : MoviesScreenUiState
+    data class Ready(val movieList: MovieList) : MoviesScreenUiState
 }

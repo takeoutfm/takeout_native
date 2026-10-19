@@ -80,6 +80,8 @@ data class ApiCrew(
 data class ApiMovie(
     @SerialName("ID") val id: Int = 0,
     @SerialName("Title") val title: String = "",
+    /** Title for A–Z ordering, e.g. without a leading "The". */
+    @SerialName("SortTitle") val sortTitle: String = "",
     @SerialName("Date") val date: String = "",
     @SerialName("Rating") val rating: String = "",
     @SerialName("Tagline") val tagline: String = "",
@@ -98,6 +100,7 @@ data class ApiMovie(
 data class ApiSeries(
     @SerialName("ID") val id: Int = 0,
     @SerialName("Name") val name: String = "",
+    @SerialName("SortName") val sortName: String = "",
     @SerialName("Overview") val overview: String = "",
     @SerialName("Date") val date: String = "",
     @SerialName("SeasonCount") val seasonCount: Int = 0,

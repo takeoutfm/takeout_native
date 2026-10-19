@@ -339,8 +339,11 @@ class TakeoutMovieRepository @Inject constructor(
         cached("movies") { api.movies() }.movies.orEmpty().map { it.toMovie(endpoint, long = true) }
     }
 
+    /** The whole movie library, A–Z. */
     override fun getMovies(): Flow<MovieList> = listFlow {
-        cached("movies") { api.movies() }.movies.orEmpty().map { it.toMovie(endpoint) }
+        cached("movies") { api.movies() }.movies.orEmpty()
+            .sortedBy { it.sortTitle.ifEmpty { it.title }.lowercase(Locale.ROOT) }
+            .map { it.toMovie(endpoint) }
     }
 
     override fun getPopularFilmsThisWeek(): Flow<MovieList> = listFlow {
@@ -349,8 +352,11 @@ class TakeoutMovieRepository @Inject constructor(
             .map { it.toMovie(endpoint) }
     }
 
+    /** Every TV series, A–Z. */
     override fun getTVShows(): Flow<MovieList> = listFlow {
-        cached("tv-shows") { api.tvShows() }.series.orEmpty().map { it.toMovie(endpoint) }
+        cached("tv-shows") { api.tvShows() }.series.orEmpty()
+            .sortedBy { it.sortName.ifEmpty { it.name }.lowercase(Locale.ROOT) }
+            .map { it.toMovie(endpoint) }
     }
 
     override fun getBingeWatchDramas(): Flow<MovieList> = listFlow {

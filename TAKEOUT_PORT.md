@@ -8,9 +8,9 @@ API, its icon/banner assets, and screen ideas.
 ## Status (2026-10-18)
 
 Builds, installs and runs on an Android TV (Google TV, API 34) emulator against
-`https://takeout.fm`. Sign-in, browsing, playback, resume, episodes, audio/subtitle tracks, person
-pages, poster grids and recommendation tabs have all been exercised on the emulator. It has
-not yet been run on real TV hardware.
+`https://takeout.fm`. Sign-in, browsing, playback, resume, Continue Watching, episodes,
+audio/subtitle tracks, person pages, poster grids, recommendation tabs and favorites have all been
+exercised on the emulator. It has not yet been run on real TV hardware.
 
 All work is committed on `master` (no remote yet). See [Progress](#progress) for the history.
 
@@ -27,18 +27,22 @@ directly where needed.
 | Wire models (Takeout JSON, PascalCase, all fields defaulted) | `data/takeout/ApiModels.kt` |
 | HTTP client, bearer auth, refresh on 401 | `data/takeout/TakeoutApi.kt` |
 | Encrypted token storage | `data/takeout/TakeoutSession.kt` |
-| Watch progress (resume + sync) | `data/takeout/TakeoutProgress.kt` |
+| Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
+| Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
 | Takeout → JetStream mapping, small TTL cache | `data/repositories/TakeoutMovieRepository.kt` |
 | Device-code sign-in UI / sign-in gate | `presentation/screens/login/*`, `presentation/App.kt` |
 | Top bar tabs (fixed + recommendation tabs) | `.../dashboard/DashboardTopBar.kt`, `DashboardScreen.kt`, `DashboardViewModel.kt` |
 | Shared 6-column poster grid | `presentation/common/PosterGrid.kt` |
-| Movie/series details, Resume / Start over | `.../screens/movies/MovieDetails*.kt` |
+| Movie/series details, Resume / Start over / Favorite | `.../screens/movies/MovieDetails*.kt` |
+| Home rows incl. Continue Watching (progress bars on cards) | `.../screens/home/*`, `presentation/common/MoviesRow.kt` |
+| Favourites tab | `.../screens/favourites/*` |
 | Season/episode rows | `.../screens/movies/EpisodesList.kt` |
 | Cast & Crew row (photos, opens person page) | `.../screens/movies/CastAndCrewList.kt` |
 | Person page | `.../screens/person/*` |
 | Player (stream auth, progress, errors, release) | `.../videoPlayer/VideoPlayerScreen.kt`, `components/RememberPlayer.kt` |
 | Audio/subtitle pickers, subtitle rendering | `.../videoPlayer/components/TrackSelection.kt` |
 | Server info + Sign out | `.../profile/AccountsSection.kt` |
+| Continue Watching window picker | `.../profile/ContinueWatchingSection.kt` |
 
 ### Identity and build
 - `applicationId` is `com.takeoutfm.tv`; the Kotlin package/namespace is still
@@ -65,12 +69,15 @@ directly where needed.
 | `GET /api/token` | Refresh tokens (on 401) |
 | `GET /api/index` | `MovieGenres` for the Genres tab |
 | `GET /api/home` | Home rows and recommendation sets (`RecommendMovies`) |
-| `GET /api/movies`, `/api/movies/{id}` | Movies tab, movie details (`Location`, `ETag`) |
+| `GET /api/movies`, `/api/movies/{id}` | Movies tab (and ETag → movie for progress), movie details (`Location`, `ETag`, `IsFavorite`) |
 | `GET /api/movie-genres/{name}` | Genre pages |
-| `GET /api/tv/series`, `/api/tv/series/{id}`, `/api/tv/episodes/{id}` | Shows tab, series details + episodes, episode stream |
+| `GET /api/tv` | Every series and episode (with ETags); used to match episode progress |
+| `GET /api/tv/series`, `/api/tv/series/{id}`, `/api/tv/episodes/{id}` | Shows tab, series details + episodes (`IsFavorite`), episode stream |
 | `GET /api/profiles/{peid}` | Person page (bio + movie/TV credits) |
 | `GET /api/search?q=` | Search (movies only) |
 | `GET/POST /api/progress` | Watch progress |
+| `GET /api/favorite` | Favourites tab (movies + shows) |
+| `PUT/DELETE /api/favorite/movies/{imid}`, `/api/favorite/shows/{tvid}` | Favorite button |
 | `GET /img/tm/{size}/{path}` | TMDB images via the server (posters w342, backdrops w1280, stills w300, profiles w185/w342) |
 | `Location` URLs (`/api/movies/{uuid}/location`, ...) | Streams; redirect to the media file |
 
@@ -87,14 +94,30 @@ plus the profile avatar. Recommendation sets come from the server config and dep
 it. Many simultaneous sets could crowd the bar.
 
 ### Home
-Featured carousel = new releases (8) · Recently Added row · Top 10 list = the first
-recommendation set (else recently added) · New Releases row.
+Featured carousel = new releases (8) · **Continue Watching** · Recently Added row · Top 10 list =
+the first recommendation set (else recently added) · New Releases row.
+
+**Continue Watching** is one landscape row of the movies and TV episodes the user is part-way
+through, most recently watched first, each card with a thin progress bar (offset / duration,
+falling back to runtime). Progress offsets only carry the media file's ETag (the server can't look
+movies up by ETag), so the app matches them against the cached `/api/movies` list and `/api/tv`
+(all series + episodes, joined by `TVID`); unmatched offsets (e.g. music) are dropped. "In
+progress" uses the Resume rule below; local saves are merged in so a just-watched title appears
+at once. Movies show their backdrop, episodes their still ("Series · S1E2 Name"); selecting a card
+opens its details page (Resume / Start over). The row refreshes whenever Home is shown again and
+is hidden when empty. How far back it looks is a per-device setting on the Profile screen
+(Continue Watching section): 7, 14, **30** (default), 90 days or All time.
 
 ### Poster grids (Movies, Shows, genre pages, recommendation tabs)
 `PosterGrid`: 6 columns, focused poster shows its title, dashboard top bar hides on scroll.
 Movies, Shows and genre pages are A–Z by the server's `SortTitle` / `SortName` (falling back to
 the title); recommendation sets are A–Z too. Genre pages add a title header and start focused on
 the first poster.
+
+### Favourites
+The user's favorite movies and shows from `/api/favorite` (not cached; favorites change from the
+other Takeout apps), together A–Z in `PosterGrid`. Movies / TV Shows chips filter by kind (neither
+selected = all). With no favorites the tab says so.
 
 ### Genres
 Formerly JetStream's "Categories". The list comes from `/api/index` (only genres present in the
@@ -103,6 +126,10 @@ library), A–Z.
 ### Details (movies and series)
 - **Play** when there's no saved progress; otherwise **Resume from m:ss** plus **Start over**
   (plays from 0:00 via `startOver=true`).
+- **♡ Add to favorites** / **♥ Favorite**: an outlined button after those, from the view's
+  `IsFavorite`; toggles with PUT/DELETE (keyed by the movie's IMID or the series' TVID), flipping
+  immediately and reverting if the server call fails.
+- Empty metadata (e.g. an episode's genres) and empty Cast & Crew / Reviews sections are hidden.
 - Series: one row per season (specials last), episode cards with still, number, name, runtime;
   selecting an episode plays it. Series **Play** starts the first episode.
 - Cast & Crew cards show TMDB profile photos (coloured block if none) and open the person page.
@@ -145,11 +172,17 @@ paragraph at a time.
 | `cfe586b` | Categories → Genres, list from `/api/index`; genre pages use PosterGrid |
 | `260a4e7` | Genre pages sorted A–Z |
 | `ce4ef78` | A top bar tab per recommendation set |
+| `3c2a2c6` | Design doc rewrite |
+| `9b4f7dd` | Favourites tab from `/api/favorite` |
+| `a66daf2` | Favorite button on details |
+| `b11363f` | Continue Watching row on Home + window setting |
 
 ## Known gaps / next steps
 - Series **Play** starts the first episode, not the next unwatched one.
-- No Continue Watching row on Home, Android TV Watch Next, home-screen channels or Cast Connect.
-- Favourites tab is empty (Takeout has watch progress, not favourites).
+- No Android TV Watch Next, home-screen channels or Cast Connect.
+- The Continue Watching window filter has only been seen with recent progress (no offsets older
+  than 7 days to drop yet).
+- Episode titles on details are cut to one line (e.g. "Breaking Bad · S1E1" without "Pilot").
 - Search covers movies only (what `/api/search` returns for video).
 - The player's Settings button does nothing; the subtitle choice isn't remembered between titles.
 - Profile screen's other sections (About, Language, ...) are JetStream placeholders.

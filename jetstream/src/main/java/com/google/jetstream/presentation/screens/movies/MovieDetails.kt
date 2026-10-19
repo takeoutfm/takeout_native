@@ -108,7 +108,7 @@ fun MovieDetails(
                             movieDetails.releaseDate,
                             movieDetails.categories.joinToString(", "),
                             movieDetails.duration
-                        )
+                        ).filter { it.isNotBlank() && it != "—" } // e.g. episodes have no genres
                     )
                     DirectorScreenplayMusicRow(
                         director = movieDetails.director,

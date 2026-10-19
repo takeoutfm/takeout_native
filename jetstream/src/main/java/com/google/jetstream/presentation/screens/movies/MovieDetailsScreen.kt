@@ -136,7 +136,7 @@ private fun Details(
             )
         }
 
-        item {
+        if (movieDetails.castAndCrew.isNotEmpty()) item {
             CastAndCrewList(
                 castAndCrew = movieDetails.castAndCrew,
                 onPersonSelected = { openPerson(it.id) }
@@ -154,7 +154,7 @@ private fun Details(
             )
         }
 
-        item {
+        if (movieDetails.reviewsAndRatings.isNotEmpty()) item {
             MovieReviews(
                 modifier = Modifier.padding(top = childPadding.top),
                 reviewsAndRatings = movieDetails.reviewsAndRatings

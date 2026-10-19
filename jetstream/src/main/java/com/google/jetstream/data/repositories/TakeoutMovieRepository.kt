@@ -139,7 +139,7 @@ class TakeoutMovieRepository @Inject constructor(
         } ?: categoryId
         val movies = try {
             cached("genre:$name", ttlMs = 300_000) { api.genre(name) }
-                .movies.orEmpty().map { it.toMovie(endpoint) }
+                .movies.orEmpty().sortedAZ().map { it.toMovie(endpoint) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -359,9 +359,7 @@ class TakeoutMovieRepository @Inject constructor(
 
     /** The whole movie library, A–Z. */
     override fun getMovies(): Flow<MovieList> = listFlow {
-        cached("movies") { api.movies() }.movies.orEmpty()
-            .sortedBy { it.sortTitle.ifEmpty { it.title }.lowercase(Locale.ROOT) }
-            .map { it.toMovie(endpoint) }
+        cached("movies") { api.movies() }.movies.orEmpty().sortedAZ().map { it.toMovie(endpoint) }
     }
 
     override fun getPopularFilmsThisWeek(): Flow<MovieList> = listFlow {
@@ -391,6 +389,10 @@ class TakeoutMovieRepository @Inject constructor(
         location.startsWith("http://") || location.startsWith("https://") -> location
         else -> endpoint + location
     }
+
+    /** By the server's sort title (e.g. without a leading "The"), falling back to the title. */
+    private fun List<ApiMovie>.sortedAZ(): List<ApiMovie> =
+        sortedBy { it.sortTitle.ifEmpty { it.title }.lowercase(Locale.ROOT) }
 
     private fun imageUrl(size: String, path: String): String =
         if (path.isEmpty()) "" else "$endpoint/img/tm/$size$path"

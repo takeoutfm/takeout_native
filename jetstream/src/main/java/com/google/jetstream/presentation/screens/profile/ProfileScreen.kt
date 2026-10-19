@@ -184,6 +184,9 @@ fun ProfileScreen(
                 composable(ProfileScreens.Accounts()) {
                     AccountsSection()
                 }
+                composable(ProfileScreens.ContinueWatching()) {
+                    ContinueWatchingSection()
+                }
                 composable(ProfileScreens.About()) {
                     AboutSection()
                 }

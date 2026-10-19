@@ -17,9 +17,11 @@ import com.google.jetstream.data.entities.Season
 import com.google.jetstream.data.takeout.ApiCast
 import com.google.jetstream.data.takeout.ApiEpisode
 import com.google.jetstream.data.takeout.ApiMovie
+import com.google.jetstream.data.takeout.ApiOffset
 import com.google.jetstream.data.takeout.ApiPerson
 import com.google.jetstream.data.takeout.ApiSeries
 import com.google.jetstream.data.takeout.TakeoutApi
+import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.data.takeout.TakeoutSession
 import java.util.Locale
 import javax.inject.Inject
@@ -43,6 +45,7 @@ import kotlinx.coroutines.sync.withLock
 class TakeoutMovieRepository @Inject constructor(
     private val api: TakeoutApi,
     private val session: TakeoutSession,
+    private val progress: TakeoutProgress,
 ) : MovieRepository {
 
     // ---- tiny in-memory TTL cache so one Home load doesn't hit /api/home four times ----
@@ -304,6 +307,49 @@ class TakeoutMovieRepository @Inject constructor(
         similarMovies = emptyList(),
         reviewsAndRatings = emptyList(),
     )
+
+    // ---- Continue Watching ----
+    // Progress is keyed by media file ETag only, so titles are found by matching ETags against
+    // the (cached) movie and TV libraries.
+
+    /**
+     * Movies and TV episodes started within the last [days] days and not finished, most recently
+     * watched first. Cards are landscape: movie backdrops, episode stills.
+     */
+    fun getContinueWatching(days: Int): Flow<MovieList> = listFlow {
+        val offsets = progress.inProgress(days)
+        if (offsets.isEmpty()) return@listFlow emptyList()
+        val movies = cached("movies") { api.movies() }.movies.orEmpty()
+            .filter { it.etag.isNotEmpty() }.associateBy { it.etag }
+        val tv = cached("tv-recent") { api.tvList() }
+        val episodes = tv.episodes.orEmpty().filter { it.etag.isNotEmpty() }.associateBy { it.etag }
+        val seriesByTvid = tv.series.orEmpty().associateBy { it.tvid }
+        offsets.mapNotNull { o ->
+            val m = movies[o.etag]
+            if (m != null) {
+                return@mapNotNull m.toMovie(endpoint, long = true).copy(progress = fraction(o, m.runtime))
+            }
+            val e = episodes[o.etag] ?: return@mapNotNull null
+            val series = seriesByTvid[e.tvid]
+            Movie(
+                id = "e-${e.id}",
+                videoUri = "",
+                subtitleUri = null,
+                posterUri = imageUrl("w300", e.stillPath)
+                    .ifEmpty { imageUrl("w780", series?.backdropPath.orEmpty()) },
+                name = listOfNotNull(series?.name, "S${e.season}E${e.episode} ${e.name}".trim())
+                    .joinToString(" · "),
+                description = e.overview,
+                progress = fraction(o, e.runtime),
+            )
+        }
+    }
+
+    /** Offset over duration, falling back to the runtime (minutes) when the duration is unknown. */
+    private fun fraction(o: ApiOffset, runtimeMinutes: Int): Float? {
+        val total = if (o.duration > 0) o.duration else runtimeMinutes * 60
+        return if (total > 0) (o.offset.toFloat() / total).coerceIn(0f, 1f) else null
+    }
 
     // ---- Recommendations ----
 

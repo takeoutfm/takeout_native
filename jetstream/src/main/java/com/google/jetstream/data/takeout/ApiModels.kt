@@ -119,6 +119,8 @@ data class ApiSeries(
 @Serializable
 data class ApiEpisode(
     @SerialName("ID") val id: Int = 0,
+    /** The series' TMDB TV id, matching [ApiSeries.tvid]. */
+    @SerialName("TVID") val tvid: Long = 0,
     @SerialName("Name") val name: String = "",
     @SerialName("Season") val season: Int = 0,
     @SerialName("Episode") val episode: Int = 0,
@@ -182,6 +184,8 @@ data class ApiGenreView(
 @Serializable
 data class ApiTvListView(
     @SerialName("Series") val series: List<ApiSeries>? = null,
+    /** /api/tv only: every episode in the library. */
+    @SerialName("Episodes") val episodes: List<ApiEpisode>? = null,
 )
 
 @Serializable

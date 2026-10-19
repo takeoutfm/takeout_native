@@ -18,17 +18,22 @@ package com.google.jetstream.presentation.common
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -66,7 +72,7 @@ import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
  */
 enum class ItemDirection(val aspectRatio: Float, val cardWidth: Dp) {
     Vertical(10.5f / 16f, 172.dp),
-    Horizontal(16f / 9f, 172.dp);
+    Horizontal(16f / 9f, 268.dp);
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -288,6 +294,15 @@ private fun MoviesRowItemImage(
                     }
                 },
         )
+        movie.progress?.let { progress ->
+            WatchProgressBar(
+                progress = progress,
+                modifier = Modifier
+                    .matchParentSize()
+                    .wrapContentHeight(Alignment.Bottom)
+                    .padding(horizontal = 10.dp, vertical = 10.dp)
+            )
+        }
         if (showIndexOverImage) {
             Text(
                 modifier = Modifier.padding(16.dp),
@@ -330,6 +345,25 @@ private fun MoviesRowItemText(
                 .padding(top = 4.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** A thin bar along the bottom of a card showing how much of the title has been watched. */
+@Composable
+private fun WatchProgressBar(progress: Float, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(Color.White.copy(alpha = 0.35f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(progress)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary)
         )
     }
 }

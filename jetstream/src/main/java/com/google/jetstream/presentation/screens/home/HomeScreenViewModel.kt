@@ -20,15 +20,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.repositories.MovieRepository
+import com.google.jetstream.data.repositories.TakeoutMovieRepository
+import com.google.jetstream.data.takeout.TakeoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
-class HomeScreeViewModel @Inject constructor(movieRepository: MovieRepository) : ViewModel() {
+class HomeScreeViewModel @Inject constructor(
+    movieRepository: MovieRepository,
+    takeout: TakeoutMovieRepository,
+    settings: TakeoutSettings,
+) : ViewModel() {
+
+    private val refreshes = MutableStateFlow(0)
+
+    /** Re-reads progress, e.g. when Home is shown again after watching something. */
+    fun refreshContinueWatching() {
+        refreshes.value++
+    }
+
+    /** Movies and episodes in progress, most recently watched first. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val continueWatching: StateFlow<MovieList> =
+        combine(settings.continueWatchingDays, refreshes) { days, _ -> days }
+            .flatMapLatest { days -> takeout.getContinueWatching(days) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val uiState: StateFlow<HomeScreenUiState> = combine(
         movieRepository.getFeaturedMovies(),

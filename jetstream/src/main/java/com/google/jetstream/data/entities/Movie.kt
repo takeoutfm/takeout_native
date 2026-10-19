@@ -24,7 +24,9 @@ data class Movie(
     val subtitleUri: String?,
     val posterUri: String,
     val name: String,
-    val description: String
+    val description: String,
+    /** How far into it the user is, 0–1, for a progress bar on its card; null for none. */
+    val progress: Float? = null,
 )
 
 fun MoviesResponseItem.toMovie(thumbnailType: ThumbnailType = ThumbnailType.Standard): Movie {

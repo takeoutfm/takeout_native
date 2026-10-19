@@ -32,13 +32,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.presentation.common.Error
+import com.google.jetstream.presentation.common.ItemDirection
 import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.MoviesRow
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
@@ -52,6 +55,9 @@ fun HomeScreen(
     homeScreeViewModel: HomeScreeViewModel = hiltViewModel(),
 ) {
     val uiState by homeScreeViewModel.uiState.collectAsStateWithLifecycle()
+    val continueWatching by homeScreeViewModel.continueWatching.collectAsStateWithLifecycle()
+    // Home leaves composition while details or the player are open, so this runs on every return.
+    LaunchedEffect(Unit) { homeScreeViewModel.refreshContinueWatching() }
 
     when (val s = uiState) {
         is HomeScreenUiState.Ready -> {
@@ -60,6 +66,7 @@ fun HomeScreen(
                 trendingMovies = s.trendingMovieList,
                 top10Movies = s.top10MovieList,
                 nowPlayingMovies = s.nowPlayingMovieList,
+                continueWatching = continueWatching,
                 onMovieClick = onMovieClick,
                 onScroll = onScroll,
                 goToVideoPlayer = goToVideoPlayer,
@@ -79,6 +86,7 @@ private fun Catalog(
     trendingMovies: MovieList,
     top10Movies: MovieList,
     nowPlayingMovies: MovieList,
+    continueWatching: MovieList,
     onMovieClick: (movie: Movie) -> Unit,
     onScroll: (isTopBarVisible: Boolean) -> Unit,
     goToVideoPlayer: (movie: Movie) -> Unit,
@@ -124,6 +132,17 @@ private fun Catalog(
                  regardless of the top bar's visibility
                  */
             )
+        }
+        if (continueWatching.isNotEmpty()) {
+            item(contentType = "MoviesRow", key = "continue-watching") {
+                MoviesRow(
+                    modifier = Modifier.padding(top = 16.dp),
+                    movieList = continueWatching,
+                    itemDirection = ItemDirection.Horizontal,
+                    title = stringResource(R.string.continue_watching),
+                    onMovieSelected = onMovieClick
+                )
+            }
         }
         item(contentType = "MoviesRow") {
             MoviesRow(

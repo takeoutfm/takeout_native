@@ -17,6 +17,7 @@
 package com.google.jetstream.presentation.screens.profile
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -30,6 +31,7 @@ enum class ProfileScreens(
     private val title: String? = null,
 ) {
     Accounts(Icons.Default.Person),
+    ContinueWatching(title = "Continue Watching", icon = Icons.Default.History),
     About(Icons.Default.Info),
     Subtitles(Icons.Default.Subtitles),
     Language(Icons.Default.Translate),

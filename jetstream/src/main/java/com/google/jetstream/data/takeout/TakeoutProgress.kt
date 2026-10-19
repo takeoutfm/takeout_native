@@ -1,5 +1,6 @@
 package com.google.jetstream.data.takeout
 
+import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -36,6 +37,27 @@ class TakeoutProgress @Inject constructor(
         }
         val newest = listOfNotNull(local[etag], remote).maxByOrNull { it.instant() } ?: return 0
         return if (shouldResume(newest.offset, newest.duration)) newest.offset * 1000L else 0
+    }
+
+    /**
+     * Started-but-unfinished offsets updated within the last [days] days ([TakeoutSettings.AllTime]
+     * for no limit), most recent first. Merges in local saves the server may not have yet.
+     */
+    suspend fun inProgress(days: Int): List<ApiOffset> {
+        val remote = api.progress().offsets
+        val newest = HashMap<String, ApiOffset>()
+        for (o in remote + local.values) {
+            val current = newest[o.etag]
+            if (current == null || o.instant() > current.instant()) newest[o.etag] = o
+        }
+        val since = if (days == TakeoutSettings.AllTime) {
+            Instant.EPOCH
+        } else {
+            Instant.now().minus(Duration.ofDays(days.toLong()))
+        }
+        return newest.values
+            .filter { shouldResume(it.offset, it.duration) && it.instant().isAfter(since) }
+            .sortedByDescending { it.instant() }
     }
 
     fun report(etag: String, positionMs: Long, durationMs: Long) {

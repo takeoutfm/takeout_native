@@ -26,6 +26,13 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="watch_trailer">Play</string>
     <string name="resume_from">Resume from %1$s</string>
     <string name="start_over">Start over</string>
+    <string name="continue_watching">Continue Watching</string>
+    <string name="continue_watching_setting_desc">Show titles you started watching within:</string>
+    <string name="continue_watching_all_time">All time</string>
+    <plurals name="continue_watching_last_days">
+        <item quantity="one">Last %d day</item>
+        <item quantity="other">Last %d days</item>
+    </plurals>
     <string name="add_to_favorites">Add to favorites</string>
     <string name="favorite">Favorite</string>
     <string name="person_movies_acting">Movies</string>

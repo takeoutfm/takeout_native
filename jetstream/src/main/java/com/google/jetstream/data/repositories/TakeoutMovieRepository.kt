@@ -225,7 +225,7 @@ class TakeoutMovieRepository @Inject constructor(
             music = view.crew.orEmpty()
                 .filter { it.job.contains("Composer", true) || it.job.contains("Music", true) }
                 .map { it.person.name }.distinct().joinToString(", ").ifEmpty { Dash },
-            castAndCrew = view.cast.orEmpty().map { it.toMovieCast() },
+            castAndCrew = castAndCrew(view.cast, view.directing),
             status = "Available",
             originalLanguage = Dash,
             budget = formatDollars(m.budget),
@@ -276,7 +276,7 @@ class TakeoutMovieRepository @Inject constructor(
             director = view.directing.names(),
             screenplay = view.writing.names(),
             music = Dash,
-            castAndCrew = view.cast.orEmpty().map { it.toMovieCast() },
+            castAndCrew = castAndCrew(view.cast, view.directing),
             status = "Available",
             originalLanguage = Dash,
             budget = Dash,
@@ -629,6 +629,19 @@ class TakeoutMovieRepository @Inject constructor(
         avatarUrl = person.profilePath?.let { imageUrl("w185", it) }.orEmpty(),
     )
 
+    private fun castAndCrew(cast: List<ApiCast>?, directing: List<ApiPerson>?) =
+        withDirectorsFirst(
+            directors = directing.orEmpty().filter { it.peid > 0 }.map {
+                MovieCast(
+                    id = it.peid.toString(),
+                    characterName = "",
+                    realName = it.name,
+                    avatarUrl = it.profilePath?.let { path -> imageUrl("w185", path) }.orEmpty(),
+                )
+            },
+            cast = cast.orEmpty().map { it.toMovieCast() },
+        )
+
     private fun List<ApiPerson>?.names(): String =
         this.orEmpty().map { it.name }.distinct().joinToString(", ").ifEmpty { Dash }
 
@@ -685,6 +698,21 @@ class TakeoutMovieRepository @Inject constructor(
         fun formatDollars(amount: String): String {
             val value = amount.trim().toLongOrNull()?.takeIf { it > 0 } ?: return Dash
             return "$" + String.format(Locale.US, "%,d", value)
+        }
+
+        /**
+         * Cast & Crew: [directors] first, labelled "Director", then [cast]. A director who also
+         * acts gets one card, "Director · as <role>", instead of a second one in the cast.
+         */
+        fun withDirectorsFirst(directors: List<MovieCast>, cast: List<MovieCast>): List<MovieCast> {
+            val roles = cast.groupBy { it.id }
+            val first = directors.distinctBy { it.id }.map { director ->
+                val role = roles[director.id].orEmpty().map { it.characterName }
+                    .filter { it.isNotBlank() }.distinct().joinToString(" / ")
+                director.copy(characterName = if (role.isEmpty()) "Director" else "Director · as $role")
+            }
+            val ids = first.map { it.id }.toSet()
+            return first + cast.filter { it.id !in ids }
         }
     }
 }

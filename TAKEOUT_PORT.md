@@ -180,6 +180,9 @@ library), A–Z.
 - Series: one row per season (specials last), episode cards with still, number, name, runtime;
   selecting an episode plays it.
 - Cast & Crew cards show TMDB profile photos (coloured block if none) and open the person page.
+  The directors come first, subtitled "Director"; a director who also acts gets one card,
+  "Director · as <role>". Writers aren't shown (the server sends `Writing`; they'd push the
+  actors right).
 - Row cards have a fixed width so a long focused title ellipsizes instead of shoving the row.
 
 ### Person page
@@ -269,10 +272,14 @@ paragraph at a time.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
+- No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
+  Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
+  `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.
+- Back from a person page returns focus to the details screen's Play button, not the cast card.
 
 ## Testing notes
 - Unit tests: `./gradlew :jetstream:testDebugUnitTest` (JUnit 4; Continue Watching window and
-  "in progress"/"finished" rules, best audio track ranking, dollar formatting).
+  "in progress"/"finished" rules, best audio track ranking, dollar formatting, directors first in Cast & Crew).
 - **Use the release build on real TVs**; the debug build is much slower there. Problems that only
   show on the TV (e.g. the Movies tab ANR) don't reproduce on an emulator running on a laptop.
 - Debug builds log every title's tracks, decoder support and errors to logcat (`EventLogger`).

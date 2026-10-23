@@ -16,6 +16,7 @@
 
 package com.google.jetstream.presentation.screens.movies
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -71,6 +72,14 @@ class MovieDetailsScreenViewModel @Inject constructor(
         viewModelScope.launch { _resumePositionMs.value = progress.resumePositionMs(etag) }
     }
 
+    /**
+     * The cast or episode card that last had focus, so Back from the person page or player
+     * returns to it. Kept here because the screen reloads when it's returned to after a while.
+     */
+    val focusedCardKey = mutableStateOf<String?>(null)
+
+    private var loaded: MovieDetails? = null
+
     private val retries = MutableStateFlow(0)
 
     /** Loads again after a failure (the error screen's Try again). */
@@ -88,15 +97,21 @@ class MovieDetailsScreenViewModel @Inject constructor(
                 emit(MovieDetailsScreenUiState.Error)
                 return@transformLatest
             }
-            emit(MovieDetailsScreenUiState.Loading)
+            // Coming back to the screen after a while restarts this; keep showing what's loaded
+            // while it refreshes, so the screen keeps its scroll and focus instead of being
+            // rebuilt from a skeleton. (Unchanged details are equal, so nothing recomposes.)
+            if (loaded == null) emit(MovieDetailsScreenUiState.Loading)
             val state = try {
                 val details = repository.getMovieDetails(movieId = id)
                 _isFavorite.value = details.isFavorite
+                loaded = details
                 MovieDetailsScreenUiState.Done(movieDetails = details)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                MovieDetailsScreenUiState.Error
+                // A failed refresh keeps the loaded details on screen.
+                loaded?.let { MovieDetailsScreenUiState.Done(movieDetails = it) }
+                    ?: MovieDetailsScreenUiState.Error
             }
             emit(state)
         }.stateIn(

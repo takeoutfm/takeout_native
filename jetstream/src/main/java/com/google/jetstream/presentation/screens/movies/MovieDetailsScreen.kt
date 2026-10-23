@@ -48,6 +48,9 @@ import com.google.jetstream.presentation.common.DetailsSkeleton
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.MoviesRow
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import com.google.jetstream.presentation.utils.FocusMemory
+import com.google.jetstream.presentation.utils.RestoreRememberedFocus
+import com.google.jetstream.presentation.utils.rememberFocusMemory
 
 object MovieDetailsScreen {
     const val MovieIdBundleKey = "movieId"
@@ -86,6 +89,7 @@ fun MovieDetailsScreen(
                 resumePositionMs = resumePositionMs,
                 isFavorite = isFavorite,
                 onToggleFavorite = movieDetailsScreenViewModel::toggleFavorite,
+                focusMemory = rememberFocusMemory(movieDetailsScreenViewModel.focusedCardKey),
                 goToMoviePlayer = goToMoviePlayer,
                 openPerson = openPerson,
                 playEpisode = playEpisode,
@@ -105,6 +109,7 @@ private fun Details(
     resumePositionMs: Long,
     isFavorite: Boolean,
     onToggleFavorite: (favoritePath: String) -> Unit,
+    focusMemory: FocusMemory,
     goToMoviePlayer: (startOver: Boolean) -> Unit,
     openPerson: (personId: String) -> Unit,
     playEpisode: (episodeId: String) -> Unit,
@@ -115,6 +120,7 @@ private fun Details(
     val childPadding = rememberChildPadding()
 
     BackHandler(onBack = onBackPressed)
+    RestoreRememberedFocus(focusMemory)
     LazyColumn(
         contentPadding = PaddingValues(bottom = 135.dp),
         modifier = modifier,
@@ -125,13 +131,18 @@ private fun Details(
                 resumePositionMs = resumePositionMs,
                 isFavorite = isFavorite,
                 onToggleFavorite = onToggleFavorite,
-                goToMoviePlayer = goToMoviePlayer
+                // Back from the player then lands on Play, not on a card opened earlier.
+                goToMoviePlayer = { startOver ->
+                    focusMemory.lastKey.value = null
+                    goToMoviePlayer(startOver)
+                }
             )
         }
 
         items(movieDetails.seasons, key = { "season-${it.number}" }) { season ->
             SeasonEpisodesRow(
                 season = season,
+                focusMemory = focusMemory,
                 onEpisodeSelected = { playEpisode(it.id) }
             )
         }
@@ -139,6 +150,7 @@ private fun Details(
         if (movieDetails.castAndCrew.isNotEmpty()) item {
             CastAndCrewList(
                 castAndCrew = movieDetails.castAndCrew,
+                focusMemory = focusMemory,
                 onPersonSelected = { openPerson(it.id) }
             )
         }

@@ -30,12 +30,15 @@ import com.google.jetstream.data.entities.Episode
 import com.google.jetstream.data.entities.Season
 import com.google.jetstream.presentation.common.MovieCard
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import com.google.jetstream.presentation.utils.FocusMemory
+import com.google.jetstream.presentation.utils.rememberFocus
 
 /** One row of episode cards for [season]. */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SeasonEpisodesRow(
     season: Season,
+    focusMemory: FocusMemory? = null,
     onEpisodeSelected: (Episode) -> Unit,
 ) {
     val childPadding = rememberChildPadding()
@@ -67,6 +70,13 @@ fun SeasonEpisodesRow(
                     modifier = Modifier
                         .width(268.dp)
                         .padding(end = 20.dp, bottom = 16.dp)
+                        .then(
+                            if (focusMemory != null) {
+                                Modifier.rememberFocus(focusMemory, "episode-${episode.id}")
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
         }

@@ -186,6 +186,11 @@ library), A–Z.
   The directors come first, subtitled "Director"; a director who also acts gets one card,
   "Director · as <role>". Writers aren't shown (the server sends `Writing`; they'd push the
   actors right).
+- Back from a person page (or from the player, for an episode) returns focus to the cast or
+  episode card that was opened, scrolled as it was. The card is remembered in the ViewModel, and
+  coming back after the 5 s `WhileSubscribed` window refreshes the details in the background
+  instead of showing the skeleton again (a failed refresh keeps what's shown). Pressing Play or
+  Start over forgets the card, so Back from the player lands on the buttons.
 - Row cards have a fixed width so a long focused title ellipsizes instead of shoving the row.
 
 ### Person page
@@ -278,9 +283,8 @@ paragraph at a time.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
   Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
   `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.
-- Once the profile avatar has had focus, Up from a tab's page goes to the avatar instead of
-  the current tab.
-- Back from a person page returns focus to the details screen's Play button, not the cast card.
+- Back from a title to the Movies grid puts focus on the profile avatar instead of the opened
+  poster (emulator and Chromecast, also before the tab-highlight change).
 
 ## Testing notes
 - Unit tests: `./gradlew :jetstream:testDebugUnitTest` (JUnit 4; Continue Watching window and

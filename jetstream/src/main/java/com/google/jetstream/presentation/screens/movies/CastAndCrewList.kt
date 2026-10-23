@@ -51,12 +51,15 @@ import com.google.jetstream.data.entities.MovieCast
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.theme.JetStreamBorderWidth
 import com.google.jetstream.presentation.theme.JetStreamCardShape
+import com.google.jetstream.presentation.utils.FocusMemory
 import com.google.jetstream.presentation.utils.ourColors
+import com.google.jetstream.presentation.utils.rememberFocus
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CastAndCrewList(
     castAndCrew: List<MovieCast>,
+    focusMemory: FocusMemory? = null,
     onPersonSelected: (MovieCast) -> Unit = {},
 ) {
     val childPadding = rememberChildPadding()
@@ -82,7 +85,15 @@ fun CastAndCrewList(
                 CastAndCrewItem(
                     castMember = it,
                     onClick = { onPersonSelected(it) },
-                    modifier = Modifier.width(144.dp)
+                    modifier = Modifier
+                        .width(144.dp)
+                        .then(
+                            if (focusMemory != null) {
+                                Modifier.rememberFocus(focusMemory, "cast-${it.id}")
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
         }

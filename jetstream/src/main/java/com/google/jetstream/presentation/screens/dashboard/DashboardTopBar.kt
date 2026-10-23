@@ -135,6 +135,12 @@ fun DashboardTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 var isTabRowFocused by remember { mutableStateOf(false) }
+                // The tab with focus. The pill follows it at once rather than waiting for the
+                // tab's page to load and report back through [selectedTabIndex], which left the
+                // newly focused tab dim until navigation finished.
+                var focusedTabIndex by remember { mutableStateOf(-1) }
+                val highlightedTabIndex =
+                    if (isTabRowFocused && focusedTabIndex >= 0) focusedTabIndex else selectedTabIndex
 
                 Spacer(modifier = Modifier.width(20.dp))
                 TabRow(
@@ -142,11 +148,11 @@ fun DashboardTopBar(
                         .onFocusChanged {
                             isTabRowFocused = it.isFocused || it.hasFocus
                         },
-                    selectedTabIndex = selectedTabIndex,
+                    selectedTabIndex = highlightedTabIndex,
                     indicator = { tabPositions, _ ->
-                        if (selectedTabIndex >= 0) {
+                        if (highlightedTabIndex in tabPositions.indices) {
                             DashboardTopBarItemIndicator(
-                                currentTabPosition = tabPositions[selectedTabIndex],
+                                currentTabPosition = tabPositions[highlightedTabIndex],
                                 anyTabFocused = isTabRowFocused,
                                 shape = JetStreamCardShape
                             )
@@ -160,8 +166,11 @@ fun DashboardTopBar(
                                 modifier = Modifier
                                     .height(32.dp)
                                     .focusRequester(focusRequesters[index + 1]),
-                                selected = index == selectedTabIndex,
-                                onFocus = { onRouteSelection(tab.route) },
+                                selected = index == highlightedTabIndex,
+                                onFocus = {
+                                    focusedTabIndex = index
+                                    onRouteSelection(tab.route)
+                                },
                                 onClick = { focusManager.moveFocus(FocusDirection.Down) },
                             ) {
                                 if (tab.icon != null) {

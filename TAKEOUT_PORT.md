@@ -120,6 +120,9 @@ plus the profile avatar. Recommendation sets come from the server config and dep
 (e.g. "Halloween Movies" in October); with none, the tab bar is the fixed set. The tab list is a
 `DashboardTab` list (fixed `Screens` tabs + recommendation tabs) with focus requesters sized to
 it. Many simultaneous sets could crowd the bar.
+The highlight pill follows the focused tab immediately, with no slide or colour fade. Landing on
+a tab still opens its page, but the pill no longer waits for that navigation (it used to, which
+left the newly focused tab dim gray until the page was built, then slid over).
 
 ### Home
 Featured carousel = new releases (8) · **Continue Watching** · Recently Added row ·
@@ -275,6 +278,8 @@ paragraph at a time.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
   Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
   `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.
+- Once the profile avatar has had focus, Up from a tab's page goes to the avatar instead of
+  the current tab.
 - Back from a person page returns focus to the details screen's Play button, not the cast card.
 
 ## Testing notes

@@ -16,8 +16,6 @@
 
 package com.google.jetstream.presentation.screens.dashboard
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +24,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,15 +43,15 @@ fun DashboardTopBarItemIndicator(
     anyTabFocused: Boolean,
     shape: Shape
 ) {
-    val width by animateDpAsState(targetValue = currentTabPosition.width, label = "width")
+    // No slide or fade: the tab's text colours switch at once, so an animated pill would leave
+    // a blank white pill on the old tab, or dark text on a dim pill, for a frame or more
+    // (longer while a big page is being built).
+    val width = currentTabPosition.width
     val height = currentTabPosition.height
-    val leftOffset by animateDpAsState(targetValue = currentTabPosition.left, label = "leftOffset")
+    val leftOffset = currentTabPosition.left
     val topOffset = currentTabPosition.top
 
-    val pillColor by animateColorAsState(
-        targetValue = if (anyTabFocused) activeColor else inactiveColor,
-        label = "pillColor"
-    )
+    val pillColor = if (anyTabFocused) activeColor else inactiveColor
 
     Box(
         modifier

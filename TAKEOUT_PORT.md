@@ -148,7 +148,9 @@ Movies, Shows and genre pages are A–Z by the server's `SortTitle` / `SortName`
 the title); recommendation sets are A–Z too. A–Z ignores case, accents and punctuation, so
 "Airplane!" comes before "Airplane II". Genre pages add a title header and start focused on
 the first poster. Coming back from a title (or, on Genres, from a genre) puts focus back on the
-item that was opened.
+item that was opened. When the screen that had focus goes away (after its exit animation), focus
+falls to the first focusable thing, the profile avatar; `DashboardScreen` waits up to 2 s for
+that after a return and moves focus down into the page, whose `FocusMemory` picks the item.
 
 ### Loading
 Browsing screens show pulsing skeletons in the shape of the page (Home, grids, Genres, details,
@@ -283,8 +285,6 @@ paragraph at a time.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
   Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
   `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.
-- Back from a title to the Movies grid puts focus on the profile avatar instead of the opened
-  poster (emulator and Chromecast, also before the tab-highlight change).
 
 ## Testing notes
 - Unit tests: `./gradlew :jetstream:testDebugUnitTest` (JUnit 4; Continue Watching window and

@@ -106,6 +106,7 @@ fun DashboardTopBar(
     tabs: List<DashboardTab>,
     /** One per tab, plus the profile avatar's first. */
     focusRequesters: List<FocusRequester>,
+    onAvatarFocusChanged: (isFocused: Boolean) -> Unit = {},
     onRouteSelection: (route: String) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
@@ -122,6 +123,7 @@ fun DashboardTopBar(
                 modifier = Modifier
                     .size(32.dp)
                     .focusRequester(focusRequesters[0])
+                    .onFocusChanged { onAvatarFocusChanged(it.hasFocus) }
                     .semantics {
                         contentDescription =
                             StringConstants.Composable.ContentDescription.UserAvatar

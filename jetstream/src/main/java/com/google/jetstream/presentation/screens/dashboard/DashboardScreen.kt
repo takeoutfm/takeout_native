@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
@@ -74,6 +75,8 @@ import com.google.jetstream.presentation.screens.profile.ProfileScreen
 import com.google.jetstream.presentation.screens.search.SearchScreen
 import com.google.jetstream.presentation.screens.shows.ShowsScreen
 import com.google.jetstream.presentation.utils.Padding
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 val ParentPadding = PaddingValues(vertical = 16.dp, horizontal = 58.dp)
 
@@ -105,6 +108,7 @@ fun DashboardScreen(
 
     var isTopBarVisible by remember { mutableStateOf(true) }
     var isTopBarFocused by remember { mutableStateOf(false) }
+    var isAvatarFocused by remember { mutableStateOf(false) }
 
     val recommendationsOrNull by dashboardViewModel.recommendations.collectAsStateWithLifecycle()
     val recommendations = recommendationsOrNull.orEmpty()
@@ -190,6 +194,20 @@ fun DashboardScreen(
             label = "",
         )
 
+        // Coming back from a title (or a genre, person, the player), the screen that had focus
+        // goes away once its exit animation ends, and focus falls to the first focusable thing:
+        // the profile avatar. Move it down into the page instead, where the grid or row returns
+        // it to the item that was opened (FocusMemory). Only the avatar counts, so a deliberate
+        // Up to the tabs in the meantime is left alone.
+        LaunchedEffect(isComingBackFromDifferentScreen) {
+            if (!isComingBackFromDifferentScreen) return@LaunchedEffect
+            val fellToAvatar = withTimeoutOrNull(ReturnFocusTimeoutMillis) {
+                snapshotFlow { isAvatarFocused }.first { it }
+            }
+            if (fellToAvatar != null) focusManager.moveFocus(FocusDirection.Down)
+            resetIsComingBackFromDifferentScreen()
+        }
+
         LaunchedEffect(Unit) {
             if (!wasTopBarFocusRequestedBefore) {
                 topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
@@ -214,6 +232,7 @@ fun DashboardScreen(
             selectedTabIndex = currentTopBarSelectedTabIndex,
             tabs = tabs,
             focusRequesters = topBarFocusRequesters,
+            onAvatarFocusChanged = { isAvatarFocused = it },
         ) { targetRoute ->
             if (currentDestination != targetRoute) {
                 navController.navigate(targetRoute) {
@@ -332,3 +351,5 @@ private fun Body(
             )
         }
     }
+
+private const val ReturnFocusTimeoutMillis = 2_000L

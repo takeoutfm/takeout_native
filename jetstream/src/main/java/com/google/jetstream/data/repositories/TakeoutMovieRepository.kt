@@ -27,6 +27,7 @@ import com.google.jetstream.data.takeout.TakeoutApi
 import com.google.jetstream.data.takeout.TakeoutLibrary
 import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.data.takeout.TakeoutSession
+import com.google.jetstream.data.takeout.TakeoutUrls
 import java.text.Normalizer
 import java.util.Locale
 import javax.inject.Inject
@@ -61,6 +62,7 @@ class TakeoutMovieRepository @Inject constructor(
     private val session: TakeoutSession,
     private val progress: TakeoutProgress,
     private val library: TakeoutLibrary,
+    private val urls: TakeoutUrls,
 ) : MovieRepository {
 
     // ---- tiny in-memory TTL cache so one Home load doesn't hit /api/home four times ----
@@ -211,9 +213,9 @@ class TakeoutMovieRepository @Inject constructor(
         val m = view.movie
         return MovieDetails(
             id = "m-${m.id}",
-            videoUri = absolute(view.location),
+            videoUri = urls.absolute(view.location),
             subtitleUri = null,
-            posterUri = imageUrl("w1280", m.backdropPath.ifEmpty { m.posterPath }),
+            posterUri = urls.tmdbImage("w1280", m.backdropPath.ifEmpty { m.posterPath }),
             name = m.title,
             description = m.overview.ifEmpty { m.tagline },
             pgRating = m.rating.ifEmpty { "NR" },
@@ -264,9 +266,9 @@ class TakeoutMovieRepository @Inject constructor(
             .map { (number, list) -> Season(number, list.map { it.toEpisode() }) }
         return MovieDetails(
             id = "s-${s.id}",
-            videoUri = absolute(location),
+            videoUri = urls.absolute(location),
             subtitleUri = null,
-            posterUri = imageUrl("w1280", s.backdropPath.ifEmpty { s.posterPath }),
+            posterUri = urls.tmdbImage("w1280", s.backdropPath.ifEmpty { s.posterPath }),
             name = s.name,
             description = s.overview,
             pgRating = s.rating.ifEmpty { "NR" },
@@ -339,9 +341,9 @@ class TakeoutMovieRepository @Inject constructor(
         val index = order.indexOfFirst { it.id == e.id }
         return MovieDetails(
             id = "e-${e.id}",
-            videoUri = absolute(view.location),
+            videoUri = urls.absolute(view.location),
             subtitleUri = null,
-            posterUri = imageUrl("w1280", e.stillPath.ifEmpty { s.backdropPath }),
+            posterUri = urls.tmdbImage("w1280", e.stillPath.ifEmpty { s.backdropPath }),
             name = "${s.name} · S${e.season}E${e.episode} ${e.name}".trim(),
             description = e.overview,
             pgRating = s.rating.ifEmpty { "NR" },
@@ -403,8 +405,8 @@ class TakeoutMovieRepository @Inject constructor(
         id = "e-$id",
         videoUri = "",
         subtitleUri = null,
-        posterUri = imageUrl("w300", stillPath)
-            .ifEmpty { imageUrl("w780", series?.backdropPath.orEmpty()) },
+        posterUri = urls.tmdbImage("w300", stillPath)
+            .ifEmpty { urls.tmdbImage("w780", series?.backdropPath.orEmpty()) },
         name = listOfNotNull(series?.name, "S${season}E$episode $name".trim()).joinToString(" · "),
         description = overview,
     )
@@ -468,7 +470,7 @@ class TakeoutMovieRepository @Inject constructor(
         return PersonDetails(
             id = p.peid.toString(),
             name = p.name,
-            photoUri = p.profilePath?.let { imageUrl("w342", it) }.orEmpty(),
+            photoUri = p.profilePath?.let { urls.tmdbImage("w342", it) }.orEmpty(),
             lifeSummary = listOfNotNull(years, p.birthplace.ifEmpty { null }).joinToString(" · "),
             bio = p.bio,
             credits = credits,
@@ -567,24 +569,15 @@ class TakeoutMovieRepository @Inject constructor(
 
     // ---- Helpers ----
 
-    private fun absolute(location: String): String = when {
-        location.isEmpty() -> ""
-        location.startsWith("http://") || location.startsWith("https://") -> location
-        else -> endpoint + location
-    }
-
     /** By the server's sort title (e.g. without a leading "The"), falling back to the title. */
     private fun List<ApiMovie>.sortedAZ(): List<ApiMovie> =
         sortedByTitle { it.sortTitle.ifEmpty { it.title } }
 
-    private fun imageUrl(size: String, path: String): String =
-        if (path.isEmpty()) "" else "$endpoint/img/tm/$size$path"
-
     private fun ApiMovie.toMovie(endpoint: String, long: Boolean = false): Movie {
         val poster = if (long) {
-            imageUrl("w1280", backdropPath.ifEmpty { posterPath })
+            urls.tmdbImage("w1280", backdropPath.ifEmpty { posterPath })
         } else {
-            imageUrl("w342", posterPath.ifEmpty { backdropPath })
+            urls.tmdbImage("w342", posterPath.ifEmpty { backdropPath })
         }
         return Movie(
             id = "m-$id",
@@ -598,9 +591,9 @@ class TakeoutMovieRepository @Inject constructor(
 
     private fun ApiSeries.toMovie(endpoint: String, long: Boolean = false): Movie {
         val poster = if (long) {
-            imageUrl("w1280", backdropPath.ifEmpty { posterPath })
+            urls.tmdbImage("w1280", backdropPath.ifEmpty { posterPath })
         } else {
-            imageUrl("w342", posterPath.ifEmpty { backdropPath })
+            urls.tmdbImage("w342", posterPath.ifEmpty { backdropPath })
         }
         return Movie(
             id = "s-$id",
@@ -618,7 +611,7 @@ class TakeoutMovieRepository @Inject constructor(
         episode = episode,
         name = name,
         description = overview,
-        stillUri = imageUrl("w300", stillPath),
+        stillUri = urls.tmdbImage("w300", stillPath),
         duration = durationOf(runtime),
     )
 
@@ -626,7 +619,7 @@ class TakeoutMovieRepository @Inject constructor(
         id = peid.toString(),
         characterName = character,
         realName = person.name,
-        avatarUrl = person.profilePath?.let { imageUrl("w185", it) }.orEmpty(),
+        avatarUrl = person.profilePath?.let { urls.tmdbImage("w185", it) }.orEmpty(),
     )
 
     private fun castAndCrew(cast: List<ApiCast>?, directing: List<ApiPerson>?) =
@@ -636,7 +629,7 @@ class TakeoutMovieRepository @Inject constructor(
                     id = it.peid.toString(),
                     characterName = "",
                     realName = it.name,
-                    avatarUrl = it.profilePath?.let { path -> imageUrl("w185", path) }.orEmpty(),
+                    avatarUrl = it.profilePath?.let { path -> urls.tmdbImage("w185", path) }.orEmpty(),
                 )
             },
             cast = cast.orEmpty().map { it.toMovieCast() },

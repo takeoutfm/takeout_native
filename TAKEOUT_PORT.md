@@ -248,6 +248,144 @@ paragraph at a time.
 - **Remembered on the device**: the subtitle choice (Off stays off; a track sets the preferred
   subtitle language) and the audio language.
 
+## Music (design — not built yet)
+
+A proposal for adding the server's music library alongside video. Nothing below exists in the
+app yet; it records the plan and what the server offers, for review before any code.
+
+### Mode switch
+- The top bar's TAKEOUT logo becomes a focusable, labelled switch (`TAKEOUT · Video ▾` /
+  `TAKEOUT · Music ▾`). Selecting it swaps the whole tab set; a hidden toggle on the plain logo
+  would be hard to discover on a TV.
+- **Video**: today's tabs. **Music**: Home · Artists · Favorites · Playlists · Radio · Search.
+  Shown only when `/api/index` says `HasMusic`; Playlists only with `HasPlaylists`. Without
+  music, the logo stays a plain logo. No Albums tab (an all-releases list is too big; albums are
+  reached through artists, search and Home), and no Podcasts for now.
+- The last mode is saved per device (`TakeoutSettings`) and the app starts in it. Search is
+  shared; it shows the current mode's results first (the server's `/api/search` already returns
+  `Artists`, `Releases`, `Tracks` and `Stations` alongside video).
+
+### Screens (reusing JetStream pieces)
+| Screen | Built from | Data |
+|---|---|---|
+| Music Home: Recently Played, Recently Added, New Releases | `MoviesRow`, square tiles | Recently Played from the local play history (below); `/api/home` (`AddedReleases`, `NewReleases`) |
+| Artists (A–Z) | `PosterGrid`, square artist images | `/api/artists` |
+| Favorites: Play all, favorite artists row, favorite tracks list | `MoviesRow` + a track list | `/api/favorite` (`Artists`, `Tracks`); Play all = `/api/favorite/tracks/playlist`; add/remove with `PUT/DELETE /api/favorite/artists/{arid}`, `…/tracks/{etag}` |
+| Artist page: background image, name, genre/years, Play / Shuffle / Radio, rows of albums, singles, popular tracks, similar artists | Person page + details layout | `/api/artists/{id}` (`Image`, `Background`, `Releases`, `Similar`), `/{res}` = `popular`, `singles` |
+| Album page: cover, artist, year, Play / Shuffle, track list, similar albums | details screen with a track list in place of Cast & Crew | `/api/releases/{id}` (`Tracks`, `Similar`, `Image`, `Background`) |
+| Playlists | grid of named tiles | `/api/playlists`, `/api/playlists/{id}/playlist` |
+| Radio | grouped rows (Artist, Genre, Similar, Period, Series, Other, Stream) | `/api/radio`, `/api/radio/{id}/playlist` |
+
+Focus memory, skeletons, voice search and the 6-column grid carry over unchanged. Covers come
+from `/img/mb/re/{reid}/front` or `/img/mb/rg/{rgid}/front` (the server proxies Cover Art
+Archive), artist images from `/img/fa/{arid}/t/…` and backgrounds from `/img/fa/{arid}/b/…`;
+the API responses already carry these paths.
+
+### Playback
+- **Queues come from the server**: every "play this" endpoint (`/api/releases/{id}/playlist`,
+  `/api/artists/{id}/{res}/playlist`, `/api/radio/{id}/playlist`, `/api/playlists/{id}/playlist`,
+  `/api/favorite/tracks/playlist`) returns a spiff playlist: `{playlist: {title, image, track:
+  [{title, creator, album, image, location: ["/api/tracks/{uuid}/location"], identifier: [etag],
+  size}]}, index, position, type}`. Entries map one-to-one onto Media3 `MediaItem`s (title,
+  artist, album, artwork in `MediaMetadata`; the location resolved like video streams, with the
+  media token).
+- **A background service owns the music player**: a Media3 `MediaSessionService` (later
+  `MediaLibraryService` if browsing from Google TV's own UI is wanted) with its own ExoPlayer and
+  queue, so music keeps playing while browsing, survives leaving the player screen, and is
+  controlled by remote keys and Assistant anywhere ("next song", "pause"). The UI connects with
+  a `MediaController`. The video player stays as it is (screen-scoped); starting a video takes
+  audio focus and pauses music.
+- **Mini player**: a slim bar at the bottom of every music screen while something is queued
+  (art, title, artist, play/pause); selecting it opens Now Playing.
+- **Now Playing**: large cover over the artist background, title/artist/album, seek bar,
+  previous / play-pause / next, shuffle, repeat, and the queue as a row. Left/right on the
+  remote seek like video; up opens the queue. Doubles as a "screensaver" view (keep the screen
+  on only while playing, as video does).
+- **Server activity (opt-in)**: post `{"TrackEvents": [{"ETag", "Date"}]}` to
+  `POST /api/activity` once a track has played for half its length or 4 minutes (the Takeout
+  Flutter app's rule), behind a per-device setting like its `enableTrackActivity` (off by
+  default). Radio stream entries without an ETag are skipped.
+- **Play history (local)**: every queue that starts playing is saved on the device as its spiff
+  (title, image, entries) plus the index and position reached, most recent first, capped at 50;
+  replaying an existing queue moves it to the front instead of adding a copy (matched by the
+  playlist's location/ref, else its title and first entry). This is Music Home's **Recently
+  Played** row; selecting an entry plays it again from where it was left. It needs no server
+  support and is separate from the server activity reporting above.
+
+### Code structure
+Music sits beside the video code rather than inside it: video types and screens stay as they
+are, the few shared pieces move into their own classes first.
+
+**Shared refactors first (no behaviour change, own commits)**
+- `TakeoutUrls`: `absolute()` and `imageUrl()` move out of `TakeoutMovieRepository` into an
+  injected class both repositories use; music adds cover / artist image / background paths.
+- `TakeoutPlayerFactory`: the stream setup in `rememberPlayer` (media-token
+  `ResolvingDataSource`, decoder fallback, debug `EventLogger`) becomes a plain factory used by
+  the video screen and the music service, so stream authorization lives in one place.
+- Sorting helpers (`sortKey`, `sortedByTitle`, `listFlow`) move to a shared util, since Artists
+  are a large A–Z list too (keeps the "no sorting on the main thread" rule easy).
+- `TileGrid<T>` / `TileRow<T>`: generic versions of `PosterGrid` / `MoviesRow` taking key,
+  image, title and aspect ratio (2:3 poster or 1:1 square), with focus memory and
+  `focusOnInitialVisibility` inside; `PosterGrid` becomes a thin wrapper.
+
+**Data: `data/music/`**
+- `MusicApiModels.kt`: artists, releases, tracks, stations, playlists and the spiff playlist,
+  same conventions as `ApiModels.kt` (PascalCase `@SerialName`, every field defaulted).
+- `TakeoutApi` gains the music GETs and `postActivity`; same client, auth and refresh.
+- Entities in `data/entities/music/` (`Artist`, `Album`, `Track`, `Station`, `MusicPlaylist`),
+  deliberately not `Movie`; JetStream's movie-shaped `MovieRepository` isn't used for music.
+- `TakeoutMusicRepository` (Hilt singleton): maps API → entities, caches the big lists, returns
+  queues.
+- IDs: `ar-` artist, `al-` album, `st-` station, `pl-` playlist, separate from `m-`/`s-`/`e-`.
+- `TakeoutLibrary` exposes `hasMusic`/`hasPlaylists`; `TakeoutSettings` adds `mode` and
+  `reportTrackActivity`.
+- `MusicHistory`: the local Recently Played list (≤ 50 spiffs with index/position), saved on the
+  device like `TakeoutProgress`'s local copy; written by the playback service when a queue
+  starts and as it advances, read by Music Home.
+
+**Playback: `playback/` (outside `presentation/`, since music outlives screens)**
+- `MusicService : MediaSessionService`: owns the music ExoPlayer (from `TakeoutPlayerFactory`),
+  its `MediaSession`, queue and audio focus; declared in the manifest with the media-playback
+  foreground service type.
+- `MusicPlayer` (Hilt singleton): wraps a `MediaController` to the service, exposes
+  `StateFlow<NowPlaying>` (queue, index, position, playing) and `play(queue, start)`,
+  `playPause()`, `next()`, `shuffle()`. ViewModels use only this.
+- `SpiffMapper`: spiff entry → `MediaItem` (metadata, artwork, ETag); pure, unit-tested.
+- `ListenReporter`: player listener in the service applying the half-or-4-minutes rule and
+  posting `/api/activity` when the setting is on; unit-tested like `TakeoutProgress`.
+- The video player stays screen-scoped and unchanged; its audio focus pauses music.
+
+**UI: `presentation/screens/music/`**
+- One package per screen (`home`, `artists`, `favorites`, `artist`, `album`, `radio`,
+  `playlists`, `nowplaying`), each a screen + ViewModel as for video.
+- Mode: `DashboardViewModel` holds it; `dashboardTabs()` takes it and returns the video or music
+  tab list; the TAKEOUT logo becomes the switch; the dashboard's inner `NavHost` gets the music
+  tab routes; `Screens` splits tab entries into video and music sets.
+- `Artist`, `Album` and `NowPlaying` are top-level routes in `App.kt` next to `MovieDetails` and
+  `Person`, so Back and focus return work the same way.
+- Mini player: an overlay at the `App.kt` level above the `NavHost`, visible across dashboard
+  and artist/album pages, hidden on the video player and Now Playing.
+
+**Unchanged**: the package name, video screens, `MovieRepository`, and the CLAUDE.md rules
+(server access only in `data/`, no main-thread sorting, initial focus only after layout).
+
+### Phases
+Each step is its own commit(s), checked on the emulator and TV.
+0. **Shared refactors** (above), with video re-checked for no change.
+1. **Browse**: music API models and repository methods, the mode switch, Music Home (Recently
+   Added, New Releases), Artists, artist and album pages; Play starts a minimal in-screen
+   queue.
+2. **Player**: `MediaSessionService`, `MediaController` wiring, mini player, Now Playing, audio
+   focus with video.
+3. **More sources**: Favorites (artists, tracks, add/remove), Radio, Playlists, and the local
+   Recently Played history on Music Home.
+4. **Polish**: server activity reporting (opt-in), music search tuning, Google TV now-playing
+   card artwork.
+
+### Open questions / server gaps
+- Podcasts: left out for now; decide later whether they join Music mode or get their own.
+- Lyrics/visualizer: not planned.
+
 ## Progress
 
 | Commit | Change |
@@ -294,6 +432,7 @@ paragraph at a time.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
+- No music, radio or podcasts yet: see **Music (design — not built yet)** for the plan.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
   Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
   `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.

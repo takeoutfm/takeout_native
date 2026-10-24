@@ -62,6 +62,8 @@ data class QueueItem(
     val artist: String,
     val album: String,
     val imageUri: String,
+    /** The artist's background image, or "". */
+    val backgroundUri: String = "",
     /** Full stream URL. */
     val uri: String,
     /** The track's ETag; "" for radio streams. */

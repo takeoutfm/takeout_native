@@ -67,6 +67,9 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   `ar-`/`al-`/`t-`), entities in `data/entities/music/`, screens in
   `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
   remaining phases is in `TAKEOUT_PORT.md` → Music.
+- **Music playback:** `playback/MusicService` (background `MediaSessionService`) plays; the UI
+  only talks to `playback/MusicPlayer` (a `MediaController` singleton with `NowPlaying` state).
+  The mini player is an overlay in `App.kt`. Video playback stays screen-scoped.
 
 ## Rules learned the hard way
 

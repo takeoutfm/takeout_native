@@ -19,7 +19,7 @@ class MusicMappingTest {
               "image": "/img/mb/re/abc/front",
               "track": [
                 {"creator": "The Beatles", "album": "Abbey Road", "title": "Come Together",
-                 "image": "/img/mb/re/abc/front",
+                 "image": "/img/mb/re/abc/front", "background": "/img/fa/ar1/b/bg.jpg",
                  "location": ["/api/tracks/u1/location"], "identifier": ["etag1"], "size": [1]},
                 {"title": "No location"},
                 {"creator": "The Beatles", "album": "Abbey Road", "title": "Something",
@@ -37,6 +37,8 @@ class MusicMappingTest {
         assertEquals(listOf("Come Together", "Something"), queue.items.map { it.title })
         assertEquals("$server/api/tracks/u1/location", queue.items[0].uri)
         assertEquals("etag1", queue.items[0].etag)
+        assertEquals("$server/img/fa/ar1/b/bg.jpg", queue.items[0].backgroundUri)
+        assertEquals("", queue.items[1].backgroundUri)
         assertEquals("", queue.items[1].etag)
         assertEquals(1, queue.startIndex)
     }

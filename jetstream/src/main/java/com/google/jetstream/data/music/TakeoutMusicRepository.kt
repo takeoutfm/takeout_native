@@ -176,6 +176,7 @@ class TakeoutMusicRepository @Inject constructor(
                     artist = entry.creator,
                     album = entry.album,
                     imageUri = absolute(entry.image),
+                    backgroundUri = absolute(entry.background),
                     uri = absolute(location),
                     etag = entry.identifier?.firstOrNull().orEmpty(),
                 )

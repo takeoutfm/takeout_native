@@ -254,10 +254,10 @@ paragraph at a time.
 
 ## Music
 
-The server's music library alongside video. Phases 0–1 are built (see **Built so far** below);
+The server's music library alongside video. Phases 0–2 are built (see **Built so far** below);
 the rest of this section is the plan for what's next.
 
-### Built so far (phase 1)
+### Built so far (phases 1–2)
 - **Mode switch**: with `HasMusic`, the TAKEOUT logo is a focusable switch — ▶ TAKEOUT ⇄ in
   video, ♪ TAKEOUT ⇄ in music. Selecting it swaps the tab set and opens that mode's first tab;
   the mode is saved (`TakeoutSettings.mode`) and the app starts in it. A library without music
@@ -272,10 +272,31 @@ the rest of this section is the plan for what's next.
 - **Album page**: cover, title, artist, year · type · track count; Play and Artist buttons; the
   track list (disc headings on multi-disc releases; the track's artist when it differs);
   Similar Albums. Selecting a track plays the album from it.
-- **Player (minimal)**: `MusicPlayerScreen` plays a queue while it's open — cover, title,
-  artist, album, progress, previous / play-pause / next, "Up next"; a media session so remote
-  keys and Assistant work; keeps the screen on while playing; stops on Back. Queues are passed
-  as a `QueueRef` route argument ("album:al-12:3", "artist:ar-5:shuffle:0").
+- **Background playback**: `playback/MusicService` (a Media3 `MediaSessionService`, foreground
+  with the media-playback type) owns the music player and queue, so music keeps playing while
+  browsing (in either mode) and with the app in the background; its session
+  serves remote keys, Assistant and Google TV's now-playing card (which reopens the app). The UI
+  uses `playback/MusicPlayer`, a singleton `MediaController` that exposes `NowPlaying` state
+  (queue, index, playing, position polled while playing, repeat, error). Stream URIs
+  ride in each item's request metadata, since Media3 doesn't pass a controller's
+  `localConfiguration` to the session. Signing out stops the music.
+- **Now Playing**: `MusicPlayerScreen` (route with a `QueueRef`: "album:al-12:3",
+  "artist:ar-5:shuffle:0") loads the queue and hands it to the service; `NowPlayingScreen` (from
+  the mini player) shows what's playing. The playing track's artist background fills the screen
+  (each spiff entry carries one, so it changes with the artist in Radio/Shuffle mixes; it rides
+  in `MediaMetadata.extras`), darkened on the left; without one, the dimmed cover. Cover, title,
+  artist, album; a focusable seek bar (left/right = ±10 s while focused); previous / play-pause /
+  next / repeat (off → all → one) / Queue (no shuffle button: Shuffle is an artist mix); "Up next" or the error. Back leaves the
+  music playing. Keeps the screen on while playing.
+- **Queue panel**: the Queue button slides in a panel from the right with the whole queue as a
+  text list (number, title, artist; a small cover per row only when the queue mixes albums),
+  opened on the playing track (marked with an equalizer icon). Selecting a track plays it and
+  closes the panel; Back closes it; focus returns to the Queue button.
+- **Mini player**: a card in the bottom-right corner of every screen except the players (cover,
+  track, artist → Now Playing; play/pause button), while anything is queued. Reached with the
+  D-pad like any other control (Down from the bottom row).
+- **Video and music**: the video player now takes audio focus, so starting a video pauses the
+  music (it stays paused afterwards); music also pauses for calls and other apps' audio.
 - Back returns focus to the opened album/artist/track everywhere (Home rows, Artists grid,
   artist and album pages); pages keep their state while something on top is open.
 - Code: `data/music/` (API models, `TakeoutMusicRepository`), `data/entities/music/`,
@@ -404,7 +425,7 @@ Each step is its own commit(s), checked on the emulator and TV.
    Added, New Releases), Artists, artist and album pages; Play starts a minimal in-screen
    queue. **Done.**
 2. **Player**: `MediaSessionService`, `MediaController` wiring, mini player, Now Playing, audio
-   focus with video.
+   focus with video. **Done.**
 3. **More sources**: Favorites (artists, tracks, add/remove), Radio, Playlists, and the local
    Recently Played history on Music Home.
 4. **Polish**: server activity reporting (opt-in), music search tuning, Google TV now-playing
@@ -460,9 +481,10 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
-- Music plays only while its player screen is open (no background playback, mini player or
-  queue view yet); no music Favorites, Playlists or Radio tabs, and search is video-only. See
-  **Music** for the plan. No podcasts.
+- No music Favorites, Playlists or Radio tabs or Recently Played yet, and search is video-only.
+  See **Music** for the plan. No podcasts.
+- The mini player covers part of the last visible row on long pages (grids, details); it could
+  hide while the content under it has focus, or move into the top bar.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
   Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
   `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.

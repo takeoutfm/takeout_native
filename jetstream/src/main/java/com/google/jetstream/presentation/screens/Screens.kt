@@ -53,7 +53,8 @@ enum class Screens(
     Artists(isMusicTab = true),
     Artist(listOf(ArtistScreen.ArtistIdBundleKey)),
     Album(listOf(AlbumScreen.AlbumIdBundleKey)),
-    MusicPlayer(listOf(MusicPlayerScreen.QueueBundleKey));
+    MusicPlayer(listOf(MusicPlayerScreen.QueueBundleKey)),
+    NowPlaying;
 
     operator fun invoke(): String {
         val argList = StringBuilder()

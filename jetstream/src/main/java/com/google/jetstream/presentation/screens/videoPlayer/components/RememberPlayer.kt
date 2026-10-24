@@ -19,6 +19,7 @@ package com.google.jetstream.presentation.screens.videoPlayer.components
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -32,6 +33,14 @@ fun rememberPlayer(context: Context) = remember {
         .fromApplication(context.applicationContext, TakeoutSessionEntryPoint::class.java)
         .playerFactory()
     factory.builder()
+        // Takes audio focus, so starting a video pauses music (and calls pause the video).
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(),
+            /* handleAudioFocus = */ true
+        )
         .setSeekForwardIncrementMs(10_000)
         .setSeekBackIncrementMs(10_000)
         .setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)

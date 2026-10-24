@@ -125,6 +125,8 @@ data class ApiSpiffEntry(
     @SerialName("album") val album: String = "",
     @SerialName("title") val title: String = "",
     @SerialName("image") val image: String = "",
+    /** The artist's background image (server path), or "". */
+    @SerialName("background") val background: String = "",
     /** Stream locations; the first is used ("/api/tracks/{uuid}/location", or a full URL). */
     @SerialName("location") val location: List<String>? = null,
     /** The track's ETag first, when it has one (radio streams don't). */

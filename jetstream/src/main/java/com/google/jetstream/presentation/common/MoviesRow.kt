@@ -16,47 +16,26 @@
 
 package com.google.jetstream.presentation.common
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +54,6 @@ enum class ItemDirection(val aspectRatio: Float, val cardWidth: Dp) {
     Horizontal(16f / 9f, 268.dp);
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MoviesRow(
     movieList: MovieList,
@@ -92,61 +70,21 @@ fun MoviesRow(
     showIndexOverImage: Boolean = false,
     onMovieSelected: (movie: Movie) -> Unit = {}
 ) {
-    val (lazyRow, firstItem) = remember { FocusRequester.createRefs() }
-
-    Column(
-        modifier = modifier.focusGroup()
-    ) {
-        if (title != null) {
-            Text(
-                text = title,
-                style = titleStyle,
-                modifier = Modifier
-                    .alpha(1f)
-                    .padding(start = startPadding, top = 16.dp, bottom = 16.dp)
-            )
-        }
-        AnimatedContent(
-            targetState = movieList,
-            label = "",
-        ) { movieState ->
-            LazyRow(
-                contentPadding = PaddingValues(
-                    start = startPadding,
-                    end = endPadding,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = Modifier
-                    .focusRequester(lazyRow)
-                    .focusRestorer {
-                        firstItem
-                    }
-            ) {
-                itemsIndexed(movieState, key = { _, movie -> movie.id }) { index, movie ->
-                    val itemModifier = if (index == 0) {
-                        Modifier.focusRequester(firstItem)
-                    } else {
-                        Modifier
-                    }
-                    MoviesRowItem(
-                        modifier = itemModifier.weight(1f),
-                        index = index,
-                        itemDirection = itemDirection,
-                        onMovieSelected = {
-                            lazyRow.saveFocusedChild()
-                            onMovieSelected(it)
-                        },
-                        movie = movie,
-                        showItemTitle = showItemTitle,
-                        showIndexOverImage = showIndexOverImage
-                    )
-                }
-            }
-        }
-    }
+    ImmersiveListMoviesRow(
+        movieList = movieList,
+        modifier = modifier,
+        itemDirection = itemDirection,
+        startPadding = startPadding,
+        endPadding = endPadding,
+        title = title,
+        titleStyle = titleStyle,
+        showItemTitle = showItemTitle,
+        showIndexOverImage = showIndexOverImage,
+        onMovieSelected = onMovieSelected,
+    )
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
+/** [MoviesRow] that also reports the focused movie, e.g. for a backdrop behind the row. */
 @Composable
 fun ImmersiveListMoviesRow(
     movieList: MovieList,
@@ -164,111 +102,28 @@ fun ImmersiveListMoviesRow(
     onMovieSelected: (Movie) -> Unit = {},
     onMovieFocused: (Movie) -> Unit = {}
 ) {
-    val (lazyRow, firstItem) = remember { FocusRequester.createRefs() }
-
-    Column(
-        modifier = modifier.focusGroup()
-    ) {
-        if (title != null) {
-            Text(
-                text = title,
-                style = titleStyle,
-                modifier = Modifier
-                    .alpha(1f)
-                    .padding(start = startPadding)
-                    .padding(vertical = 16.dp)
-            )
-        }
-        AnimatedContent(
-            targetState = movieList,
-            label = "",
-        ) { movieState ->
-            LazyRow(
-                contentPadding = PaddingValues(start = startPadding, end = endPadding),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = Modifier
-                    .focusRequester(lazyRow)
-                    .focusRestorer {
-                        firstItem
-                    }
-            ) {
-                itemsIndexed(
-                    movieState,
-                    key = { _, movie ->
-                        movie.id
-                    }
-                ) { index, movie ->
-                    val itemModifier = if (index == 0) {
-                        Modifier.focusRequester(firstItem)
-                    } else {
-                        Modifier
-                    }
-                    MoviesRowItem(
-                        modifier = itemModifier.weight(1f),
-                        index = index,
-                        itemDirection = itemDirection,
-                        onMovieSelected = {
-                            lazyRow.saveFocusedChild()
-                            onMovieSelected(it)
-                        },
-                        onMovieFocused = onMovieFocused,
-                        movie = movie,
-                        showItemTitle = showItemTitle,
-                        showIndexOverImage = showIndexOverImage
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-private fun MoviesRowItem(
-    index: Int,
-    movie: Movie,
-    onMovieSelected: (Movie) -> Unit,
-    showItemTitle: Boolean,
-    showIndexOverImage: Boolean,
-    modifier: Modifier = Modifier,
-    itemDirection: ItemDirection = ItemDirection.Vertical,
-    onMovieFocused: (Movie) -> Unit = {},
-) {
-    var isFocused by remember { mutableStateOf(false) }
-
-    MovieCard(
-        onClick = { onMovieSelected(movie) },
-        title = {
-            MoviesRowItemText(
-                showItemTitle = showItemTitle,
-                isItemFocused = isFocused,
-                movie = movie
+    TileRow(
+        items = movieList,
+        key = { it.id },
+        itemTitle = { it.name },
+        itemImage = { movie, index, imageModifier ->
+            MoviesRowItemImage(
+                movie = movie,
+                showIndexOverImage = showIndexOverImage,
+                index = index,
+                modifier = imageModifier,
             )
         },
-        modifier = Modifier
-            .onFocusChanged {
-                isFocused = it.isFocused
-                if (it.isFocused) {
-                    onMovieFocused(movie)
-                }
-            }
-            .focusProperties {
-                left = if (index == 0) {
-                    FocusRequester.Cancel
-                } else {
-                    FocusRequester.Default
-                }
-            }
-            .then(modifier)
-            .width(itemDirection.cardWidth)
-    ) {
-        MoviesRowItemImage(
-            modifier = Modifier.aspectRatio(itemDirection.aspectRatio),
-            showIndexOverImage = showIndexOverImage,
-            movie = movie,
-            index = index
-        )
-    }
+        modifier = modifier,
+        itemDirection = itemDirection,
+        startPadding = startPadding,
+        endPadding = endPadding,
+        title = title,
+        titleStyle = titleStyle,
+        showItemTitle = showItemTitle,
+        onItemSelected = onMovieSelected,
+        onItemFocused = onMovieFocused,
+    )
 }
 
 @Composable
@@ -318,34 +173,6 @@ private fun MoviesRowItemImage(
                 fontWeight = FontWeight.SemiBold
             )
         }
-    }
-}
-
-@Composable
-private fun MoviesRowItemText(
-    showItemTitle: Boolean,
-    isItemFocused: Boolean,
-    movie: Movie,
-    modifier: Modifier = Modifier
-) {
-    if (showItemTitle) {
-        val movieNameAlpha by animateFloatAsState(
-            targetValue = if (isItemFocused) 1f else 0f,
-            label = "",
-        )
-        Text(
-            text = movie.name,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            textAlign = TextAlign.Center,
-            modifier = modifier
-                .alpha(movieNameAlpha)
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 

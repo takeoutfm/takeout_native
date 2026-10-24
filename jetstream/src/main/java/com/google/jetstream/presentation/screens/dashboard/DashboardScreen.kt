@@ -65,12 +65,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.Recommendation
+import com.google.jetstream.data.takeout.LibraryMode
 import com.google.jetstream.presentation.common.PosterGrid
 import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.screens.categories.CategoriesScreen
 import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
 import com.google.jetstream.presentation.screens.home.HomeScreen
 import com.google.jetstream.presentation.screens.movies.MoviesScreen
+import com.google.jetstream.presentation.screens.music.artists.ArtistsScreen
+import com.google.jetstream.presentation.screens.music.home.MusicHomeScreen
 import com.google.jetstream.presentation.screens.profile.ProfileScreen
 import com.google.jetstream.presentation.screens.search.SearchScreen
 import com.google.jetstream.presentation.screens.shows.ShowsScreen
@@ -100,6 +103,8 @@ fun DashboardScreen(
     isComingBackFromDifferentScreen: Boolean,
     resetIsComingBackFromDifferentScreen: () -> Unit,
     onBackPressed: () -> Unit,
+    openArtist: (artistId: String) -> Unit = {},
+    openAlbum: (albumId: String) -> Unit = {},
     dashboardViewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val density = LocalDensity.current
@@ -113,7 +118,22 @@ fun DashboardScreen(
     val recommendationsOrNull by dashboardViewModel.recommendations.collectAsStateWithLifecycle()
     val recommendations = recommendationsOrNull.orEmpty()
     val libraryIndex by dashboardViewModel.libraryIndex.collectAsStateWithLifecycle()
-    val tabs = remember(recommendations, libraryIndex) { dashboardTabs(recommendations, libraryIndex) }
+    val mode by dashboardViewModel.mode.collectAsStateWithLifecycle()
+    val canSwitchMode = libraryIndex?.hasMusic == true
+    // A library without music (once known) always shows video.
+    LaunchedEffect(libraryIndex, mode) {
+        val index = libraryIndex
+        if (index != null && !index.hasMusic && mode == LibraryMode.Music) {
+            dashboardViewModel.setMode(LibraryMode.Video)
+        }
+    }
+    val tabs = remember(recommendations, libraryIndex, mode) {
+        dashboardTabs(recommendations, libraryIndex, mode)
+    }
+    // The first tab shown when the dashboard is created, by the saved mode.
+    val startDestination = remember {
+        if (mode == LibraryMode.Music) Screens.MusicHome() else Screens.Home()
+    }
     // +1 for the profile avatar, which comes first.
     val topBarFocusRequesters = remember(tabs.size) { List(tabs.size + 1) { FocusRequester() } }
 
@@ -233,6 +253,19 @@ fun DashboardScreen(
             tabs = tabs,
             focusRequesters = topBarFocusRequesters,
             onAvatarFocusChanged = { isAvatarFocused = it },
+            mode = mode,
+            canSwitchMode = canSwitchMode,
+            onSwitchMode = {
+                val newMode =
+                    if (mode == LibraryMode.Music) LibraryMode.Video else LibraryMode.Music
+                dashboardViewModel.setMode(newMode)
+                // Start the other half fresh at its first tab.
+                val firstTab = dashboardTabs(recommendations, libraryIndex, newMode)[0]
+                navController.navigate(firstTab.route) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
         ) { targetRoute ->
             if (currentDestination != targetRoute) {
                 navController.navigate(targetRoute) {
@@ -247,6 +280,9 @@ fun DashboardScreen(
             openCategoryMovieList = openCategoryMovieList,
             openMovieDetailsScreen = openMovieDetailsScreen,
             openVideoPlayer = openVideoPlayer,
+            openArtist = openArtist,
+            openAlbum = openAlbum,
+            startDestination = startDestination,
             updateTopBarVisibility = { isTopBarVisible = it },
             isTopBarVisible = isTopBarVisible,
             navController = navController,
@@ -281,6 +317,9 @@ private fun Body(
     openCategoryMovieList: (categoryId: String) -> Unit,
     openMovieDetailsScreen: (movieId: String) -> Unit,
     openVideoPlayer: (Movie) -> Unit,
+    openArtist: (artistId: String) -> Unit,
+    openAlbum: (albumId: String) -> Unit,
+    startDestination: String,
     updateTopBarVisibility: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
@@ -289,7 +328,7 @@ private fun Body(
     NavHost(
         modifier = modifier,
         navController = navController,
-        startDestination = Screens.Home(),
+        startDestination = startDestination,
     ) {
         composable(Screens.Profile()) {
             ProfileScreen()
@@ -348,6 +387,20 @@ private fun Body(
             SearchScreen(
                 onMovieClick = { movie -> openMovieDetailsScreen(movie.id) },
                 onScroll = updateTopBarVisibility
+            )
+        }
+        composable(Screens.MusicHome()) {
+            MusicHomeScreen(
+                onAlbumClick = { openAlbum(it.id) },
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+            )
+        }
+        composable(Screens.Artists()) {
+            ArtistsScreen(
+                onArtistClick = { openArtist(it.id) },
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
             )
         }
     }

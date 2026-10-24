@@ -60,8 +60,13 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 - **Shared UI:** `presentation/common/TileGrid.kt` / `TileRow.kt` (generic 6-column grid and
   card row; `PosterGrid.kt` and `MoviesRow.kt` wrap them for movies), `Skeletons.kt` (loading
   states), `presentation/utils/FocusMemory.kt` (return focus to the item that was opened).
-- **Shared data helpers:** `data/takeout/TakeoutUrls.kt` (server URLs for locations and images),
-  `data/util/Lists.kt` (`listFlow`, `sortKey`, `sortedByTitle`).
+- **Shared data helpers:** `data/takeout/TakeoutUrls.kt` (server URLs for locations, images and
+  release covers), `data/util/Lists.kt` (`listFlow`, `sortKey`, `sortedByTitle`).
+- **Music:** a separate half of the app, switched with the TAKEOUT logo (`LibraryMode` in
+  `TakeoutSettings`). `data/music/` (`MusicApiModels.kt`, `TakeoutMusicRepository`; ids
+  `ar-`/`al-`/`t-`), entities in `data/entities/music/`, screens in
+  `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
+  remaining phases is in `TAKEOUT_PORT.md` → Music.
 
 ## Rules learned the hard way
 

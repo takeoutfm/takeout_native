@@ -51,7 +51,9 @@ import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
  */
 enum class ItemDirection(val aspectRatio: Float, val cardWidth: Dp) {
     Vertical(10.5f / 16f, 172.dp),
-    Horizontal(16f / 9f, 268.dp);
+    Horizontal(16f / 9f, 268.dp),
+    /** Album covers and artist photos. */
+    Square(1f, 196.dp);
 }
 
 @Composable

@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import com.google.jetstream.presentation.utils.FocusMemory
+import com.google.jetstream.presentation.utils.rememberFocus
 
 /**
  * A titled row of cards for any kind of item (movies, and later albums, artists, stations).
@@ -61,6 +63,8 @@ fun <T> TileRow(
     showItemTitle: Boolean = true,
     onItemSelected: (T) -> Unit = {},
     onItemFocused: (T) -> Unit = {},
+    /** Remembers the focused card across leaving the screen (see [rememberFocus]). */
+    focusMemory: FocusMemory? = null,
 ) {
     val (lazyRow, firstItem) = remember { FocusRequester.createRefs() }
 
@@ -97,7 +101,13 @@ fun <T> TileRow(
                         Modifier.focusRequester(firstItem)
                     } else {
                         Modifier
-                    }
+                    }.then(
+                        if (focusMemory != null) {
+                            Modifier.rememberFocus(focusMemory, key(item))
+                        } else {
+                            Modifier
+                        }
+                    )
                     TileRowItem(
                         modifier = itemModifier.weight(1f),
                         index = index,

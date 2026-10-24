@@ -83,4 +83,30 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="message_error">Couldn\'t load this</string>
     <string name="message_error_detail">Check your connection and Takeout server, then try again.</string>
     <string name="try_again">Try again</string>
+    <!-- Music -->
+    <string name="music_mode">Music</string>
+    <string name="video_mode">Video</string>
+    <string name="switch_mode">Switch between video and music</string>
+    <string name="music_recently_added">Recently Added</string>
+    <string name="music_new_releases">New Releases</string>
+    <string name="music_popular">Popular</string>
+    <string name="music_albums">Albums</string>
+    <string name="music_singles">Singles &amp; EPs</string>
+    <string name="music_other_releases">Live, Compilations &amp; More</string>
+    <string name="music_similar_artists">Similar Artists</string>
+    <string name="music_similar_albums">Similar Albums</string>
+    <string name="music_shuffle">Shuffle</string>
+    <string name="music_radio">Radio</string>
+    <string name="music_play">Play</string>
+    <string name="music_pause">Pause</string>
+    <string name="music_previous">Previous</string>
+    <string name="music_next">Next</string>
+    <string name="music_artist">Artist</string>
+    <string name="music_disc">Disc %1$d</string>
+    <string name="music_up_next">Up next: %1$s · %2$s</string>
+    <string name="music_cant_play">Can\'t play this track (%1$s)</string>
+    <plurals name="music_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
 </resources>

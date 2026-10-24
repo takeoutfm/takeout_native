@@ -43,6 +43,19 @@ class TakeoutSettings @Inject constructor(
         prefs.edit().putString(KEY_AUDIO_LANGUAGE, language).apply()
     }
 
+    private val _mode = MutableStateFlow(
+        LibraryMode.entries.firstOrNull { it.name == prefs.getString(KEY_MODE, null) }
+            ?: LibraryMode.Video
+    )
+
+    /** Video or music: which set of tabs the app shows; the app starts in the last one used. */
+    val mode: StateFlow<LibraryMode> = _mode.asStateFlow()
+
+    fun setMode(mode: LibraryMode) {
+        _mode.value = mode
+        prefs.edit().putString(KEY_MODE, mode.name).apply()
+    }
+
     companion object {
         const val AllTime = 0
         const val DefaultContinueWatchingDays = 30
@@ -51,5 +64,9 @@ class TakeoutSettings @Inject constructor(
         private const val KEY_CONTINUE_WATCHING_DAYS = "continue_watching_days"
         private const val KEY_SUBTITLE_LANGUAGE = "subtitle_language"
         private const val KEY_AUDIO_LANGUAGE = "audio_language"
+        private const val KEY_MODE = "library_mode"
     }
 }
+
+/** The two halves of the app, switched with the TAKEOUT logo in the top bar. */
+enum class LibraryMode { Video, Music }

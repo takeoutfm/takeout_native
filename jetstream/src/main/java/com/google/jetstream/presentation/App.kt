@@ -36,6 +36,9 @@ import com.google.jetstream.presentation.screens.dashboard.DashboardScreen
 import com.google.jetstream.presentation.screens.login.LoginScreen
 import com.google.jetstream.presentation.screens.login.SessionViewModel
 import com.google.jetstream.presentation.screens.movies.MovieDetailsScreen
+import com.google.jetstream.presentation.screens.music.album.AlbumScreen
+import com.google.jetstream.presentation.screens.music.artist.ArtistScreen
+import com.google.jetstream.presentation.screens.music.player.MusicPlayerScreen
 import com.google.jetstream.presentation.screens.person.PersonScreen
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
 
@@ -166,6 +169,12 @@ private fun AppContent(
                     openVideoPlayer = { movie ->
                         navController.navigate(Screens.VideoPlayer.withArgs(movie.id))
                     },
+                    openArtist = { artistId ->
+                        navController.navigate(Screens.Artist.withArgs(artistId))
+                    },
+                    openAlbum = { albumId ->
+                        navController.navigate(Screens.Album.withArgs(albumId))
+                    },
                     onBackPressed = onBackPressed,
                     isComingBackFromDifferentScreen = isComingBackFromDifferentScreen,
                     resetIsComingBackFromDifferentScreen = {
@@ -198,6 +207,66 @@ private fun AppContent(
                         navController.popBackStack()
                         navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
                     }
+                )
+            }
+            composable(
+                route = Screens.Artist(),
+                arguments = listOf(
+                    navArgument(ArtistScreen.ArtistIdBundleKey) { type = NavType.StringType }
+                )
+            ) {
+                ArtistScreen(
+                    onAlbumClick = { album ->
+                        navController.navigate(Screens.Album.withArgs(album.id))
+                    },
+                    onArtistClick = { artist ->
+                        navController.navigate(Screens.Artist.withArgs(artist.id))
+                    },
+                    onPlay = { ref ->
+                        navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                    },
+                    onBackPressed = {
+                        if (navController.navigateUp()) {
+                            isComingBackFromDifferentScreen = true
+                        }
+                    },
+                )
+            }
+            composable(
+                route = Screens.Album(),
+                arguments = listOf(
+                    navArgument(AlbumScreen.AlbumIdBundleKey) { type = NavType.StringType }
+                )
+            ) {
+                AlbumScreen(
+                    onArtistClick = { artistId ->
+                        navController.navigate(Screens.Artist.withArgs(artistId))
+                    },
+                    onAlbumClick = { album ->
+                        navController.navigate(Screens.Album.withArgs(album.id))
+                    },
+                    onPlay = { ref ->
+                        navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                    },
+                    onBackPressed = {
+                        if (navController.navigateUp()) {
+                            isComingBackFromDifferentScreen = true
+                        }
+                    },
+                )
+            }
+            composable(
+                route = Screens.MusicPlayer(),
+                arguments = listOf(
+                    navArgument(MusicPlayerScreen.QueueBundleKey) { type = NavType.StringType }
+                )
+            ) {
+                MusicPlayerScreen(
+                    onBackPressed = {
+                        if (navController.navigateUp()) {
+                            isComingBackFromDifferentScreen = true
+                        }
+                    },
                 )
             }
         }

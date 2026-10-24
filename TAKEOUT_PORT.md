@@ -252,10 +252,34 @@ paragraph at a time.
 - **Remembered on the device**: the subtitle choice (Off stays off; a track sets the preferred
   subtitle language) and the audio language.
 
-## Music (design — not built yet)
+## Music
 
-A proposal for adding the server's music library alongside video. Nothing below exists in the
-app yet; it records the plan and what the server offers, for review before any code.
+The server's music library alongside video. Phases 0–1 are built (see **Built so far** below);
+the rest of this section is the plan for what's next.
+
+### Built so far (phase 1)
+- **Mode switch**: with `HasMusic`, the TAKEOUT logo is a focusable switch — ▶ TAKEOUT ⇄ in
+  video, ♪ TAKEOUT ⇄ in music. Selecting it swaps the tab set and opens that mode's first tab;
+  the mode is saved (`TakeoutSettings.mode`) and the app starts in it. A library without music
+  always shows video.
+- **Music tabs**: Home (Recently Added, New Releases rows of square covers, from `/api/home`'s
+  `AddedReleases`/`NewReleases`) and Artists (every artist A–Z, square photos; artists without a
+  photo show their name on a coloured tile). Favorites, Playlists and Radio tabs come later.
+- **Artist page**: background, photo, name, genre; Shuffle / Popular / Radio buttons (the
+  server's `shuffle`, `popular`, `radio` artist playlists); rows of popular tracks (selecting one
+  plays Popular from it), Albums (studio), Singles & EPs, Live/Compilations & More, Similar
+  Artists. Release types come from MusicBrainz (`Type`, `SecondaryType`).
+- **Album page**: cover, title, artist, year · type · track count; Play and Artist buttons; the
+  track list (disc headings on multi-disc releases; the track's artist when it differs);
+  Similar Albums. Selecting a track plays the album from it.
+- **Player (minimal)**: `MusicPlayerScreen` plays a queue while it's open — cover, title,
+  artist, album, progress, previous / play-pause / next, "Up next"; a media session so remote
+  keys and Assistant work; keeps the screen on while playing; stops on Back. Queues are passed
+  as a `QueueRef` route argument ("album:al-12:3", "artist:ar-5:shuffle:0").
+- Back returns focus to the opened album/artist/track everywhere (Home rows, Artists grid,
+  artist and album pages); pages keep their state while something on top is open.
+- Code: `data/music/` (API models, `TakeoutMusicRepository`), `data/entities/music/`,
+  `presentation/screens/music/` (home, artists, artist, album, player, common).
 
 ### Mode switch
 - The top bar's TAKEOUT logo becomes a focusable, labelled switch (`TAKEOUT · Video ▾` /
@@ -378,7 +402,7 @@ Each step is its own commit(s), checked on the emulator and TV.
 0. **Shared refactors** (above), with video re-checked for no change. **Done.**
 1. **Browse**: music API models and repository methods, the mode switch, Music Home (Recently
    Added, New Releases), Artists, artist and album pages; Play starts a minimal in-screen
-   queue.
+   queue. **Done.**
 2. **Player**: `MediaSessionService`, `MediaController` wiring, mini player, Now Playing, audio
    focus with video.
 3. **More sources**: Favorites (artists, tracks, add/remove), Radio, Playlists, and the local
@@ -436,7 +460,9 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
-- No music, radio or podcasts yet: see **Music (design — not built yet)** for the plan.
+- Music plays only while its player screen is open (no background playback, mini player or
+  queue view yet); no music Favorites, Playlists or Radio tabs, and search is video-only. See
+  **Music** for the plan. No podcasts.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
   Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
   `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.

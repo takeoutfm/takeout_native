@@ -21,13 +21,21 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.jetstream.presentation.screens.categories.CategoryMovieListScreen
 import com.google.jetstream.presentation.screens.movies.MovieDetailsScreen
+import com.google.jetstream.presentation.screens.music.album.AlbumScreen
+import com.google.jetstream.presentation.screens.music.artist.ArtistScreen
+import com.google.jetstream.presentation.screens.music.player.MusicPlayerScreen
 import com.google.jetstream.presentation.screens.person.PersonScreen
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
 
 enum class Screens(
     private val args: List<String>? = null,
+    /** A video-mode tab. */
     val isTabItem: Boolean = false,
-    val tabIcon: ImageVector? = null
+    val tabIcon: ImageVector? = null,
+    /** A music-mode tab. */
+    val isMusicTab: Boolean = false,
+    /** The tab's label when it isn't the route name. */
+    val tabLabel: String? = null,
 ) {
     Profile,
     Home(isTabItem = true),
@@ -40,7 +48,12 @@ enum class Screens(
     MovieDetails(listOf(MovieDetailsScreen.MovieIdBundleKey)),
     Dashboard,
     VideoPlayer(listOf(VideoPlayerScreen.MovieIdBundleKey)),
-    Person(listOf(PersonScreen.PersonIdBundleKey));
+    Person(listOf(PersonScreen.PersonIdBundleKey)),
+    MusicHome(isMusicTab = true, tabLabel = "Home"),
+    Artists(isMusicTab = true),
+    Artist(listOf(ArtistScreen.ArtistIdBundleKey)),
+    Album(listOf(AlbumScreen.AlbumIdBundleKey)),
+    MusicPlayer(listOf(MusicPlayerScreen.QueueBundleKey));
 
     operator fun invoke(): String {
         val argList = StringBuilder()

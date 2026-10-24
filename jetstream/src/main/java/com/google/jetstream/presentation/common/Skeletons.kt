@@ -150,9 +150,29 @@ fun HomeSkeleton(modifier: Modifier = Modifier) {
     }
 }
 
-/** Movies, Shows, Favorites and genre pages: a 6-column poster grid. */
+/** Music Home: rows of square album covers. */
 @Composable
-fun PosterGridSkeleton(modifier: Modifier = Modifier, showHeader: Boolean = false) {
+fun MusicHomeSkeleton(modifier: Modifier = Modifier) {
+    DelayedLoading(modifier) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .clipToBounds()
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+        ) {
+            SkeletonRow(cardWidth = ItemDirection.Square.cardWidth, aspectRatio = 1f)
+            SkeletonRow(cardWidth = ItemDirection.Square.cardWidth, aspectRatio = 1f)
+        }
+    }
+}
+
+/** Movies, Shows, Favorites and genre pages (posters), Artists (squares): a 6-column grid. */
+@Composable
+fun PosterGridSkeleton(
+    modifier: Modifier = Modifier,
+    showHeader: Boolean = false,
+    aspectRatio: Float = 10.5f / 16f,
+) {
     val childPadding = rememberChildPadding()
     DelayedLoading(modifier) {
         Column(
@@ -174,7 +194,7 @@ fun PosterGridSkeleton(modifier: Modifier = Modifier, showHeader: Boolean = fals
             repeat(3) {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     repeat(6) {
-                        SkeletonBlock(Modifier.weight(1f).aspectRatio(10.5f / 16f))
+                        SkeletonBlock(Modifier.weight(1f).aspectRatio(aspectRatio))
                     }
                 }
             }

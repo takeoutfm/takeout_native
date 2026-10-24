@@ -53,12 +53,15 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 - **Navigation:** `presentation/App.kt` (sign-in gate + top-level NavHost: details, player,
   person, genre pages); `presentation/screens/dashboard/` (tab bar built from `TakeoutLibrary`,
   including one tab per recommendation set).
-- **Player:** `presentation/screens/videoPlayer/` — `RememberPlayer.kt` builds ExoPlayer (media
-  token via `ResolvingDataSource`, decoder fallback, debug `EventLogger`); track pickers and the
-  best-audio-track ranking live in `components/`.
-- **Shared UI:** `presentation/common/PosterGrid.kt` (all 6-column grids), `MoviesRow.kt`,
-  `Skeletons.kt` (loading states), `presentation/utils/FocusMemory.kt` (return focus to the item
-  that was opened).
+- **Player:** `playback/TakeoutPlayerFactory.kt` sets up ExoPlayer for Takeout streams (media
+  token via `ResolvingDataSource`, decoder fallback, debug `EventLogger`), shared by video and
+  the planned music playback; `presentation/screens/videoPlayer/` — `RememberPlayer.kt` adds the
+  video-specific options; track pickers and the best-audio-track ranking live in `components/`.
+- **Shared UI:** `presentation/common/TileGrid.kt` / `TileRow.kt` (generic 6-column grid and
+  card row; `PosterGrid.kt` and `MoviesRow.kt` wrap them for movies), `Skeletons.kt` (loading
+  states), `presentation/utils/FocusMemory.kt` (return focus to the item that was opened).
+- **Shared data helpers:** `data/takeout/TakeoutUrls.kt` (server URLs for locations and images),
+  `data/util/Lists.kt` (`listFlow`, `sortKey`, `sortedByTitle`).
 
 ## Rules learned the hard way
 

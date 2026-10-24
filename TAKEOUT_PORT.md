@@ -30,17 +30,21 @@ directly where needed.
 | Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
 | Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
 | Takeout → JetStream mapping, TTL cache with shared in-flight loads | `data/repositories/TakeoutMovieRepository.kt` |
+| Server URLs for stream locations and images | `data/takeout/TakeoutUrls.kt` |
+| Off-main-thread list loading, A–Z sort keys | `data/util/Lists.kt` |
 | Library index (tabs/requests), saved + refreshed | `data/takeout/TakeoutLibrary.kt` |
 | Device-code sign-in UI / sign-in gate | `presentation/screens/login/*`, `presentation/App.kt` |
 | Top bar tabs (fixed + recommendation tabs) | `.../dashboard/DashboardTopBar.kt`, `DashboardScreen.kt`, `DashboardViewModel.kt` |
-| Shared 6-column poster grid | `presentation/common/PosterGrid.kt` |
+| Shared 6-column grid and card row (any item type) | `presentation/common/TileGrid.kt`, `TileRow.kt` |
+| Poster grid / movie rows on top of them | `presentation/common/PosterGrid.kt`, `MoviesRow.kt` |
 | Movie/series details, Resume / Start over / Favorite | `.../screens/movies/MovieDetails*.kt` |
 | Home rows incl. Continue Watching (progress bars on cards) | `.../screens/home/*`, `presentation/common/MoviesRow.kt` |
 | Favorites tab | `.../screens/favourites/*` |
 | Season/episode rows | `.../screens/movies/EpisodesList.kt` |
 | Cast & Crew row (photos, opens person page) | `.../screens/movies/CastAndCrewList.kt` |
 | Person page | `.../screens/person/*` |
-| Player (stream auth, progress, errors, release) | `.../videoPlayer/VideoPlayerScreen.kt`, `components/RememberPlayer.kt` |
+| ExoPlayer for Takeout streams (media token, decoder fallback) | `playback/TakeoutPlayerFactory.kt` |
+| Player (progress, errors, release, media session) | `.../videoPlayer/VideoPlayerScreen.kt`, `components/RememberPlayer.kt` |
 | Audio/subtitle/speed pickers, subtitle rendering | `.../videoPlayer/components/TrackSelection.kt` |
 | Best audio track ranking (unit-tested) | `.../videoPlayer/components/AudioTrackRanking.kt` |
 | Skeleton loading screens, player spinner | `presentation/common/Skeletons.kt` |
@@ -371,7 +375,7 @@ are, the few shared pieces move into their own classes first.
 
 ### Phases
 Each step is its own commit(s), checked on the emulator and TV.
-0. **Shared refactors** (above), with video re-checked for no change.
+0. **Shared refactors** (above), with video re-checked for no change. **Done.**
 1. **Browse**: music API models and repository methods, the mode switch, Music Home (Recently
    Added, New Releases), Artists, artist and album pages; Play starts a minimal in-screen
    queue.

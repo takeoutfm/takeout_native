@@ -111,7 +111,9 @@ title contains the whole phrase first. Enter, Search, Done and Go all submit; th
 in the field and previous results stay visible while new ones load.
 **Voice**: a mic button right of the field listens with Android's `SpeechRecognizer` inside the
 app (`VoiceSearch.kt`), not Google's voice bar (which draws over the top of the screen): the mic
-turns red and the field says "Listening…", words appear as they're heard, and it searches when
+turns red and the field says "Listening…", words appear as they're heard (the recognizer's sure
+words plus its `UNSTABLE_TEXT` guess, which is often all there is during a short phrase), and
+it searches when
 speaking stops; pressing the mic again stops early. Needs `RECORD_AUDIO`, asked the first time.
 Hidden when the device has no recognition service (`<queries>` for `RecognitionService` makes
 that check work). Assistant's global search ("Hey Google, find …") doesn't include Takeout; that

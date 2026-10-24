@@ -65,7 +65,7 @@ fun rememberVoiceSearch(
             }
 
             override fun onPartialResults(partialResults: Bundle?) {
-                partialResults.bestMatch()?.let { currentOnPartial(it) }
+                partialResults.heardSoFar()?.let { currentOnPartial(it) }
             }
 
             override fun onResults(results: Bundle?) {
@@ -114,6 +114,20 @@ private fun recognizerIntent(context: Context) =
         .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+
+/**
+ * Partial results come in two parts: the words the recognizer is sure of, and its current guess
+ * at what's being said (Google's recognizers; often the only text during a short phrase).
+ */
+private fun Bundle?.heardSoFar(): String? {
+    if (this == null) return null
+    val stable = getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+    val unstable = getStringArrayList(UnstableTextKey)?.firstOrNull().orEmpty()
+    return (stable + unstable).trim().ifEmpty { null }
+}
+
+/** Not in the SDK's constants, but sent by Google's recognizers with partial results. */
+private const val UnstableTextKey = "android.speech.extra.UNSTABLE_TEXT"
 
 private fun Bundle?.bestMatch(): String? =
     this?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)

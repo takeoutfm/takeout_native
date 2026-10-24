@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
@@ -54,6 +55,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
@@ -154,6 +156,9 @@ fun VideoPlayerScreenContent(
     val playbackError = remember { mutableStateOf<String?>(null) }
     // True until the first frames are ready, and whenever playback stalls to buffer.
     val isBuffering = remember { mutableStateOf(true) }
+    // The player's isPlaying as Compose state, so the overlay and play/pause button follow
+    // changes made outside the UI (remote media keys, Assistant) as well as their own.
+    val isPlayingState = remember { mutableStateOf(exoPlayer.isPlaying) }
     // Only save progress once playback really started, so a failed load never resets it to 0.
     val hasPlayed = remember { mutableStateOf(false) }
     val saveProgress = remember(exoPlayer, movieDetails) {
@@ -194,6 +199,7 @@ fun VideoPlayerScreenContent(
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
+                isPlayingState.value = isPlaying
                 if (isPlaying) hasPlayed.value = true else saveProgress()
                 // Keep the TV's screensaver away only while video is actually playing;
                 // paused or stopped, the normal timeout applies again.
@@ -216,6 +222,17 @@ fun VideoPlayerScreenContent(
             saveProgress()
             exoPlayer.release()
         }
+    }
+
+    DisposableEffect(exoPlayer) {
+        // Lets the remote's media keys (play/pause, fast-forward, rewind) and Assistant voice
+        // commands ("pause", "skip ahead 30 seconds") control the player. The id only has to be
+        // unique while two player screens briefly overlap, e.g. going to the next episode.
+        // Declared after the player's effect so it's disposed first: session before player.
+        val mediaSession = MediaSession.Builder(context, exoPlayer)
+            .setId("player-${System.nanoTime()}")
+            .build()
+        onDispose { mediaSession.release() }
     }
 
     BackHandler(onBack = onBackPressed)
@@ -248,7 +265,7 @@ fun VideoPlayerScreenContent(
         VideoPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
             focusRequester = focusRequester,
-            isPlaying = exoPlayer.isPlaying,
+            isPlaying = isPlayingState.value,
             isControlsVisible = videoPlayerState.isControlsVisible,
             centerButton = { VideoPlayerPulse(pulseState) },
             subtitles = {},
@@ -256,6 +273,7 @@ fun VideoPlayerScreenContent(
             controls = {
                 VideoPlayerControls(
                     player = exoPlayer,
+                    isPlaying = isPlayingState.value,
                     movieDetails = movieDetails,
                     focusRequester = focusRequester,
                     onShowControls = { videoPlayerState.showControls(exoPlayer.isPlaying) },
@@ -395,6 +413,8 @@ private fun Modifier.dPadEvents(
 private fun MovieDetails.intoMediaItem(): MediaItem {
     return MediaItem.Builder()
         .setUri(videoUri)
+        // Shown by the system for the media session (e.g. what Assistant says is playing).
+        .setMediaMetadata(MediaMetadata.Builder().setTitle(name).build())
         .setSubtitleConfigurations(
             if (subtitleUri == null) {
                 emptyList()

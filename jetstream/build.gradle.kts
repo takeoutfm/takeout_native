@@ -106,6 +106,8 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     // SubtitleView: renders text and bitmap (PGS/VobSub) subtitle cues
     implementation(libs.androidx.media3.ui.views)
+    // MediaSession: remote media keys and Assistant ("pause") reach the player
+    implementation(libs.androidx.media3.session)
 
     testImplementation(libs.junit4)
 

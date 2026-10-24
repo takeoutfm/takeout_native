@@ -37,14 +37,13 @@ import com.google.jetstream.data.util.StringConstants
 @Composable
 fun VideoPlayerControls(
     player: Player,
+    isPlaying: Boolean,
     movieDetails: MovieDetails,
     focusRequester: FocusRequester,
     onShowControls: () -> Unit = {},
     onOpenTrackPicker: (TrackPicker) -> Unit = {},
     onPlayEpisode: (episodeId: String) -> Unit = {},
 ) {
-    val isPlaying = player.isPlaying
-
     VideoPlayerMainFrame(
         mediaTitle = {
             VideoPlayerMediaTitle(

@@ -210,6 +210,11 @@ paragraph at a time.
   player, so Back still returns to where playback started. JetStream's playlist buttons and
   repeat are gone.
 - The screen is kept on only while video is playing (screensaver allowed when paused).
+- **Media session**: a Media3 `MediaSession` (title in its metadata) lives as long as the player
+  screen, so media keys (play/pause, play, pause, fast-forward/rewind = 10 s; from a TV remote over
+  HDMI-CEC or a Bluetooth remote) and Assistant voice commands reach the player. The overlay and
+  play/pause button follow `isPlaying` as Compose state, so changes made that way show too. No
+  `MediaSessionService`: playback stops on leaving the app, so there's no background session.
 - Streams: the `Location` URL redirects (307) to the file. ExoPlayer opens it several times per
   start (MKV header, the Cues index near the end, the resume point) and again on seeks, and
   follows the redirect each time, so the server logs ~3 `/location` hits per start.
@@ -272,8 +277,6 @@ paragraph at a time.
 | `cc05ad5` | Keep the screen on while playing |
 
 ## Known gaps / next steps
-- Media keys and Assistant voice commands ("pause") do nothing in the player: there's no
-  MediaSession yet (proposed as a separate task).
 - No Android TV Watch Next row or home-screen channels (proposed as a separate task), and no
   Cast Connect (needs a Cast receiver app first).
 - `versionCode` is still 1 and release builds are signed with the debug key, so it can't install

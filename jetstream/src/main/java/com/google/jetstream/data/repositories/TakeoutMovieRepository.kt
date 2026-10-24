@@ -28,7 +28,9 @@ import com.google.jetstream.data.takeout.TakeoutLibrary
 import com.google.jetstream.data.takeout.TakeoutProgress
 import com.google.jetstream.data.takeout.TakeoutSession
 import com.google.jetstream.data.takeout.TakeoutUrls
-import java.text.Normalizer
+import com.google.jetstream.data.util.listFlow
+import com.google.jetstream.data.util.sortKey
+import com.google.jetstream.data.util.sortedByTitle
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -108,18 +110,6 @@ class TakeoutMovieRepository @Inject constructor(
         @Suppress("UNCHECKED_CAST")
         return deferred.await() as T
     }
-
-    /** Runs [block] on a background thread: parsing and sorting a big library is too slow for main. */
-    private fun <T> listFlow(block: suspend () -> List<T>): Flow<List<T>> = flow {
-        val list = try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            emptyList()
-        }
-        emit(list)
-    }.flowOn(Dispatchers.Default)
 
     private suspend fun home() = library.home()
 
@@ -664,28 +654,10 @@ class TakeoutMovieRepository @Inject constructor(
             .split(Regex("\\s+")).filter { it.isNotBlank() }
             .joinToString(" ") { "+$it" }
 
-    /**
-     * A–Z key: case- and accent-insensitive, with punctuation ignored, so "Airplane!" sorts
-     * before "Airplane II" and "Amélie" with the A's.
-     */
-    private fun sortKey(title: String): String =
-        Normalizer.normalize(title, Normalizer.Form.NFD)
-            .replace(Accents, "")
-            .lowercase(Locale.ROOT)
-            .replace(NonAlphanumerics, " ")
-            .trim()
-
-    /** Sorts by [sortKey] of [title], computing each key once rather than per comparison. */
-    private fun <T> List<T>.sortedByTitle(title: (T) -> String): List<T> =
-        map { sortKey(title(it)) to it }.sortedBy { it.first }.map { it.second }
-
     private fun slug(name: String) = name.lowercase(Locale.US).replace(' ', '-')
 
     companion object {
         const val Dash = "—"
-
-        private val Accents = Regex("\\p{M}+")
-        private val NonAlphanumerics = Regex("[^\\p{L}\\p{N}]+")
 
         /** "325000" -> "$325,000"; empty, zero or unparseable (TMDB's "unknown") -> "—". */
         fun formatDollars(amount: String): String {

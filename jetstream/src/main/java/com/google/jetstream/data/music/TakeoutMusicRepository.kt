@@ -149,17 +149,17 @@ class TakeoutMusicRepository @Inject constructor(
 
     // ---- Radio and playlists ----
 
-    /** The user's stations by kind (genres and decades first, live streams last). */
+    /** The user's stations by kind (live streams first, then genres and decades). */
     suspend fun radio(): List<StationGroup> {
         val view = api.radio()
         return listOf(
+            StationKind.Stream to view.stream,
             StationKind.Genre to view.genre,
             StationKind.Period to view.period,
             StationKind.Artist to view.artist,
             StationKind.Similar to view.similar,
             StationKind.Series to view.series,
             StationKind.Other to view.other,
-            StationKind.Stream to view.stream,
         ).mapNotNull { (kind, stations) ->
             stations.orEmpty().takeIf { it.isNotEmpty() }?.let { list ->
                 StationGroup(kind, list.map { it.toStation() })

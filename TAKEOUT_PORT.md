@@ -271,8 +271,8 @@ the rest of this section is the plan for what's next.
     list (selecting one plays the favorites from it). A message when there are none.
   - Playlists (`/api/playlists`): name tiles (playlists have no art) with track counts; selecting
     one plays it (`/api/playlists/{id}/playlist`).
-  - Radio (`/api/radio`): one row per kind — Genres, Decades, Artists, Similar, Series, More
-    Stations, Live Radio — of name tiles (or the station image); selecting plays the station
+  - Radio (`/api/radio`): one row per kind — Live Radio, Genres, Decades, Artists, Similar,
+    Series, More Stations — of name tiles (or the station image); selecting plays the station
     (`/api/radio/{id}/playlist`, a fresh mix each time).
 - **Favorites**: ♡/♥ "Add to favorites"/"Favorite" on artist pages (`PUT/DELETE
   /api/favorite/artists/{arid}`) and a ♡ button on Now Playing for the playing track (`…/tracks/

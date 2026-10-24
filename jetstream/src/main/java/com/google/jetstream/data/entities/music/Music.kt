@@ -50,7 +50,7 @@ data class StationGroup(
     val stations: List<Station>,
 )
 
-enum class StationKind { Genre, Period, Artist, Similar, Series, Other, Stream }
+enum class StationKind { Stream, Genre, Period, Artist, Similar, Series, Other }
 
 /** One of the user's playlists ("pl-<id>"). */
 data class MusicPlaylist(

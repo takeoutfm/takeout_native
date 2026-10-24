@@ -27,6 +27,18 @@ https://www.apache.org/licenses/LICENSE-2.0
         android:required="false" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Voice search on the search screen; asked for the first time the mic is pressed. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <!-- Lets voice search find the speech recognition service (Android 11+ visibility). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <application
         android:name=".JetStreamApplication"

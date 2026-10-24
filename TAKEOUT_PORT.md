@@ -109,6 +109,13 @@ Episodes; empty ones are hidden. The server takes a Bleve query string where "ev
 evil OR dead, so the app sends every word as required (`+evil +dead`) and lists movies whose
 title contains the whole phrase first. Enter, Search, Done and Go all submit; the query stays
 in the field and previous results stay visible while new ones load.
+**Voice**: a mic button right of the field listens with Android's `SpeechRecognizer` inside the
+app (`VoiceSearch.kt`), not Google's voice bar (which draws over the top of the screen): the mic
+turns red and the field says "Listening…", words appear as they're heard, and it searches when
+speaking stops; pressing the mic again stops early. Needs `RECORD_AUDIO`, asked the first time.
+Hidden when the device has no recognition service (`<queries>` for `RecognitionService` makes
+that check work). Assistant's global search ("Hey Google, find …") doesn't include Takeout; that
+would need Google's partner catalog integration.
 
 ### Profile
 Accounts (server, Sign out), Continue Watching (window setting) and About (app version and

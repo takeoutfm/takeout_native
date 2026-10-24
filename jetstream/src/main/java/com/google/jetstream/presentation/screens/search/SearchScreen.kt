@@ -22,6 +22,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,12 +42,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
@@ -55,6 +62,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Border
+import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
+import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
@@ -130,109 +140,152 @@ fun SearchResult(
     val tfInteractionSource = remember { MutableInteractionSource() }
 
     val isTfFocused by tfInteractionSource.collectIsFocusedAsState()
+
+    val voiceSearch = rememberVoiceSearch(
+        onPartial = onQueryChange,
+        onResult = { heard ->
+            onQueryChange(heard)
+            searchMovies(heard)
+        },
+    )
+
     LazyColumn(
         modifier = modifier,
         state = lazyColumnState
     ) {
         item {
-            Surface(
-                shape = ClickableSurfaceDefaults.shape(shape = JetStreamCardShape),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    focusedContainerColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    pressedContainerColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    focusedContentColor = MaterialTheme.colorScheme.onSurface,
-                    pressedContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = ClickableSurfaceDefaults.border(
-                    focusedBorder = Border(
-                        border = BorderStroke(
-                            width = if (isTfFocused) 2.dp else 1.dp,
-                            color = animateColorAsState(
-                                targetValue = if (isTfFocused) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.border,
-                                label = ""
-                            ).value
-                        ),
-                        shape = JetStreamCardShape
-                    )
-                ),
-                tonalElevation = 2.dp,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(horizontal = childPadding.start)
                     .padding(top = 8.dp),
-                onClick = { tfFocusRequester.requestFocus() }
             ) {
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = onQueryChange,
-                    decorationBox = {
-                        Box(
-                            modifier = Modifier
-                                .padding(vertical = 16.dp)
-                                .padding(start = 20.dp),
-                        ) {
-                            it()
-                            if (searchQuery.isEmpty()) {
-                                Text(
-                                    modifier = Modifier.graphicsLayer { alpha = 0.6f },
-                                    text = stringResource(R.string.search_screen_et_placeholder),
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            vertical = 4.dp,
-                            horizontal = 8.dp
+                Surface(
+                    shape = ClickableSurfaceDefaults.shape(shape = JetStreamCardShape),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        focusedContainerColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        pressedContainerColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                        pressedContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    border = ClickableSurfaceDefaults.border(
+                        focusedBorder = Border(
+                            border = BorderStroke(
+                                width = if (isTfFocused) 2.dp else 1.dp,
+                                color = animateColorAsState(
+                                    targetValue = if (isTfFocused) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.border,
+                                    label = ""
+                                ).value
+                            ),
+                            shape = JetStreamCardShape
                         )
-                        .focusRequester(tfFocusRequester)
-                        .onKeyEvent {
-                            // Only consume the keys handled here: swallowing everything also ate
-                            // Enter (so a hardware keyboard couldn't search) and Left/Right.
-                            val handled = when (it.nativeKeyEvent.keyCode) {
-                                KeyEvent.KEYCODE_DPAD_DOWN,
-                                KeyEvent.KEYCODE_DPAD_UP,
-                                KeyEvent.KEYCODE_ENTER,
-                                KeyEvent.KEYCODE_NUMPAD_ENTER,
-                                KeyEvent.KEYCODE_SEARCH -> true
-                                else -> false
-                            }
-                            if (handled && it.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
-                                when (it.nativeKeyEvent.keyCode) {
-                                    KeyEvent.KEYCODE_DPAD_DOWN ->
-                                        focusManager.moveFocus(FocusDirection.Down)
-                                    KeyEvent.KEYCODE_DPAD_UP ->
-                                        focusManager.moveFocus(FocusDirection.Up)
-                                    else -> submit()
+                    ),
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.weight(1f),
+                    onClick = { tfFocusRequester.requestFocus() }
+                ) {
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = onQueryChange,
+                        decorationBox = {
+                            Box(
+                                modifier = Modifier
+                                    .padding(vertical = 16.dp)
+                                    .padding(start = 20.dp),
+                            ) {
+                                it()
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        modifier = Modifier.graphicsLayer { alpha = 0.6f },
+                                        text = stringResource(
+                                            if (voiceSearch.isListening) {
+                                                R.string.search_listening
+                                            } else {
+                                                R.string.search_screen_et_placeholder
+                                            }
+                                        ),
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
                                 }
                             }
-                            handled
                         },
-                    cursorBrush = Brush.verticalGradient(
-                        colors = listOf(
-                            LocalContentColor.current,
-                            LocalContentColor.current,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                vertical = 4.dp,
+                                horizontal = 8.dp
+                            )
+                            .focusRequester(tfFocusRequester)
+                            .onKeyEvent {
+                                // Only consume the keys handled here: swallowing everything
+                                // also ate Enter (so a hardware keyboard couldn't search) and
+                                // Left/Right.
+                                val handled = when (it.nativeKeyEvent.keyCode) {
+                                    KeyEvent.KEYCODE_DPAD_DOWN,
+                                    KeyEvent.KEYCODE_DPAD_UP,
+                                    KeyEvent.KEYCODE_ENTER,
+                                    KeyEvent.KEYCODE_NUMPAD_ENTER,
+                                    KeyEvent.KEYCODE_SEARCH -> true
+                                    else -> false
+                                }
+                                if (handled && it.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
+                                    when (it.nativeKeyEvent.keyCode) {
+                                        KeyEvent.KEYCODE_DPAD_DOWN ->
+                                            focusManager.moveFocus(FocusDirection.Down)
+                                        KeyEvent.KEYCODE_DPAD_UP ->
+                                            focusManager.moveFocus(FocusDirection.Up)
+                                        else -> submit()
+                                    }
+                                }
+                                handled
+                            },
+                        cursorBrush = Brush.verticalGradient(
+                            colors = listOf(
+                                LocalContentColor.current,
+                                LocalContentColor.current,
+                            )
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            autoCorrectEnabled = false,
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSearch = { submit() },
+                            onDone = { submit() },
+                            onGo = { submit() },
+                        ),
+                        maxLines = 1,
+                        interactionSource = tfInteractionSource,
+                        textStyle = MaterialTheme.typography.titleSmall.copy(
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        autoCorrectEnabled = false,
-                        imeAction = ImeAction.Search
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { submit() },
-                        onDone = { submit() },
-                        onGo = { submit() },
-                    ),
-                    maxLines = 1,
-                    interactionSource = tfInteractionSource,
-                    textStyle = MaterialTheme.typography.titleSmall.copy(
-                        color = MaterialTheme.colorScheme.onSurface
                     )
-                )
+                }
+                if (voiceSearch.isAvailable) {
+                    Spacer(Modifier.width(16.dp))
+                    // Red while listening; press again to stop early.
+                    IconButton(
+                        onClick = voiceSearch::toggle,
+                        colors = if (voiceSearch.isListening) {
+                            IconButtonDefaults.colors(
+                                containerColor = ListeningRed,
+                                contentColor = Color.White,
+                                focusedContainerColor = ListeningRed,
+                                focusedContentColor = Color.White,
+                            )
+                        } else {
+                            IconButtonDefaults.colors()
+                        },
+                    ) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = stringResource(R.string.search_voice)
+                        )
+                    }
+                }
             }
         }
 
@@ -265,3 +318,6 @@ fun SearchResult(
         }
     }
 }
+
+/** The mic button while listening (the usual "recording" red). */
+private val ListeningRed = Color(0xFFE53935)

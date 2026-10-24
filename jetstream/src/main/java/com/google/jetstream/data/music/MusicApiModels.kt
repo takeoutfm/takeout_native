@@ -100,6 +100,40 @@ data class ApiReleaseView(
     @SerialName("Similar") val similar: List<ApiRelease>? = null,
 )
 
+@Serializable
+data class ApiStation(
+    @SerialName("ID") val id: Int = 0,
+    @SerialName("Name") val name: String = "",
+    @SerialName("Creator") val creator: String = "",
+    @SerialName("Type") val type: String = "",
+    @SerialName("Image") val image: String = "",
+    @SerialName("Description") val description: String = "",
+)
+
+/** /api/radio: the user's stations, grouped by kind. */
+@Serializable
+data class ApiRadioView(
+    @SerialName("Artist") val artist: List<ApiStation>? = null,
+    @SerialName("Genre") val genre: List<ApiStation>? = null,
+    @SerialName("Similar") val similar: List<ApiStation>? = null,
+    @SerialName("Period") val period: List<ApiStation>? = null,
+    @SerialName("Series") val series: List<ApiStation>? = null,
+    @SerialName("Other") val other: List<ApiStation>? = null,
+    @SerialName("Stream") val stream: List<ApiStation>? = null,
+)
+
+@Serializable
+data class ApiPlaylistSummary(
+    @SerialName("ID") val id: Int = 0,
+    @SerialName("Name") val name: String = "",
+    @SerialName("TrackCount") val trackCount: Int = 0,
+)
+
+@Serializable
+data class ApiPlaylistsView(
+    @SerialName("Playlists") val playlists: List<ApiPlaylistSummary>? = null,
+)
+
 // Spiff playlists, which every "play this" endpoint returns. Lower-case names, unlike the rest.
 
 @Serializable

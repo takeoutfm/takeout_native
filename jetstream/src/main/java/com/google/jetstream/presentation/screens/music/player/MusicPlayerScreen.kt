@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -74,6 +76,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.jetstream.R
+import com.google.jetstream.data.music.MusicHistory
 import com.google.jetstream.data.music.TakeoutMusicRepository
 import com.google.jetstream.playback.MusicPlayer
 import com.google.jetstream.playback.NowPlaying
@@ -114,7 +117,13 @@ fun MusicPlayerScreen(
             val state by viewModel.nowPlaying.collectAsStateWithLifecycle()
             // Until the service reports the queue (first connection), keep the spinner.
             if (state.hasQueue) {
-                NowPlayingContent(state = state, player = viewModel.player)
+                val favorites by viewModel.favoriteTrackEtags.collectAsStateWithLifecycle()
+                NowPlayingContent(
+                    state = state,
+                    player = viewModel.player,
+                    favoriteEtags = favorites,
+                    onToggleFavorite = viewModel::toggleFavorite,
+                )
             } else {
                 PlayerLoading(Modifier.fillMaxSize())
             }
@@ -135,11 +144,22 @@ fun NowPlayingScreen(
         LaunchedEffect(Unit) { onBackPressed() }
         return
     }
-    NowPlayingContent(state = state, player = viewModel.player)
+    val favorites by viewModel.favoriteTrackEtags.collectAsStateWithLifecycle()
+    NowPlayingContent(
+        state = state,
+        player = viewModel.player,
+        favoriteEtags = favorites,
+        onToggleFavorite = viewModel::toggleFavorite,
+    )
 }
 
 @Composable
-private fun NowPlayingContent(state: NowPlaying, player: MusicPlayer) {
+private fun NowPlayingContent(
+    state: NowPlaying,
+    player: MusicPlayer,
+    favoriteEtags: Set<String>,
+    onToggleFavorite: (etag: String, favorite: Boolean) -> Unit,
+) {
     val item = state.current ?: return
     val view = LocalView.current
     // Keep the screensaver away only while music is actually playing here.
@@ -203,6 +223,11 @@ private fun NowPlayingContent(state: NowPlaying, player: MusicPlayer) {
                     state = state,
                     player = player,
                     onOpenQueue = { showQueue = true },
+                    // Radio streams have no ETag, so they can't be favorites.
+                    isFavorite = item.etag.isNotEmpty() && item.etag in favoriteEtags,
+                    onToggleFavorite = item.etag.takeIf { it.isNotEmpty() }?.let { etag ->
+                        { onToggleFavorite(etag, etag !in favoriteEtags) }
+                    },
                     queueButton = queueButton,
                 )
                 val status = when {
@@ -404,6 +429,8 @@ private fun Controls(
     player: MusicPlayer,
     onOpenQueue: () -> Unit,
     queueButton: FocusRequester,
+    isFavorite: Boolean,
+    onToggleFavorite: (() -> Unit)?,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -440,6 +467,16 @@ private fun Controls(
             active = state.repeatMode != Player.REPEAT_MODE_OFF,
             onClick = player::cycleRepeat,
         )
+        if (onToggleFavorite != null) {
+            ControlButton(
+                icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                description = stringResource(
+                    if (isFavorite) R.string.music_favorite else R.string.music_add_favorite
+                ),
+                active = isFavorite,
+                onClick = onToggleFavorite,
+            )
+        }
         if (state.items.size > 1) {
             ControlButton(
                 icon = Icons.AutoMirrored.Filled.QueueMusic,
@@ -549,6 +586,7 @@ enum class QueueLoad { Loading, Error, Started }
 class MusicPlayerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: TakeoutMusicRepository,
+    private val history: MusicHistory,
     val player: MusicPlayer,
 ) : ViewModel() {
     private val ref: QueueRef? =
@@ -561,8 +599,15 @@ class MusicPlayerViewModel @Inject constructor(
 
     val nowPlaying: StateFlow<NowPlaying> = player.state
 
+    val favoriteTrackEtags: StateFlow<Set<String>> = repository.favoriteTrackEtags
+
+    fun toggleFavorite(etag: String, favorite: Boolean) {
+        viewModelScope.launch { runCatching { repository.setTrackFavorite(etag, favorite) } }
+    }
+
     init {
         load()
+        viewModelScope.launch { repository.loadFavoriteTracks() }
     }
 
     fun load() {
@@ -577,6 +622,13 @@ class MusicPlayerViewModel @Inject constructor(
                     is QueueRef.Album -> repository.albumQueue(ref.albumId, ref.startIndex)
                     is QueueRef.Artist ->
                         repository.artistQueue(ref.artistId, ref.mix, ref.startIndex)
+                    is QueueRef.Station ->
+                        repository.stationQueue(ref.stationId, ref.startIndex)
+                    is QueueRef.Playlist ->
+                        repository.playlistQueue(ref.playlistId, ref.startIndex)
+                    is QueueRef.Favorites -> repository.favoritesQueue(ref.startIndex)
+                    is QueueRef.History -> history.find(ref.entryId)?.toQueue()
+                        ?: throw IllegalStateException("No such Recently Played entry")
                 }
                 if (queue.items.isEmpty()) {
                     QueueLoad.Error
@@ -596,6 +648,17 @@ class MusicPlayerViewModel @Inject constructor(
 @HiltViewModel
 class NowPlayingViewModel @Inject constructor(
     val player: MusicPlayer,
+    private val repository: TakeoutMusicRepository,
 ) : ViewModel() {
     val nowPlaying: StateFlow<NowPlaying> = player.state
+
+    val favoriteTrackEtags: StateFlow<Set<String>> = repository.favoriteTrackEtags
+
+    fun toggleFavorite(etag: String, favorite: Boolean) {
+        viewModelScope.launch { runCatching { repository.setTrackFavorite(etag, favorite) } }
+    }
+
+    init {
+        viewModelScope.launch { repository.loadFavoriteTracks() }
+    }
 }

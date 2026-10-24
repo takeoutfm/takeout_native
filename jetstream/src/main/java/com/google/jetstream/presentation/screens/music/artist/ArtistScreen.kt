@@ -17,9 +17,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -93,8 +95,11 @@ fun ArtistScreen(
         is ArtistState.Ready -> {
             val focusMemory = rememberFocusMemory(viewModel.focusedCardKey)
             RestoreRememberedFocus(focusMemory)
+            val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
             ArtistContent(
                 details = s.details,
+                isFavorite = isFavorite,
+                onToggleFavorite = viewModel::toggleFavorite,
                 focusMemory = focusMemory,
                 onAlbumClick = onAlbumClick,
                 onArtistClick = onArtistClick,
@@ -111,6 +116,8 @@ fun ArtistScreen(
 @Composable
 private fun ArtistContent(
     details: ArtistDetails,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     focusMemory: FocusMemory,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (Artist) -> Unit,
@@ -124,6 +131,8 @@ private fun ArtistContent(
         item(key = "header") {
             ArtistHeader(
                 details = details,
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
                 onPlay = { mix -> onPlay(QueueRef.Artist(artistId, mix)) },
             )
         }
@@ -228,7 +237,12 @@ fun TrackRow(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ArtistHeader(details: ArtistDetails, onPlay: (ArtistMix) -> Unit) {
+private fun ArtistHeader(
+    details: ArtistDetails,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onPlay: (ArtistMix) -> Unit,
+) {
     val childPadding = rememberChildPadding()
     // Focusing a button scrolls the whole header into view, not just the button.
     val bringIntoView = remember { BringIntoViewRequester() }
@@ -322,6 +336,21 @@ private fun ArtistHeader(details: ArtistDetails, onPlay: (ArtistMix) -> Unit) {
                         icon = Icons.Default.Radio,
                         onClick = { onPlay(ArtistMix.Radio) },
                     )
+                    if (details.artist.arid.isNotEmpty()) {
+                        MusicButton(
+                            modifier = bringHeaderIntoView,
+                            text = stringResource(
+                                if (isFavorite) R.string.music_favorite
+                                else R.string.music_add_favorite
+                            ),
+                            icon = if (isFavorite) {
+                                Icons.Filled.Favorite
+                            } else {
+                                Icons.Outlined.FavoriteBorder
+                            },
+                            onClick = onToggleFavorite,
+                        )
+                    }
                 }
             }
         }
@@ -349,6 +378,26 @@ class ArtistScreenViewModel @Inject constructor(
     /** The card that last had focus, so Back from an album returns to it. */
     val focusedCardKey = mutableStateOf<String?>(null)
 
+    private val _isFavorite = MutableStateFlow(false)
+
+    /** Flipped right away on toggle, reverted if the server fails. */
+    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
+
+    fun toggleFavorite() {
+        val details = (_state.value as? ArtistState.Ready)?.details ?: return
+        val favorite = !_isFavorite.value
+        _isFavorite.value = favorite
+        viewModelScope.launch {
+            try {
+                repository.setArtistFavorite(details.artist.arid, favorite)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _isFavorite.value = !favorite
+            }
+        }
+    }
+
     init {
         load()
     }
@@ -357,7 +406,9 @@ class ArtistScreenViewModel @Inject constructor(
         _state.value = ArtistState.Loading
         viewModelScope.launch {
             _state.value = try {
-                ArtistState.Ready(repository.artistDetails(artistId))
+                repository.artistDetails(artistId)
+                    .also { _isFavorite.value = it.isFavorite }
+                    .let { ArtistState.Ready(it) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -73,7 +73,11 @@ import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
 import com.google.jetstream.presentation.screens.home.HomeScreen
 import com.google.jetstream.presentation.screens.movies.MoviesScreen
 import com.google.jetstream.presentation.screens.music.artists.ArtistsScreen
+import com.google.jetstream.presentation.screens.music.favorites.MusicFavoritesScreen
 import com.google.jetstream.presentation.screens.music.home.MusicHomeScreen
+import com.google.jetstream.presentation.screens.music.player.QueueRef
+import com.google.jetstream.presentation.screens.music.playlists.PlaylistsScreen
+import com.google.jetstream.presentation.screens.music.radio.RadioScreen
 import com.google.jetstream.presentation.screens.profile.ProfileScreen
 import com.google.jetstream.presentation.screens.search.SearchScreen
 import com.google.jetstream.presentation.screens.shows.ShowsScreen
@@ -105,6 +109,7 @@ fun DashboardScreen(
     onBackPressed: () -> Unit,
     openArtist: (artistId: String) -> Unit = {},
     openAlbum: (albumId: String) -> Unit = {},
+    playMusic: (QueueRef) -> Unit = {},
     dashboardViewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val density = LocalDensity.current
@@ -282,6 +287,7 @@ fun DashboardScreen(
             openVideoPlayer = openVideoPlayer,
             openArtist = openArtist,
             openAlbum = openAlbum,
+            playMusic = playMusic,
             startDestination = startDestination,
             updateTopBarVisibility = { isTopBarVisible = it },
             isTopBarVisible = isTopBarVisible,
@@ -319,6 +325,7 @@ private fun Body(
     openVideoPlayer: (Movie) -> Unit,
     openArtist: (artistId: String) -> Unit,
     openAlbum: (albumId: String) -> Unit,
+    playMusic: (QueueRef) -> Unit,
     startDestination: String,
     updateTopBarVisibility: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -392,6 +399,7 @@ private fun Body(
         composable(Screens.MusicHome()) {
             MusicHomeScreen(
                 onAlbumClick = { openAlbum(it.id) },
+                onPlay = playMusic,
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible,
             )
@@ -399,6 +407,28 @@ private fun Body(
         composable(Screens.Artists()) {
             ArtistsScreen(
                 onArtistClick = { openArtist(it.id) },
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+            )
+        }
+        composable(Screens.MusicFavorites()) {
+            MusicFavoritesScreen(
+                onArtistClick = { openArtist(it.id) },
+                onPlay = playMusic,
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+            )
+        }
+        composable(Screens.Playlists()) {
+            PlaylistsScreen(
+                onPlaylistClick = { playMusic(QueueRef.Playlist(it.id)) },
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+            )
+        }
+        composable(Screens.Radio()) {
+            RadioScreen(
+                onStationClick = { playMusic(QueueRef.Station(it.id)) },
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible,
             )

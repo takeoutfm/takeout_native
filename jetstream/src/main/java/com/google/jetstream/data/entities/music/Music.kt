@@ -9,6 +9,8 @@ data class Artist(
     val name: String,
     val imageUri: String,
     val genre: String = "",
+    /** MusicBrainz artist id, which favorites are keyed by. */
+    val arid: String = "",
 )
 
 data class Album(
@@ -30,6 +32,36 @@ data class Track(
     val trackNum: Int,
     val discNum: Int,
     val coverUri: String,
+    /** Favorites are keyed by it. */
+    val etag: String = "",
+)
+
+/** A radio station ("st-<id>"): a server-made mix (genre, decade, artist…) or a live stream. */
+data class Station(
+    val id: String,
+    val name: String,
+    val description: String,
+    val imageUri: String,
+)
+
+/** Stations of one kind, as a titled row on the Radio tab. */
+data class StationGroup(
+    val kind: StationKind,
+    val stations: List<Station>,
+)
+
+enum class StationKind { Genre, Period, Artist, Similar, Series, Other, Stream }
+
+/** One of the user's playlists ("pl-<id>"). */
+data class MusicPlaylist(
+    val id: String,
+    val name: String,
+    val trackCount: Int,
+)
+
+data class MusicFavorites(
+    val artists: List<Artist>,
+    val tracks: List<Track>,
 )
 
 data class ArtistDetails(
@@ -77,4 +109,8 @@ data class MusicQueue(
     val imageUri: String,
     val items: List<QueueItem>,
     val startIndex: Int = 0,
+    /** Where to start in the start track, e.g. resuming from Recently Played. */
+    val startPositionMs: Long = 0,
+    /** The server's id for this playlist ("/api/releases/12/playlist", "/api/stations/3"). */
+    val location: String = "",
 )

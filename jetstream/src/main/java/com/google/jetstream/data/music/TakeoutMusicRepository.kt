@@ -4,8 +4,13 @@ import com.google.jetstream.data.entities.music.Album
 import com.google.jetstream.data.entities.music.AlbumDetails
 import com.google.jetstream.data.entities.music.Artist
 import com.google.jetstream.data.entities.music.ArtistDetails
+import com.google.jetstream.data.entities.music.MusicFavorites
+import com.google.jetstream.data.entities.music.MusicPlaylist
 import com.google.jetstream.data.entities.music.MusicQueue
 import com.google.jetstream.data.entities.music.QueueItem
+import com.google.jetstream.data.entities.music.Station
+import com.google.jetstream.data.entities.music.StationGroup
+import com.google.jetstream.data.entities.music.StationKind
 import com.google.jetstream.data.entities.music.Track
 import com.google.jetstream.data.takeout.TakeoutApi
 import com.google.jetstream.data.takeout.TakeoutLibrary
@@ -17,6 +22,9 @@ import javax.inject.Singleton
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -99,11 +107,93 @@ class TakeoutMusicRepository @Inject constructor(
         )
     }
 
+    // ---- Favorites ----
+
+    private val _favoriteTrackEtags = MutableStateFlow<Set<String>>(emptySet())
+
+    /** ETags of the user's favorite tracks, as last loaded or changed here (for ♥ buttons). */
+    val favoriteTrackEtags: StateFlow<Set<String>> = _favoriteTrackEtags.asStateFlow()
+
+    /** Favorite artists (A–Z) and tracks (as the server orders them, which Play all follows). */
+    suspend fun favorites(): MusicFavorites {
+        val view = api.favorites()
+        val tracks = view.tracks.orEmpty().map { it.toTrack() }
+        _favoriteTrackEtags.value = tracks.map { it.etag }.filter { it.isNotEmpty() }.toSet()
+        return MusicFavorites(
+            artists = view.artists.orEmpty()
+                .sortedByTitle { it.sortName.ifEmpty { it.name } }
+                .map { it.toArtist() },
+            tracks = tracks,
+        )
+    }
+
+    /** Loads the favorite track ETags if they haven't been yet. */
+    suspend fun loadFavoriteTracks() {
+        if (_favoriteTrackEtags.value.isEmpty()) runCatching { favorites() }
+    }
+
+    suspend fun setArtistFavorite(arid: String, favorite: Boolean) =
+        api.setFavorite("artists/$arid", favorite)
+
+    /** Updates [favoriteTrackEtags] right away; reverted if the server refuses. */
+    suspend fun setTrackFavorite(etag: String, favorite: Boolean) {
+        val before = _favoriteTrackEtags.value
+        _favoriteTrackEtags.value = if (favorite) before + etag else before - etag
+        try {
+            api.setFavorite("tracks/$etag", favorite)
+        } catch (e: Exception) {
+            _favoriteTrackEtags.value = before
+            throw e
+        }
+    }
+
+    // ---- Radio and playlists ----
+
+    /** The user's stations by kind (genres and decades first, live streams last). */
+    suspend fun radio(): List<StationGroup> {
+        val view = api.radio()
+        return listOf(
+            StationKind.Genre to view.genre,
+            StationKind.Period to view.period,
+            StationKind.Artist to view.artist,
+            StationKind.Similar to view.similar,
+            StationKind.Series to view.series,
+            StationKind.Other to view.other,
+            StationKind.Stream to view.stream,
+        ).mapNotNull { (kind, stations) ->
+            stations.orEmpty().takeIf { it.isNotEmpty() }?.let { list ->
+                StationGroup(kind, list.map { it.toStation() })
+            }
+        }
+    }
+
+    suspend fun playlists(): List<MusicPlaylist> =
+        api.playlists().playlists.orEmpty()
+            .sortedByTitle { it.name }
+            .map { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
+
     // ---- Play queues ----
 
     /** The album's tracks, starting at [startIndex]. */
     suspend fun albumQueue(albumId: String, startIndex: Int = 0): MusicQueue =
         api.playlist("/api/releases/${numericId(albumId, AlbumPrefix)}/playlist")
+            .toQueue(urls::absolute)
+            .startingAt(startIndex)
+
+    /** A station's tracks (a fresh mix each time) or its live stream. */
+    suspend fun stationQueue(stationId: String, startIndex: Int = 0): MusicQueue =
+        api.playlist("/api/radio/${numericId(stationId, StationPrefix)}/playlist")
+            .toQueue(urls::absolute)
+            .startingAt(startIndex)
+
+    suspend fun playlistQueue(playlistId: String, startIndex: Int = 0): MusicQueue =
+        api.playlist("/api/playlists/${numericId(playlistId, PlaylistPrefix)}/playlist")
+            .toQueue(urls::absolute)
+            .startingAt(startIndex)
+
+    /** All favorite tracks. */
+    suspend fun favoritesQueue(startIndex: Int = 0): MusicQueue =
+        api.playlist("/api/favorite/tracks/playlist")
             .toQueue(urls::absolute)
             .startingAt(startIndex)
 
@@ -120,6 +210,7 @@ class TakeoutMusicRepository @Inject constructor(
         name = name,
         imageUri = urls.absolute(image),
         genre = genre,
+        arid = arid,
     )
 
     private fun ApiRelease.toAlbum() = Album(
@@ -139,12 +230,22 @@ class TakeoutMusicRepository @Inject constructor(
         trackNum = trackNum,
         discNum = discNum,
         coverUri = urls.releaseCover(reid, rgid, artwork, frontArtwork, otherArtwork, groupArtwork),
+        etag = etag,
+    )
+
+    private fun ApiStation.toStation() = Station(
+        id = "$StationPrefix$id",
+        name = name,
+        description = description,
+        imageUri = urls.absolute(image),
     )
 
     companion object {
         const val ArtistPrefix = "ar-"
         const val AlbumPrefix = "al-"
         const val TrackPrefix = "t-"
+        const val StationPrefix = "st-"
+        const val PlaylistPrefix = "pl-"
         private const val ArtistsMaxAgeMs = 5 * 60_000L
 
         fun numericId(id: String, prefix: String): Int =
@@ -186,6 +287,7 @@ class TakeoutMusicRepository @Inject constructor(
                 creator = playlist.creator,
                 imageUri = absolute(playlist.image),
                 items = items,
+                location = playlist.location,
             ).startingAt(index)
         }
     }

@@ -21,11 +21,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.music.Album
+import com.google.jetstream.data.music.MusicHistory
+import com.google.jetstream.data.music.PlayedQueue
 import com.google.jetstream.data.music.TakeoutMusicRepository
 import com.google.jetstream.presentation.common.ItemDirection
 import com.google.jetstream.presentation.common.MusicHomeSkeleton
 import com.google.jetstream.presentation.common.TileRow
 import com.google.jetstream.presentation.screens.music.common.MusicImage
+import com.google.jetstream.presentation.screens.music.player.QueueRef
 import com.google.jetstream.presentation.utils.FocusMemory
 import com.google.jetstream.presentation.utils.RestoreRememberedFocus
 import com.google.jetstream.presentation.utils.rememberFocusMemory
@@ -40,11 +43,18 @@ import kotlinx.coroutines.flow.stateIn
 @Composable
 fun MusicHomeScreen(
     onAlbumClick: (Album) -> Unit,
+    onPlay: (QueueRef) -> Unit,
     onScroll: (isTopBarVisible: Boolean) -> Unit,
     isTopBarVisible: Boolean,
     viewModel: MusicHomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recentlyPlayed by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
+    // Only what the row shows: playing updates each entry's position every few seconds, and a
+    // list that compares different would make the row re-animate and drop focus from the card.
+    val playedTiles = remember(recentlyPlayed) {
+        recentlyPlayed.map { PlayedTile(it.id, it.title, it.coverUri) }
+    }
     val s = state
     if (s == null) {
         MusicHomeSkeleton(Modifier.fillMaxSize())
@@ -71,6 +81,28 @@ fun MusicHomeScreen(
         contentPadding = PaddingValues(bottom = 108.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        if (playedTiles.isNotEmpty()) item(key = "played") {
+            // What was played on this device, newest first; selecting resumes where it was left.
+            TileRow(
+                items = playedTiles,
+                key = { "played-${it.id}" },
+                itemTitle = { it.title },
+                itemImage = { played, _, imageModifier ->
+                    MusicImage(
+                        url = played.coverUri,
+                        contentDescription = played.title,
+                        modifier = imageModifier.fillMaxWidth(),
+                        placeholderKey = played.id,
+                        fallbackText = played.title,
+                    )
+                },
+                modifier = Modifier.padding(top = 16.dp),
+                itemDirection = ItemDirection.Square,
+                title = stringResource(R.string.music_recently_played),
+                onItemSelected = { onPlay(QueueRef.History(it.id)) },
+                focusMemory = focusMemory,
+            )
+        }
         if (s.recentlyAdded.isNotEmpty()) item(key = "added") {
             AlbumRow(
                 title = stringResource(R.string.music_recently_added),
@@ -126,6 +158,9 @@ fun AlbumRow(
     )
 }
 
+/** A Recently Played card. */
+private data class PlayedTile(val id: String, val title: String, val coverUri: String)
+
 data class MusicHomeState(
     val recentlyAdded: List<Album>,
     val newReleases: List<Album>,
@@ -134,7 +169,11 @@ data class MusicHomeState(
 @HiltViewModel
 class MusicHomeViewModel @Inject constructor(
     repository: TakeoutMusicRepository,
+    history: MusicHistory,
 ) : ViewModel() {
+    /** Queues played on this device, newest first. */
+    val recentlyPlayed: StateFlow<List<PlayedQueue>> = history.entries
+
     /** The album cover that last had focus, so Back from an album returns to it. */
     val focusedKey = mutableStateOf<String?>(null)
 

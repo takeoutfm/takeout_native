@@ -190,6 +190,9 @@ private fun AppContent(
                         openAlbum = { albumId ->
                             navController.navigate(Screens.Album.withArgs(albumId))
                         },
+                        playMusic = { ref ->
+                            navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                        },
                         onBackPressed = onBackPressed,
                         isComingBackFromDifferentScreen = isComingBackFromDifferentScreen,
                         resetIsComingBackFromDifferentScreen = {

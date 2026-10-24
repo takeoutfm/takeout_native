@@ -254,17 +254,30 @@ paragraph at a time.
 
 ## Music
 
-The server's music library alongside video. Phases 0–2 are built (see **Built so far** below);
+The server's music library alongside video. Phases 0–3 are built (see **Built so far** below);
 the rest of this section is the plan for what's next.
 
-### Built so far (phases 1–2)
+### Built so far (phases 1–3)
 - **Mode switch**: with `HasMusic`, the TAKEOUT logo is a focusable switch — ▶ TAKEOUT ⇄ in
   video, ♪ TAKEOUT ⇄ in music. Selecting it swaps the tab set and opens that mode's first tab;
   the mode is saved (`TakeoutSettings.mode`) and the app starts in it. A library without music
   always shows video.
-- **Music tabs**: Home (Recently Added, New Releases rows of square covers, from `/api/home`'s
-  `AddedReleases`/`NewReleases`) and Artists (every artist A–Z, square photos; artists without a
-  photo show their name on a coloured tile). Favorites, Playlists and Radio tabs come later.
+- **Music tabs**: Home · Artists · Favorites · Playlists (only with `HasPlaylists`) · Radio.
+  - Home: **Recently Played** (local history, below), Recently Added, New Releases (`/api/home`'s
+    `AddedReleases`/`NewReleases`).
+  - Artists: every artist A–Z, square photos; no photo → the name on a coloured tile.
+  - Favorites (`/api/favorite`'s `Artists`/`Tracks`, reloaded on each visit): Play all
+    (`/api/favorite/tracks/playlist`), a row of favorite artists, then the favorite tracks as a
+    list (selecting one plays the favorites from it). A message when there are none.
+  - Playlists (`/api/playlists`): name tiles (playlists have no art) with track counts; selecting
+    one plays it (`/api/playlists/{id}/playlist`).
+  - Radio (`/api/radio`): one row per kind — Genres, Decades, Artists, Similar, Series, More
+    Stations, Live Radio — of name tiles (or the station image); selecting plays the station
+    (`/api/radio/{id}/playlist`, a fresh mix each time).
+- **Favorites**: ♡/♥ "Add to favorites"/"Favorite" on artist pages (`PUT/DELETE
+  /api/favorite/artists/{arid}`) and a ♡ button on Now Playing for the playing track (`…/tracks/
+  {etag}`; hidden for radio streams, which have no ETag). Both flip at once and revert if the
+  server refuses.
 - **Artist page**: background, photo, name, genre; Shuffle / Popular / Radio buttons (the
   server's `shuffle`, `popular`, `radio` artist playlists); rows of popular tracks (selecting one
   plays Popular from it), Albums (studio), Singles & EPs, Live/Compilations & More, Similar
@@ -354,12 +367,13 @@ the API responses already carry these paths.
   `POST /api/activity` once a track has played for half its length or 4 minutes (the Takeout
   Flutter app's rule), behind a per-device setting like its `enableTrackActivity` (off by
   default). Radio stream entries without an ETag are skipped.
-- **Play history (local)**: every queue that starts playing is saved on the device as its spiff
-  (title, image, entries) plus the index and position reached, most recent first, capped at 50;
-  replaying an existing queue moves it to the front instead of adding a copy (matched by the
-  playlist's location/ref, else its title and first entry). This is Music Home's **Recently
-  Played** row; selecting an entry plays it again from where it was left. It needs no server
-  support and is separate from the server activity reporting above.
+- **Play history (local)**: every queue that starts playing is saved on the device
+  (`data/music/MusicHistory`) with the index and position reached — saved every ~10 s, on pause
+  and on track change — most recent first, capped at 50; replaying an existing queue moves it
+  to the front instead of adding a copy (matched by the playlist's location, else its title and
+  first entry). This is Music Home's **Recently Played** row; selecting an entry resumes where it
+  was left. No server support needed; separate from the server activity reporting above.
+  Cleared on sign-out.
 
 ### Code structure
 Music sits beside the video code rather than inside it: video types and screens stay as they
@@ -427,7 +441,7 @@ Each step is its own commit(s), checked on the emulator and TV.
 2. **Player**: `MediaSessionService`, `MediaController` wiring, mini player, Now Playing, audio
    focus with video. **Done.**
 3. **More sources**: Favorites (artists, tracks, add/remove), Radio, Playlists, and the local
-   Recently Played history on Music Home.
+   Recently Played history on Music Home. **Done.**
 4. **Polish**: server activity reporting (opt-in), music search tuning, Google TV now-playing
    card artwork.
 
@@ -481,7 +495,7 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
-- No music Favorites, Playlists or Radio tabs or Recently Played yet, and search is video-only.
+- Music search isn't there yet (search is video-only), nor server play-activity reporting.
   See **Music** for the plan. No podcasts.
 - The mini player covers part of the last visible row on long pages (grids, details); it could
   hide while the content under it has focus, or move into the top bar.

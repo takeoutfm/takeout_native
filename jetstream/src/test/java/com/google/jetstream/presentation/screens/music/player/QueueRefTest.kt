@@ -12,6 +12,10 @@ class QueueRefTest {
             QueueRef.Album("al-12", 3),
             QueueRef.Artist("ar-5", ArtistMix.Shuffle),
             QueueRef.Artist("ar-5", ArtistMix.Popular, 7),
+            QueueRef.Station("st-3"),
+            QueueRef.Playlist("pl-2", 4),
+            QueueRef.Favorites(5),
+            QueueRef.History("h1700000000000"),
         )
         refs.forEach { assertEquals(it, QueueRef.parse(it.encode())) }
         assertEquals("album:al-12:3", refs[0].encode())

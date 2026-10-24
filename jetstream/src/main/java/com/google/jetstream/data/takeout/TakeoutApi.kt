@@ -5,6 +5,8 @@ import android.os.Build
 import com.google.jetstream.data.music.ApiArtistView
 import com.google.jetstream.data.music.ApiArtistsView
 import com.google.jetstream.data.music.ApiPlaylist
+import com.google.jetstream.data.music.ApiPlaylistsView
+import com.google.jetstream.data.music.ApiRadioView
 import com.google.jetstream.data.music.ApiPopularView
 import com.google.jetstream.data.music.ApiReleaseView
 import java.io.IOException
@@ -145,7 +147,10 @@ class TakeoutApi @Inject constructor(
     suspend fun index(): ApiIndexView =
         decode(ApiIndexView.serializer(), getText("/api/index"))
 
-    /** [path] is "movies/<imid>" or "shows/<tvid>"; PUT adds the favorite, DELETE removes it. */
+    /**
+     * [path] is "movies/<imid>", "shows/<tvid>", "artists/<arid>" or "tracks/<etag>"; PUT adds
+     * the favorite, DELETE removes it.
+     */
     suspend fun setFavorite(path: String, favorite: Boolean) {
         authed("/api/favorite/$path") {
             if (favorite) put(ByteArray(0).toRequestBody()) else delete()
@@ -202,6 +207,14 @@ class TakeoutApi @Inject constructor(
 
     suspend fun release(id: Int): ApiReleaseView =
         decode(ApiReleaseView.serializer(), getText("/api/releases/$id"))
+
+    /** The user's radio stations, grouped by kind. */
+    suspend fun radio(): ApiRadioView =
+        decode(ApiRadioView.serializer(), getText("/api/radio"))
+
+    /** The user's playlists (names and track counts). */
+    suspend fun playlists(): ApiPlaylistsView =
+        decode(ApiPlaylistsView.serializer(), getText("/api/playlists"))
 
     /**
      * A spiff playlist for any "play this" [path], e.g. "/api/releases/12/playlist" or

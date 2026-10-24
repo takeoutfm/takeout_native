@@ -4,6 +4,7 @@
  */
 package com.google.jetstream.data.takeout
 
+import com.google.jetstream.data.music.ApiRelease
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -143,6 +144,8 @@ data class ApiHomeView(
     @SerialName("AddedMovies") val addedMovies: List<ApiMovie>? = null,
     @SerialName("NewMovies") val newMovies: List<ApiMovie>? = null,
     @SerialName("RecommendMovies") val recommendMovies: List<ApiRecommend>? = null,
+    @SerialName("AddedReleases") val addedReleases: List<ApiRelease>? = null,
+    @SerialName("NewReleases") val newReleases: List<ApiRelease>? = null,
 )
 
 /** The user's favorites; the server also returns Artists and Tracks, which the TV app ignores. */
@@ -156,9 +159,11 @@ data class ApiFavoriteView(
 @Serializable
 data class ApiIndexView(
     // Null when an older server doesn't send the flag; treated as "yes" so nothing is hidden.
+    @SerialName("HasMusic") val hasMusic: Boolean? = null,
     @SerialName("HasMovies") val hasMovies: Boolean? = null,
     @SerialName("HasShows") val hasShows: Boolean? = null,
     @SerialName("HasRecommendMovies") val hasRecommendMovies: Boolean? = null,
+    @SerialName("HasPlaylists") val hasPlaylists: Boolean? = null,
     @SerialName("MovieGenres") val movieGenres: List<String>? = null,
 )
 

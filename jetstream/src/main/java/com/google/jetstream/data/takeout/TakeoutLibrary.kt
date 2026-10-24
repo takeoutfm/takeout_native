@@ -23,6 +23,9 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class LibraryIndex(
     val endpoint: String,
+    // Defaulted so an index saved by an older build still loads.
+    val hasMusic: Boolean = false,
+    val hasPlaylists: Boolean = false,
     val hasMovies: Boolean,
     val hasShows: Boolean,
     val hasRecommendations: Boolean,
@@ -88,6 +91,8 @@ class TakeoutLibrary @Inject constructor(
                 update(
                     LibraryIndex(
                         endpoint = session.endpoint,
+                        hasMusic = view.hasMusic ?: false,
+                        hasPlaylists = view.hasPlaylists ?: false,
                         hasMovies = view.hasMovies ?: true,
                         hasShows = view.hasShows ?: true,
                         hasRecommendations = hasRecommendations,

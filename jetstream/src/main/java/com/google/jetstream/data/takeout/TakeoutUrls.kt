@@ -17,7 +17,38 @@ class TakeoutUrls @Inject constructor(
     /** A TMDB image the server proxies, e.g. size "w342" and path "/abc.jpg"; "" without a path. */
     fun tmdbImage(size: String, path: String): String = tmdbImage(session.endpoint, size, path)
 
+    /**
+     * A release's cover through the server's Cover Art Archive proxy, by the server's own rule;
+     * "" when it has no artwork.
+     */
+    fun releaseCover(
+        reid: String,
+        rgid: String,
+        artwork: Boolean,
+        frontArtwork: Boolean,
+        otherArtwork: String,
+        groupArtwork: Boolean,
+    ): String = absolute(
+        releaseCoverPath(reid, rgid, artwork, frontArtwork, otherArtwork, groupArtwork)
+    )
+
     companion object {
+        fun releaseCoverPath(
+            reid: String,
+            rgid: String,
+            artwork: Boolean,
+            frontArtwork: Boolean,
+            otherArtwork: String,
+            groupArtwork: Boolean,
+        ): String {
+            val base = if (groupArtwork) "/img/mb/rg/$rgid" else "/img/mb/re/$reid"
+            return when {
+                artwork && frontArtwork -> "$base/front"
+                artwork && otherArtwork.isNotEmpty() -> base
+                else -> ""
+            }
+        }
+
         fun absolute(endpoint: String, location: String): String = when {
             location.isEmpty() -> ""
             location.startsWith("http://") || location.startsWith("https://") -> location

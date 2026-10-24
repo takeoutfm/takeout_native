@@ -2,6 +2,11 @@ package com.google.jetstream.data.takeout
 
 import android.net.Uri
 import android.os.Build
+import com.google.jetstream.data.music.ApiArtistView
+import com.google.jetstream.data.music.ApiArtistsView
+import com.google.jetstream.data.music.ApiPlaylist
+import com.google.jetstream.data.music.ApiPopularView
+import com.google.jetstream.data.music.ApiReleaseView
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -183,6 +188,27 @@ class TakeoutApi @Inject constructor(
     suspend fun search(query: String): ApiSearchView = decode(
         ApiSearchView.serializer(), getText("/api/search?q=${Uri.encode(query)}")
     )
+
+    // ---- Music ----
+
+    suspend fun artists(): ApiArtistsView =
+        decode(ApiArtistsView.serializer(), getText("/api/artists"))
+
+    suspend fun artist(id: Int): ApiArtistView =
+        decode(ApiArtistView.serializer(), getText("/api/artists/$id"))
+
+    suspend fun artistPopular(id: Int): ApiPopularView =
+        decode(ApiPopularView.serializer(), getText("/api/artists/$id/popular"))
+
+    suspend fun release(id: Int): ApiReleaseView =
+        decode(ApiReleaseView.serializer(), getText("/api/releases/$id"))
+
+    /**
+     * A spiff playlist for any "play this" [path], e.g. "/api/releases/12/playlist" or
+     * "/api/artists/3/shuffle/playlist".
+     */
+    suspend fun playlist(path: String): ApiPlaylist =
+        decode(ApiPlaylist.serializer(), getText(path))
 
     /** All of the user's watch offsets. */
     suspend fun progress(): ApiOffsets =

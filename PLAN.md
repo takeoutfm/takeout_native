@@ -288,8 +288,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          (`shared.model`), listen rules (`shared.listen`), progress rules on kotlinx-datetime
          (`shared.progress`), URL rules (`TakeoutPaths`), sort keys / `listFlow`
          (`shared.util`); their tests run from `commonTest`.
-   - [ ] Switch `TakeoutApi` to Ktor and move it, `TakeoutSession` (expect/actual secure
-         store), `TakeoutLibrary` and the music repository's server calls into `shared`.
+   - [x] `TakeoutApi` on Ktor (OkHttp engine on Android, `expect` engine per platform) and
+         `TakeoutSession` (with a `SecureStore` interface; EncryptedSharedPreferences on
+         Android) in `shared.api`, with `MockEngine` tests for refresh/sign-out.
+   - [ ] Move `TakeoutLibrary`, `ListenBrainz` (onto Ktor) and the movie/TV/music
+         repositories' server-side logic (search, grouping, directors-first) into `shared`.
    - [ ] SQLDelight in `shared` for the progress and listen queues and Recently Played
          (migrating the TV app's SharedPreferences JSON on first run).
    - [ ] `android-media`: player factory, `MusicService`, `MusicPlayer`, `ListenTracker`,

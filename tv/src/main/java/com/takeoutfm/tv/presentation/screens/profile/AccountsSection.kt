@@ -16,14 +16,6 @@
 
 package com.takeoutfm.tv.presentation.screens.profile
 
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.takeoutfm.tv.data.takeout.SessionState
-import com.takeoutfm.tv.data.takeout.TakeoutSession
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -39,8 +31,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.takeoutfm.shared.api.SessionState
+import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.tv.data.util.StringConstants
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.StateFlow
 
 @Immutable
 data class AccountsSectionData(

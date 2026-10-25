@@ -25,8 +25,8 @@ directly where needed.
 | Piece | File |
 |---|---|
 | Wire models (Takeout JSON, PascalCase, all fields defaulted) | `shared/…/model/ApiModels.kt` (`:shared`) |
-| HTTP client, bearer auth, refresh on 401 | `data/takeout/TakeoutApi.kt` |
-| Encrypted token storage | `data/takeout/TakeoutSession.kt` |
+| HTTP client (Ktor), bearer auth, refresh on 401 | `TakeoutApi` in `:shared` (`api/`) |
+| Token storage | `TakeoutSession` in `:shared`; encrypted store + Hilt wiring in `data/takeout/TakeoutModule.kt` |
 | Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
 | Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
 | Takeout → JetStream mapping, TTL cache with shared in-flight loads | `data/repositories/TakeoutMovieRepository.kt` |

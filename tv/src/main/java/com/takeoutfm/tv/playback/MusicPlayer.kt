@@ -13,10 +13,10 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.tv.data.entities.music.MusicQueue
 import com.takeoutfm.tv.data.entities.music.QueueItem
 import com.takeoutfm.tv.data.music.MusicHistory
-import com.takeoutfm.tv.data.takeout.TakeoutSession
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

@@ -2,12 +2,12 @@ package com.takeoutfm.tv.presentation.screens.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takeoutfm.shared.api.SessionState
+import com.takeoutfm.shared.api.TakeoutApi
+import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.tv.data.listen.ListenReporter
-import com.takeoutfm.tv.data.takeout.SessionState
-import com.takeoutfm.tv.data.takeout.TakeoutApi
 import com.takeoutfm.tv.data.takeout.TakeoutLibrary
 import com.takeoutfm.tv.data.takeout.TakeoutProgress
-import com.takeoutfm.tv.data.takeout.TakeoutSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import javax.inject.Inject

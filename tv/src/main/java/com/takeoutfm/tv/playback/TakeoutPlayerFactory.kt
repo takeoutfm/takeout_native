@@ -10,8 +10,8 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.util.EventLogger
+import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.tv.BuildConfig
-import com.takeoutfm.tv.data.takeout.TakeoutSession
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

@@ -1,18 +1,11 @@
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared.api
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.takeoutfm.shared.model.ApiTokens
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** The signed-in server + tokens. Persisted in EncryptedSharedPreferences. */
+/** The signed-in server + tokens. */
 data class SessionState(
     val endpoint: String = "",
     val tokens: ApiTokens? = null,
@@ -20,24 +13,18 @@ data class SessionState(
     val isLoggedIn: Boolean get() = endpoint.isNotEmpty() && tokens?.isValid() == true
 }
 
-@Singleton
-class TakeoutSession @Inject constructor(
-    @ApplicationContext context: Context,
-) {
-    private val prefs: SharedPreferences? = try {
-        val alias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-        EncryptedSharedPreferences.create(
-            "takeout_session",
-            alias,
-            context,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
-    } catch (e: Exception) {
-        // Keystore problems: fall back to an in-memory session (user signs in each launch).
-        null
-    }
+/**
+ * Where the session is kept: encrypted on each platform (EncryptedSharedPreferences on
+ * Android, the Keychain on Apple).
+ */
+interface SecureStore {
+    fun getString(key: String): String?
+    fun putStrings(values: Map<String, String>)
+    fun remove(vararg keys: String)
+}
 
+/** The signed-in server and tokens; [store] null keeps them in memory only (sign in each launch). */
+class TakeoutSession(private val store: SecureStore?) {
     private val _state = MutableStateFlow(load())
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
@@ -45,26 +32,28 @@ class TakeoutSession @Inject constructor(
     val tokens: ApiTokens? get() = _state.value.tokens
 
     private fun load(): SessionState {
-        val p = prefs ?: return SessionState()
-        val access = p.getString(KEY_ACCESS, null)
-        val media = p.getString(KEY_MEDIA, null)
-        val refresh = p.getString(KEY_REFRESH, null)
+        val s = store ?: return SessionState()
+        val access = s.getString(KEY_ACCESS)
+        val media = s.getString(KEY_MEDIA)
+        val refresh = s.getString(KEY_REFRESH)
         val tokens = if (access != null && media != null && refresh != null) {
             ApiTokens(access, media, refresh)
         } else {
             null
         }
-        return SessionState(p.getString(KEY_ENDPOINT, "") ?: "", tokens)
+        return SessionState(s.getString(KEY_ENDPOINT).orEmpty(), tokens)
     }
 
     fun signIn(endpoint: String, tokens: ApiTokens) {
         _state.value = SessionState(endpoint, tokens)
-        prefs?.edit()
-            ?.putString(KEY_ENDPOINT, endpoint)
-            ?.putString(KEY_ACCESS, tokens.accessToken)
-            ?.putString(KEY_MEDIA, tokens.mediaToken)
-            ?.putString(KEY_REFRESH, tokens.refreshToken)
-            ?.apply()
+        store?.putStrings(
+            mapOf(
+                KEY_ENDPOINT to endpoint,
+                KEY_ACCESS to tokens.accessToken,
+                KEY_MEDIA to tokens.mediaToken,
+                KEY_REFRESH to tokens.refreshToken,
+            )
+        )
     }
 
     /** Called after a token refresh; the media token is unchanged. */
@@ -91,9 +80,7 @@ class TakeoutSession @Inject constructor(
     fun signOut() {
         val endpoint = _state.value.endpoint
         _state.value = SessionState(endpoint = endpoint, tokens = null)
-        prefs?.edit()
-            ?.remove(KEY_ACCESS)?.remove(KEY_MEDIA)?.remove(KEY_REFRESH)
-            ?.apply()
+        store?.remove(KEY_ACCESS, KEY_MEDIA, KEY_REFRESH)
     }
 
     private companion object {

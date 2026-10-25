@@ -46,12 +46,15 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   (`Movie`, `MovieDetails`, …). Features JetStream lacks (people, episodes, favorites, Continue
   Watching, recommendations, search results) are extra methods on `TakeoutMovieRepository`,
   injected directly where needed. Keep server access inside the `data/` layer.
-- **Shared core:** wire models and pure rules come from `:shared`; TV keeps Android-only
-  pieces (`TakeoutUrls` wraps `TakeoutPaths` with the session's endpoint, `TakeoutProgress`
-  persists and syncs using `ProgressRules`). Move more into `:shared` per `PLAN.md` phase 0.
-- **`data/takeout/`:** `TakeoutApi` (OkHttp, bearer access token, refresh on 401, JSON decoded
-  off the main thread), `TakeoutSession` (encrypted tokens; streams use the separate *media* token,
-  only for URLs on the signed-in server), `TakeoutLibrary` (the `/api/index` library index +
+- **Shared core:** from `:shared` (`com.takeoutfm.shared.api`): `TakeoutApi` (Ktor with the
+  OkHttp engine, bearer access token, refresh on 401, JSON decoded off the main thread; tested
+  with Ktor's `MockEngine`) and `TakeoutSession` (tokens; streams use the separate *media*
+  token, only for URLs on the signed-in server), plus the wire models and pure rules.
+  `data/takeout/TakeoutModule.kt` provides both through Hilt, with the session kept in
+  EncryptedSharedPreferences via `SecureStore`. TV keeps Android-only pieces (`TakeoutUrls`
+  wraps `TakeoutPaths` with the session's endpoint, `TakeoutProgress` persists and syncs using
+  `ProgressRules`). Move more into `:shared` per `PLAN.md` phase 0.
+- **`data/takeout/`:** `TakeoutLibrary` (the `/api/index` library index +
   recommendation sets — decides which tabs exist and which requests are made; saved on device and
   refreshed on launch/foreground/sign-in/Home), `TakeoutProgress` (watch progress keyed by media
   ETag), `TakeoutSettings` (per-device prefs).

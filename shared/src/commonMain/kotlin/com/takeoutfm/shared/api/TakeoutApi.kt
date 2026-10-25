@@ -1,7 +1,5 @@
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared.api
 
-import android.net.Uri
-import android.os.Build
 import com.takeoutfm.shared.model.ApiAccessCode
 import com.takeoutfm.shared.model.ApiActivityEvents
 import com.takeoutfm.shared.model.ApiArtistView
@@ -25,27 +23,45 @@ import com.takeoutfm.shared.model.ApiTokens
 import com.takeoutfm.shared.model.ApiTvEpisodeView
 import com.takeoutfm.shared.model.ApiTvListView
 import com.takeoutfm.shared.model.ApiTvSeriesView
-import java.io.IOException
-import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-import javax.inject.Singleton
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.request.header
+import io.ktor.client.request.request
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.content.TextContent
+import io.ktor.http.encodeURLParameter
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
-/** Thin client for the Takeout server API. Auth: bearer access token, refreshed on 401. */
-@Singleton
-class TakeoutApi @Inject constructor(
+/** A Takeout server response other than 2xx. */
+class HttpException(val code: Int) : IOException("HTTP $code")
+
+/** The platform's HTTP engine (OkHttp on Android, Darwin on Apple). */
+internal expect fun httpEngine(): HttpClientEngineFactory<*>
+
+/**
+ * Thin client for the Takeout server API. Auth: bearer access token, refreshed on 401.
+ * [userAgent] names the app, e.g. "TakeoutFM-TV/1.0 (takeoutfm.com; Android 14)".
+ */
+class TakeoutApi internal constructor(
     private val session: TakeoutSession,
+    private val userAgent: String,
+    engine: HttpClientEngine,
 ) {
-    class HttpException(val code: Int) : IOException("HTTP $code")
+    constructor(session: TakeoutSession, userAgent: String) :
+        this(session, userAgent, httpEngine().create())
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -54,10 +70,13 @@ class TakeoutApi @Inject constructor(
         allowSpecialFloatingPointValues = true
     }
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val http = HttpClient(engine) {
+        expectSuccess = false
+        install(HttpTimeout) {
+            connectTimeoutMillis = 30_000
+            socketTimeoutMillis = 30_000
+        }
+    }
 
     private val refreshLock = Mutex()
 
@@ -65,38 +84,36 @@ class TakeoutApi @Inject constructor(
     private suspend fun <T> decode(serializer: KSerializer<T>, text: String): T =
         withContext(Dispatchers.Default) { json.decodeFromString(serializer, text) }
 
-    private val userAgent = "TakeoutFM-TV/1.0 (takeoutfm.com; Android ${Build.VERSION.RELEASE})"
-
-    private fun request(url: String) = Request.Builder()
-        .url(url)
-        .header("Accept", "application/json")
-        .header("User-Agent", userAgent)
-
-    private suspend fun execute(request: Request): String = withContext(Dispatchers.IO) {
-        http.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw HttpException(response.code)
-            body
+    /** The response body; throws [HttpException] for non-2xx statuses. */
+    private suspend fun execute(
+        url: String,
+        method: HttpMethod = HttpMethod.Get,
+        bearer: String? = null,
+        body: String? = null,
+    ): String {
+        val response = http.request(url) {
+            this.method = method
+            header(HttpHeaders.Accept, "application/json")
+            header(HttpHeaders.UserAgent, userAgent)
+            if (bearer != null) header(HttpHeaders.Authorization, "Bearer $bearer")
+            if (body != null) setBody(TextContent(body, ContentType.Application.Json))
         }
+        val text = response.bodyAsText()
+        if (!response.status.isSuccess()) throw HttpException(response.status.value)
+        return text
     }
 
     // ---- Authentication (device-code flow) ----
 
-    suspend fun requestCode(endpoint: String): ApiAccessCode {
-        val req = request("$endpoint/api/code").build()
-        return decode(ApiAccessCode.serializer(), execute(req))
-    }
+    suspend fun requestCode(endpoint: String): ApiAccessCode =
+        decode(ApiAccessCode.serializer(), execute("$endpoint/api/code"))
 
     /** Returns tokens once the user has approved the code, or null if not approved yet. */
     suspend fun checkCode(endpoint: String, code: ApiAccessCode): ApiTokens? {
         val body = json.encodeToString(ApiAccessCode.serializer(), code)
-            .toRequestBody("application/json".toMediaType())
-        val req = request("$endpoint/api/code")
-            .header("Authorization", "Bearer ${code.accessToken}")
-            .post(body)
-            .build()
         return try {
-            decode(ApiTokens.serializer(), execute(req)).takeIf { it.isValid() }
+            val text = execute("$endpoint/api/code", HttpMethod.Post, code.accessToken, body)
+            decode(ApiTokens.serializer(), text).takeIf { it.isValid() }
         } catch (e: HttpException) {
             null
         }
@@ -109,10 +126,8 @@ class TakeoutApi @Inject constructor(
             // Another request already refreshed while we waited for the lock.
             if (tokens.accessToken != staleAccessToken) return@withLock true
             try {
-                val req = request("${state.endpoint}/api/token")
-                    .header("Authorization", "Bearer ${tokens.refreshToken}")
-                    .build()
-                val result = decode(ApiRefreshTokens.serializer(), execute(req))
+                val text = execute("${state.endpoint}/api/token", bearer = tokens.refreshToken)
+                val result = decode(ApiRefreshTokens.serializer(), text)
                 if (result.accessToken.isNotEmpty() && result.refreshToken.isNotEmpty()) {
                     session.updateTokens(result.accessToken, result.refreshToken)
                     true
@@ -130,26 +145,18 @@ class TakeoutApi @Inject constructor(
 
     private suspend fun authed(
         path: String,
-        configure: Request.Builder.() -> Request.Builder = { this },
+        method: HttpMethod = HttpMethod.Get,
+        body: String? = null,
     ): String {
         val state = session.state.value
         val token = state.tokens?.accessToken ?: throw IllegalStateException("Not signed in")
-        val req = request(state.endpoint + path)
-            .header("Authorization", "Bearer $token")
-            .configure()
-            .build()
         return try {
-            execute(req)
+            execute(state.endpoint + path, method, token, body)
         } catch (e: HttpException) {
             if (e.code == 401 && refreshTokens(token)) {
                 val fresh = session.state.value.tokens?.accessToken
                     ?: throw IllegalStateException("Not signed in")
-                execute(
-                    request(state.endpoint + path)
-                        .header("Authorization", "Bearer $fresh")
-                        .configure()
-                        .build()
-                )
+                execute(state.endpoint + path, method, fresh, body)
             } else {
                 throw e
             }
@@ -168,9 +175,7 @@ class TakeoutApi @Inject constructor(
      * the favorite, DELETE removes it.
      */
     suspend fun setFavorite(path: String, favorite: Boolean) {
-        authed("/api/favorite/$path") {
-            if (favorite) put(ByteArray(0).toRequestBody()) else delete()
-        }
+        authed("/api/favorite/$path", if (favorite) HttpMethod.Put else HttpMethod.Delete)
     }
 
     suspend fun favorites(): ApiFavoriteView =
@@ -186,7 +191,7 @@ class TakeoutApi @Inject constructor(
         decode(ApiMovieView.serializer(), getText("/api/movies/$id"))
 
     suspend fun genre(name: String): ApiGenreView = decode(
-        ApiGenreView.serializer(), getText("/api/movie-genres/${Uri.encode(name)}")
+        ApiGenreView.serializer(), getText("/api/movie-genres/${name.encodeURLParameter()}")
     )
 
     /** Recently added series and episodes. */
@@ -207,7 +212,7 @@ class TakeoutApi @Inject constructor(
         decode(ApiProfileView.serializer(), getText("/api/profiles/$peid"))
 
     suspend fun search(query: String): ApiSearchView = decode(
-        ApiSearchView.serializer(), getText("/api/search?q=${Uri.encode(query)}")
+        ApiSearchView.serializer(), getText("/api/search?q=${query.encodeURLParameter()}")
     )
 
     // ---- Music ----
@@ -241,9 +246,10 @@ class TakeoutApi @Inject constructor(
 
     /** Records plays in the user's Takeout activity (listening stats). */
     suspend fun postActivity(events: ApiActivityEvents) {
-        val body = json.encodeToString(ApiActivityEvents.serializer(), events)
-            .toRequestBody("application/json".toMediaType())
-        authed("/api/activity") { post(body) }
+        authed(
+            "/api/activity", HttpMethod.Post,
+            json.encodeToString(ApiActivityEvents.serializer(), events),
+        )
     }
 
     /** All of the user's watch offsets. */
@@ -251,9 +257,10 @@ class TakeoutApi @Inject constructor(
         decode(ApiOffsets.serializer(), getText("/api/progress"))
 
     suspend fun updateProgress(offsets: ApiOffsets) {
-        val body = json.encodeToString(ApiOffsets.serializer(), offsets)
-            .toRequestBody("application/json".toMediaType())
-        authed("/api/progress") { post(body) }
+        authed(
+            "/api/progress", HttpMethod.Post,
+            json.encodeToString(ApiOffsets.serializer(), offsets),
+        )
     }
 
     companion object {

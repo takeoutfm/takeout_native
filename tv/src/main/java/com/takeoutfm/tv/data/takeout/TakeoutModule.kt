@@ -9,6 +9,7 @@ import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.store.AndroidStores
+import com.takeoutfm.shared.video.TakeoutVideoRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -49,6 +50,16 @@ object TakeoutModule {
     @Singleton
     fun music(api: TakeoutApi, library: TakeoutLibrary, urls: TakeoutUrls): TakeoutMusicRepository =
         TakeoutMusicRepository(api, library, urls)
+
+    @Provides
+    @Singleton
+    fun video(
+        api: TakeoutApi,
+        session: TakeoutSession,
+        library: TakeoutLibrary,
+        urls: TakeoutUrls,
+        progress: TakeoutProgress,
+    ): TakeoutVideoRepository = TakeoutVideoRepository(api, session, library, urls, progress)
 
     @Provides
     @Singleton

@@ -17,8 +17,9 @@ All work is committed on `master` (no remote yet). See [Progress](#progress) for
 ## How it fits together
 
 JetStream's screens talk to one interface, `MovieRepository`, which is bound to
-`TakeoutMovieRepository`. That class maps Takeout's JSON onto JetStream's existing entities
-(`Movie`, `MovieDetails`, ...), so most stock screens work unchanged. Features JetStream doesn't
+`TakeoutMovieRepository`. That class maps the shared `TakeoutVideoRepository` (`:shared`
+`video/`, where the server logic lives) onto JetStream's existing entities (`Movie`,
+`MovieDetails`, ...), so most stock screens work unchanged. Features JetStream doesn't
 have (people, episodes, recommendations) are extra methods on `TakeoutMovieRepository`, injected
 directly where needed.
 
@@ -29,7 +30,8 @@ directly where needed.
 | Token storage | `TakeoutSession` in `:shared`; encrypted store + Hilt wiring in `data/takeout/TakeoutModule.kt` |
 | Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
 | Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
-| Takeout → JetStream mapping, TTL cache with shared in-flight loads | `data/repositories/TakeoutMovieRepository.kt` |
+| Video server logic, TTL cache with shared in-flight loads | `TakeoutVideoRepository` and `util/RequestCache` in `:shared` |
+| Shared video entities → JetStream entities | `data/repositories/TakeoutMovieRepository.kt` |
 | Server URLs for stream locations and images | `TakeoutUrls` in `:shared` (`api/`) |
 | Off-main-thread list loading, A–Z sort keys | `shared/…/util/Lists.kt` (`:shared`) |
 | Library index (tabs/requests), saved + refreshed | `TakeoutLibrary` in `:shared` (`library/`) |

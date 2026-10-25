@@ -45,8 +45,8 @@ import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.takeoutfm.shared.video.CreditKind
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.entities.CreditKind
 import com.takeoutfm.tv.data.entities.Movie
 import com.takeoutfm.tv.data.entities.PersonDetails
 import com.takeoutfm.tv.presentation.common.Error

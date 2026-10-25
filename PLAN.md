@@ -294,9 +294,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] `KeyValueStore` (plain + encrypted on Android); `TakeoutUrls`, `TakeoutLibrary`,
          `ListenBrainzAccount` (Ktor) and the whole music data layer (`TakeoutMusicRepository`
          + entities) in `shared`.
-   - [ ] Shared video domain: movie/TV/episode/person entities and a repository for them
-         (search, series → seasons → episodes, directors-first credits, Continue Watching),
-         with the TV app mapping them onto JetStream's `Movie`/`MovieDetails`.
+   - [x] Shared video domain (`shared.video`): entities and `TakeoutVideoRepository` (search,
+         series → seasons → episodes, next episode, directors-first credits, Continue
+         Watching through a `ProgressSource`); the TV app maps them onto JetStream's
+         `Movie`/`MovieDetails`.
    - [ ] SQLDelight in `shared` for the progress and listen queues and Recently Played
          (migrating the TV app's SharedPreferences JSON on first run).
    - [ ] `android-media`: player factory, `MusicService`, `MusicPlayer`, `ListenTracker`,

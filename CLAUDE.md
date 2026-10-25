@@ -41,9 +41,11 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 - **Identity:** `applicationId`, package and namespace are `com.takeoutfm.tv`. Paths below are
   under `tv/src/main/java/com/takeoutfm/tv/`.
 - **Data flow:** JetStream's screens talk to the `MovieRepository` interface, bound (Hilt, in
-  `JetStreamApplication.kt`) to `data/repositories/TakeoutMovieRepository.kt`, which maps Takeout
-  JSON (`:shared` `model/ApiModels.kt`, PascalCase, every field defaulted) onto JetStream entities
-  (`Movie`, `MovieDetails`, …). Features JetStream lacks (people, episodes, favorites, Continue
+  `JetStreamApplication.kt`) to `data/repositories/TakeoutMovieRepository.kt`, which maps the
+  shared `TakeoutVideoRepository`'s entities (`VideoCard`, `VideoDetails`, …) onto JetStream's
+  (`Movie`, `MovieDetails`, …) and adds the TV's display formatting (durations, dollars, "—").
+  All server logic (caching, search, seasons, next episode, Continue Watching) lives in the
+  shared repository. Features JetStream lacks (people, episodes, favorites, Continue
   Watching, recommendations, search results) are extra methods on `TakeoutMovieRepository`,
   injected directly where needed. Keep server access inside the `data/` layer.
 - **Shared core (`:shared`, `com.takeoutfm.shared.*`):**
@@ -55,6 +57,8 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
     which tabs exist and which requests are made; saved on device and refreshed on
     launch/foreground/sign-in/Home.
   - `music/`: `TakeoutMusicRepository` and the music entities.
+  - `video/`: `TakeoutVideoRepository` (movies, TV, people, search, Continue Watching via a
+    `ProgressSource`, which the TV's `TakeoutProgress` implements) and the video entities.
   - `listen/`: `ListenBrainzAccount` (Ktor) and the listen rules; `progress/`, `util/`, `model/`.
   - `store/KeyValueStore`: how shared classes save values; `AndroidStores` (androidMain) gives
     plain and EncryptedSharedPreferences-backed ones.

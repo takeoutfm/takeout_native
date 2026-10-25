@@ -12,6 +12,7 @@ import com.takeoutfm.shared.progress.ProgressRules.newestByEtag
 import com.takeoutfm.shared.progress.ProgressRules.selectInProgress
 import com.takeoutfm.shared.progress.ProgressRules.shouldResume
 import com.takeoutfm.shared.progress.instant
+import com.takeoutfm.shared.video.ProgressSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -42,7 +43,7 @@ class TakeoutProgress @Inject constructor(
     @ApplicationContext context: Context,
     private val api: TakeoutApi,
     session: TakeoutSession,
-) {
+) : ProgressSource {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val prefs = context.getSharedPreferences("takeout_progress", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
@@ -86,11 +87,11 @@ class TakeoutProgress @Inject constructor(
      * Started-but-unfinished offsets updated within the last [days] days ([ProgressRules.AllTime]
      * for no limit), most recent first. Merges in local saves the server may not have yet.
      */
-    suspend fun inProgress(days: Int): List<ApiOffset> =
+    override suspend fun inProgress(days: Int): List<ApiOffset> =
         selectInProgress(latest().values, days, Clock.System.now())
 
     /** The newest offset for every ETag, from the server plus local saves (local alone offline). */
-    suspend fun latest(): Map<String, ApiOffset> {
+    override suspend fun latest(): Map<String, ApiOffset> {
         val remote = try {
             api.progress().offsets
         } catch (e: CancellationException) {

@@ -1,5 +1,7 @@
 package com.takeoutfm.tv.data.entities
 
+import com.takeoutfm.shared.video.CreditKind
+
 /** A cast or crew member's page: who they are, then their credits by kind. */
 data class PersonDetails(
     val id: String,
@@ -17,6 +19,3 @@ data class Credits(
     val titles: MovieList,
 )
 
-enum class CreditKind {
-    MoviesActing, MoviesDirecting, MoviesWriting, ShowsActing, ShowsDirecting, ShowsWriting
-}

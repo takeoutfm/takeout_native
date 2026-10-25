@@ -29,5 +29,6 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Takeout"
+include(":shared")
 include(":tv")
 include(":tv-benchmark")

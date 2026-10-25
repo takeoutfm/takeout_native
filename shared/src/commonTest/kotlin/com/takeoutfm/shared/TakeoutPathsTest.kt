@@ -1,11 +1,11 @@
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared
 
-import com.takeoutfm.tv.data.takeout.TakeoutUrls.Companion.absolute
-import com.takeoutfm.tv.data.takeout.TakeoutUrls.Companion.tmdbImage
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.takeoutfm.shared.TakeoutPaths.absolute
+import com.takeoutfm.shared.TakeoutPaths.tmdbImage
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
-class TakeoutUrlsTest {
+class TakeoutPathsTest {
     private val server = "https://takeout.example"
 
     @Test

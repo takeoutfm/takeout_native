@@ -78,6 +78,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.tv.R
 import com.takeoutfm.tv.data.entities.music.QueueItem
 import com.takeoutfm.tv.data.listen.ListenReporter
@@ -308,7 +309,7 @@ private fun nowPlayingLines(item: QueueItem, state: NowPlaying): NowPlayingLines
     if (!state.isLive) return NowPlayingLines(item.title, item.artist, item.album)
     val station = item.title
     val onAir = state.streamTitle
-    val parsed = onAir?.let(ListenReporter::parseStreamTitle)
+    val parsed = onAir?.let(::parseStreamTitle)
     val (title, artist) = when {
         parsed != null -> parsed.second to parsed.first
         onAir != null -> onAir to ""

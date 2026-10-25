@@ -24,14 +24,14 @@ directly where needed.
 
 | Piece | File |
 |---|---|
-| Wire models (Takeout JSON, PascalCase, all fields defaulted) | `data/takeout/ApiModels.kt` |
+| Wire models (Takeout JSON, PascalCase, all fields defaulted) | `shared/…/model/ApiModels.kt` (`:shared`) |
 | HTTP client, bearer auth, refresh on 401 | `data/takeout/TakeoutApi.kt` |
 | Encrypted token storage | `data/takeout/TakeoutSession.kt` |
 | Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
 | Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
 | Takeout → JetStream mapping, TTL cache with shared in-flight loads | `data/repositories/TakeoutMovieRepository.kt` |
 | Server URLs for stream locations and images | `data/takeout/TakeoutUrls.kt` |
-| Off-main-thread list loading, A–Z sort keys | `data/util/Lists.kt` |
+| Off-main-thread list loading, A–Z sort keys | `shared/…/util/Lists.kt` (`:shared`) |
 | Library index (tabs/requests), saved + refreshed | `data/takeout/TakeoutLibrary.kt` |
 | Device-code sign-in UI / sign-in gate | `presentation/screens/login/*`, `presentation/App.kt` |
 | Top bar tabs (fixed + recommendation tabs) | `.../dashboard/DashboardTopBar.kt`, `DashboardScreen.kt`, `DashboardViewModel.kt` |
@@ -402,7 +402,7 @@ are, the few shared pieces move into their own classes first.
   `focusOnInitialVisibility` inside; `PosterGrid` becomes a thin wrapper.
 
 **Data: `data/music/`**
-- `MusicApiModels.kt`: artists, releases, tracks, stations, playlists and the spiff playlist,
+- `MusicApiModels.kt` (in `:shared`): artists, releases, tracks, stations, playlists and the spiff playlist,
   same conventions as `ApiModels.kt` (PascalCase `@SerialName`, every field defaulted).
 - `TakeoutApi` gains the music GETs and `postActivity`; same client, auth and refresh.
 - Entities in `data/entities/music/` (`Artist`, `Album`, `Track`, `Station`, `MusicPlaylist`),

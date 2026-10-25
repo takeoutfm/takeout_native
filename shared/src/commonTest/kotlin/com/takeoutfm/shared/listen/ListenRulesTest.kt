@@ -1,15 +1,12 @@
-package com.takeoutfm.tv.data.listen
+package com.takeoutfm.shared.listen
 
-import com.takeoutfm.tv.data.listen.ListenReporter.Companion.countsAsListened
-import com.takeoutfm.tv.data.listen.ListenReporter.Companion.countsAsStreamListen
-import com.takeoutfm.tv.data.listen.ListenReporter.Companion.parseStreamTitle
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-class ListenRuleTest {
+class ListenRulesTest {
     @Test
     fun halfTheTrackCounts() {
         assertFalse(countsAsListened(89_000, 180_000))

@@ -14,7 +14,9 @@ hilt-android = "2.54"
 junit = "1.2.1"
 junit4 = "4.13.2"
 kotlin-android = "2.1.0"
+kotlinx-coroutines = "1.10.1"
 kotlinx-serialization = "1.8.0"
+kotlinx-datetime = "0.6.2"
 okhttp = "4.12.0"
 security-crypto = "1.0.0"
 zxing = "3.5.3"
@@ -56,10 +58,15 @@ zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil-compose" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt-android" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt-android" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin-android" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 androidx-rules = { group = "androidx.test", name = "rules", version.ref = "rules" }
 
 [plugins]
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin-android" }
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 android-test = { id = "com.android.test", version.ref = "android-test-plugin" }
 androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "androidx-baselineprofile" }

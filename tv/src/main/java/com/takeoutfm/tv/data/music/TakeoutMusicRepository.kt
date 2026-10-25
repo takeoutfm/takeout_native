@@ -1,5 +1,10 @@
 package com.takeoutfm.tv.data.music
 
+import com.takeoutfm.shared.model.ApiArtist
+import com.takeoutfm.shared.model.ApiPlaylist
+import com.takeoutfm.shared.model.ApiRelease
+import com.takeoutfm.shared.model.ApiStation
+import com.takeoutfm.shared.model.ApiTrack
 import com.takeoutfm.tv.data.entities.music.Album
 import com.takeoutfm.tv.data.entities.music.AlbumDetails
 import com.takeoutfm.tv.data.entities.music.Artist
@@ -16,8 +21,8 @@ import com.takeoutfm.tv.data.entities.music.Track
 import com.takeoutfm.tv.data.takeout.TakeoutApi
 import com.takeoutfm.tv.data.takeout.TakeoutLibrary
 import com.takeoutfm.tv.data.takeout.TakeoutUrls
-import com.takeoutfm.tv.data.util.listFlow
-import com.takeoutfm.tv.data.util.sortedByTitle
+import com.takeoutfm.shared.util.listFlow
+import com.takeoutfm.shared.util.sortedByTitle
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.async

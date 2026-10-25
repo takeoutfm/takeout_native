@@ -3,11 +3,14 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 Native clients for the Takeout media server (a separate Go project), in one Gradle build.
+**`PLAN.md`** is the roadmap (modules, phases, decisions) for the shared core, the phone/tablet
+app and later Wear OS / Apple apps; keep it updated as phases land.
 
 | Module | What |
 |---|---|
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
+| `:shared` | Kotlin Multiplatform core shared by all apps (Android target only for now): API models (`com.takeoutfm.shared.model`), listen/progress rules, `TakeoutPaths`, sort keys. No Android or `java.*` imports in `commonMain` (platform bits go in `androidMain` as `actual`s); use kotlinx-datetime, not `java.time`. Tests live in `commonTest` (`kotlin.test`). |
 
 ## Commands
 
@@ -16,8 +19,9 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 ```
 ./gradlew :tv:assembleDebug                 # debug APK
 ./gradlew :tv:assembleRelease               # minified release APK (debug-signed)
-./gradlew :tv:testDebugUnitTest             # JVM unit tests (JUnit 4)
+./gradlew :tv:testDebugUnitTest             # TV JVM unit tests (JUnit 4)
 ./gradlew :tv:testDebugUnitTest --tests '*AudioTrackRankingTest'   # one test class
+./gradlew :shared:testDebugUnitTest         # shared commonTest, run on the JVM
 ./gradlew :tv:compileDebugKotlin            # fast compile check
 ```
 
@@ -38,10 +42,13 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   under `tv/src/main/java/com/takeoutfm/tv/`.
 - **Data flow:** JetStream's screens talk to the `MovieRepository` interface, bound (Hilt, in
   `JetStreamApplication.kt`) to `data/repositories/TakeoutMovieRepository.kt`, which maps Takeout
-  JSON (`data/takeout/ApiModels.kt`, PascalCase, every field defaulted) onto JetStream entities
+  JSON (`:shared` `model/ApiModels.kt`, PascalCase, every field defaulted) onto JetStream entities
   (`Movie`, `MovieDetails`, …). Features JetStream lacks (people, episodes, favorites, Continue
   Watching, recommendations, search results) are extra methods on `TakeoutMovieRepository`,
   injected directly where needed. Keep server access inside the `data/` layer.
+- **Shared core:** wire models and pure rules come from `:shared`; TV keeps Android-only
+  pieces (`TakeoutUrls` wraps `TakeoutPaths` with the session's endpoint, `TakeoutProgress`
+  persists and syncs using `ProgressRules`). Move more into `:shared` per `PLAN.md` phase 0.
 - **`data/takeout/`:** `TakeoutApi` (OkHttp, bearer access token, refresh on 401, JSON decoded
   off the main thread), `TakeoutSession` (encrypted tokens; streams use the separate *media* token,
   only for URLs on the signed-in server), `TakeoutLibrary` (the `/api/index` library index +
@@ -62,9 +69,9 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   card row; `PosterGrid.kt` and `MoviesRow.kt` wrap them for movies), `Skeletons.kt` (loading
   states), `presentation/utils/FocusMemory.kt` (return focus to the item that was opened).
 - **Shared data helpers:** `data/takeout/TakeoutUrls.kt` (server URLs for locations, images and
-  release covers), `data/util/Lists.kt` (`listFlow`, `sortKey`, `sortedByTitle`).
+  release covers, wrapping `:shared` `TakeoutPaths`); `listFlow`, `sortKey`, `sortedByTitle` are in `:shared` `util/Lists.kt`.
 - **Music:** a separate half of the app, switched with the TAKEOUT logo (`LibraryMode` in
-  `TakeoutSettings`). `data/music/` (`MusicApiModels.kt`, `TakeoutMusicRepository`; ids
+  `TakeoutSettings`). `data/music/` (`TakeoutMusicRepository`; wire models in `:shared` `MusicApiModels.kt`; ids
   `ar-`/`al-`/`t-`), entities in `data/entities/music/`, screens in
   `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
   remaining phases is in `TAKEOUT_PORT.md` → Music.

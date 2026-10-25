@@ -1,4 +1,4 @@
-package com.takeoutfm.tv.data.music
+package com.takeoutfm.shared.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

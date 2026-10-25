@@ -1,7 +1,7 @@
-package com.takeoutfm.tv.data.util
+package com.takeoutfm.shared.util
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ListsTest {
     @Test

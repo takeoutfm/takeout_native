@@ -1,16 +1,18 @@
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared.progress
 
-import com.takeoutfm.tv.data.takeout.TakeoutProgress.Companion.confirmed
-import com.takeoutfm.tv.data.takeout.TakeoutProgress.Companion.keepNewest
-import com.takeoutfm.tv.data.takeout.TakeoutProgress.Companion.newestByEtag
-import java.time.Instant
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.takeoutfm.shared.model.ApiOffset
+import com.takeoutfm.shared.progress.ProgressRules.confirmed
+import com.takeoutfm.shared.progress.ProgressRules.keepNewest
+import com.takeoutfm.shared.progress.ProgressRules.newestByEtag
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.datetime.Instant
 
 class ProgressSyncTest {
     private val now = Instant.parse("2026-10-25T12:00:00Z")
     private fun offset(etag: String, seconds: Int, minutesAgo: Long) =
-        ApiOffset(etag, seconds, 3600, now.minusSeconds(minutesAgo * 60).toString())
+        ApiOffset(etag, seconds, 3600, (now - minutesAgo.minutes).toString())
 
     @Test
     fun newerOffsetWinsWhetherLocalOrServer() {

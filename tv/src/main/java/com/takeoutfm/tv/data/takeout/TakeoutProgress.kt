@@ -1,9 +1,16 @@
 package com.takeoutfm.tv.data.takeout
 
 import android.content.Context
+import com.takeoutfm.shared.model.ApiOffset
+import com.takeoutfm.shared.model.ApiOffsets
+import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.progress.ProgressRules.confirmed
+import com.takeoutfm.shared.progress.ProgressRules.keepNewest
+import com.takeoutfm.shared.progress.ProgressRules.newestByEtag
+import com.takeoutfm.shared.progress.ProgressRules.selectInProgress
+import com.takeoutfm.shared.progress.ProgressRules.shouldResume
+import com.takeoutfm.shared.progress.instant
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Duration
-import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -14,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
@@ -73,11 +81,11 @@ class TakeoutProgress @Inject constructor(
     }
 
     /**
-     * Started-but-unfinished offsets updated within the last [days] days ([TakeoutSettings.AllTime]
+     * Started-but-unfinished offsets updated within the last [days] days ([ProgressRules.AllTime]
      * for no limit), most recent first. Merges in local saves the server may not have yet.
      */
     suspend fun inProgress(days: Int): List<ApiOffset> =
-        selectInProgress(latest().values, days, Instant.now())
+        selectInProgress(latest().values, days, Clock.System.now())
 
     /** The newest offset for every ETag, from the server plus local saves (local alone offline). */
     suspend fun latest(): Map<String, ApiOffset> {
@@ -98,7 +106,7 @@ class TakeoutProgress @Inject constructor(
         if (duration > 0) offset = offset.coerceAtMost(duration)
         val previous = local[etag]
         if (previous != null && previous.offset == offset) return // nothing new to save
-        local[etag] = ApiOffset(etag, offset, duration, Instant.now().toString())
+        local[etag] = ApiOffset(etag, offset, duration, Clock.System.now().toString())
         pending += etag
         save()
         scope.launch { sync() }
@@ -148,63 +156,8 @@ class TakeoutProgress @Inject constructor(
             .orEmpty()
 
     companion object {
-        const val MinResumeSeconds = 10
         private const val MaxLocal = 500
         private const val KEY_LOCAL = "local"
         private const val KEY_PENDING = "pending"
-
-        /** The newest offset (by date) for each ETag. */
-        fun newestByEtag(offsets: Collection<ApiOffset>): Map<String, ApiOffset> {
-            val newest = HashMap<String, ApiOffset>()
-            for (o in offsets) {
-                val current = newest[o.etag]
-                if (current == null || o.instant() > current.instant()) newest[o.etag] = o
-            }
-            return newest
-        }
-
-        /**
-         * ETags of [sent] the server now has: those whose local offset is still the one sent (a
-         * newer report made meanwhile stays pending).
-         */
-        fun confirmed(sent: List<ApiOffset>, local: Map<String, ApiOffset>): List<String> =
-            sent.filter { local[it.etag] == it }.map { it.etag }
-
-        /** At most [max] of [offsets], newest first, plus every [pending] one. */
-        fun keepNewest(
-            offsets: Collection<ApiOffset>,
-            pending: Set<String>,
-            max: Int,
-        ): List<ApiOffset> {
-            val sorted = offsets.sortedByDescending { it.instant() }
-            return sorted.filterIndexed { i, o -> i < max || o.etag in pending }
-        }
-
-        /** Within this much of the end counts as finished, so the title starts over. */
-        const val FinishedSeconds = 120
-
-        fun shouldResume(offset: Int, duration: Int): Boolean =
-            offset >= MinResumeSeconds && (duration <= 0 || offset < duration - FinishedSeconds)
-
-        fun isFinished(o: ApiOffset): Boolean =
-            o.duration > 0 && o.offset >= o.duration - FinishedSeconds
-
-        /**
-         * Offsets that are started but not finished and were updated within [days] days of [now]
-         * ([TakeoutSettings.AllTime] for no limit), most recent first.
-         */
-        fun selectInProgress(offsets: Collection<ApiOffset>, days: Int, now: Instant): List<ApiOffset> {
-            val since = if (days == TakeoutSettings.AllTime) {
-                Instant.EPOCH
-            } else {
-                now.minus(Duration.ofDays(days.toLong()))
-            }
-            return offsets
-                .filter { shouldResume(it.offset, it.duration) && it.instant().isAfter(since) }
-                .sortedByDescending { it.instant() }
-        }
-
-        fun ApiOffset.instant(): Instant =
-            runCatching { Instant.parse(date) }.getOrDefault(Instant.EPOCH)
     }
 }

@@ -1,8 +1,8 @@
 package com.takeoutfm.tv.data.listen
 
 import android.content.Context
-import com.takeoutfm.tv.data.takeout.ApiActivityEvents
-import com.takeoutfm.tv.data.takeout.ApiTrackEvent
+import com.takeoutfm.shared.model.ApiActivityEvents
+import com.takeoutfm.shared.model.ApiTrackEvent
 import com.takeoutfm.tv.data.takeout.TakeoutApi
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,7 +35,7 @@ data class PendingListen(
 
 /**
  * Reports music plays — to the Takeout server's activity and/or ListenBrainz, per the Music
- * settings — once a track counts as listened ([countsAsListened]). Reports that fail (offline,
+ * settings — once a track counts as listened ([com.takeoutfm.shared.listen.countsAsListened]). Reports that fail (offline,
  * server down) are kept on the device and retried with the next one.
  */
 @Singleton
@@ -139,34 +139,5 @@ class ListenReporter @Inject constructor(
     companion object {
         private const val KEY = "pending"
         private const val MaxPending = 500
-
-        private const val FourMinutesMs = 4 * 60_000L
-
-        /** ListenBrainz ignores anything shorter. */
-        private const val MinListenMs = 30_000L
-
-        /** The Takeout apps' rule: 4 minutes in or half way through, whichever comes first. */
-        fun countsAsListened(playedMs: Long, durationMs: Long): Boolean =
-            playedMs >= FourMinutesMs || (durationMs > 0 && playedMs >= durationMs / 2)
-
-        /**
-         * A song on a live stream, judged when the stream's title changes (its length is
-         * unknown): heard from its start (at least 30 s), or for 4 minutes. The song playing
-         * when you tune in wasn't heard from its start.
-         */
-        fun countsAsStreamListen(heardFromStart: Boolean, heardMs: Long): Boolean =
-            heardMs >= FourMinutesMs || (heardFromStart && heardMs >= MinListenMs)
-
-        /**
-         * A stream's ICY title as artist and title: "Artist - Title" (split at the first " - ");
-         * null when it isn't in that form (station IDs, ads, show names).
-         */
-        fun parseStreamTitle(icy: String): Pair<String, String>? {
-            val i = icy.indexOf(" - ")
-            if (i <= 0) return null
-            val artist = icy.substring(0, i).trim()
-            val title = icy.substring(i + 3).trim()
-            return if (artist.isEmpty() || title.isEmpty()) null else artist to title
-        }
     }
 }

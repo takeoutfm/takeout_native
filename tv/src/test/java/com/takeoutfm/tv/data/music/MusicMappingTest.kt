@@ -1,9 +1,12 @@
 package com.takeoutfm.tv.data.music
 
+import com.takeoutfm.shared.model.ApiPlaylist
+import com.takeoutfm.shared.model.ApiSpiff
+import com.takeoutfm.shared.model.ApiSpiffEntry
 import com.takeoutfm.tv.data.music.TakeoutMusicRepository.Companion.numericId
 import com.takeoutfm.tv.data.music.TakeoutMusicRepository.Companion.toQueue
 import com.takeoutfm.tv.data.music.TakeoutMusicRepository.Companion.year
-import com.takeoutfm.tv.data.takeout.TakeoutUrls.Companion.releaseCoverPath
+import com.takeoutfm.shared.TakeoutPaths.releaseCoverPath
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test

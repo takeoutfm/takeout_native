@@ -1,6 +1,7 @@
 package com.takeoutfm.tv.data.takeout
 
 import android.content.Context
+import com.takeoutfm.shared.progress.ProgressRules
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -80,7 +81,7 @@ class TakeoutSettings @Inject constructor(
     }
 
     companion object {
-        const val AllTime = 0
+        const val AllTime = ProgressRules.AllTime
         const val DefaultContinueWatchingDays = 30
         val ContinueWatchingDayOptions = listOf(7, 14, 30, 90, AllTime)
 

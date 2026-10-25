@@ -2,11 +2,8 @@
  * Takeout API wire models. Field names follow the Takeout server's JSON (PascalCase).
  * Everything is defaulted so a missing/null field never fails decoding.
  */
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared.model
 
-import com.takeoutfm.tv.data.music.ApiArtist
-import com.takeoutfm.tv.data.music.ApiRelease
-import com.takeoutfm.tv.data.music.ApiTrack
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

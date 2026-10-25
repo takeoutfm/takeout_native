@@ -7,17 +7,20 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import com.takeoutfm.shared.listen.countsAsListened
+import com.takeoutfm.shared.listen.countsAsStreamListen
+import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.tv.data.listen.ListenReporter
 import java.time.Instant
 
 /**
  * Watches the music player and tells [ListenReporter] when a track starts and when it has been
  * listened to: actual playing time (not position, so seeking ahead doesn't count) reaching
- * [ListenReporter.countsAsListened].
+ * [countsAsListened].
  *
  * Live streams have no tracks, so their songs are followed by the stream's ICY title
  * ("Artist - Title"): a song is judged when the title changes, by
- * [ListenReporter.countsAsStreamListen] — heard from its start, or for 4 minutes. The song
+ * [countsAsStreamListen] — heard from its start, or for 4 minutes. The song
  * playing when you tune in (or rejoin after a pause) wasn't heard from its start. Stream
  * listens can only go to ListenBrainz (Takeout needs an ETag).
  */
@@ -93,7 +96,7 @@ class ListenTracker(
         streamHeardMs = 0
         streamFromStart = heardChange
         streamStartedAt = Instant.now()
-        ListenReporter.parseStreamTitle(title)?.let { (artist, song) ->
+        parseStreamTitle(title)?.let { (artist, song) ->
             reporter.started(artist, song, "")
         }
     }
@@ -102,8 +105,8 @@ class ListenTracker(
     private fun endStreamSong(ended: Boolean) {
         val song = streamSong ?: return
         streamSong = null
-        val (artist, title) = ListenReporter.parseStreamTitle(song) ?: return
-        if (ListenReporter.countsAsStreamListen(ended && streamFromStart, streamHeardMs)) {
+        val (artist, title) = parseStreamTitle(song) ?: return
+        if (countsAsStreamListen(ended && streamFromStart, streamHeardMs)) {
             reporter.listened(
                 etag = "", artist = artist, title = title, album = "", at = streamStartedAt,
             )
@@ -149,7 +152,7 @@ class ListenTracker(
         val track = item ?: return
         if (reported || track.mediaId.isEmpty()) return
         val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
-        if (ListenReporter.countsAsListened(playedMs, duration)) {
+        if (countsAsListened(playedMs, duration)) {
             reported = true
             val m = track.mediaMetadata
             reporter.listened(

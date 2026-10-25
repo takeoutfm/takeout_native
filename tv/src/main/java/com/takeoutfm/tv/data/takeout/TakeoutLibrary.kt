@@ -1,6 +1,8 @@
 package com.takeoutfm.tv.data.takeout
 
 import android.content.Context
+import com.takeoutfm.shared.model.ApiHomeView
+import com.takeoutfm.shared.model.ApiRecommend
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

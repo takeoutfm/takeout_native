@@ -1,5 +1,14 @@
 package com.takeoutfm.tv.data.repositories
 
+import com.takeoutfm.shared.model.ApiCast
+import com.takeoutfm.shared.model.ApiEpisode
+import com.takeoutfm.shared.model.ApiMovie
+import com.takeoutfm.shared.model.ApiOffset
+import com.takeoutfm.shared.model.ApiPerson
+import com.takeoutfm.shared.model.ApiSeries
+import com.takeoutfm.shared.model.ApiTvListView
+import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.progress.instant
 import com.takeoutfm.tv.data.entities.CreditKind
 import com.takeoutfm.tv.data.entities.Credits
 import com.takeoutfm.tv.data.entities.Episode
@@ -15,22 +24,15 @@ import com.takeoutfm.tv.data.entities.PersonDetails
 import com.takeoutfm.tv.data.entities.Recommendation
 import com.takeoutfm.tv.data.entities.SearchResults
 import com.takeoutfm.tv.data.entities.Season
-import com.takeoutfm.tv.data.takeout.ApiCast
-import com.takeoutfm.tv.data.takeout.ApiEpisode
-import com.takeoutfm.tv.data.takeout.ApiMovie
-import com.takeoutfm.tv.data.takeout.ApiOffset
-import com.takeoutfm.tv.data.takeout.ApiPerson
-import com.takeoutfm.tv.data.takeout.ApiSeries
-import com.takeoutfm.tv.data.takeout.ApiTvListView
 import com.takeoutfm.tv.data.takeout.LibraryIndex
 import com.takeoutfm.tv.data.takeout.TakeoutApi
 import com.takeoutfm.tv.data.takeout.TakeoutLibrary
 import com.takeoutfm.tv.data.takeout.TakeoutProgress
 import com.takeoutfm.tv.data.takeout.TakeoutSession
 import com.takeoutfm.tv.data.takeout.TakeoutUrls
-import com.takeoutfm.tv.data.util.listFlow
-import com.takeoutfm.tv.data.util.sortKey
-import com.takeoutfm.tv.data.util.sortedByTitle
+import com.takeoutfm.shared.util.listFlow
+import com.takeoutfm.shared.util.sortKey
+import com.takeoutfm.shared.util.sortedByTitle
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -301,10 +303,10 @@ class TakeoutMovieRepository @Inject constructor(
         }
         val lastIndex = ordered.indices
             .filter { offsets[ordered[it].etag] != null }
-            .maxByOrNull { with(TakeoutProgress) { offsets.getValue(ordered[it].etag).instant() } }
+            .maxByOrNull { offsets.getValue(ordered[it].etag).instant() }
             ?: return ordered.first()
         val last = offsets.getValue(ordered[lastIndex].etag)
-        return if (TakeoutProgress.isFinished(last)) {
+        return if (ProgressRules.isFinished(last)) {
             ordered.getOrNull(lastIndex + 1) ?: ordered.first()
         } else {
             ordered[lastIndex]

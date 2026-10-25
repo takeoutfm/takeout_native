@@ -94,6 +94,9 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
 
+    // Takeout core shared with the other apps (API models, rules)
+    implementation(project(":shared"))
+
     // Takeout networking + secure session storage
     implementation(libs.okhttp)
     implementation(libs.androidx.security.crypto)

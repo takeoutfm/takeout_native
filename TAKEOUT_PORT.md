@@ -239,8 +239,14 @@ paragraph at a time.
 - **Progress**: `/api/progress`, keyed by the media file's ETag; offset/duration in seconds, ISO
   UTC date, newest wins. Saved every 30 s while playing, on pause and on leaving the player —
   only after playback actually started, so a failed load never resets progress. Resume if ≥ 10 s
-  in and not within the last 2 minutes. Recent saves are also kept in memory so reopening right
-  away resumes even before the server has the update.
+  in and not within the last 2 minutes.
+- **Offline progress**: every save is stored on the device first (newest per title, up to 500
+  titles) and stays *pending* until the server accepts it; all pending updates are sent in one
+  request with the next save, on app start and when the app returns to the foreground. An
+  update is only marked done if it's still the newest one for that title. Resume and Continue
+  Watching use the newer of server and device offsets (by date, so another device's later
+  progress wins) and fall back to the device's alone when the server is unreachable. Cleared on
+  sign-out. Music play reports (`ListenReporter`) are also resent on foreground.
 - **Errors**: a "Can't play this title" overlay with the reason (unsupported codec, HTTP status,
   network) instead of a stalled player.
 - **Speed**: the gear button opens a picker: 0.5×, 0.75×, Normal, 1.25×, 1.5×, 2×.

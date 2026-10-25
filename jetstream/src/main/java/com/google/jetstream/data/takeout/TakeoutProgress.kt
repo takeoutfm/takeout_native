@@ -1,5 +1,7 @@
 package com.google.jetstream.data.takeout
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -10,20 +12,51 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
  * Watch progress synced with the server's /api/progress, keyed by the media file's ETag.
  *
- * Reports are fire-and-forget on an app-wide scope so the final save still goes out after the
- * player screen is gone. Recent reports are also kept in memory, so reopening a title right away
- * resumes correctly even before the server has the update.
+ * Every report is saved on the device first (newest per title) and marked pending until the
+ * server accepts it, so progress made offline, or whose upload failed, isn't lost: pending
+ * updates are resent with the next report, on app start and when the app comes back to the
+ * foreground ([sync]). Resume and Continue Watching use the newer of the server's and the
+ * device's offsets (by date, so another device's later progress still wins), and fall back to the
+ * device's alone when the server can't be reached. Cleared on sign-out.
  */
 @Singleton
 class TakeoutProgress @Inject constructor(
+    @ApplicationContext context: Context,
     private val api: TakeoutApi,
+    session: TakeoutSession,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val local = ConcurrentHashMap<String, ApiOffset>()
+    private val prefs = context.getSharedPreferences("takeout_progress", Context.MODE_PRIVATE)
+    private val json = Json { ignoreUnknownKeys = true }
+    private val listSerializer = ListSerializer(ApiOffset.serializer())
+    private val lock = Mutex()
+
+    /** Newest local offset per ETag. */
+    private val local = ConcurrentHashMap<String, ApiOffset>(load(KEY_LOCAL).associateBy { it.etag })
+
+    /** ETags whose local offset the server hasn't confirmed yet. */
+    private val pending: MutableSet<String> =
+        ConcurrentHashMap.newKeySet<String>().apply { addAll(load(KEY_PENDING).map { it.etag }) }
+
+    init {
+        scope.launch {
+            session.state.collect { state ->
+                if (!state.isLoggedIn) {
+                    clear()
+                } else {
+                    sync()
+                }
+            }
+        }
+    }
 
     /** Where to resume [etag], in ms; 0 to start from the beginning. */
     suspend fun resumePositionMs(etag: String): Long {
@@ -46,14 +79,16 @@ class TakeoutProgress @Inject constructor(
     suspend fun inProgress(days: Int): List<ApiOffset> =
         selectInProgress(latest().values, days, Instant.now())
 
-    /** The newest offset for every ETag, from the server plus local saves. */
+    /** The newest offset for every ETag, from the server plus local saves (local alone offline). */
     suspend fun latest(): Map<String, ApiOffset> {
-        val newest = HashMap<String, ApiOffset>()
-        for (o in api.progress().offsets + local.values) {
-            val current = newest[o.etag]
-            if (current == null || o.instant() > current.instant()) newest[o.etag] = o
+        val remote = try {
+            api.progress().offsets
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
         }
-        return newest
+        return newestByEtag(remote + local.values)
     }
 
     fun report(etag: String, positionMs: Long, durationMs: Long) {
@@ -63,21 +98,87 @@ class TakeoutProgress @Inject constructor(
         if (duration > 0) offset = offset.coerceAtMost(duration)
         val previous = local[etag]
         if (previous != null && previous.offset == offset) return // nothing new to save
-        val update = ApiOffset(etag, offset, duration, Instant.now().toString())
-        local[etag] = update
-        scope.launch {
+        local[etag] = ApiOffset(etag, offset, duration, Instant.now().toString())
+        pending += etag
+        save()
+        scope.launch { sync() }
+    }
+
+    /** Sends every pending update in one request; what fails stays pending for next time. */
+    suspend fun sync() {
+        lock.withLock {
+            val batch = pending.mapNotNull { local[it] }
+            if (batch.isEmpty()) return
             try {
-                api.updateProgress(ApiOffsets(listOf(update)))
+                api.updateProgress(ApiOffsets(batch))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Best effort; the next report (or the local copy) covers it.
+                return // offline or server error: retried on the next report, start or resume
             }
+            pending.removeAll(confirmed(batch, local).toSet())
+            save()
         }
     }
 
+    private fun clear() {
+        local.clear()
+        pending.clear()
+        prefs.edit().clear().apply()
+    }
+
+    private fun save() {
+        // Keep the newest titles only; anything still pending is always kept.
+        val kept = keepNewest(local.values, pending, MaxLocal)
+        if (kept.size < local.size) {
+            local.keys.retainAll(kept.map { it.etag }.toSet())
+        }
+        prefs.edit()
+            .putString(KEY_LOCAL, json.encodeToString(listSerializer, kept))
+            .putString(
+                KEY_PENDING,
+                json.encodeToString(listSerializer, pending.mapNotNull { local[it] }),
+            )
+            .apply()
+    }
+
+    private fun load(key: String): List<ApiOffset> =
+        prefs.getString(key, null)
+            ?.let { runCatching { json.decodeFromString(listSerializer, it) }.getOrNull() }
+            .orEmpty()
+
     companion object {
         const val MinResumeSeconds = 10
+        private const val MaxLocal = 500
+        private const val KEY_LOCAL = "local"
+        private const val KEY_PENDING = "pending"
+
+        /** The newest offset (by date) for each ETag. */
+        fun newestByEtag(offsets: Collection<ApiOffset>): Map<String, ApiOffset> {
+            val newest = HashMap<String, ApiOffset>()
+            for (o in offsets) {
+                val current = newest[o.etag]
+                if (current == null || o.instant() > current.instant()) newest[o.etag] = o
+            }
+            return newest
+        }
+
+        /**
+         * ETags of [sent] the server now has: those whose local offset is still the one sent (a
+         * newer report made meanwhile stays pending).
+         */
+        fun confirmed(sent: List<ApiOffset>, local: Map<String, ApiOffset>): List<String> =
+            sent.filter { local[it.etag] == it }.map { it.etag }
+
+        /** At most [max] of [offsets], newest first, plus every [pending] one. */
+        fun keepNewest(
+            offsets: Collection<ApiOffset>,
+            pending: Set<String>,
+            max: Int,
+        ): List<ApiOffset> {
+            val sorted = offsets.sortedByDescending { it.instant() }
+            return sorted.filterIndexed { i, o -> i < max || o.etag in pending }
+        }
 
         /** Within this much of the end counts as finished, so the title starts over. */
         const val FinishedSeconds = 120

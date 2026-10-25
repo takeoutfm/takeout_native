@@ -80,6 +80,16 @@ class ListenReporter @Inject constructor(
         scope.launch { lock.withLock { flush(load() + listen) } }
     }
 
+    /** Resends reports kept from earlier failures (e.g. when the app returns to the foreground). */
+    fun retry() {
+        scope.launch {
+            lock.withLock {
+                val pending = load()
+                if (pending.isNotEmpty()) flush(pending)
+            }
+        }
+    }
+
     /** Sends what it can; keeps the rest. Takeout and ListenBrainz succeed or fail separately. */
     private suspend fun flush(all: List<PendingListen>) {
         var pending = all.takeLast(MaxPending)

@@ -4,6 +4,7 @@ import com.google.jetstream.data.entities.music.Album
 import com.google.jetstream.data.entities.music.AlbumDetails
 import com.google.jetstream.data.entities.music.Artist
 import com.google.jetstream.data.entities.music.ArtistDetails
+import com.google.jetstream.data.entities.music.FeaturedAlbum
 import com.google.jetstream.data.entities.music.MusicFavorites
 import com.google.jetstream.data.entities.music.MusicPlaylist
 import com.google.jetstream.data.entities.music.MusicQueue
@@ -55,17 +56,34 @@ class TakeoutMusicRepository @Inject constructor(
     private var artistsCache: Pair<Long, List<Artist>>? = null
 
     /** Every artist A–Z by sort name, kept for a few minutes (the list is large). */
-    fun artists(): Flow<List<Artist>> = listFlow {
-        artistsLock.withLock {
-            val cached = artistsCache
-            if (cached != null && System.currentTimeMillis() - cached.first < ArtistsMaxAgeMs) {
-                return@listFlow cached.second
-            }
-            val list = api.artists().artists.orEmpty()
-                .sortedByTitle { it.sortName.ifEmpty { it.name } }
-                .map { it.toArtist() }
-            artistsCache = System.currentTimeMillis() to list
-            list
+    fun artists(): Flow<List<Artist>> = listFlow { loadArtists() }
+
+    private suspend fun loadArtists(): List<Artist> = artistsLock.withLock {
+        val cached = artistsCache
+        if (cached != null && System.currentTimeMillis() - cached.first < ArtistsMaxAgeMs) {
+            return@withLock cached.second
+        }
+        val list = api.artists().artists.orEmpty()
+            .sortedByTitle { it.sortName.ifEmpty { it.name } }
+            .map { it.toArtist() }
+        artistsCache = System.currentTimeMillis() to list
+        list
+    }
+
+    /**
+     * Music Home's banner: the newest releases (else the recently added), each over its
+     * artist's background (from the artist list, matched by name; one request, cached).
+     */
+    fun featured(): Flow<List<FeaturedAlbum>> = listFlow {
+        val home = library.home()
+        val releases = home.newReleases.orEmpty().ifEmpty { home.addedReleases.orEmpty() }
+            .distinctBy { it.id }
+            .take(FeaturedCount)
+        val backgrounds = runCatching { loadArtists() }.getOrDefault(emptyList())
+            .filter { it.backgroundUri.isNotEmpty() }
+            .associate { it.name.lowercase() to it.backgroundUri }
+        releases.map { r ->
+            FeaturedAlbum(r.toAlbum(), backgrounds[r.artist.lowercase()].orEmpty())
         }
     }
 
@@ -211,6 +229,7 @@ class TakeoutMusicRepository @Inject constructor(
         imageUri = urls.absolute(image),
         genre = genre,
         arid = arid,
+        backgroundUri = urls.absolute(background),
     )
 
     private fun ApiRelease.toAlbum() = Album(
@@ -247,6 +266,7 @@ class TakeoutMusicRepository @Inject constructor(
         const val StationPrefix = "st-"
         const val PlaylistPrefix = "pl-"
         private const val ArtistsMaxAgeMs = 5 * 60_000L
+        private const val FeaturedCount = 8
 
         fun numericId(id: String, prefix: String): Int =
             id.removePrefix(prefix).toIntOrNull()

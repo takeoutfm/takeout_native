@@ -108,6 +108,8 @@ dependencies {
     implementation(libs.androidx.media3.ui.views)
     // MediaSession: remote media keys and Assistant ("pause") reach the player
     implementation(libs.androidx.media3.session)
+    // QR codes (ListenBrainz token hand-off from a phone)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit4)
 

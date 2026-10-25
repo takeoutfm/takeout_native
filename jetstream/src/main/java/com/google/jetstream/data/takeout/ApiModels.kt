@@ -141,6 +141,19 @@ data class ApiRecommend(
     @SerialName("Movies") val movies: List<ApiMovie> = emptyList(),
 )
 
+/** POST /api/activity: plays to record. */
+@Serializable
+data class ApiActivityEvents(
+    @SerialName("TrackEvents") val trackEvents: List<ApiTrackEvent> = emptyList(),
+)
+
+@Serializable
+data class ApiTrackEvent(
+    @SerialName("ETag") val etag: String,
+    /** RFC 3339, e.g. "2026-10-24T17:05:00Z". */
+    @SerialName("Date") val date: String,
+)
+
 @Serializable
 data class ApiHomeView(
     @SerialName("AddedMovies") val addedMovies: List<ApiMovie>? = null,

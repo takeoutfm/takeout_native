@@ -223,6 +223,13 @@ class TakeoutApi @Inject constructor(
     suspend fun playlist(path: String): ApiPlaylist =
         decode(ApiPlaylist.serializer(), getText(path))
 
+    /** Records plays in the user's Takeout activity (listening stats). */
+    suspend fun postActivity(events: ApiActivityEvents) {
+        val body = json.encodeToString(ApiActivityEvents.serializer(), events)
+            .toRequestBody("application/json".toMediaType())
+        authed("/api/activity") { post(body) }
+    }
+
     /** All of the user's watch offsets. */
     suspend fun progress(): ApiOffsets =
         decode(ApiOffsets.serializer(), getText("/api/progress"))

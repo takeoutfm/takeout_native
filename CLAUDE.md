@@ -70,6 +70,11 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 - **Music playback:** `playback/MusicService` (background `MediaSessionService`) plays; the UI
   only talks to `playback/MusicPlayer` (a `MediaController` singleton with `NowPlaying` state).
   The mini player is an overlay in `App.kt`. Video playback stays screen-scoped.
+- **Play reporting:** `data/listen/` — `ListenReporter` (Takeout activity + ListenBrainz, per the
+  Music settings, with an on-device retry queue), `ListenBrainzAccount` (encrypted token),
+  `TokenHandoff` (one-time local web page + QR for entering the token from a phone).
+  `playback/ListenTracker` decides when a track counts. Don't test with real accounts: the
+  settings change the user's real Takeout stats / ListenBrainz profile.
 
 ## Rules learned the hard way
 

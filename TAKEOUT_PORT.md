@@ -442,12 +442,40 @@ Each step is its own commit(s), checked on the emulator and TV.
    focus with video. **Done.**
 3. **More sources**: Favorites (artists, tracks, add/remove), Radio, Playlists, and the local
    Recently Played history on Music Home. **Done.**
-4. **Polish**: server activity reporting (opt-in), music search tuning, Google TV now-playing
-   card artwork.
+4. **Polish**: banner, mini player ✕, live streams, play reporting and Music settings — **done**
+   (below); music search still to do.
 
-### Open questions / server gaps
-- Podcasts: left out for now; decide later whether they join Music mode or get their own.
-- Lyrics/visualizer: not planned.
+### Built in phase 4
+- **Music Home banner**: like video Home's, the newest releases (`/api/home` `NewReleases`,
+  else `AddedReleases`; up to 8) over their artist's background (from the cached `/api/artists`
+  list, matched by artist name), cover beside "New release · album · artist · year", Play when
+  focused; Select plays the album. Its slot is reserved while it loads, so it can't push the
+  rows down under focus.
+- **Mini player ✕**: stops the music and clears the queue (the card then disappears).
+- **Live streams**: an item with no ETag and no length is live. Now Playing shows a red
+  "● LIVE" badge (pulsing while playing) instead of the seek bar and only play/pause — no
+  previous/next/repeat/favorite/Queue; the mini player shows a small LIVE badge. Resuming a
+  live stream reconnects (stop + prepare) rather than playing stale buffer. The stream's ICY
+  "now playing" text is shown as "Now: Artist - Title" (and as the session subtitle for Google
+  TV's card): `MusicService` reads `IcyInfo` from `onMetadata` (which doesn't reach
+  controllers, and the item's own title outranks it in merged metadata) and copies it into the
+  playing item's `MediaMetadata.extras` with a metadata-only `replaceMediaItem`.
+- **Music settings** (Profile → Music), per device, both off by default:
+  - *Report plays to Takeout*: `POST /api/activity` `{"TrackEvents": [{"ETag", "Date"}]}`.
+  - *ListenBrainz*: "Connect ListenBrainz", then *Submit listens to ListenBrainz* (on after
+    connecting) and *Disconnect*. Listens go to `api.listenbrainz.org/1/submit-listens`
+    ("single"/"import", with artist, track and release names) plus "playing_now" on track
+    start. A 401 disconnects (token revoked).
+  - A track counts as listened after half its length or 4 minutes of actual playing time
+    (`playback/ListenTracker`, so seeking ahead doesn't count; the Flutter app's rule); streams
+    aren't reported. `data/listen/ListenReporter` sends to each destination separately and
+    keeps failed reports on the device (up to 500) to retry with the next one.
+- **ListenBrainz token from a phone** (`data/listen/TokenHandoff`): Connect shows a QR code
+  (ZXing) and a URL like `http://<tv-ip>:8723/h/<random>`; the TV serves a one-field page there
+  on the local network only, linking to listenbrainz.org/settings. The pasted token is checked
+  (`/1/validate-token`); on success the dialog shows "Connected as <user>" and the page stops.
+  Wrong paths 404; the page stops on Cancel/Done or after 10 minutes. The token is stored
+  encrypted (`ListenBrainzAccount`, EncryptedSharedPreferences).
 
 ## Progress
 
@@ -495,8 +523,9 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
-- Music search isn't there yet (search is video-only), nor server play-activity reporting.
-  See **Music** for the plan. No podcasts.
+- Music search isn't there yet (search is video-only). No podcasts.
+- Not verified end to end: a real ListenBrainz connect and submission (tested with an invalid
+  token only) and Takeout activity reporting (settings left off during testing).
 - The mini player covers part of the last visible row on long pages (grids, details); it could
   hide while the content under it has focus, or move into the top bar.
 - No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.

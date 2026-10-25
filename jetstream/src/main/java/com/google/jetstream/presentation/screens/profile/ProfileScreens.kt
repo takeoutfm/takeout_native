@@ -19,6 +19,7 @@ package com.google.jetstream.presentation.screens.profile
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -28,6 +29,7 @@ enum class ProfileScreens(
 ) {
     Accounts(Icons.Default.Person),
     ContinueWatching(title = "Continue Watching", icon = Icons.Default.History),
+    Music(Icons.Default.MusicNote),
     About(Icons.Default.Info);
 
     operator fun invoke() = name

@@ -1,8 +1,10 @@
 package com.google.jetstream.presentation.screens.music.home
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -21,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.music.Album
+import com.google.jetstream.data.entities.music.FeaturedAlbum
 import com.google.jetstream.data.music.MusicHistory
 import com.google.jetstream.data.music.PlayedQueue
 import com.google.jetstream.data.music.TakeoutMusicRepository
@@ -50,6 +53,7 @@ fun MusicHomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recentlyPlayed by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
+    val featured by viewModel.featured.collectAsStateWithLifecycle()
     // Only what the row shows: playing updates each entry's position every few seconds, and a
     // list that compares different would make the row re-animate and drop focus from the card.
     val playedTiles = remember(recentlyPlayed) {
@@ -81,6 +85,24 @@ fun MusicHomeScreen(
         contentPadding = PaddingValues(bottom = 108.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        // The banner's slot is kept while it loads: inserting it above rows that are already
+        // shown would leave the list scrolled past it (top bar hidden, focus lost).
+        val banner = featured
+        if (banner == null || banner.isNotEmpty()) item(key = "featured") {
+            // Same height as video Home's banner, whether or not the top bar shows.
+            val bannerModifier = Modifier
+                .fillMaxWidth()
+                .height(324.dp)
+            if (banner == null) {
+                Box(bannerModifier)
+            } else {
+                MusicFeaturedCarousel(
+                    albums = banner,
+                    onPlay = { onPlay(QueueRef.Album(it.album.id)) },
+                    modifier = bannerModifier,
+                )
+            }
+        }
         if (playedTiles.isNotEmpty()) item(key = "played") {
             // What was played on this device, newest first; selecting resumes where it was left.
             TileRow(
@@ -173,6 +195,10 @@ class MusicHomeViewModel @Inject constructor(
 ) : ViewModel() {
     /** Queues played on this device, newest first. */
     val recentlyPlayed: StateFlow<List<PlayedQueue>> = history.entries
+
+    /** The banner's new albums; null while loading (empty: no banner). */
+    val featured: StateFlow<List<FeaturedAlbum>?> = repository.featured()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** The album cover that last had focus, so Back from an album returns to it. */
     val focusedKey = mutableStateOf<String?>(null)

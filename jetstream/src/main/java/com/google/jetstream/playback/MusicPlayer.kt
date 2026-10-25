@@ -48,6 +48,10 @@ data class NowPlaying(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     /** Why the current track can't play, or null. */
     val error: String? = null,
+    /** A live stream (Live Radio): no ETag and no length, so no seeking or skipping. */
+    val isLive: Boolean = false,
+    /** What a live stream says is playing now (its ICY metadata), or null. */
+    val streamTitle: String? = null,
 ) {
     val current: QueueItem? get() = items.getOrNull(index)
     val hasQueue: Boolean get() = items.isNotEmpty()
@@ -99,6 +103,11 @@ class MusicPlayer @Inject constructor(
     fun playPause() = withController {
         if (it.playWhenReady) {
             it.pause()
+        } else if (_state.value.isLive) {
+            // Rejoin the stream live rather than resuming stale buffered audio.
+            it.stop()
+            it.prepare()
+            it.play()
         } else {
             if (it.playbackState == Player.STATE_ENDED) it.seekTo(0, 0L)
             if (it.playbackState == Player.STATE_IDLE) it.prepare()
@@ -198,7 +207,16 @@ class MusicPlayer @Inject constructor(
 
     private fun update(player: Player) {
         val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toQueueItem() }
+        val current = items.getOrNull(player.currentMediaItemIndex)
+        val isLive = current != null && current.etag.isEmpty() &&
+            (player.isCurrentMediaItemLive || player.duration == C.TIME_UNSET)
+        // Put there by MusicService from the stream's ICY metadata.
+        val streamTitle = player.currentMediaItem?.mediaMetadata?.extras
+            ?.getString(StreamTitleKey)
+            ?.takeIf { isLive && it.isNotBlank() }
         _state.value = _state.value.copy(
+            isLive = isLive,
+            streamTitle = streamTitle,
             items = items,
             index = player.currentMediaItemIndex.coerceAtLeast(0),
             isPlaying = player.isPlaying,
@@ -238,6 +256,9 @@ internal fun QueueItem.toMediaItem(): MediaItem =
 
 /** The artist background's URL in [MediaMetadata.extras] (Media3 has no field for it). */
 private const val BackgroundKey = "takeout.background"
+
+/** A live stream's current "now playing" text in [MediaMetadata.extras]. */
+internal const val StreamTitleKey = "takeout.streamTitle"
 
 internal fun MediaItem.toQueueItem(): QueueItem = QueueItem(
     title = mediaMetadata.title?.toString().orEmpty(),

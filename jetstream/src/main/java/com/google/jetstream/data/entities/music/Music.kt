@@ -11,6 +11,15 @@ data class Artist(
     val genre: String = "",
     /** MusicBrainz artist id, which favorites are keyed by. */
     val arid: String = "",
+    /** The artist's wide background image, or "". */
+    val backgroundUri: String = "",
+)
+
+/** A Music Home banner slide: a new album over its artist's background. */
+data class FeaturedAlbum(
+    val album: Album,
+    /** The artist's background, or "" (the banner then uses the cover). */
+    val backgroundUri: String,
 )
 
 data class Album(

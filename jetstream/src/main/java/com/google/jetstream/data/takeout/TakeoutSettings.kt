@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Per-device app preferences (not synced to the server). */
+/**
+ * Per-device app preferences (not synced to the server). The ListenBrainz token is kept apart,
+ * encrypted, in [com.google.jetstream.data.listen.ListenBrainzAccount].
+ */
 @Singleton
 class TakeoutSettings @Inject constructor(
     @ApplicationContext context: Context,
@@ -43,6 +46,26 @@ class TakeoutSettings @Inject constructor(
         prefs.edit().putString(KEY_AUDIO_LANGUAGE, language).apply()
     }
 
+    private val _reportPlays = MutableStateFlow(prefs.getBoolean(KEY_REPORT_PLAYS, false))
+
+    /** Report music plays to the Takeout server (its activity / listening stats). */
+    val reportPlays: StateFlow<Boolean> = _reportPlays.asStateFlow()
+
+    fun setReportPlays(on: Boolean) {
+        _reportPlays.value = on
+        prefs.edit().putBoolean(KEY_REPORT_PLAYS, on).apply()
+    }
+
+    private val _submitListens = MutableStateFlow(prefs.getBoolean(KEY_SUBMIT_LISTENS, false))
+
+    /** Submit music plays to ListenBrainz (needs a connected account, [ListenBrainzAccount]). */
+    val submitListens: StateFlow<Boolean> = _submitListens.asStateFlow()
+
+    fun setSubmitListens(on: Boolean) {
+        _submitListens.value = on
+        prefs.edit().putBoolean(KEY_SUBMIT_LISTENS, on).apply()
+    }
+
     private val _mode = MutableStateFlow(
         LibraryMode.entries.firstOrNull { it.name == prefs.getString(KEY_MODE, null) }
             ?: LibraryMode.Video
@@ -65,6 +88,8 @@ class TakeoutSettings @Inject constructor(
         private const val KEY_SUBTITLE_LANGUAGE = "subtitle_language"
         private const val KEY_AUDIO_LANGUAGE = "audio_language"
         private const val KEY_MODE = "library_mode"
+        private const val KEY_REPORT_PLAYS = "report_plays"
+        private const val KEY_SUBMIT_LISTENS = "submit_listens"
     }
 }
 

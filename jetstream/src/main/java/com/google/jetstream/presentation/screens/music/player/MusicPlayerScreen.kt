@@ -4,6 +4,11 @@ import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -24,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -211,14 +217,21 @@ private fun NowPlayingContent(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                     modifier = Modifier.padding(top = 4.dp),
                 )
-                SeekBar(
-                    positionMs = state.positionMs,
-                    durationMs = state.durationMs,
-                    onSeek = player::seekBy,
-                    modifier = Modifier
-                        .padding(top = 24.dp)
-                        .width(520.dp),
-                )
+                if (state.isLive) {
+                    LiveBadge(
+                        isPlaying = state.isPlaying,
+                        modifier = Modifier.padding(top = 24.dp),
+                    )
+                } else {
+                    SeekBar(
+                        positionMs = state.positionMs,
+                        durationMs = state.durationMs,
+                        onSeek = player::seekBy,
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .width(520.dp),
+                    )
+                }
                 Controls(
                     state = state,
                     player = player,
@@ -233,6 +246,9 @@ private fun NowPlayingContent(
                 val status = when {
                     state.error != null ->
                         stringResource(R.string.music_cant_play, state.error)
+                    state.isLive -> state.streamTitle?.let {
+                        stringResource(R.string.music_now_on_air, it)
+                    }
                     else -> state.items.getOrNull(state.index + 1)?.let { next ->
                         stringResource(R.string.music_up_next, next.title, next.artist)
                     }
@@ -437,11 +453,15 @@ private fun Controls(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(top = 16.dp),
     ) {
-        ControlButton(
-            icon = Icons.Default.SkipPrevious,
-            description = stringResource(R.string.music_previous),
-            onClick = player::previous,
-        )
+        // A live stream only plays or pauses: nothing to skip, repeat, favorite or queue.
+        val live = state.isLive
+        if (!live) {
+            ControlButton(
+                icon = Icons.Default.SkipPrevious,
+                description = stringResource(R.string.music_previous),
+                onClick = player::previous,
+            )
+        }
         val firstFocus = remember { mutableStateOf(false) }
         ControlButton(
             icon = if (state.playWhenReady) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -452,6 +472,7 @@ private fun Controls(
             onClick = player::playPause,
             modifier = Modifier.focusOnInitialVisibility(firstFocus),
         )
+        if (live) return@Row
         ControlButton(
             icon = Icons.Default.SkipNext,
             description = stringResource(R.string.music_next),
@@ -487,6 +508,43 @@ private fun Controls(
         }
     }
 }
+
+/** "● LIVE" in place of the seek bar for a live stream; the dot pulses while playing. */
+@Composable
+fun LiveBadge(isPlaying: Boolean, modifier: Modifier = Modifier, small: Boolean = false) {
+    val pulse = rememberInfiniteTransition(label = "live")
+    val dotAlpha by pulse.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isPlaying) 0.25f else 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "dot",
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .background(LiveRed, RoundedCornerShape(if (small) 4.dp else 6.dp))
+            .padding(
+                horizontal = if (small) 6.dp else 12.dp,
+                vertical = if (small) 2.dp else 6.dp,
+            ),
+    ) {
+        Box(
+            Modifier
+                .size(if (small) 6.dp else 10.dp)
+                .alpha(dotAlpha)
+                .background(Color.White, CircleShape)
+        )
+        Text(
+            text = stringResource(R.string.music_live),
+            style = if (small) MaterialTheme.typography.labelSmall
+            else MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            modifier = Modifier.padding(start = if (small) 4.dp else 8.dp),
+        )
+    }
+}
+
+private val LiveRed = Color(0xFFD32F2F)
 
 /**
  * Position and length; focusable, and left/right seek 10 s while it has focus (the controls

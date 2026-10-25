@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
@@ -39,7 +40,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The music that's playing, as a small card in a corner of every screen but the players:
- * cover, track and artist (opens Now Playing), and play/pause. Hidden with nothing queued.
+ * cover, track and artist (opens Now Playing), play/pause, and ✕ to stop the music and close
+ * it. Hidden with nothing queued. Live streams show a LIVE badge and what's on air.
  */
 @Composable
 fun MiniPlayer(
@@ -87,14 +89,23 @@ fun MiniPlayer(
                             .padding(start = 12.dp)
                             .width(220.dp)
                     ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (state.isLive) {
+                                LiveBadge(
+                                    isPlaying = state.isPlaying,
+                                    small = true,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                )
+                            }
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = item.artist,
+                            text = state.streamTitle ?: item.artist,
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -112,6 +123,12 @@ fun MiniPlayer(
                     contentDescription = stringResource(
                         if (state.playWhenReady) R.string.music_pause else R.string.music_play
                     ),
+                )
+            }
+            IconButton(onClick = viewModel.player::stop) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.music_stop),
                 )
             }
         }

@@ -1,5 +1,6 @@
 package com.google.jetstream.presentation.screens.music.player
 
+import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +44,9 @@ import com.google.jetstream.presentation.screens.music.common.MusicImage
 import com.google.jetstream.presentation.theme.JetStreamCardShape
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The music that's playing, as a small card in a corner of every screen but the players:
@@ -57,23 +61,39 @@ fun MiniPlayer(
      * there's none, and the D-pad's normal search is used.
      */
     onReturnFocus: () -> Boolean,
+    /** Tries to hand focus back to the page; false while it has nothing focusable. */
+    isContentFocusable: () -> Boolean,
+    /** `SystemClock.uptimeMillis()` of the last D-pad direction press. */
+    lastNavigationKeyAt: () -> Long,
     modifier: Modifier = Modifier,
     viewModel: MiniPlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val item = state.current ?: return
     var cardFocused by remember { mutableStateOf(false) }
+    var hasFocus by remember { mutableStateOf(false) }
+    // Focus that arrived without a D-pad press fell in (the page under it is changing): give it
+    // back to the page as soon as the page can take it.
+    LaunchedEffect(hasFocus) {
+        if (!hasFocus) return@LaunchedEffect
+        if (SystemClock.uptimeMillis() - lastNavigationKeyAt() < MovedInWindowMs) return@LaunchedEffect
+        withTimeoutOrNull(FallenInRetryMs) {
+            while (!isContentFocusable()) delay(100)
+        }
+    }
     Surface(
         shape = JetStreamCardShape,
         colors = SurfaceDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
         ),
-        modifier = modifier.onPreviewKeyEvent {
-            val code = it.nativeKeyEvent.keyCode
-            val back = code == KeyEvent.KEYCODE_DPAD_UP ||
-                (code == KeyEvent.KEYCODE_DPAD_LEFT && cardFocused)
-            back && it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && onReturnFocus()
-        },
+        modifier = modifier
+            .onFocusChanged { hasFocus = it.hasFocus }
+            .onPreviewKeyEvent {
+                val code = it.nativeKeyEvent.keyCode
+                val back = code == KeyEvent.KEYCODE_DPAD_UP ||
+                    (code == KeyEvent.KEYCODE_DPAD_LEFT && cardFocused)
+                back && it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && onReturnFocus()
+            },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -150,3 +170,9 @@ class MiniPlayerViewModel @Inject constructor(
 ) : ViewModel() {
     val nowPlaying: StateFlow<NowPlaying> = player.state
 }
+
+/** Focus gained this soon after a D-pad press was moved in by the user. */
+private const val MovedInWindowMs = 800L
+
+/** How long to keep trying to give fallen-in focus back while the page loads. */
+private const val FallenInRetryMs = 5_000L

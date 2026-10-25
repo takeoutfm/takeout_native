@@ -468,7 +468,12 @@ Each step is its own commit(s), checked on the emulator and TV.
   under it (they fell through to the top bar, which stays focusable while scrolled off screen,
   so focus seemed to vanish), so items register themselves: `Modifier.returnFocusTarget()` +
   `FocusReturn` (`utils/FocusMemory.kt`), used by `TileRow`/`TileGrid` cards, track rows and the
-  banners. Focus on anything unregistered clears it, and the normal search is used.
+  banners. Focus on anything unregistered clears it. If the remembered item is gone (it was on a
+  previous page), focus goes to the current page's first focusable item instead.
+- **Focus falling into the mini player**: while a new page loads it has nothing focusable, so
+  focus can drop into the mini player. Focus that arrives there without a D-pad press (more than
+  0.8 s after the last one) is handed back to the page as soon as the page can take it (tried for
+  up to 5 s).
 - **Live streams**: an item with no ETag and no length is live. Now Playing shows a badge
   instead of the seek bar — always a red "● LIVE" pill, its dot green while playing and grey
   when paused — and only play/pause (no previous/next/repeat/favorite/Queue). The mini player

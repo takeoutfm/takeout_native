@@ -111,6 +111,18 @@ class FocusReturn {
     internal var setByItem = false
     private var lastFocused: Any? = null
 
+    /** The screen's content as a whole, for when no item is remembered (see [restore]). */
+    val content = FocusRequester()
+
+    /** Whether something on the screen (not an overlay) has focus. */
+    var contentHasFocus by mutableStateOf(false)
+        internal set
+
+    /** Updates [contentHasFocus]; call with the screen's focus changes. */
+    fun onContentFocusChanged(hasFocus: Boolean) {
+        contentHasFocus = hasFocus
+    }
+
     /**
      * Something on the screen has focus ([focused] identifies it; this is also called as it
      * moves, e.g. while a row scrolls). Forget the item when focus went to something else.
@@ -122,10 +134,19 @@ class FocusReturn {
         setByItem = false
     }
 
-    /** Sends focus back to the last item; false when there's none (or it's gone). */
+    /**
+     * Sends focus back to the last item, or, when it's gone (e.g. it was on the previous screen),
+     * into the screen's first focusable item: searching from an overlay doesn't reach the screen
+     * under it, so without this focus could be stuck there. False when the screen has nothing
+     * focusable (still loading).
+     */
     fun restore(): Boolean {
-        val r = target ?: return false
-        return runCatching { r.requestFocus() }.isSuccess
+        target?.let { r ->
+            if (runCatching { r.requestFocus() }.isSuccess && contentHasFocus) return true
+        }
+        target = null
+        runCatching { content.requestFocus() }
+        return contentHasFocus
     }
 }
 
@@ -142,6 +163,12 @@ fun Modifier.returnFocusTarget(): Modifier {
             if (it.hasFocus) {
                 holder.target = requester
                 holder.setByItem = true
+            }
+        }
+        .also {
+            // Gone with its screen: never send focus to a detached item.
+            DisposableEffect(requester) {
+                onDispose { if (holder.target === requester) holder.target = null }
             }
         }
 }

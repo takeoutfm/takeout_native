@@ -465,9 +465,11 @@ Each step is its own commit(s), checked on the emulator and TV.
   instead of the seek bar — always a red "● LIVE" pill, its dot green while playing and grey
   when paused — and only play/pause (no previous/next/repeat/favorite/Queue). The mini player
   has no badge; it shows the station and what's on air. Resuming a
-  live stream reconnects (stop + prepare) rather than playing stale buffer. The stream's ICY
-  "now playing" text is shown as "Now: Artist - Title" (and as the session subtitle for Google
-  TV's card): `MusicService` reads `IcyInfo` from `onMetadata` (which doesn't reach
+  live stream reconnects (stop + prepare) rather than playing stale buffer. A stream's queue
+  entry is only the station (its name as title, artist and album), so Now Playing shows the
+  stream's ICY "now playing" text instead: the song as the title, the artist below, the station
+  on the third line (the whole text as the title if it isn't "Artist - Title"; the station alone
+  until any arrives). It's also the session subtitle for Google TV's card: `MusicService` reads `IcyInfo` from `onMetadata` (which doesn't reach
   controllers, and the item's own title outranks it in merged metadata) and copies it into the
   playing item's `MediaMetadata.extras` with a metadata-only `replaceMediaItem`.
 - **Music settings** (Profile → Music), per device, both off by default:

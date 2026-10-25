@@ -105,7 +105,6 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music_queue">Queue</string>
     <string name="music_live">LIVE</string>
     <string name="music_new_release">New release</string>
-    <string name="music_now_on_air">Now: %1$s</string>
     <string name="music_stop">Stop</string>
     <string name="music_settings">Music</string>
     <string name="music_report_plays">Report plays to Takeout</string>

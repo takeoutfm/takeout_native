@@ -79,6 +79,8 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.jetstream.R
+import com.google.jetstream.data.entities.music.QueueItem
+import com.google.jetstream.data.listen.ListenReporter
 import com.google.jetstream.data.music.MusicHistory
 import com.google.jetstream.data.music.TakeoutMusicRepository
 import com.google.jetstream.playback.MusicPlayer
@@ -196,24 +198,31 @@ private fun NowPlayingContent(
                     .clip(JetStreamCardShape),
                 placeholderKey = item.album,
             )
+            // A live stream's entry is just the station (as title, artist and album); show the
+            // song it says is playing instead, with the station on the last line.
+            val lines = nowPlayingLines(item, state)
             Column(Modifier.padding(start = 48.dp)) {
                 Text(
-                    text = item.title,
+                    text = lines.title,
                     style = MaterialTheme.typography.displaySmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = item.artist,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Text(
-                    text = item.album,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                if (lines.artist.isNotEmpty()) {
+                    Text(
+                        text = lines.artist,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                if (lines.album.isNotEmpty()) {
+                    Text(
+                        text = lines.album,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 if (state.isLive) {
                     LiveBadge(
                         isPlaying = state.isPlaying,
@@ -243,9 +252,7 @@ private fun NowPlayingContent(
                 val status = when {
                     state.error != null ->
                         stringResource(R.string.music_cant_play, state.error)
-                    state.isLive -> state.streamTitle?.let {
-                        stringResource(R.string.music_now_on_air, it)
-                    }
+                    state.isLive -> null // what's on air is in the lines above
                     else -> state.items.getOrNull(state.index + 1)?.let { next ->
                         stringResource(R.string.music_up_next, next.title, next.artist)
                     }
@@ -288,6 +295,26 @@ private fun NowPlayingContent(
             }
         }
     }
+}
+
+private data class NowPlayingLines(val title: String, val artist: String, val album: String)
+
+/**
+ * Title / artist / album for Now Playing. Tracks use their own; a live stream uses its ICY
+ * "Artist - Title" (or the whole text when it isn't in that form) with the station below, and
+ * just the station while nothing is known. Repeats of the same text are dropped.
+ */
+private fun nowPlayingLines(item: QueueItem, state: NowPlaying): NowPlayingLines {
+    if (!state.isLive) return NowPlayingLines(item.title, item.artist, item.album)
+    val station = item.title
+    val onAir = state.streamTitle
+    val parsed = onAir?.let(ListenReporter::parseStreamTitle)
+    val (title, artist) = when {
+        parsed != null -> parsed.second to parsed.first
+        onAir != null -> onAir to ""
+        else -> station to item.artist.takeIf { it != station }.orEmpty()
+    }
+    return NowPlayingLines(title, artist, station.takeIf { it != title }.orEmpty())
 }
 
 /**

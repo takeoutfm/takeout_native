@@ -51,10 +51,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -280,6 +282,8 @@ private fun NowPlayingContent(
                     player.playAt(index)
                     showQueue = false
                 },
+                onClose = { showQueue = false },
+                isOpen = showQueue,
             )
         }
         // Closing the panel returns focus to the Queue button (not on first showing).
@@ -342,8 +346,15 @@ private fun NowPlayingBackground(backgroundUri: String, coverUri: String, placeh
  * The whole queue as a text list on the right: number, title, artist (and a small cover when the
  * queue mixes albums, e.g. Radio). Opens on the playing track; selecting one plays it.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun QueuePanel(state: NowPlaying, onPlay: (index: Int) -> Unit) {
+private fun QueuePanel(
+    state: NowPlaying,
+    onPlay: (index: Int) -> Unit,
+    onClose: () -> Unit,
+    /** False while it slides out: focus is then let go, back to the Queue button. */
+    isOpen: Boolean,
+) {
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = (state.index - 2).coerceAtLeast(0)
     )
@@ -357,6 +368,19 @@ private fun QueuePanel(state: NowPlaying, onPlay: (index: Int) -> Unit) {
             .width(520.dp)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.97f))
             .padding(vertical = 32.dp)
+            // Left closes the panel, like Back (it slid in from the right); focus can't wander
+            // out to the controls behind it.
+            .onPreviewKeyEvent {
+                if (it.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_DPAD_LEFT) {
+                    return@onPreviewKeyEvent false
+                }
+                if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) onClose()
+                true
+            }
+            .focusProperties {
+                exit = { if (isOpen) FocusRequester.Cancel else FocusRequester.Default }
+            }
+            .focusGroup()
     ) {
         Text(
             text = stringResource(R.string.music_queue),

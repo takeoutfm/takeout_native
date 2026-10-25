@@ -4,15 +4,9 @@ import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,7 +62,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -80,7 +73,6 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
-import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -537,79 +529,33 @@ private fun Controls(
 }
 
 /**
- * The live-stream indicator in place of the seek bar (and, [small], in the mini player).
- * Playing: a solid red "LIVE" pill with bouncing equalizer bars. Paused: a grey outlined
- * "PAUSED" pill with a still dot, so the state reads from across the room.
+ * "● LIVE" in place of the seek bar for a live stream: always a red pill; the dot is green
+ * while playing and grey when paused.
  */
 @Composable
-fun LiveBadge(isPlaying: Boolean, modifier: Modifier = Modifier, small: Boolean = false) {
-    val shape = RoundedCornerShape(if (small) 4.dp else 6.dp)
-    // The surrounding content colour, so it also reads on a focused (light) mini player.
-    val grey = LocalContentColor.current.copy(alpha = 0.6f)
+fun LiveBadge(isPlaying: Boolean, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .then(
-                if (isPlaying) {
-                    Modifier.background(LiveRed, shape)
-                } else {
-                    Modifier.border(if (small) 1.dp else 2.dp, grey, shape)
-                }
-            )
-            .padding(
-                horizontal = if (small) 6.dp else 12.dp,
-                vertical = if (small) 2.dp else 6.dp,
-            ),
+            .background(LiveRed, RoundedCornerShape(6.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        if (isPlaying) {
-            EqualizerBars(height = if (small) 8.dp else 14.dp)
-        } else {
-            Box(
-                Modifier
-                    .size(if (small) 6.dp else 10.dp)
-                    .background(grey, CircleShape)
-            )
-        }
+        Box(
+            Modifier
+                .size(10.dp)
+                .background(if (isPlaying) LiveGreen else LivePausedGrey, CircleShape)
+        )
         Text(
-            text = stringResource(if (isPlaying) R.string.music_live else R.string.music_paused),
-            style = if (small) MaterialTheme.typography.labelSmall
-            else MaterialTheme.typography.titleSmall,
-            color = if (isPlaying) Color.White else grey,
-            modifier = Modifier.padding(start = if (small) 4.dp else 8.dp),
+            text = stringResource(R.string.music_live),
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            modifier = Modifier.padding(start = 8.dp),
         )
     }
 }
 
-/** Three white bars bouncing out of step, like a level meter. */
-@Composable
-private fun EqualizerBars(height: Dp) {
-    val transition = rememberInfiniteTransition(label = "eq")
-    val barWidth = height / 4
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(barWidth / 2),
-        verticalAlignment = Alignment.Bottom,
-        modifier = Modifier.height(height),
-    ) {
-        listOf(520, 380, 640).forEachIndexed { i, period ->
-            val fraction by transition.animateFloat(
-                initialValue = 0.3f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    tween(period, delayMillis = i * 90),
-                    RepeatMode.Reverse,
-                ),
-                label = "bar$i",
-            )
-            Box(
-                Modifier
-                    .width(barWidth)
-                    .fillMaxHeight(fraction)
-                    .background(Color.White, RoundedCornerShape(1.dp))
-            )
-        }
-    }
-}
-
+private val LiveGreen = Color(0xFF69F0AE)
+private val LivePausedGrey = Color(0xFFBDBDBD)
 private val LiveRed = Color(0xFFD32F2F)
 
 /**

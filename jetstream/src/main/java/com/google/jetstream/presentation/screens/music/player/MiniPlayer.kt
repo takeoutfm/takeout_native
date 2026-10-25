@@ -47,7 +47,7 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * The music that's playing, as a small card in a corner of every screen but the players:
  * cover, track and artist (opens Now Playing), play/pause, and ✕ to stop the music and close
- * it. Hidden with nothing queued. Live streams show a LIVE badge and what's on air.
+ * it. Hidden with nothing queued. For a live stream, what's on air shows under the station.
  */
 @Composable
 fun MiniPlayer(
@@ -107,21 +107,12 @@ fun MiniPlayer(
                             .padding(start = 12.dp)
                             .width(220.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (state.isLive) {
-                                LiveBadge(
-                                    isPlaying = state.isPlaying,
-                                    small = true,
-                                    modifier = Modifier.padding(end = 6.dp),
-                                )
-                            }
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.titleSmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Text(
                             text = state.streamTitle ?: item.artist,
                             style = MaterialTheme.typography.bodySmall,

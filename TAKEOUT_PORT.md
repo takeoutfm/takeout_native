@@ -462,9 +462,9 @@ Each step is its own commit(s), checked on the emulator and TV.
   `FocusReturn` (`utils/FocusMemory.kt`), used by `TileRow`/`TileGrid` cards, track rows and the
   banners. Focus on anything unregistered clears it, and the normal search is used.
 - **Live streams**: an item with no ETag and no length is live. Now Playing shows a badge
-  instead of the seek bar — playing: solid red "LIVE" with three bouncing equalizer bars;
-  paused: grey outlined "PAUSED" with a still dot — and only play/pause (no
-  previous/next/repeat/favorite/Queue); the mini player shows a small version. Resuming a
+  instead of the seek bar — always a red "● LIVE" pill, its dot green while playing and grey
+  when paused — and only play/pause (no previous/next/repeat/favorite/Queue). The mini player
+  has no badge; it shows the station and what's on air. Resuming a
   live stream reconnects (stop + prepare) rather than playing stale buffer. The stream's ICY
   "now playing" text is shown as "Now: Artist - Title" (and as the session subtitle for Google
   TV's card): `MusicService` reads `IcyInfo` from `onMetadata` (which doesn't reach

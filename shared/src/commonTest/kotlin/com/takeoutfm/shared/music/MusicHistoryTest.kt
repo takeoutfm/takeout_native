@@ -1,11 +1,9 @@
-package com.takeoutfm.tv.data.music
+package com.takeoutfm.shared.music
 
-import com.takeoutfm.shared.music.MusicQueue
-import com.takeoutfm.shared.music.QueueItem
-import com.takeoutfm.tv.data.music.MusicHistory.Companion.MaxEntries
-import com.takeoutfm.tv.data.music.MusicHistory.Companion.recorded
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.takeoutfm.shared.music.MusicHistory.Companion.MaxEntries
+import com.takeoutfm.shared.music.MusicHistory.Companion.recorded
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class MusicHistoryTest {
     private fun queue(location: String, title: String = location, first: String = "u-$title") =

@@ -23,7 +23,7 @@ import androidx.lifecycle.viewModelScope
 import com.takeoutfm.tv.data.entities.MovieDetails
 import com.takeoutfm.tv.data.repositories.MovieRepository
 import com.takeoutfm.tv.data.repositories.TakeoutMovieRepository
-import com.takeoutfm.tv.data.takeout.TakeoutProgress
+import com.takeoutfm.shared.progress.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException

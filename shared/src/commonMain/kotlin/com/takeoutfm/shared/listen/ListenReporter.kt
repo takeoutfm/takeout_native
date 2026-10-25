@@ -1,16 +1,9 @@
-package com.takeoutfm.tv.data.listen
+package com.takeoutfm.shared.listen
 
-import android.content.Context
 import com.takeoutfm.shared.api.TakeoutApi
-import com.takeoutfm.shared.listen.ListenBrainzAccount
-import com.takeoutfm.shared.listen.ListenTrack
+import com.takeoutfm.shared.db.TakeoutDb
 import com.takeoutfm.shared.model.ApiActivityEvents
 import com.takeoutfm.shared.model.ApiTrackEvent
-import com.takeoutfm.tv.data.takeout.TakeoutSettings
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Instant
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,12 +11,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
+import kotlinx.datetime.Instant
 
 /** A finished listen waiting to be reported. */
-@Serializable
 data class PendingListen(
     val etag: String,
     val artist: String,
@@ -36,26 +26,22 @@ data class PendingListen(
 )
 
 /**
- * Reports music plays — to the Takeout server's activity and/or ListenBrainz, per the Music
- * settings — once a track counts as listened ([com.takeoutfm.shared.listen.countsAsListened]). Reports that fail (offline,
- * server down) are kept on the device and retried with the next one.
+ * Reports music plays — to the Takeout server's activity and/or ListenBrainz, per the app's
+ * settings ([reportPlays], [submitListens]) — once a track counts as listened
+ * ([countsAsListened]). Reports that fail (offline, server down) are kept on the device (the
+ * `pending_listen` table) and retried with the next one.
  */
-@Singleton
-class ListenReporter @Inject constructor(
-    @ApplicationContext context: Context,
+class ListenReporter(
     private val api: TakeoutApi,
     private val listenBrainz: ListenBrainzAccount,
-    private val settings: TakeoutSettings,
+    private val db: TakeoutDb,
+    private val reportPlays: () -> Boolean,
+    private val submitListens: () -> Boolean,
 ) {
-    private val prefs = context.getSharedPreferences("listen_reporter", Context.MODE_PRIVATE)
-    private val json = Json { ignoreUnknownKeys = true }
-    private val serializer = ListSerializer(PendingListen.serializer())
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Mutex()
 
-    private val toTakeout get() = settings.reportPlays.value
-    private val toListenBrainz
-        get() = settings.submitListens.value && listenBrainz.user.value != null
+    private val toListenBrainz get() = submitListens() && listenBrainz.user.value != null
 
     /** A track started playing: tells ListenBrainz (its "playing now"), if enabled. */
     fun started(artist: String, title: String, album: String) {
@@ -74,8 +60,8 @@ class ListenReporter @Inject constructor(
             artist = artist,
             title = title,
             album = album,
-            listenedAt = at.epochSecond,
-            toTakeout = toTakeout && etag.isNotEmpty(),
+            listenedAt = at.epochSeconds,
+            toTakeout = reportPlays() && etag.isNotEmpty(),
             toListenBrainz = toListenBrainz && artist.isNotEmpty() && title.isNotEmpty(),
         )
         if (!listen.toTakeout && !listen.toListenBrainz) return
@@ -99,7 +85,7 @@ class ListenReporter @Inject constructor(
         if (takeout.isNotEmpty()) {
             val sent = try {
                 val events = takeout.map {
-                    ApiTrackEvent(it.etag, Instant.ofEpochSecond(it.listenedAt).toString())
+                    ApiTrackEvent(it.etag, Instant.fromEpochSeconds(it.listenedAt).toString())
                 }
                 api.postActivity(ApiActivityEvents(events))
                 true
@@ -129,17 +115,28 @@ class ListenReporter @Inject constructor(
         save(pending.filter { it.toTakeout || it.toListenBrainz })
     }
 
-    private fun load(): List<PendingListen> =
-        prefs.getString(KEY, null)
-            ?.let { runCatching { json.decodeFromString(serializer, it) }.getOrNull() }
-            .orEmpty()
+    /** What's waiting to be reported, oldest first. */
+    internal fun load(): List<PendingListen> =
+        db.listensQueries.all().executeAsList().map {
+            PendingListen(
+                it.etag, it.artist, it.title, it.album, it.listened_at,
+                it.to_takeout != 0L, it.to_listenbrainz != 0L,
+            )
+        }
 
     private fun save(list: List<PendingListen>) {
-        prefs.edit().putString(KEY, json.encodeToString(serializer, list)).apply()
+        db.listensQueries.transaction {
+            db.listensQueries.clear()
+            list.forEach { insert(db, it) }
+        }
     }
 
     companion object {
-        private const val KEY = "pending"
         private const val MaxPending = 500
+
+        fun insert(db: TakeoutDb, l: PendingListen) = db.listensQueries.insert(
+            l.etag, l.artist, l.title, l.album, l.listenedAt,
+            if (l.toTakeout) 1 else 0, if (l.toListenBrainz) 1 else 0,
+        )
     }
 }

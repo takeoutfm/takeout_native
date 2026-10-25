@@ -17,7 +17,7 @@ import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.takeoutfm.tv.MainActivity
-import com.takeoutfm.tv.data.listen.ListenReporter
+import com.takeoutfm.shared.listen.ListenReporter
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

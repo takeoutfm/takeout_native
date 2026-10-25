@@ -24,8 +24,8 @@ import androidx.lifecycle.viewModelScope
 import com.takeoutfm.tv.R
 import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.FeaturedAlbum
-import com.takeoutfm.tv.data.music.MusicHistory
-import com.takeoutfm.tv.data.music.PlayedQueue
+import com.takeoutfm.shared.music.MusicHistory
+import com.takeoutfm.shared.music.PlayedQueue
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton

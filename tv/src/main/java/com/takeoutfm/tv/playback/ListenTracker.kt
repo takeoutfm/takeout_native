@@ -7,11 +7,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.listen.countsAsListened
 import com.takeoutfm.shared.listen.countsAsStreamListen
 import com.takeoutfm.shared.listen.parseStreamTitle
-import com.takeoutfm.tv.data.listen.ListenReporter
-import java.time.Instant
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 /**
  * Watches the music player and tells [ListenReporter] when a track starts and when it has been
@@ -39,7 +40,7 @@ class ListenTracker(
     private var streamSong: String? = null
     private var streamHeardMs = 0L
     private var streamFromStart = false
-    private var streamStartedAt: Instant = Instant.now()
+    private var streamStartedAt: Instant = Clock.System.now()
 
     private val tick = object : Runnable {
         override fun run() {
@@ -95,7 +96,7 @@ class ListenTracker(
         streamSong = title
         streamHeardMs = 0
         streamFromStart = heardChange
-        streamStartedAt = Instant.now()
+        streamStartedAt = Clock.System.now()
         parseStreamTitle(title)?.let { (artist, song) ->
             reporter.started(artist, song, "")
         }
@@ -160,7 +161,7 @@ class ListenTracker(
                 artist = m.artist?.toString().orEmpty(),
                 title = m.title?.toString().orEmpty(),
                 album = m.albumTitle?.toString().orEmpty(),
-                at = Instant.now(),
+                at = Clock.System.now(),
             )
         }
     }

@@ -28,7 +28,7 @@ directly where needed.
 | Wire models (Takeout JSON, PascalCase, all fields defaulted) | `shared/…/model/ApiModels.kt` (`:shared`) |
 | HTTP client (Ktor), bearer auth, refresh on 401 | `TakeoutApi` in `:shared` (`api/`) |
 | Token storage | `TakeoutSession` in `:shared`; encrypted store + Hilt wiring in `data/takeout/TakeoutModule.kt` |
-| Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
+| Watch progress (resume, sync, in-progress list) | `TakeoutProgress` in `:shared` (`progress/`, SQLDelight `progress` table) |
 | Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
 | Video server logic, TTL cache with shared in-flight loads | `TakeoutVideoRepository` and `util/RequestCache` in `:shared` |
 | Shared video entities → JetStream entities | `data/repositories/TakeoutMovieRepository.kt` |
@@ -241,8 +241,8 @@ paragraph at a time.
   UTC date, newest wins. Saved every 30 s while playing, on pause and on leaving the player —
   only after playback actually started, so a failed load never resets progress. Resume if ≥ 10 s
   in and not within the last 2 minutes.
-- **Offline progress**: every save is stored on the device first (newest per title, up to 500
-  titles) and stays *pending* until the server accepts it; all pending updates are sent in one
+- **Offline progress**: every save is stored on the device first (the shared database's
+  `progress` table, newest per title, up to 500 titles) and stays *pending* until the server accepts it; all pending updates are sent in one
   request with the next save, on app start and when the app returns to the foreground. An
   update is only marked done if it's still the newest one for that title. Resume and Continue
   Watching use the newer of server and device offsets (by date, so another device's later
@@ -380,7 +380,7 @@ the API responses already carry these paths.
   Flutter app's rule), behind a per-device setting like its `enableTrackActivity` (off by
   default). Radio stream entries without an ETag are skipped.
 - **Play history (local)**: every queue that starts playing is saved on the device
-  (`data/music/MusicHistory`) with the index and position reached — saved every ~10 s, on pause
+  (`MusicHistory` in `:shared`) with the index and position reached — saved every ~10 s, on pause
   and on track change — most recent first, capped at 50; replaying an existing queue moves it
   to the front instead of adding a copy (matched by the playlist's location, else its title and
   first entry). This is Music Home's **Recently Played** row; selecting an entry resumes where it
@@ -500,7 +500,7 @@ Each step is its own commit(s), checked on the emulator and TV.
     its start (at least 30 s, ListenBrainz's minimum) or for 4 minutes; the song playing when
     you tune in, or when a paused stream is rejoined, wasn't heard from its start, and stopping
     mid-song only counts after 4 minutes. Submitted with the song's start time, and each new
-    song is sent as "playing now". `data/listen/ListenReporter` sends to each destination separately and
+    song is sent as "playing now". `ListenReporter` (`:shared`) sends to each destination separately and
     keeps failed reports on the device (up to 500) to retry with the next one.
 - **ListenBrainz token from a phone** (`data/listen/TokenHandoff`): Connect shows a QR code
   (ZXing) and a URL like `http://<tv-ip>:8723/h/<random>`; the TV serves a one-field page there

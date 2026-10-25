@@ -1,0 +1,30 @@
+-- Watch progress saved on the device, newest per media ETag; pending until the server has it.
+CREATE TABLE progress (
+    etag TEXT NOT NULL PRIMARY KEY,
+    position INTEGER NOT NULL,
+    -- Seconds, like duration.
+    duration INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    -- Epoch ms of date, for ordering.
+    saved_at INTEGER NOT NULL,
+    pending INTEGER NOT NULL DEFAULT 1
+);
+
+all:
+SELECT * FROM progress;
+
+upsert:
+INSERT OR REPLACE INTO progress(etag, position, duration, date, saved_at, pending)
+VALUES (?, ?, ?, ?, ?, ?);
+
+confirm:
+UPDATE progress SET pending = 0 WHERE etag IN ?;
+
+-- Keeps the newest :keep offsets and every pending one.
+prune:
+DELETE FROM progress WHERE pending = 0 AND etag NOT IN (
+    SELECT etag FROM progress ORDER BY saved_at DESC LIMIT :keep
+);
+
+clear:
+DELETE FROM progress;

@@ -58,7 +58,7 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
     launch/foreground/sign-in/Home.
   - `music/`: `TakeoutMusicRepository` and the music entities.
   - `video/`: `TakeoutVideoRepository` (movies, TV, people, search, Continue Watching via a
-    `ProgressSource`, which the TV's `TakeoutProgress` implements) and the video entities.
+    `ProgressSource`, which `TakeoutProgress` implements) and the video entities.
   - `listen/`: `ListenBrainzAccount` (Ktor) and the listen rules; `progress/`, `util/`, `model/`.
   - `store/KeyValueStore`: how shared classes save values; `AndroidStores` (androidMain) gives
     plain and EncryptedSharedPreferences-backed ones.
@@ -66,9 +66,14 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
     using the same preferences files as before the move (`takeout_session`,
     `takeout_library`, `listenbrainz`) so saved state carries over. HTTP code is tested with
     Ktor's `MockEngine`.
-- **`data/takeout/`:** `TakeoutProgress` (watch progress keyed by media ETag, persisted and synced
-  using `ProgressRules`), `TakeoutSettings` (per-device prefs). Move more into `:shared` per
-  `PLAN.md` phase 0.
+  - **Database** (SQLDelight, `src/commonMain/sqldelight/…/db/*.sq`, file `takeout.db`):
+    `progress/TakeoutProgress` (watch progress keyed by media ETag, pending until the server
+    has it), `listen/ListenReporter` (unsent plays), `music/MusicHistory` (Recently Played).
+    Writes go through `DbWriter` (one at a time, in order, off the caller's thread). Schema
+    changes need a `.sqm` migration. Store tests use an in-memory JDBC driver (`testDb()`).
+    `data/takeout/LegacyImport` moves pre-database SharedPreferences JSON in once.
+- **`data/takeout/`:** `TakeoutSettings` (per-device prefs), `TakeoutModule` (Hilt wiring for the
+  shared core). Move more into `:shared` per `PLAN.md` phase 0.
 - **IDs:** one navigable id space — movies `m-<id>`, TV series `s-<id>`, episodes `e-<id>`;
   `getMovieDetails()` dispatches on the prefix. Progress offsets carry only an ETag, so titles are
   found by matching ETags against cached `/api/movies` and `/api/tv`.
@@ -86,15 +91,15 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   `sortedByTitle` in `util/Lists.kt`.
 - **Music:** a separate half of the app, switched with the TAKEOUT logo (`LibraryMode` in
   `TakeoutSettings`). Data in `:shared` `music/` (`TakeoutMusicRepository`, entities; ids
-  `ar-`/`al-`/`t-`); `data/music/MusicHistory` (Recently Played) stays in the TV app; screens in
+  `ar-`/`al-`/`t-`) and `MusicHistory` (Recently Played); screens in
   `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
   remaining phases is in `TAKEOUT_PORT.md` → Music.
 - **Music playback:** `playback/MusicService` (background `MediaSessionService`) plays; the UI
   only talks to `playback/MusicPlayer` (a `MediaController` singleton with `NowPlaying` state).
   The mini player is an overlay in `App.kt`. Video playback stays screen-scoped.
-- **Play reporting:** `data/listen/` — `ListenReporter` (Takeout activity + ListenBrainz, per the
-  Music settings, with an on-device retry queue), `ListenBrainzAccount` (`:shared`, encrypted token),
-  `TokenHandoff` (one-time local web page + QR for entering the token from a phone).
+- **Play reporting:** `ListenReporter` (`:shared`; Takeout activity + ListenBrainz, per the
+  Music settings, with an on-device retry queue), `ListenBrainzAccount` (`:shared`, encrypted
+  token), `data/listen/TokenHandoff` (one-time local web page + QR for entering the token from a phone).
   `playback/ListenTracker` decides when a track counts. Don't test with real accounts: the
   settings change the user's real Takeout stats / ListenBrainz profile.
 

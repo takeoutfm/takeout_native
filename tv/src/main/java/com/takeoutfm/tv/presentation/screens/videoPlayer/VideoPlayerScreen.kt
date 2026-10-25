@@ -65,7 +65,7 @@ import androidx.tv.material3.Text
 import com.takeoutfm.tv.R
 import com.takeoutfm.tv.data.entities.Movie
 import com.takeoutfm.tv.data.entities.MovieDetails
-import com.takeoutfm.tv.data.takeout.TakeoutProgress
+import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import com.takeoutfm.tv.presentation.common.DelayedLoading
 import com.takeoutfm.tv.presentation.common.Error

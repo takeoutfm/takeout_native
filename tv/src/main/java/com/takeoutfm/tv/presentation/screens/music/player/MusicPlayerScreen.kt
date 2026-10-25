@@ -81,8 +81,8 @@ import coil.request.ImageRequest
 import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.tv.R
 import com.takeoutfm.shared.music.QueueItem
-import com.takeoutfm.tv.data.listen.ListenReporter
-import com.takeoutfm.tv.data.music.MusicHistory
+import com.takeoutfm.shared.listen.ListenReporter
+import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.playback.MusicPlayer
 import com.takeoutfm.tv.playback.NowPlaying

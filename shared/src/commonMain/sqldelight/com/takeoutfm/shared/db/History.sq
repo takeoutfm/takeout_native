@@ -1,0 +1,29 @@
+-- Recently Played: queues played on this device, newest first.
+CREATE TABLE played_queue (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    creator TEXT NOT NULL,
+    image_uri TEXT NOT NULL,
+    location TEXT NOT NULL,
+    -- The tracks, as JSON (a list of PlayedItem).
+    items TEXT NOT NULL,
+    item_index INTEGER NOT NULL,
+    position_ms INTEGER NOT NULL,
+    played_at INTEGER NOT NULL
+);
+
+all:
+SELECT * FROM played_queue ORDER BY played_at DESC;
+
+upsert:
+INSERT OR REPLACE INTO played_queue(id, title, creator, image_uri, location, items, item_index, position_ms, played_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+progress:
+UPDATE played_queue SET item_index = ?, position_ms = ? WHERE id = ?;
+
+keepOnly:
+DELETE FROM played_queue WHERE id NOT IN ?;
+
+clear:
+DELETE FROM played_queue;

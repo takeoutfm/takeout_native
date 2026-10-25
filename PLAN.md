@@ -298,8 +298,9 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          series → seasons → episodes, next episode, directors-first credits, Continue
          Watching through a `ProgressSource`); the TV app maps them onto JetStream's
          `Movie`/`MovieDetails`.
-   - [ ] SQLDelight in `shared` for the progress and listen queues and Recently Played
-         (migrating the TV app's SharedPreferences JSON on first run).
+   - [x] SQLDelight in `shared` (`TakeoutDb`): `TakeoutProgress`, `ListenReporter` and
+         `MusicHistory` moved in on top of it; the TV app imports its old SharedPreferences
+         JSON once (`LegacyImport`).
    - [ ] `android-media`: player factory, `MusicService`, `MusicPlayer`, `ListenTracker`,
          audio-track ranking.
    - [ ] Re-verify the TV app on the Chromecast after each step (emulator checked after the

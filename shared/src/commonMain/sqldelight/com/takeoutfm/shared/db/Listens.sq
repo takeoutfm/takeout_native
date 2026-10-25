@@ -1,0 +1,22 @@
+-- Finished listens waiting to be reported to Takeout and/or ListenBrainz, oldest first.
+CREATE TABLE pending_listen (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    etag TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    title TEXT NOT NULL,
+    album TEXT NOT NULL,
+    -- Unix seconds.
+    listened_at INTEGER NOT NULL,
+    to_takeout INTEGER NOT NULL,
+    to_listenbrainz INTEGER NOT NULL
+);
+
+all:
+SELECT * FROM pending_listen ORDER BY id;
+
+insert:
+INSERT INTO pending_listen(etag, artist, title, album, listened_at, to_takeout, to_listenbrainz)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+clear:
+DELETE FROM pending_listen;

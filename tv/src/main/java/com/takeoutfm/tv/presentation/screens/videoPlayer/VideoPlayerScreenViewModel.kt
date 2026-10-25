@@ -22,7 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.tv.data.entities.MovieDetails
 import com.takeoutfm.tv.data.repositories.MovieRepository
-import com.takeoutfm.tv.data.takeout.TakeoutProgress
+import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

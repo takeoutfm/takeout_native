@@ -1,19 +1,17 @@
-package com.takeoutfm.tv.data.music
+package com.takeoutfm.shared.music
 
-import android.content.Context
 import com.takeoutfm.shared.api.TakeoutSession
-import com.takeoutfm.shared.music.MusicQueue
-import com.takeoutfm.shared.music.QueueItem
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
+import com.takeoutfm.shared.db.DbWriter
+import com.takeoutfm.shared.db.TakeoutDb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -63,18 +61,16 @@ data class PlayedItem(
 
 /**
  * Recently Played: the last [MaxEntries] queues played on this device, newest first, saved
- * locally (no server support needed). Replaying one moves it to the front instead of adding a
- * copy. Cleared on sign-out, since its stream URLs belong to the signed-in server.
+ * locally (the `played_queue` table; no server support needed). Replaying one moves it to the
+ * front instead of adding a copy. Cleared on sign-out, since its stream URLs belong to the
+ * signed-in server.
  */
-@Singleton
-class MusicHistory @Inject constructor(
-    @ApplicationContext context: Context,
+class MusicHistory(
     session: TakeoutSession,
+    private val db: TakeoutDb,
 ) {
-    private val prefs = context.getSharedPreferences("music_history", Context.MODE_PRIVATE)
-    private val json = Json { ignoreUnknownKeys = true }
-    private val serializer = ListSerializer(PlayedQueue.serializer())
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val writer = DbWriter()
 
     private val _entries = MutableStateFlow(load())
     val entries: StateFlow<List<PlayedQueue>> = _entries.asStateFlow()
@@ -82,47 +78,80 @@ class MusicHistory @Inject constructor(
     init {
         scope.launch {
             session.state.collect {
-                if (!it.isLoggedIn && _entries.value.isNotEmpty()) save(emptyList())
+                if (!it.isLoggedIn && _entries.value.isNotEmpty()) {
+                    _entries.value = emptyList()
+                    writer.write { db.historyQueries.clear() }
+                }
             }
         }
     }
 
     /** Records [queue] starting to play; returns its entry id for [progress]. */
-    @Synchronized
-    fun record(queue: MusicQueue, now: Long = System.currentTimeMillis()): String {
-        val (list, id) = recorded(_entries.value, queue, now)
-        save(list)
+    fun record(queue: MusicQueue, now: Long = Clock.System.now().toEpochMilliseconds()): String {
+        var id = ""
+        var list = emptyList<PlayedQueue>()
+        _entries.update { current ->
+            recorded(current, queue, now).also { (l, i) -> list = l; id = i }.first
+        }
+        val entry = list.first()
+        val ids = list.map { it.id }
+        writer.write {
+            db.historyQueries.transaction {
+                upsert(db, entry)
+                db.historyQueries.keepOnly(ids)
+            }
+        }
         return id
     }
 
     /** Where entry [id] got to, so replaying it resumes there. */
-    @Synchronized
     fun progress(id: String, index: Int, positionMs: Long) {
-        val list = _entries.value
-        val i = list.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
-        val entry = list[i]
-        if (entry.index == index && entry.positionMs == positionMs) return
-        val updated = list.toMutableList()
-        updated[i] = entry.copy(index = index, positionMs = positionMs)
-        save(updated)
+        var changed = false
+        _entries.update { list ->
+            val i = list.indexOfFirst { it.id == id }
+            val entry = list.getOrNull(i)
+            if (entry == null || (entry.index == index && entry.positionMs == positionMs)) {
+                changed = false
+                list
+            } else {
+                changed = true
+                list.toMutableList().also { it[i] = entry.copy(index = index, positionMs = positionMs) }
+            }
+        }
+        if (changed) {
+            writer.write { db.historyQueries.progress(index.toLong(), positionMs, id) }
+        }
     }
 
     fun find(id: String): PlayedQueue? = _entries.value.firstOrNull { it.id == id }
 
-    private fun save(list: List<PlayedQueue>) {
-        _entries.value = list
-        val text = json.encodeToString(serializer, list)
-        scope.launch { prefs.edit().putString(KEY, text).apply() }
-    }
-
     private fun load(): List<PlayedQueue> =
-        prefs.getString(KEY, null)
-            ?.let { runCatching { json.decodeFromString(serializer, it) }.getOrNull() }
-            .orEmpty()
+        db.historyQueries.all().executeAsList().mapNotNull {
+            val items = runCatching { json.decodeFromString(itemsSerializer, it.items) }
+                .getOrNull() ?: return@mapNotNull null
+            PlayedQueue(
+                id = it.id,
+                title = it.title,
+                creator = it.creator,
+                imageUri = it.image_uri,
+                location = it.location,
+                items = items,
+                index = it.item_index.toInt(),
+                positionMs = it.position_ms,
+                playedAt = it.played_at,
+            )
+        }
 
     companion object {
         const val MaxEntries = 50
-        private const val KEY = "played"
+        private val json = Json { ignoreUnknownKeys = true }
+        private val itemsSerializer = ListSerializer(PlayedItem.serializer())
+
+        fun upsert(db: TakeoutDb, q: PlayedQueue) = db.historyQueries.upsert(
+            q.id, q.title, q.creator, q.imageUri, q.location,
+            json.encodeToString(itemsSerializer, q.items),
+            q.index.toLong(), q.positionMs, q.playedAt,
+        )
 
         /** Same album/mix/station: by location when the server gave one, else by contents. */
         private fun sameQueue(entry: PlayedQueue, queue: MusicQueue): Boolean =

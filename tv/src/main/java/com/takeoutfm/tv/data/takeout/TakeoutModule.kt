@@ -5,9 +5,14 @@ import android.os.Build
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.api.TakeoutUrls
+import com.takeoutfm.shared.db.AndroidDatabase
+import com.takeoutfm.shared.db.TakeoutDb
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.listen.ListenBrainzAccount
+import com.takeoutfm.shared.listen.ListenReporter
+import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.store.AndroidStores
 import com.takeoutfm.shared.video.TakeoutVideoRepository
 import dagger.Module
@@ -50,6 +55,34 @@ object TakeoutModule {
     @Singleton
     fun music(api: TakeoutApi, library: TakeoutLibrary, urls: TakeoutUrls): TakeoutMusicRepository =
         TakeoutMusicRepository(api, library, urls)
+
+    /** The shared database, after moving in anything older builds kept in preferences. */
+    @Provides
+    @Singleton
+    fun database(@ApplicationContext context: Context): TakeoutDb =
+        AndroidDatabase.open(context).also { LegacyImport.run(context, it) }
+
+    @Provides
+    @Singleton
+    fun progress(api: TakeoutApi, session: TakeoutSession, db: TakeoutDb): TakeoutProgress =
+        TakeoutProgress(api, session, db)
+
+    @Provides
+    @Singleton
+    fun history(session: TakeoutSession, db: TakeoutDb): MusicHistory = MusicHistory(session, db)
+
+    @Provides
+    @Singleton
+    fun listenReporter(
+        api: TakeoutApi,
+        listenBrainz: ListenBrainzAccount,
+        db: TakeoutDb,
+        settings: TakeoutSettings,
+    ): ListenReporter = ListenReporter(
+        api, listenBrainz, db,
+        reportPlays = { settings.reportPlays.value },
+        submitListens = { settings.submitListens.value },
+    )
 
     @Provides
     @Singleton

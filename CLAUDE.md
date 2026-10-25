@@ -2,28 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Takeout TV is an Android TV client for the Takeout media server (a separate Go project), built on
-Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). The full
-design — server API usage, every screen's behaviour, commit history, known gaps — is in
-**`TAKEOUT_PORT.md`**; read it before larger changes and keep it updated when behaviour changes.
+Native clients for the Takeout media server (a separate Go project), in one Gradle build.
+
+| Module | What |
+|---|---|
+| `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
+| `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
 
 ## Commands
 
-The app module is `:jetstream` (`:benchmark` holds macrobenchmarks/baseline-profile generation).
 JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't committed).
 
 ```
-./gradlew :jetstream:assembleDebug                 # debug APK
-./gradlew :jetstream:assembleRelease               # minified release APK (debug-signed)
-./gradlew :jetstream:testDebugUnitTest             # JVM unit tests (JUnit 4)
-./gradlew :jetstream:testDebugUnitTest --tests '*AudioTrackRankingTest'   # one test class
-./gradlew :jetstream:compileDebugKotlin            # fast compile check
+./gradlew :tv:assembleDebug                 # debug APK
+./gradlew :tv:assembleRelease               # minified release APK (debug-signed)
+./gradlew :tv:testDebugUnitTest             # JVM unit tests (JUnit 4)
+./gradlew :tv:testDebugUnitTest --tests '*AudioTrackRankingTest'   # one test class
+./gradlew :tv:compileDebugKotlin            # fast compile check
 ```
 
 - `installDebug` installs on **every** connected device. To target one, build and use
   `adb -s <serial> install -r <apk>` (serials from `adb devices -l`).
 - Real TV (Chromecast with Google TV, wireless debugging): always install the **release** APK
-  (`jetstream/build/outputs/apk/release/jetstream-release.apk`); debug builds are far slower and
+  (`tv/build/outputs/apk/release/tv-release.apk`); debug builds are far slower and
   hide/cause problems that don't match real use. Its adb serial/port changes whenever wireless
   debugging is toggled — re-check `adb devices -l`.
 - Launch: `adb shell monkey -p com.takeoutfm.tv -c android.intent.category.LEANBACK_LAUNCHER 1`.
@@ -31,10 +32,10 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   (`./gradlew --init-script buildscripts/init.gradle.kts spotlessApply`) but hasn't been used in
   this port; it would stamp Google's license header (`spotless/copyright.kt`) onto Takeout files.
 
-## Architecture
+## TV architecture
 
-- **Identity:** `applicationId` is `com.takeoutfm.tv`, but the Kotlin package/namespace is still
-  `com.google.jetstream`. Paths below are under `jetstream/src/main/java/com/google/jetstream/`.
+- **Identity:** `applicationId`, package and namespace are `com.takeoutfm.tv`. Paths below are
+  under `tv/src/main/java/com/takeoutfm/tv/`.
 - **Data flow:** JetStream's screens talk to the `MovieRepository` interface, bound (Hilt, in
   `JetStreamApplication.kt`) to `data/repositories/TakeoutMovieRepository.kt`, which maps Takeout
   JSON (`data/takeout/ApiModels.kt`, PascalCase, every field defaulted) onto JetStream entities

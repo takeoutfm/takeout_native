@@ -1,4 +1,4 @@
-package com.takeoutfm.tv.presentation.screens.videoPlayer.components
+package com.takeoutfm.media.video
 
 import androidx.media3.common.MimeTypes
 import org.junit.Assert.assertEquals

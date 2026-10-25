@@ -2,6 +2,8 @@ package com.takeoutfm.tv.data.takeout
 
 import android.content.Context
 import android.os.Build
+import com.takeoutfm.media.MusicPlayer
+import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.api.TakeoutUrls
@@ -15,6 +17,8 @@ import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.store.AndroidStores
 import com.takeoutfm.shared.video.TakeoutVideoRepository
+import com.takeoutfm.tv.BuildConfig
+import com.takeoutfm.tv.playback.MusicService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -83,6 +87,21 @@ object TakeoutModule {
         reportPlays = { settings.reportPlays.value },
         submitListens = { settings.submitListens.value },
     )
+
+    @Provides
+    @Singleton
+    fun playerFactory(
+        @ApplicationContext context: Context,
+        session: TakeoutSession,
+    ): TakeoutPlayerFactory = TakeoutPlayerFactory(context, session, BuildConfig.DEBUG)
+
+    @Provides
+    @Singleton
+    fun musicPlayer(
+        @ApplicationContext context: Context,
+        session: TakeoutSession,
+        history: MusicHistory,
+    ): MusicPlayer = MusicPlayer(context, session, history, MusicService::class.java)
 
     @Provides
     @Singleton

@@ -84,8 +84,8 @@ import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
-import com.takeoutfm.tv.playback.MusicPlayer
-import com.takeoutfm.tv.playback.NowPlaying
+import com.takeoutfm.media.MusicPlayer
+import com.takeoutfm.media.NowPlaying
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.common.PlayerLoading
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
@@ -250,9 +250,9 @@ private fun NowPlayingContent(
                     },
                     queueButton = queueButton,
                 )
+                val error = state.error
                 val status = when {
-                    state.error != null ->
-                        stringResource(R.string.music_cant_play, state.error)
+                    error != null -> stringResource(R.string.music_cant_play, error)
                     state.isLive -> null // what's on air is in the lines above
                     else -> state.items.getOrNull(state.index + 1)?.let { next ->
                         stringResource(R.string.music_up_next, next.title, next.artist)

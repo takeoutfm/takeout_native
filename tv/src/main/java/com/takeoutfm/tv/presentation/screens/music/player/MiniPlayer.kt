@@ -38,8 +38,8 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.playback.MusicPlayer
-import com.takeoutfm.tv.playback.NowPlaying
+import com.takeoutfm.media.MusicPlayer
+import com.takeoutfm.media.NowPlaying
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
 import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 import dagger.hilt.android.lifecycle.HiltViewModel

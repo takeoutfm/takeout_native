@@ -45,10 +45,10 @@ directly where needed.
 | Season/episode rows | `.../screens/movies/EpisodesList.kt` |
 | Cast & Crew row (photos, opens person page) | `.../screens/movies/CastAndCrewList.kt` |
 | Person page | `.../screens/person/*` |
-| ExoPlayer for Takeout streams (media token, decoder fallback) | `playback/TakeoutPlayerFactory.kt` |
+| ExoPlayer for Takeout streams (media token, decoder fallback) | `TakeoutPlayerFactory` in `:android-media` |
 | Player (progress, errors, release, media session) | `.../videoPlayer/VideoPlayerScreen.kt`, `components/RememberPlayer.kt` |
 | Audio/subtitle/speed pickers, subtitle rendering | `.../videoPlayer/components/TrackSelection.kt` |
-| Best audio track ranking (unit-tested) | `.../videoPlayer/components/AudioTrackRanking.kt` |
+| Best audio track ranking (unit-tested) | `video/AudioTrackRanking.kt` in `:android-media` |
 | Skeleton loading screens, player spinner | `presentation/common/Skeletons.kt` |
 | Focus return to the opened item | `presentation/utils/FocusMemory.kt` |
 | Server info + Sign out | `.../profile/AccountsSection.kt` |
@@ -297,11 +297,12 @@ the rest of this section is the plan for what's next.
 - **Album page**: cover, title, artist, year · type · track count; Play and Artist buttons; the
   track list (disc headings on multi-disc releases; the track's artist when it differs);
   Similar Albums. Selecting a track plays the album from it.
-- **Background playback**: `playback/MusicService` (a Media3 `MediaSessionService`, foreground
+- **Background playback**: `playback/MusicService` (the TV's subclass of `:android-media`'s
+  `TakeoutMusicService`, a Media3 `MediaSessionService`, foreground
   with the media-playback type) owns the music player and queue, so music keeps playing while
   browsing (in either mode) and with the app in the background; its session
   serves remote keys, Assistant and Google TV's now-playing card (which reopens the app). The UI
-  uses `playback/MusicPlayer`, a singleton `MediaController` that exposes `NowPlaying` state
+  uses `MusicPlayer` (`:android-media`), a singleton `MediaController` that exposes `NowPlaying` state
   (queue, index, playing, position polled while playing, repeat, error). Stream URIs
   ride in each item's request metadata, since Media3 doesn't pass a controller's
   `localConfiguration` to the session. Signing out stops the music.
@@ -493,7 +494,7 @@ Each step is its own commit(s), checked on the emulator and TV.
     ("single"/"import", with artist, track and release names) plus "playing_now" on track
     start. A 401 disconnects (token revoked).
   - A track counts as listened 4 minutes in or half way through, whichever comes first —
-    measured in actual playing time (`playback/ListenTracker`), so seeking ahead doesn't count.
+    measured in actual playing time (`ListenTracker` in `:android-media`), so seeking ahead doesn't count.
   - Live streams (ListenBrainz only; Takeout needs an ETag): songs are followed by the ICY
     title, split into artist and title at the first " - " (titles not in that form, e.g. station
     IDs, are skipped). A song is judged when the title changes: it counts if it was heard from

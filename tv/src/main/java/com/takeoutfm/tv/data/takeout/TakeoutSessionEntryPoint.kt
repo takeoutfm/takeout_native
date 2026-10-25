@@ -1,6 +1,6 @@
 package com.takeoutfm.tv.data.takeout
 
-import com.takeoutfm.tv.playback.TakeoutPlayerFactory
+import com.takeoutfm.media.TakeoutPlayerFactory
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent

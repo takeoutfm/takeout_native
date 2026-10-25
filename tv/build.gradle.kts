@@ -96,6 +96,7 @@ dependencies {
 
     // Takeout core shared with the other apps (API models, rules)
     implementation(project(":shared"))
+    implementation(project(":android-media"))
 
     // Takeout networking + secure session storage
     implementation(libs.okhttp)

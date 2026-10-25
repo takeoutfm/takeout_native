@@ -10,6 +10,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 |---|---|
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
+| `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video audio-track ranking. Plain constructors, no Hilt. |
 | `:shared` | Kotlin Multiplatform core shared by all apps (Android target only for now): API models (`com.takeoutfm.shared.model`), listen/progress rules, `TakeoutPaths`, sort keys. No Android or `java.*` imports in `commonMain` (platform bits go in `androidMain` as `actual`s); use kotlinx-datetime, not `java.time`. Tests live in `commonTest` (`kotlin.test`). |
 
 ## Commands
@@ -20,7 +21,8 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 ./gradlew :tv:assembleDebug                 # debug APK
 ./gradlew :tv:assembleRelease               # minified release APK (debug-signed)
 ./gradlew :tv:testDebugUnitTest             # TV JVM unit tests (JUnit 4)
-./gradlew :tv:testDebugUnitTest --tests '*AudioTrackRankingTest'   # one test class
+./gradlew :tv:testDebugUnitTest --tests '*FormatDollarsTest'   # one test class
+./gradlew :android-media:testDebugUnitTest  # playback unit tests
 ./gradlew :shared:testDebugUnitTest         # shared commonTest, run on the JVM
 ./gradlew :tv:compileDebugKotlin            # fast compile check
 ```
@@ -80,10 +82,11 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 - **Navigation:** `presentation/App.kt` (sign-in gate + top-level NavHost: details, player,
   person, genre pages); `presentation/screens/dashboard/` (tab bar built from `TakeoutLibrary`,
   including one tab per recommendation set).
-- **Player:** `playback/TakeoutPlayerFactory.kt` sets up ExoPlayer for Takeout streams (media
-  token via `ResolvingDataSource`, decoder fallback, debug `EventLogger`), shared by video and
-  the planned music playback; `presentation/screens/videoPlayer/` — `RememberPlayer.kt` adds the
-  video-specific options; track pickers and the best-audio-track ranking live in `components/`.
+- **Player:** `TakeoutPlayerFactory` (`:android-media`) sets up ExoPlayer for Takeout streams
+  (media token via `ResolvingDataSource`, decoder fallback, debug `EventLogger`), shared by video
+  and music; `presentation/screens/videoPlayer/` — `RememberPlayer.kt` adds the video-specific
+  options; track pickers live in `components/`, the best-audio-track ranking in
+  `:android-media` `video/`.
 - **Shared UI:** `presentation/common/TileGrid.kt` / `TileRow.kt` (generic 6-column grid and
   card row; `PosterGrid.kt` and `MoviesRow.kt` wrap them for movies), `Skeletons.kt` (loading
   states), `presentation/utils/FocusMemory.kt` (return focus to the item that was opened).
@@ -94,13 +97,15 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   `ar-`/`al-`/`t-`) and `MusicHistory` (Recently Played); screens in
   `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
   remaining phases is in `TAKEOUT_PORT.md` → Music.
-- **Music playback:** `playback/MusicService` (background `MediaSessionService`) plays; the UI
-  only talks to `playback/MusicPlayer` (a `MediaController` singleton with `NowPlaying` state).
+- **Music playback:** `playback/MusicService` (the TV's Hilt subclass of `:android-media`'s
+  `TakeoutMusicService`, a background `MediaSessionService`) plays; the UI only talks to
+  `MusicPlayer` (`:android-media`, a `MediaController` singleton with `NowPlaying` state),
+  provided in `TakeoutModule`.
   The mini player is an overlay in `App.kt`. Video playback stays screen-scoped.
 - **Play reporting:** `ListenReporter` (`:shared`; Takeout activity + ListenBrainz, per the
   Music settings, with an on-device retry queue), `ListenBrainzAccount` (`:shared`, encrypted
   token), `data/listen/TokenHandoff` (one-time local web page + QR for entering the token from a phone).
-  `playback/ListenTracker` decides when a track counts. Don't test with real accounts: the
+  `ListenTracker` (`:android-media`) decides when a track counts. Don't test with real accounts: the
   settings change the user's real Takeout stats / ListenBrainz profile.
 
 ## Rules learned the hard way

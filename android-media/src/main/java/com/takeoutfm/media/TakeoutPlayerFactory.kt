@@ -1,4 +1,4 @@
-package com.takeoutfm.tv.playback
+package com.takeoutfm.media
 
 import android.content.Context
 import androidx.annotation.OptIn
@@ -11,20 +11,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.util.EventLogger
 import com.takeoutfm.shared.api.TakeoutSession
-import com.takeoutfm.tv.BuildConfig
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
- * ExoPlayer set up for Takeout streams, shared by the video player and (later) music playback,
- * so stream authorization lives in one place. Callers add what's specific to them (seek steps,
- * scaling, audio attributes) to the returned builder.
+ * ExoPlayer set up for Takeout streams, shared by video and music playback, so stream
+ * authorization lives in one place. Callers add what's specific to them (seek steps, scaling,
+ * audio attributes) to the returned builder. [debugLogging] turns on [addDebugLogging] (debug
+ * builds).
  */
-@Singleton
-class TakeoutPlayerFactory @Inject constructor(
-    @ApplicationContext private val context: Context,
+class TakeoutPlayerFactory(
+    private val context: Context,
     private val session: TakeoutSession,
+    private val debugLogging: Boolean,
 ) {
     @OptIn(UnstableApi::class)
     fun builder(): ExoPlayer.Builder {
@@ -49,6 +46,6 @@ class TakeoutPlayerFactory @Inject constructor(
     /** Logs tracks (with decoder support), formats and errors to logcat as "EventLogger". */
     @OptIn(UnstableApi::class)
     fun addDebugLogging(player: ExoPlayer) {
-        if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger())
+        if (debugLogging) player.addAnalyticsListener(EventLogger())
     }
 }

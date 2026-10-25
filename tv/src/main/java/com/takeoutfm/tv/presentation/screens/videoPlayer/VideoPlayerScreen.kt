@@ -83,7 +83,7 @@ import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerP
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerState
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.applySubtitlePreference
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.audioTrackOptions
-import com.takeoutfm.tv.presentation.screens.videoPlayer.components.normalizeLanguage
+import com.takeoutfm.media.video.normalizeLanguage
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.rememberPlayer
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.rememberVideoPlayerPulseState
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.rememberVideoPlayerState

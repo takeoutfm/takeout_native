@@ -301,8 +301,9 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] SQLDelight in `shared` (`TakeoutDb`): `TakeoutProgress`, `ListenReporter` and
          `MusicHistory` moved in on top of it; the TV app imports its old SharedPreferences
          JSON once (`LegacyImport`).
-   - [ ] `android-media`: player factory, `MusicService`, `MusicPlayer`, `ListenTracker`,
-         audio-track ranking.
+   - [x] `android-media`: `TakeoutPlayerFactory`, abstract `TakeoutMusicService` (each app
+         subclasses it with its Hilt singletons), `MusicPlayer`, `ListenTracker`, audio-track
+         ranking.
    - [ ] Re-verify the TV app on the Chromecast after each step (emulator checked after the
          first two).
 1. **App skeleton**: login (password + passcode, device code), dynamic theme, bottom bar /

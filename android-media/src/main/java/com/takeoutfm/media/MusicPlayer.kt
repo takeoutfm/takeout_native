@@ -1,4 +1,4 @@
-package com.takeoutfm.tv.playback
+package com.takeoutfm.media
 
 import android.content.ComponentName
 import android.content.Context
@@ -10,6 +10,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -17,9 +18,6 @@ import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.music.MusicHistory
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineScope
@@ -58,14 +56,15 @@ data class NowPlaying(
 }
 
 /**
- * The UI's handle on [MusicService]: connects a [MediaController] on first use, plays queues
- * and exposes [state]. Everything runs on the main thread, as MediaController requires.
+ * The UI's handle on the app's [TakeoutMusicService] ([service]): connects a [MediaController]
+ * on first use, plays queues and exposes [state]. Everything runs on the main thread, as
+ * MediaController requires.
  */
-@Singleton
-class MusicPlayer @Inject constructor(
-    @ApplicationContext private val context: Context,
+class MusicPlayer(
+    private val context: Context,
     session: TakeoutSession,
     private val history: MusicHistory,
+    private val service: Class<out MediaSessionService>,
 ) {
     /** Recently Played entry of the queue playing now, updated with where it gets to. */
     private var historyId: String? = null
@@ -153,7 +152,7 @@ class MusicPlayer @Inject constructor(
 
     private suspend fun controller(): MediaController? = connectLock.withLock {
         controller?.takeIf { it.isConnected }?.let { return it }
-        val token = SessionToken(context, ComponentName(context, MusicService::class.java))
+        val token = SessionToken(context, ComponentName(context, service))
         val c = try {
             MediaController.Builder(context, token).buildAsync().await()
         } catch (e: Exception) {
@@ -210,7 +209,7 @@ class MusicPlayer @Inject constructor(
         val current = items.getOrNull(player.currentMediaItemIndex)
         val isLive = current != null && current.etag.isEmpty() &&
             (player.isCurrentMediaItemLive || player.duration == C.TIME_UNSET)
-        // Put there by MusicService from the stream's ICY metadata.
+        // Put there by TakeoutMusicService from the stream's ICY metadata.
         val streamTitle = player.currentMediaItem?.mediaMetadata?.extras
             ?.getString(StreamTitleKey)
             ?.takeIf { isLive && it.isNotBlank() }
@@ -233,7 +232,7 @@ private const val ProgressEveryTicks = 20
 
 /**
  * The stream URI also goes in the request metadata, since Media3 doesn't pass a controller's
- * `localConfiguration` to the session ([MusicService] restores it). The ETag is the media id.
+ * `localConfiguration` to the session ([TakeoutMusicService] restores it). The ETag is the media id.
  */
 internal fun QueueItem.toMediaItem(): MediaItem =
     MediaItem.Builder()

@@ -1,4 +1,4 @@
-package com.takeoutfm.tv.playback
+package com.takeoutfm.media
 
 import android.os.Handler
 import android.os.Looper
@@ -62,7 +62,7 @@ class ListenTracker(
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         accumulate()
-        // MusicService replaces a stream's item to show its ICY title: same item, not a new one.
+        // TakeoutMusicService replaces a stream's item to show its ICY title: same item, not a new one.
         val sameItem = reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
             mediaItem?.localConfiguration?.uri == item?.localConfiguration?.uri
         if (sameItem) {

@@ -217,6 +217,9 @@ paragraph at a time.
 
 ### Player
 - ExoPlayer with decoder fallback; seek steps 10 s; player released on exit.
+- Video keeps its aspect ratio (`rememberPresentationState(player).videoSizeDp`, pixel aspect
+  ratio included) and is letterboxed/pillarboxed in black; before, the surface had no source size
+  and stretched anything that wasn't 16:9 to fill the screen.
 - Title line: name, then "year • tagline" (episodes use the series' tagline).
 - Controls: movies have ♪ (audio), CC (subtitles) and the gear (speed). Episodes add ⏮/⏭ for
   the previous/next episode in play order (hidden at the ends); choosing one replaces the

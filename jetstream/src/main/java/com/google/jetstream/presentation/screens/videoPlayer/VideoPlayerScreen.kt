@@ -59,6 +59,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
+import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.google.jetstream.R
@@ -242,6 +243,8 @@ fun VideoPlayerScreenContent(
 
     Box(
         Modifier
+            // Black bars around video that isn't the screen's shape.
+            .background(Color.Black)
             .dPadEvents(
                 exoPlayer,
                 videoPlayerState,
@@ -249,13 +252,19 @@ fun VideoPlayerScreenContent(
             )
             .focusable()
     ) {
+        // Sized to the video's own shape (pixel aspect ratio included), letterboxed or
+        // pillarboxed in black: without a source size the surface fills the screen and
+        // stretches anything that isn't 16:9 (e.g. 4:3 classics, 2.39:1 scope films).
+        val presentation = rememberPresentationState(exoPlayer)
         PlayerSurface(
             player = exoPlayer,
             surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-            modifier = Modifier.resizeWithContentScale(
-                contentScale = ContentScale.Fit,
-                sourceSizeDp = null
-            )
+            modifier = Modifier
+                .align(Alignment.Center)
+                .resizeWithContentScale(
+                    contentScale = ContentScale.Fit,
+                    sourceSizeDp = presentation.videoSizeDp,
+                )
         )
 
         // Full screen rather than in the overlay's slot, so cues don't move with the controls.

@@ -1,9 +1,9 @@
 package com.google.jetstream.presentation.screens.music.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.runtime.Composable
@@ -59,6 +59,7 @@ import com.google.jetstream.presentation.theme.JetStreamBorderWidth
 import com.google.jetstream.presentation.theme.JetStreamButtonShape
 import com.google.jetstream.presentation.theme.JetStreamCardShape
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
+import com.google.jetstream.presentation.utils.returnFocusTarget
 
 /**
  * Music Home's banner, like video Home's: new albums one at a time, each over its artist's
@@ -84,6 +85,7 @@ fun MusicFeaturedCarousel(
                 shape = ShapeDefaults.Medium,
             )
             .clip(ShapeDefaults.Medium)
+            .returnFocusTarget()
             .onFocusChanged { isFocused = it.hasFocus }
             .handleDPadKeyEvents(onEnter = {
                 albums.getOrNull(carouselState.activeItemIndex)?.let(onPlay)

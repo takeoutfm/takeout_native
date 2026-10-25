@@ -1,5 +1,6 @@
 package com.google.jetstream.presentation.screens.music.player
 
+import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,10 +13,15 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,17 +52,28 @@ import kotlinx.coroutines.flow.StateFlow
 @Composable
 fun MiniPlayer(
     onOpenNowPlaying: () -> Unit,
+    /**
+     * Up (and Left from the card): back to the screen's last focused card or row; false when
+     * there's none, and the D-pad's normal search is used.
+     */
+    onReturnFocus: () -> Boolean,
     modifier: Modifier = Modifier,
     viewModel: MiniPlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val item = state.current ?: return
+    var cardFocused by remember { mutableStateOf(false) }
     Surface(
         shape = JetStreamCardShape,
         colors = SurfaceDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
         ),
-        modifier = modifier,
+        modifier = modifier.onPreviewKeyEvent {
+            val code = it.nativeKeyEvent.keyCode
+            val back = code == KeyEvent.KEYCODE_DPAD_UP ||
+                (code == KeyEvent.KEYCODE_DPAD_LEFT && cardFocused)
+            back && it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && onReturnFocus()
+        },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -71,6 +88,7 @@ fun MiniPlayer(
                     containerColor = Color.Transparent,
                     focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
                 ),
+                modifier = Modifier.onFocusChanged { cardFocused = it.isFocused },
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

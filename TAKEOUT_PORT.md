@@ -452,9 +452,16 @@ Each step is its own commit(s), checked on the emulator and TV.
   focused; Select plays the album. Its slot is reserved while it loads, so it can't push the
   rows down under focus.
 - **Mini player ✕**: stops the music and clears the queue (the card then disappears).
-- **Live streams**: an item with no ETag and no length is live. Now Playing shows a red
-  "● LIVE" badge (pulsing while playing) instead of the seek bar and only play/pause — no
-  previous/next/repeat/favorite/Queue; the mini player shows a small LIVE badge. Resuming a
+- **Leaving the mini player**: Up (or Left from its track card) returns focus to the screen's
+  last focused card, track row or banner. D-pad searches from the overlay don't find the content
+  under it (they fell through to the top bar, which stays focusable while scrolled off screen,
+  so focus seemed to vanish), so items register themselves: `Modifier.returnFocusTarget()` +
+  `FocusReturn` (`utils/FocusMemory.kt`), used by `TileRow`/`TileGrid` cards, track rows and the
+  banners. Focus on anything unregistered clears it, and the normal search is used.
+- **Live streams**: an item with no ETag and no length is live. Now Playing shows a badge
+  instead of the seek bar — playing: solid red "LIVE" with three bouncing equalizer bars;
+  paused: grey outlined "PAUSED" with a still dot — and only play/pause (no
+  previous/next/repeat/favorite/Queue); the mini player shows a small version. Resuming a
   live stream reconnects (stop + prepare) rather than playing stale buffer. The stream's ICY
   "now playing" text is shown as "Now: Artist - Title" (and as the session subtitle for Google
   TV's card): `MusicService` reads `IcyInfo` from `onMetadata` (which doesn't reach
@@ -466,9 +473,15 @@ Each step is its own commit(s), checked on the emulator and TV.
     connecting) and *Disconnect*. Listens go to `api.listenbrainz.org/1/submit-listens`
     ("single"/"import", with artist, track and release names) plus "playing_now" on track
     start. A 401 disconnects (token revoked).
-  - A track counts as listened after half its length or 4 minutes of actual playing time
-    (`playback/ListenTracker`, so seeking ahead doesn't count; the Flutter app's rule); streams
-    aren't reported. `data/listen/ListenReporter` sends to each destination separately and
+  - A track counts as listened 4 minutes in or half way through, whichever comes first —
+    measured in actual playing time (`playback/ListenTracker`), so seeking ahead doesn't count.
+  - Live streams (ListenBrainz only; Takeout needs an ETag): songs are followed by the ICY
+    title, split into artist and title at the first " - " (titles not in that form, e.g. station
+    IDs, are skipped). A song is judged when the title changes: it counts if it was heard from
+    its start (at least 30 s, ListenBrainz's minimum) or for 4 minutes; the song playing when
+    you tune in, or when a paused stream is rejoined, wasn't heard from its start, and stopping
+    mid-song only counts after 4 minutes. Submitted with the song's start time, and each new
+    song is sent as "playing now". `data/listen/ListenReporter` sends to each destination separately and
     keeps failed reports on the device (up to 500) to retry with the next one.
 - **ListenBrainz token from a phone** (`data/listen/TokenHandoff`): Connect shows a QR code
   (ZXing) and a URL like `http://<tv-ip>:8723/h/<random>`; the TV serves a one-field page there

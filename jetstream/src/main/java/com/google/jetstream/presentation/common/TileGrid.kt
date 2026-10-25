@@ -10,9 +10,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,6 +24,7 @@ import com.google.jetstream.presentation.utils.focusOnInitialVisibility
 import com.google.jetstream.presentation.utils.rememberFocus
 import com.google.jetstream.presentation.utils.rememberFocusMemory
 import com.google.jetstream.presentation.utils.restoreFocus
+import com.google.jetstream.presentation.utils.returnFocusTarget
 
 /**
  * A 6-column grid of cards for any kind of item: posters for the Movies and Shows tabs and genre
@@ -120,7 +121,9 @@ private fun TileGridItem(
     var isFocused by remember { mutableStateOf(false) }
     MovieCard(
         onClick = onClick,
-        modifier = modifier.onFocusChanged { isFocused = it.isFocused },
+        modifier = modifier
+            .returnFocusTarget()
+            .onFocusChanged { isFocused = it.isFocused },
         // Titles only show for the focused card, as in the rows.
         title = { TileTitle(text = title, isFocused = isFocused) },
     ) {

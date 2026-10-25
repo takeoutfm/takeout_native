@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -97,4 +98,50 @@ fun Modifier.rememberFocus(memory: FocusMemory, key: String): Modifier {
     return this
         .then(if (isRemembered) Modifier.focusRequester(memory.requester) else Modifier)
         .onFocusChanged { if (it.hasFocus || it.isFocused) memory.lastKey.value = key }
+}
+
+/**
+ * The item that last had focus on the current screen, for overlays (the mini player) to send
+ * focus back to: D-pad searches from an overlay don't reliably find what's under it. Items
+ * opt in with [returnFocusTarget]; focus on anything else clears it, so a stale item isn't used.
+ */
+@Stable
+class FocusReturn {
+    internal var target: FocusRequester? = null
+    internal var setByItem = false
+    private var lastFocused: Any? = null
+
+    /**
+     * Something on the screen has focus ([focused] identifies it; this is also called as it
+     * moves, e.g. while a row scrolls). Forget the item when focus went to something else.
+     */
+    fun onFocused(focused: Any) {
+        if (focused === lastFocused) return
+        lastFocused = focused
+        if (!setByItem) target = null
+        setByItem = false
+    }
+
+    /** Sends focus back to the last item; false when there's none (or it's gone). */
+    fun restore(): Boolean {
+        val r = target ?: return false
+        return runCatching { r.requestFocus() }.isSuccess
+    }
+}
+
+val LocalFocusReturn = staticCompositionLocalOf<FocusReturn?> { null }
+
+/** Lets an overlay send focus back to this item (see [FocusReturn]). */
+@Composable
+fun Modifier.returnFocusTarget(): Modifier {
+    val holder = LocalFocusReturn.current ?: return this
+    val requester = remember { FocusRequester() }
+    return this
+        .focusRequester(requester)
+        .onFocusChanged {
+            if (it.hasFocus) {
+                holder.target = requester
+                holder.setByItem = true
+            }
+        }
 }

@@ -37,6 +37,7 @@ import androidx.tv.material3.Text
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.utils.FocusMemory
 import com.google.jetstream.presentation.utils.rememberFocus
+import com.google.jetstream.presentation.utils.returnFocusTarget
 
 /**
  * A titled row of cards for any kind of item (movies, and later albums, artists, stations).
@@ -165,6 +166,7 @@ private fun <T> TileRowItem(
                 }
             }
             .then(modifier)
+            .returnFocusTarget()
             .width(itemDirection.cardWidth)
     ) {
         itemImage(item, index, Modifier.aspectRatio(itemDirection.aspectRatio))

@@ -73,6 +73,7 @@ import com.google.jetstream.presentation.theme.JetStreamBorderWidth
 import com.google.jetstream.presentation.theme.JetStreamButtonShape
 import com.google.jetstream.presentation.utils.Padding
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
+import com.google.jetstream.presentation.utils.returnFocusTarget
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 val CarouselSaver = Saver<CarouselState, Int>(
@@ -105,6 +106,7 @@ fun FeaturedMoviesCarousel(
                 shape = ShapeDefaults.Medium,
             )
             .clip(ShapeDefaults.Medium)
+            .returnFocusTarget()
             .onFocusChanged {
                 // Because the carousel itself never gets the focus
                 isCarouselFocused = it.hasFocus

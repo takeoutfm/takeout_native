@@ -67,6 +67,7 @@ import com.google.jetstream.presentation.utils.FocusMemory
 import com.google.jetstream.presentation.utils.RestoreRememberedFocus
 import com.google.jetstream.presentation.utils.rememberFocus
 import com.google.jetstream.presentation.utils.rememberFocusMemory
+import com.google.jetstream.presentation.utils.returnFocusTarget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -149,7 +150,9 @@ private fun AlbumContent(
                     track = track,
                     showArtist = track.artist != details.album.artist,
                     onClick = { onPlay(QueueRef.Album(albumId, index)) },
-                    modifier = Modifier.rememberFocus(focusMemory, track.id),
+                    modifier = Modifier
+                        .rememberFocus(focusMemory, track.id)
+                        .returnFocusTarget(),
                 )
             }
         }

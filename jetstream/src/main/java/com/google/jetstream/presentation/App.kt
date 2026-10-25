@@ -16,10 +16,13 @@
 
 package com.google.jetstream.presentation
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.onFocusedBoundsChanged
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +53,8 @@ import com.google.jetstream.presentation.screens.music.player.MusicPlayerScreen
 import com.google.jetstream.presentation.screens.music.player.NowPlayingScreen
 import com.google.jetstream.presentation.screens.person.PersonScreen
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
+import com.google.jetstream.presentation.utils.FocusReturn
+import com.google.jetstream.presentation.utils.LocalFocusReturn
 
 @Composable
 fun App(
@@ -66,6 +71,7 @@ fun App(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AppContent(
     onBackPressed: () -> Unit
@@ -79,8 +85,12 @@ private fun AppContent(
     val showMiniPlayer = listOf(Screens.VideoPlayer, Screens.MusicPlayer, Screens.NowPlaying)
         .none { route.startsWith(it.name) }
 
+    // Lets the mini player send focus back to the screen's last focused card or row.
+    val focusReturn = remember { FocusReturn() }
     Box(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalFocusReturn provides focusReturn) {
         NavHost(
+            modifier = Modifier.onFocusedBoundsChanged { it?.let(focusReturn::onFocused) },
             navController = navController,
             startDestination = Screens.Dashboard(),
             builder = {
@@ -298,8 +308,10 @@ private fun AppContent(
                 }
             }
         )
+        }
         if (showMiniPlayer) {
             MiniPlayer(
+                onReturnFocus = focusReturn::restore,
                 onOpenNowPlaying = {
                     navController.navigate(Screens.NowPlaying()) { launchSingleTop = true }
                 },

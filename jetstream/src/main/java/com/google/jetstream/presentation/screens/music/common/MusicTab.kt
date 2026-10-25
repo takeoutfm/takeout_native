@@ -30,6 +30,7 @@ import androidx.tv.material3.Text
 import com.google.jetstream.data.entities.music.Track
 import com.google.jetstream.presentation.theme.JetStreamButtonShape
 import com.google.jetstream.presentation.theme.JetStreamCardShape
+import com.google.jetstream.presentation.utils.returnFocusTarget
 
 /**
  * A music tab's scrolling column: tells the dashboard when it's scrolled to the top (to show
@@ -89,6 +90,7 @@ fun MusicTrackRow(
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
         ),
         modifier = modifier
+            .returnFocusTarget()
             .fillMaxWidth()
             .padding(vertical = 2.dp),
     ) {

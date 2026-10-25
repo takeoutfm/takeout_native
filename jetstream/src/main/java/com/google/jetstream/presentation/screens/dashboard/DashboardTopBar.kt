@@ -17,6 +17,7 @@
 package com.google.jetstream.presentation.screens.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,8 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -138,7 +139,15 @@ fun DashboardTopBar(
                 .fillMaxWidth()
                 .padding(top = 16.dp)
                 .background(MaterialTheme.colorScheme.surface)
-                .focusRestorer(),
+                // Coming up from the page always lands on the current tab (the profile avatar on
+                // the profile page), not on whatever is geometrically closest: from a grid's
+                // first column that was the avatar.
+                .focusProperties {
+                    enter = {
+                        focusRequesters.getOrNull(selectedTabIndex + 1) ?: FocusRequester.Default
+                    }
+                }
+                .focusGroup(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             UserAvatar(

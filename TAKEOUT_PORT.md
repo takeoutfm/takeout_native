@@ -162,8 +162,8 @@ the title); recommendation sets are A–Z too. A–Z ignores case, accents and p
 "Airplane!" comes before "Airplane II". Genre pages add a title header and start focused on
 the first poster. Coming back from a title (or, on Genres, from a genre) puts focus back on the
 item that was opened. When the screen that had focus goes away (after its exit animation), focus
-falls to the first focusable thing, the profile avatar; `DashboardScreen` waits up to 2 s for
-that after a return and moves focus down into the page, whose `FocusMemory` picks the item.
+falls into the top bar (its current tab); `DashboardScreen` waits up to 2 s for that after a
+return and moves focus down into the page, whose `FocusMemory` picks the item.
 
 ### Loading
 Browsing screens show pulsing skeletons in the shape of the page (Home, grids, Genres, details,
@@ -201,6 +201,8 @@ library), A–Z.
   The directors come first, subtitled "Director"; a director who also acts gets one card,
   "Director · as <role>". Writers aren't shown (the server sends `Writing`; they'd push the
   actors right).
+- A similar title opens on top of the current details page, so Back returns to it, with focus
+  on the similar card that was opened.
 - Back from a person page (or from the player, for an episode) returns focus to the cast or
   episode card that was opened, scrolled as it was. The card is remembered in the ViewModel, and
   coming back after the 5 s `WhileSubscribed` window refreshes the details in the background

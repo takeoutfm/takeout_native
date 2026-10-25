@@ -162,6 +162,8 @@ private fun Details(
                     .movieDetailsScreenSimilarTo(movieDetails.name),
                 titleStyle = MaterialTheme.typography.titleMedium,
                 movieList = movieDetails.similarMovies,
+                // Back from the similar title returns focus to its card.
+                focusMemory = focusMemory,
                 onMovieSelected = refreshScreenWithNewMovie
             )
         }

@@ -144,14 +144,9 @@ private fun AppContent(
                         playEpisode = { episodeId ->
                             navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
                         },
+                        // A new details page on top, so Back returns to this one.
                         refreshScreenWithNewMovie = { movie ->
-                            navController.navigate(
-                                Screens.MovieDetails.withArgs(movie.id)
-                            ) {
-                                popUpTo(Screens.MovieDetails()) {
-                                    inclusive = true
-                                }
-                            }
+                            navController.navigate(Screens.MovieDetails.withArgs(movie.id))
                         },
                         onBackPressed = {
                             if (navController.navigateUp()) {

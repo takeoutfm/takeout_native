@@ -44,6 +44,7 @@ import androidx.tv.material3.Text
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import com.google.jetstream.presentation.utils.FocusMemory
 
 /**
  * [cardWidth] is fixed so a long focused title is ellipsized rather than widening the card
@@ -70,6 +71,7 @@ fun MoviesRow(
     ),
     showItemTitle: Boolean = true,
     showIndexOverImage: Boolean = false,
+    focusMemory: FocusMemory? = null,
     onMovieSelected: (movie: Movie) -> Unit = {}
 ) {
     ImmersiveListMoviesRow(
@@ -83,6 +85,7 @@ fun MoviesRow(
         showItemTitle = showItemTitle,
         showIndexOverImage = showIndexOverImage,
         onMovieSelected = onMovieSelected,
+        focusMemory = focusMemory,
     )
 }
 
@@ -102,7 +105,9 @@ fun ImmersiveListMoviesRow(
     showItemTitle: Boolean = true,
     showIndexOverImage: Boolean = false,
     onMovieSelected: (Movie) -> Unit = {},
-    onMovieFocused: (Movie) -> Unit = {}
+    onMovieFocused: (Movie) -> Unit = {},
+    /** Remembers the focused card across leaving the screen (see [rememberFocus]). */
+    focusMemory: FocusMemory? = null,
 ) {
     TileRow(
         items = movieList,
@@ -125,6 +130,7 @@ fun ImmersiveListMoviesRow(
         showItemTitle = showItemTitle,
         onItemSelected = onMovieSelected,
         onItemFocused = onMovieFocused,
+        focusMemory = focusMemory,
     )
 }
 

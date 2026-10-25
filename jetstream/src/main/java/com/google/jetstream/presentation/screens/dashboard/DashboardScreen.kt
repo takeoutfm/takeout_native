@@ -118,7 +118,6 @@ fun DashboardScreen(
 
     var isTopBarVisible by remember { mutableStateOf(true) }
     var isTopBarFocused by remember { mutableStateOf(false) }
-    var isAvatarFocused by remember { mutableStateOf(false) }
 
     val recommendationsOrNull by dashboardViewModel.recommendations.collectAsStateWithLifecycle()
     val recommendations = recommendationsOrNull.orEmpty()
@@ -220,16 +219,15 @@ fun DashboardScreen(
         )
 
         // Coming back from a title (or a genre, person, the player), the screen that had focus
-        // goes away once its exit animation ends, and focus falls to the first focusable thing:
-        // the profile avatar. Move it down into the page instead, where the grid or row returns
-        // it to the item that was opened (FocusMemory). Only the avatar counts, so a deliberate
-        // Up to the tabs in the meantime is left alone.
+        // goes away once its exit animation ends, and focus falls into the top bar (its current
+        // tab). Move it down into the page instead, where the grid or row returns it to the item
+        // that was opened (FocusMemory).
         LaunchedEffect(isComingBackFromDifferentScreen) {
             if (!isComingBackFromDifferentScreen) return@LaunchedEffect
-            val fellToAvatar = withTimeoutOrNull(ReturnFocusTimeoutMillis) {
-                snapshotFlow { isAvatarFocused }.first { it }
+            val fellToTopBar = withTimeoutOrNull(ReturnFocusTimeoutMillis) {
+                snapshotFlow { isTopBarFocused }.first { it }
             }
-            if (fellToAvatar != null) focusManager.moveFocus(FocusDirection.Down)
+            if (fellToTopBar != null) focusManager.moveFocus(FocusDirection.Down)
             resetIsComingBackFromDifferentScreen()
         }
 
@@ -257,7 +255,6 @@ fun DashboardScreen(
             selectedTabIndex = currentTopBarSelectedTabIndex,
             tabs = tabs,
             focusRequesters = topBarFocusRequesters,
-            onAvatarFocusChanged = { isAvatarFocused = it },
             mode = mode,
             canSwitchMode = canSwitchMode,
             onSwitchMode = {

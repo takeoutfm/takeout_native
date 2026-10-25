@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phase 0 in progress** (see section 5). Decisions are recorded in section 7; items
+Status: **phase 0 done**; phase 1 (phone app skeleton) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -304,8 +304,9 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] `android-media`: `TakeoutPlayerFactory`, abstract `TakeoutMusicService` (each app
          subclasses it with its Hilt singletons), `MusicPlayer`, `ListenTracker`, audio-track
          ranking.
-   - [ ] Re-verify the TV app on the Chromecast after each step (emulator checked after the
-         first two).
+   - [x] Re-verify the TV app: each step on the emulator; the finished phase 0 release on the
+         Chromecast (2026-10-25: signed in, Recently Played and progress migrated, music and
+         video Home, Continue Watching).
 1. **App skeleton**: login (password + passcode, device code), dynamic theme, bottom bar /
    rail, per-tab stacks, Home with media bar, Settings, About.
 2. **Music browse + background playback**: artists, artist and release pages, search,

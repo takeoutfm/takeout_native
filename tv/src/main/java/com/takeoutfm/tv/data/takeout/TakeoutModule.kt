@@ -1,13 +1,14 @@
 package com.takeoutfm.tv.data.takeout
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Build
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
-import com.takeoutfm.shared.api.SecureStore
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
+import com.takeoutfm.shared.api.TakeoutUrls
+import com.takeoutfm.shared.library.TakeoutLibrary
+import com.takeoutfm.shared.listen.ListenBrainzAccount
+import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.store.AndroidStores
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,48 +16,42 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Provides the shared Takeout session and API client to the TV app. */
+/**
+ * Provides the shared Takeout core to the TV app. The preferences files are the ones the app
+ * used before the core moved to `:shared`, so saved sign-ins and settings carry over.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object TakeoutModule {
     @Provides
     @Singleton
     fun session(@ApplicationContext context: Context): TakeoutSession =
-        TakeoutSession(EncryptedStore.open(context))
+        TakeoutSession(AndroidStores.encrypted(context, "takeout_session"))
 
     @Provides
     @Singleton
     fun api(session: TakeoutSession): TakeoutApi =
         TakeoutApi(session, "TakeoutFM-TV/1.0 (takeoutfm.com; Android ${Build.VERSION.RELEASE})")
-}
 
-/** The session in EncryptedSharedPreferences ("takeout_session", as before the shared core). */
-private class EncryptedStore(private val prefs: SharedPreferences) : SecureStore {
-    override fun getString(key: String): String? = prefs.getString(key, null)
+    @Provides
+    @Singleton
+    fun urls(session: TakeoutSession): TakeoutUrls = TakeoutUrls(session)
 
-    override fun putStrings(values: Map<String, String>) {
-        prefs.edit().apply { values.forEach { (k, v) -> putString(k, v) } }.apply()
-    }
+    @Provides
+    @Singleton
+    fun library(
+        @ApplicationContext context: Context,
+        api: TakeoutApi,
+        session: TakeoutSession,
+    ): TakeoutLibrary = TakeoutLibrary(api, session, AndroidStores.plain(context, "takeout_library"))
 
-    override fun remove(vararg keys: String) {
-        prefs.edit().apply { keys.forEach { remove(it) } }.apply()
-    }
+    @Provides
+    @Singleton
+    fun music(api: TakeoutApi, library: TakeoutLibrary, urls: TakeoutUrls): TakeoutMusicRepository =
+        TakeoutMusicRepository(api, library, urls)
 
-    companion object {
-        /** Null on Keystore problems: the session is then kept in memory only. */
-        fun open(context: Context): SecureStore? = try {
-            val alias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-            EncryptedStore(
-                EncryptedSharedPreferences.create(
-                    "takeout_session",
-                    alias,
-                    context,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-                )
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    @Provides
+    @Singleton
+    fun listenBrainz(@ApplicationContext context: Context): ListenBrainzAccount =
+        ListenBrainzAccount(AndroidStores.encrypted(context, "listenbrainz"))
 }

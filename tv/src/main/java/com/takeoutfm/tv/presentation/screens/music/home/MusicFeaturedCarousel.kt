@@ -51,7 +51,7 @@ import androidx.tv.material3.ShapeDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.entities.music.FeaturedAlbum
+import com.takeoutfm.shared.music.FeaturedAlbum
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
 import com.takeoutfm.tv.presentation.screens.home.CarouselSaver
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage

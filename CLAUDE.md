@@ -46,18 +46,25 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   (`Movie`, `MovieDetails`, …). Features JetStream lacks (people, episodes, favorites, Continue
   Watching, recommendations, search results) are extra methods on `TakeoutMovieRepository`,
   injected directly where needed. Keep server access inside the `data/` layer.
-- **Shared core:** from `:shared` (`com.takeoutfm.shared.api`): `TakeoutApi` (Ktor with the
-  OkHttp engine, bearer access token, refresh on 401, JSON decoded off the main thread; tested
-  with Ktor's `MockEngine`) and `TakeoutSession` (tokens; streams use the separate *media*
-  token, only for URLs on the signed-in server), plus the wire models and pure rules.
-  `data/takeout/TakeoutModule.kt` provides both through Hilt, with the session kept in
-  EncryptedSharedPreferences via `SecureStore`. TV keeps Android-only pieces (`TakeoutUrls`
-  wraps `TakeoutPaths` with the session's endpoint, `TakeoutProgress` persists and syncs using
-  `ProgressRules`). Move more into `:shared` per `PLAN.md` phase 0.
-- **`data/takeout/`:** `TakeoutLibrary` (the `/api/index` library index +
-  recommendation sets — decides which tabs exist and which requests are made; saved on device and
-  refreshed on launch/foreground/sign-in/Home), `TakeoutProgress` (watch progress keyed by media
-  ETag), `TakeoutSettings` (per-device prefs).
+- **Shared core (`:shared`, `com.takeoutfm.shared.*`):**
+  - `api/`: `TakeoutApi` (Ktor with the OkHttp engine, bearer access token, refresh on 401,
+    JSON decoded off the main thread), `TakeoutSession` (tokens; streams use the separate
+    *media* token, only for URLs on the signed-in server), `TakeoutUrls` (full server URLs for
+    locations, images and release covers).
+  - `library/TakeoutLibrary`: the `/api/index` library index + recommendation sets — decides
+    which tabs exist and which requests are made; saved on device and refreshed on
+    launch/foreground/sign-in/Home.
+  - `music/`: `TakeoutMusicRepository` and the music entities.
+  - `listen/`: `ListenBrainzAccount` (Ktor) and the listen rules; `progress/`, `util/`, `model/`.
+  - `store/KeyValueStore`: how shared classes save values; `AndroidStores` (androidMain) gives
+    plain and EncryptedSharedPreferences-backed ones.
+  - Shared classes have no Hilt annotations: `data/takeout/TakeoutModule.kt` provides them,
+    using the same preferences files as before the move (`takeout_session`,
+    `takeout_library`, `listenbrainz`) so saved state carries over. HTTP code is tested with
+    Ktor's `MockEngine`.
+- **`data/takeout/`:** `TakeoutProgress` (watch progress keyed by media ETag, persisted and synced
+  using `ProgressRules`), `TakeoutSettings` (per-device prefs). Move more into `:shared` per
+  `PLAN.md` phase 0.
 - **IDs:** one navigable id space — movies `m-<id>`, TV series `s-<id>`, episodes `e-<id>`;
   `getMovieDetails()` dispatches on the prefix. Progress offsets carry only an ETag, so titles are
   found by matching ETags against cached `/api/movies` and `/api/tv`.
@@ -71,18 +78,18 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 - **Shared UI:** `presentation/common/TileGrid.kt` / `TileRow.kt` (generic 6-column grid and
   card row; `PosterGrid.kt` and `MoviesRow.kt` wrap them for movies), `Skeletons.kt` (loading
   states), `presentation/utils/FocusMemory.kt` (return focus to the item that was opened).
-- **Shared data helpers:** `data/takeout/TakeoutUrls.kt` (server URLs for locations, images and
-  release covers, wrapping `:shared` `TakeoutPaths`); `listFlow`, `sortKey`, `sortedByTitle` are in `:shared` `util/Lists.kt`.
+- **Shared data helpers** (in `:shared`): `TakeoutUrls`, and `listFlow` / `sortKey` /
+  `sortedByTitle` in `util/Lists.kt`.
 - **Music:** a separate half of the app, switched with the TAKEOUT logo (`LibraryMode` in
-  `TakeoutSettings`). `data/music/` (`TakeoutMusicRepository`; wire models in `:shared` `MusicApiModels.kt`; ids
-  `ar-`/`al-`/`t-`), entities in `data/entities/music/`, screens in
+  `TakeoutSettings`). Data in `:shared` `music/` (`TakeoutMusicRepository`, entities; ids
+  `ar-`/`al-`/`t-`); `data/music/MusicHistory` (Recently Played) stays in the TV app; screens in
   `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
   remaining phases is in `TAKEOUT_PORT.md` → Music.
 - **Music playback:** `playback/MusicService` (background `MediaSessionService`) plays; the UI
   only talks to `playback/MusicPlayer` (a `MediaController` singleton with `NowPlaying` state).
   The mini player is an overlay in `App.kt`. Video playback stays screen-scoped.
 - **Play reporting:** `data/listen/` — `ListenReporter` (Takeout activity + ListenBrainz, per the
-  Music settings, with an on-device retry queue), `ListenBrainzAccount` (encrypted token),
+  Music settings, with an on-device retry queue), `ListenBrainzAccount` (`:shared`, encrypted token),
   `TokenHandoff` (one-time local web page + QR for entering the token from a phone).
   `playback/ListenTracker` decides when a track counts. Don't test with real accounts: the
   settings change the user's real Takeout stats / ListenBrainz profile.

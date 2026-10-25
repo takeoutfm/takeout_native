@@ -289,10 +289,14 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          (`shared.progress`), URL rules (`TakeoutPaths`), sort keys / `listFlow`
          (`shared.util`); their tests run from `commonTest`.
    - [x] `TakeoutApi` on Ktor (OkHttp engine on Android, `expect` engine per platform) and
-         `TakeoutSession` (with a `SecureStore` interface; EncryptedSharedPreferences on
+         `TakeoutSession` (with a `KeyValueStore`; EncryptedSharedPreferences on
          Android) in `shared.api`, with `MockEngine` tests for refresh/sign-out.
-   - [ ] Move `TakeoutLibrary`, `ListenBrainz` (onto Ktor) and the movie/TV/music
-         repositories' server-side logic (search, grouping, directors-first) into `shared`.
+   - [x] `KeyValueStore` (plain + encrypted on Android); `TakeoutUrls`, `TakeoutLibrary`,
+         `ListenBrainzAccount` (Ktor) and the whole music data layer (`TakeoutMusicRepository`
+         + entities) in `shared`.
+   - [ ] Shared video domain: movie/TV/episode/person entities and a repository for them
+         (search, series → seasons → episodes, directors-first credits, Continue Watching),
+         with the TV app mapping them onto JetStream's `Movie`/`MovieDetails`.
    - [ ] SQLDelight in `shared` for the progress and listen queues and Recently Played
          (migrating the TV app's SharedPreferences JSON on first run).
    - [ ] `android-media`: player factory, `MusicService`, `MusicPlayer`, `ListenTracker`,

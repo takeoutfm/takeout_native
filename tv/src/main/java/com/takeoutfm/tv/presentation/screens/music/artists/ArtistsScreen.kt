@@ -8,8 +8,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.takeoutfm.tv.data.entities.music.Artist
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.Artist
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.PosterGridSkeleton
 import com.takeoutfm.tv.presentation.common.TileGrid

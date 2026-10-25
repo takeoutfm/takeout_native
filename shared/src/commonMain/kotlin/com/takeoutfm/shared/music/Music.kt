@@ -1,4 +1,4 @@
-package com.takeoutfm.tv.data.entities.music
+package com.takeoutfm.shared.music
 
 // Music entities for the screens. Ids are prefixed by kind, like video's "m-"/"s-"/"e-":
 // artists "ar-<id>", albums (releases) "al-<id>", tracks "t-<id>". Image URIs are full URLs,

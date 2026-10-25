@@ -30,9 +30,9 @@ directly where needed.
 | Watch progress (resume, sync, in-progress list) | `data/takeout/TakeoutProgress.kt` |
 | Per-device settings (Continue Watching window) | `data/takeout/TakeoutSettings.kt` |
 | Takeout → JetStream mapping, TTL cache with shared in-flight loads | `data/repositories/TakeoutMovieRepository.kt` |
-| Server URLs for stream locations and images | `data/takeout/TakeoutUrls.kt` |
+| Server URLs for stream locations and images | `TakeoutUrls` in `:shared` (`api/`) |
 | Off-main-thread list loading, A–Z sort keys | `shared/…/util/Lists.kt` (`:shared`) |
-| Library index (tabs/requests), saved + refreshed | `data/takeout/TakeoutLibrary.kt` |
+| Library index (tabs/requests), saved + refreshed | `TakeoutLibrary` in `:shared` (`library/`) |
 | Device-code sign-in UI / sign-in gate | `presentation/screens/login/*`, `presentation/App.kt` |
 | Top bar tabs (fixed + recommendation tabs) | `.../dashboard/DashboardTopBar.kt`, `DashboardScreen.kt`, `DashboardViewModel.kt` |
 | Shared 6-column grid and card row (any item type) | `presentation/common/TileGrid.kt`, `TileRow.kt` |
@@ -322,8 +322,8 @@ the rest of this section is the plan for what's next.
   music (it stays paused afterwards); music also pauses for calls and other apps' audio.
 - Back returns focus to the opened album/artist/track everywhere (Home rows, Artists grid,
   artist and album pages); pages keep their state while something on top is open.
-- Code: `data/music/` (API models, `TakeoutMusicRepository`), `data/entities/music/`,
-  `presentation/screens/music/` (home, artists, artist, album, player, common).
+- Code: `:shared` `music/` (`TakeoutMusicRepository`, entities) and `model/`, `data/music/`
+  (`MusicHistory`), `presentation/screens/music/` (home, artists, artist, album, player, common).
 
 ### Mode switch
 - The top bar's TAKEOUT logo becomes a focusable, labelled switch (`TAKEOUT · Video ▾` /
@@ -405,9 +405,9 @@ are, the few shared pieces move into their own classes first.
 - `MusicApiModels.kt` (in `:shared`): artists, releases, tracks, stations, playlists and the spiff playlist,
   same conventions as `ApiModels.kt` (PascalCase `@SerialName`, every field defaulted).
 - `TakeoutApi` gains the music GETs and `postActivity`; same client, auth and refresh.
-- Entities in `data/entities/music/` (`Artist`, `Album`, `Track`, `Station`, `MusicPlaylist`),
+- Entities (now in `:shared` `music/`) (`Artist`, `Album`, `Track`, `Station`, `MusicPlaylist`),
   deliberately not `Movie`; JetStream's movie-shaped `MovieRepository` isn't used for music.
-- `TakeoutMusicRepository` (Hilt singleton): maps API → entities, caches the big lists, returns
+- `TakeoutMusicRepository` (now in `:shared`, provided by `TakeoutModule`): maps API → entities, caches the big lists, returns
   queues.
 - IDs: `ar-` artist, `al-` album, `st-` station, `pl-` playlist, separate from `m-`/`s-`/`e-`.
 - `TakeoutLibrary` exposes `hasMusic`/`hasPlaylists`; `TakeoutSettings` adds `mode` and
@@ -505,7 +505,7 @@ Each step is its own commit(s), checked on the emulator and TV.
   on the local network only, linking to listenbrainz.org/settings. The pasted token is checked
   (`/1/validate-token`); on success the dialog shows "Connected as <user>" and the page stops.
   Wrong paths 404; the page stops on Cancel/Done or after 10 minutes. The token is stored
-  encrypted (`ListenBrainzAccount`, EncryptedSharedPreferences).
+  encrypted (`ListenBrainzAccount` in `:shared`, EncryptedSharedPreferences).
 
 ## Progress
 

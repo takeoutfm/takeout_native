@@ -6,7 +6,7 @@ import com.takeoutfm.shared.api.SessionState
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.tv.data.listen.ListenReporter
-import com.takeoutfm.tv.data.takeout.TakeoutLibrary
+import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.tv.data.takeout.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException

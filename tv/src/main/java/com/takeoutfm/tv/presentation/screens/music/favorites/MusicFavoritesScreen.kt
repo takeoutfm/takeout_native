@@ -20,9 +20,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.entities.music.Artist
-import com.takeoutfm.tv.data.entities.music.MusicFavorites
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.Artist
+import com.takeoutfm.shared.music.MusicFavorites
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton

@@ -37,8 +37,8 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.listen.ListenBrainzAccount
-import com.takeoutfm.tv.data.listen.ListenBrainzUser
+import com.takeoutfm.shared.listen.ListenBrainzAccount
+import com.takeoutfm.shared.listen.ListenBrainzUser
 import com.takeoutfm.tv.data.listen.TokenHandoff
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import com.takeoutfm.tv.presentation.common.QrCode

@@ -1,7 +1,7 @@
 package com.takeoutfm.tv.data.music
 
-import com.takeoutfm.tv.data.entities.music.MusicQueue
-import com.takeoutfm.tv.data.entities.music.QueueItem
+import com.takeoutfm.shared.music.MusicQueue
+import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.tv.data.music.MusicHistory.Companion.MaxEntries
 import com.takeoutfm.tv.data.music.MusicHistory.Companion.recorded
 import org.junit.Assert.assertEquals

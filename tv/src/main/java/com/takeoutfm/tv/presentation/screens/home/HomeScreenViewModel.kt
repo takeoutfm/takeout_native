@@ -22,7 +22,7 @@ import com.takeoutfm.tv.data.entities.MovieList
 import com.takeoutfm.tv.data.entities.Recommendation
 import com.takeoutfm.tv.data.repositories.MovieRepository
 import com.takeoutfm.tv.data.repositories.TakeoutMovieRepository
-import com.takeoutfm.tv.data.takeout.TakeoutLibrary
+import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

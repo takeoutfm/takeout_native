@@ -1,13 +1,10 @@
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared.library
 
-import android.content.Context
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.model.ApiHomeView
 import com.takeoutfm.shared.model.ApiRecommend
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
+import com.takeoutfm.shared.store.KeyValueStore
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -20,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -47,15 +45,14 @@ data class LibraryIndex(
  * sign-in. Also the single source of /api/home, so Home's rows and the recommendation tabs
  * share one request.
  */
-@Singleton
-class TakeoutLibrary @Inject constructor(
-    @ApplicationContext context: Context,
+class TakeoutLibrary(
     private val api: TakeoutApi,
     private val session: TakeoutSession,
+    /** Where the last index is saved (Android: the "takeout_library" preferences). */
+    private val store: KeyValueStore,
 ) {
-    private val prefs = context.getSharedPreferences("takeout_library", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _index = MutableStateFlow(loadSaved())
 
@@ -83,7 +80,7 @@ class TakeoutLibrary @Inject constructor(
     suspend fun refresh(maxAgeMs: Long = 0) {
         refreshLock.withLock {
             val current = _index.value
-            if (current != null && System.currentTimeMillis() - current.fetchedAt < maxAgeMs) return
+            if (current != null && now() - current.fetchedAt < maxAgeMs) return
             try {
                 val view = api.index()
                 val hasRecommendations = view.hasRecommendMovies ?: true
@@ -102,7 +99,7 @@ class TakeoutLibrary @Inject constructor(
                         hasRecommendations = hasRecommendations,
                         movieGenres = view.movieGenres.orEmpty(),
                         recommendations = recommendations,
-                        fetchedAt = System.currentTimeMillis(),
+                        fetchedAt = now(),
                     )
                 )
             } catch (e: CancellationException) {
@@ -124,13 +121,13 @@ class TakeoutLibrary @Inject constructor(
     suspend fun home(maxAgeMs: Long = 60_000): ApiHomeView {
         val load = homeLock.withLock {
             val cached = homeView
-            if (cached != null && System.currentTimeMillis() - homeAt < maxAgeMs) return cached
+            if (cached != null && now() - homeAt < maxAgeMs) return cached
             homeLoad ?: scope.async {
                 try {
                     val view = api.home()
                     homeLock.withLock {
                         homeView = view
-                        homeAt = System.currentTimeMillis()
+                        homeAt = now()
                     }
                     // Keep the saved recommendation sets in step with what Home shows.
                     _index.value?.let { current ->
@@ -152,20 +149,22 @@ class TakeoutLibrary @Inject constructor(
 
     private fun update(index: LibraryIndex) {
         _index.value = index
-        prefs.edit().putString(KEY_INDEX, json.encodeToString(LibraryIndex.serializer(), index)).apply()
+        store.putString(KEY_INDEX, json.encodeToString(LibraryIndex.serializer(), index))
     }
 
     private fun clear() {
         _index.value = null
         homeView = null
-        prefs.edit().remove(KEY_INDEX).apply()
+        store.remove(KEY_INDEX)
     }
 
     private fun loadSaved(): LibraryIndex? {
-        val saved = prefs.getString(KEY_INDEX, null) ?: return null
+        val saved = store.getString(KEY_INDEX) ?: return null
         return runCatching { json.decodeFromString(LibraryIndex.serializer(), saved) }.getOrNull()
             ?.takeIf { it.endpoint == session.endpoint }
     }
+
+    private fun now() = Clock.System.now().toEpochMilliseconds()
 
     private companion object {
         const val KEY_INDEX = "index"

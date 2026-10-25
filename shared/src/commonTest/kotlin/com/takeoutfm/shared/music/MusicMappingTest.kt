@@ -1,15 +1,15 @@
-package com.takeoutfm.tv.data.music
+package com.takeoutfm.shared.music
 
+import com.takeoutfm.shared.TakeoutPaths.releaseCoverPath
 import com.takeoutfm.shared.model.ApiPlaylist
 import com.takeoutfm.shared.model.ApiSpiff
 import com.takeoutfm.shared.model.ApiSpiffEntry
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository.Companion.numericId
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository.Companion.toQueue
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository.Companion.year
-import com.takeoutfm.shared.TakeoutPaths.releaseCoverPath
+import com.takeoutfm.shared.music.TakeoutMusicRepository.Companion.numericId
+import com.takeoutfm.shared.music.TakeoutMusicRepository.Companion.toQueue
+import com.takeoutfm.shared.music.TakeoutMusicRepository.Companion.year
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlinx.serialization.json.Json
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
 class MusicMappingTest {
     private val server = "https://takeout.example"

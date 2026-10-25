@@ -1,6 +1,8 @@
-package com.takeoutfm.tv.data.music
+package com.takeoutfm.shared.music
 
 import com.takeoutfm.shared.api.TakeoutApi
+import com.takeoutfm.shared.api.TakeoutUrls
+import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.model.ApiArtist
 import com.takeoutfm.shared.model.ApiPlaylist
 import com.takeoutfm.shared.model.ApiRelease
@@ -8,23 +10,6 @@ import com.takeoutfm.shared.model.ApiStation
 import com.takeoutfm.shared.model.ApiTrack
 import com.takeoutfm.shared.util.listFlow
 import com.takeoutfm.shared.util.sortedByTitle
-import com.takeoutfm.tv.data.entities.music.Album
-import com.takeoutfm.tv.data.entities.music.AlbumDetails
-import com.takeoutfm.tv.data.entities.music.Artist
-import com.takeoutfm.tv.data.entities.music.ArtistDetails
-import com.takeoutfm.tv.data.entities.music.FeaturedAlbum
-import com.takeoutfm.tv.data.entities.music.MusicFavorites
-import com.takeoutfm.tv.data.entities.music.MusicPlaylist
-import com.takeoutfm.tv.data.entities.music.MusicQueue
-import com.takeoutfm.tv.data.entities.music.QueueItem
-import com.takeoutfm.tv.data.entities.music.Station
-import com.takeoutfm.tv.data.entities.music.StationGroup
-import com.takeoutfm.tv.data.entities.music.StationKind
-import com.takeoutfm.tv.data.entities.music.Track
-import com.takeoutfm.tv.data.takeout.TakeoutLibrary
-import com.takeoutfm.tv.data.takeout.TakeoutUrls
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -33,14 +18,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 
 /**
  * The server's music library for the music screens. Ids are "ar-<id>" (artists), "al-<id>"
  * (releases) and "t-<id>" (tracks); play requests return a [MusicQueue] from the server's spiff
  * playlists.
  */
-@Singleton
-class TakeoutMusicRepository @Inject constructor(
+class TakeoutMusicRepository(
     private val api: TakeoutApi,
     private val library: TakeoutLibrary,
     private val urls: TakeoutUrls,
@@ -65,13 +50,14 @@ class TakeoutMusicRepository @Inject constructor(
 
     private suspend fun loadArtists(): List<Artist> = artistsLock.withLock {
         val cached = artistsCache
-        if (cached != null && System.currentTimeMillis() - cached.first < ArtistsMaxAgeMs) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        if (cached != null && now - cached.first < ArtistsMaxAgeMs) {
             return@withLock cached.second
         }
         val list = api.artists().artists.orEmpty()
             .sortedByTitle { it.sortName.ifEmpty { it.name } }
             .map { it.toArtist() }
-        artistsCache = System.currentTimeMillis() to list
+        artistsCache = now to list
         list
     }
 

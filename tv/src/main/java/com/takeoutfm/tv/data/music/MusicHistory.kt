@@ -2,8 +2,8 @@ package com.takeoutfm.tv.data.music
 
 import android.content.Context
 import com.takeoutfm.shared.api.TakeoutSession
-import com.takeoutfm.tv.data.entities.music.MusicQueue
-import com.takeoutfm.tv.data.entities.music.QueueItem
+import com.takeoutfm.shared.music.MusicQueue
+import com.takeoutfm.shared.music.QueueItem
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

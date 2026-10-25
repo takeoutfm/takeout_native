@@ -11,8 +11,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.entities.music.MusicPlaylist
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.MusicPlaylist
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.PosterGridSkeleton

@@ -1,6 +1,6 @@
 package com.takeoutfm.tv.presentation.screens.music.player
 
-import com.takeoutfm.tv.data.music.ArtistMix
+import com.takeoutfm.shared.music.ArtistMix
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

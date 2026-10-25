@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Per-device app preferences (not synced to the server). The ListenBrainz token is kept apart,
- * encrypted, in [com.takeoutfm.tv.data.listen.ListenBrainzAccount].
+ * encrypted, in [com.takeoutfm.shared.listen.ListenBrainzAccount].
  */
 @Singleton
 class TakeoutSettings @Inject constructor(

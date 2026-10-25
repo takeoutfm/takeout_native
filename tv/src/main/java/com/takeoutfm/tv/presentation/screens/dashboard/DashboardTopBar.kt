@@ -64,7 +64,7 @@ import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import com.takeoutfm.tv.R
 import com.takeoutfm.tv.data.entities.Recommendation
-import com.takeoutfm.tv.data.takeout.LibraryIndex
+import com.takeoutfm.shared.library.LibraryIndex
 import com.takeoutfm.tv.data.takeout.LibraryMode
 import com.takeoutfm.tv.data.util.StringConstants
 import com.takeoutfm.tv.presentation.screens.Screens

@@ -2,6 +2,8 @@ package com.takeoutfm.tv.data.listen
 
 import android.content.Context
 import com.takeoutfm.shared.api.TakeoutApi
+import com.takeoutfm.shared.listen.ListenBrainzAccount
+import com.takeoutfm.shared.listen.ListenTrack
 import com.takeoutfm.shared.model.ApiActivityEvents
 import com.takeoutfm.shared.model.ApiTrackEvent
 import com.takeoutfm.tv.data.takeout.TakeoutSettings

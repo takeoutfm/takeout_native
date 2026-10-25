@@ -27,7 +27,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import com.takeoutfm.tv.data.entities.music.Track
+import com.takeoutfm.shared.music.Track
 import com.takeoutfm.tv.presentation.theme.JetStreamButtonShape
 import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 import com.takeoutfm.tv.presentation.utils.returnFocusTarget

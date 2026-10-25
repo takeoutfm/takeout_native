@@ -50,10 +50,10 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.entities.music.Album
-import com.takeoutfm.tv.data.entities.music.AlbumDetails
-import com.takeoutfm.tv.data.entities.music.Track
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.Album
+import com.takeoutfm.shared.music.AlbumDetails
+import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.DetailsSkeleton
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding

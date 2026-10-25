@@ -1,6 +1,6 @@
 package com.takeoutfm.tv.presentation.screens.music.player
 
-import com.takeoutfm.tv.data.music.ArtistMix
+import com.takeoutfm.shared.music.ArtistMix
 
 /**
  * What the music player should play, as a navigation argument: "album:al-12:3" (album al-12

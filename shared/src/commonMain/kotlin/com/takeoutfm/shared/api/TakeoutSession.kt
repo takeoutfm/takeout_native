@@ -1,6 +1,7 @@
 package com.takeoutfm.shared.api
 
 import com.takeoutfm.shared.model.ApiTokens
+import com.takeoutfm.shared.store.KeyValueStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,17 +15,10 @@ data class SessionState(
 }
 
 /**
- * Where the session is kept: encrypted on each platform (EncryptedSharedPreferences on
- * Android, the Keychain on Apple).
+ * The signed-in server and tokens. [store] must be encrypted (EncryptedSharedPreferences on
+ * Android, the Keychain on Apple); null keeps the session in memory only (sign in each launch).
  */
-interface SecureStore {
-    fun getString(key: String): String?
-    fun putStrings(values: Map<String, String>)
-    fun remove(vararg keys: String)
-}
-
-/** The signed-in server and tokens; [store] null keeps them in memory only (sign in each launch). */
-class TakeoutSession(private val store: SecureStore?) {
+class TakeoutSession(private val store: KeyValueStore?) {
     private val _state = MutableStateFlow(load())
     val state: StateFlow<SessionState> = _state.asStateFlow()
 

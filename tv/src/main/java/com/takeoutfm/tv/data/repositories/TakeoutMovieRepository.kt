@@ -29,10 +29,10 @@ import com.takeoutfm.tv.data.entities.PersonDetails
 import com.takeoutfm.tv.data.entities.Recommendation
 import com.takeoutfm.tv.data.entities.SearchResults
 import com.takeoutfm.tv.data.entities.Season
-import com.takeoutfm.tv.data.takeout.LibraryIndex
-import com.takeoutfm.tv.data.takeout.TakeoutLibrary
+import com.takeoutfm.shared.library.LibraryIndex
+import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.tv.data.takeout.TakeoutProgress
-import com.takeoutfm.tv.data.takeout.TakeoutUrls
+import com.takeoutfm.shared.api.TakeoutUrls
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton

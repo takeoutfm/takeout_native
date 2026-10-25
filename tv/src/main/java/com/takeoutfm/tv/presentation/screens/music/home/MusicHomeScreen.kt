@@ -22,11 +22,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.tv.R
-import com.takeoutfm.tv.data.entities.music.Album
-import com.takeoutfm.tv.data.entities.music.FeaturedAlbum
+import com.takeoutfm.shared.music.Album
+import com.takeoutfm.shared.music.FeaturedAlbum
 import com.takeoutfm.tv.data.music.MusicHistory
 import com.takeoutfm.tv.data.music.PlayedQueue
-import com.takeoutfm.tv.data.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton
 import com.takeoutfm.tv.presentation.common.TileRow

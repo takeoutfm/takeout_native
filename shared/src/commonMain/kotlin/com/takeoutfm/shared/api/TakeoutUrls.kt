@@ -1,16 +1,12 @@
-package com.takeoutfm.tv.data.takeout
+package com.takeoutfm.shared.api
 
 import com.takeoutfm.shared.TakeoutPaths
-import com.takeoutfm.shared.api.TakeoutSession
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Full URLs on the signed-in server for paths the API returns (stream locations, images).
  * Shared by the video and music repositories.
  */
-@Singleton
-class TakeoutUrls @Inject constructor(
+class TakeoutUrls(
     private val session: TakeoutSession,
 ) {
     /** [location] as a full URL; already-absolute URLs are kept, empty stays empty. */

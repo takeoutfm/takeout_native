@@ -55,8 +55,9 @@ data class PlayedItem(
     val backgroundUri: String = "",
     val uri: String,
     val etag: String = "",
+    val podcast: Boolean = false,
 ) {
-    fun toQueueItem() = QueueItem(title, artist, album, imageUri, backgroundUri, uri, etag)
+    fun toQueueItem() = QueueItem(title, artist, album, imageUri, backgroundUri, uri, etag, podcast)
 }
 
 /**
@@ -185,7 +186,7 @@ class MusicHistory(
                 items = queue.items.map {
                     PlayedItem(
                         it.title, it.artist, it.album, it.imageUri, it.backgroundUri, it.uri,
-                        it.etag,
+                        it.etag, it.podcast,
                     )
                 },
                 index = queue.startIndex,

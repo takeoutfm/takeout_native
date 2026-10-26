@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Speaker
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.AlertDialog
@@ -132,6 +134,7 @@ fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, vid
                     onClick = { tile ->
                         when {
                             tile.id.startsWith("al-") -> nav.openAlbum(tile.id)
+                            tile.id.startsWith("ps-") -> nav.openPodcast(tile.id)
                             tile.id.startsWith(GenrePrefix) -> videoNav.openGenre(tile.id.removePrefix(GenrePrefix))
                             else -> videoNav.openVideo(tile.id)
                         }
@@ -147,6 +150,7 @@ private fun MediaType.icon(selected: Boolean): ImageVector = when (this) {
     MediaType.Music -> if (selected) Icons.Filled.Speaker else Icons.Outlined.Speaker
     MediaType.Film -> if (selected) Icons.Filled.Movie else Icons.Outlined.Movie
     MediaType.Tv -> if (selected) Icons.Filled.Tv else Icons.Outlined.Tv
+    MediaType.Podcast -> if (selected) Icons.Filled.Podcasts else Icons.Outlined.Podcasts
 }
 
 @Composable

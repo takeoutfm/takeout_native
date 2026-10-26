@@ -10,6 +10,8 @@ import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.podcast.PodcastEpisode
+import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -35,6 +37,7 @@ class MainViewModel @Inject constructor(
     private val player: MusicPlayer,
     private val music: TakeoutMusicRepository,
     private val history: MusicHistory,
+    private val podcasts: TakeoutPodcastRepository,
 ) : ViewModel() {
     val nowPlaying: StateFlow<NowPlaying> = player.state
 
@@ -76,6 +79,10 @@ class MainViewModel @Inject constructor(
     fun playTrack(trackId: String) = play { music.trackQueue(trackId) }
     fun playPlaylist(playlistId: String, index: Int = 0) = play { music.playlistQueue(playlistId, index) }
     fun playFavorites(index: Int = 0) = play { music.favoritesQueue(index) }
+
+    /** Plays podcast [episodes] from [index], resuming that episode where it was left. */
+    fun playEpisodes(title: String, imageUri: String, episodes: List<PodcastEpisode>, index: Int) =
+        play { podcasts.episodesQueue(title, imageUri, episodes, index) }
 
     /** Replays a Recently Played queue where it was left. */
     fun playRecent(entryId: String) = play {

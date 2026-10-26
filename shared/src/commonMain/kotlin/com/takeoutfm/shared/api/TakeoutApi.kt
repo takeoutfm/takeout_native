@@ -14,6 +14,8 @@ import com.takeoutfm.shared.model.ApiMoviesView
 import com.takeoutfm.shared.model.ApiOffsets
 import com.takeoutfm.shared.model.ApiPlaylist
 import com.takeoutfm.shared.model.ApiPlaylistsView
+import com.takeoutfm.shared.model.ApiPodcastSeriesView
+import com.takeoutfm.shared.model.ApiPodcastsView
 import com.takeoutfm.shared.model.ApiPopularView
 import com.takeoutfm.shared.model.ApiProfileView
 import com.takeoutfm.shared.model.ApiRadioView
@@ -274,6 +276,22 @@ class TakeoutApi internal constructor(
     /** The user's listening history (Takeout activity), newest first. */
     suspend fun recentTracks(): ApiTrackHistoryView =
         decode(ApiTrackHistoryView.serializer(), getText("/api/activity/tracks/recent"))
+
+    // ---- Podcasts ----
+
+    suspend fun podcasts(): ApiPodcastsView =
+        decode(ApiPodcastsView.serializer(), getText("/api/podcasts"))
+
+    suspend fun subscribedPodcasts(): ApiPodcastsView =
+        decode(ApiPodcastsView.serializer(), getText("/api/podcasts/subscribed"))
+
+    /** A podcast and its latest episodes (as many as the server is configured to list). */
+    suspend fun podcastSeries(id: Int): ApiPodcastSeriesView =
+        decode(ApiPodcastSeriesView.serializer(), getText("/api/series/$id"))
+
+    suspend fun setSubscribed(seriesId: Int, subscribed: Boolean) {
+        authed("/api/series/$seriesId/subscribed", if (subscribed) HttpMethod.Put else HttpMethod.Delete)
+    }
 
     /** Records plays in the user's Takeout activity (listening stats). */
     suspend fun postActivity(events: ApiActivityEvents) {

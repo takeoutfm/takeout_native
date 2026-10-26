@@ -17,6 +17,7 @@ import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.settings.PlaySettings
 import com.takeoutfm.shared.store.AndroidStores
@@ -100,6 +101,11 @@ object AppModule {
     @Singleton
     fun music(api: TakeoutApi, library: TakeoutLibrary, urls: TakeoutUrls): TakeoutMusicRepository =
         TakeoutMusicRepository(api, library, urls)
+
+    @Provides
+    @Singleton
+    fun podcasts(api: TakeoutApi, urls: TakeoutUrls, progress: TakeoutProgress): TakeoutPodcastRepository =
+        TakeoutPodcastRepository(api, urls, progress)
 
     @Provides
     @Singleton

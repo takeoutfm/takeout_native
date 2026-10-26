@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–4 done**; phase 5 (podcasts) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–5 done**; phase 6 (offline: downloads, playback caching) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -334,7 +334,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    settings, best audio track, −10/+30, resume / play from start, progress saved through the
    shared offline cache, next episode at the end, its own media session, picture-in-picture).
    The track logic moved to `:android-media` `video/Tracks.kt` for both apps.
-5. **Podcasts**: series, subscriptions, episodes, resume.
+5. **Podcasts** — done (2026-10-25): Home's Podcasts (all / subscribed, shown when the index
+   has podcasts), podcast pages (Subscribe, description, episodes with date, "N min left" /
+   Complete), playback through the music service with progress saved by GUID (shared
+   `TakeoutPodcastRepository`, `:android-media` `PodcastProgress`; episodes aren't listens),
+   resume. Downloads come with phase 6.
 6. **Offline**: downloads (releases, playlists, episodes), playback caching, offline browsing,
    network policy.
 7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.

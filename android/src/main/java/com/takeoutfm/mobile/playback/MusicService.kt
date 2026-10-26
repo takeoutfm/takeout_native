@@ -5,6 +5,7 @@ import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.mobile.MainActivity
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.StreamHistory
+import com.takeoutfm.shared.progress.TakeoutProgress
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -14,5 +15,6 @@ class MusicService : TakeoutMusicService() {
     @Inject public override lateinit var playerFactory: TakeoutPlayerFactory
     @Inject public override lateinit var listenReporter: ListenReporter
     @Inject public override lateinit var streamHistory: StreamHistory
+    @Inject public override lateinit var progress: TakeoutProgress
     override val sessionActivity = MainActivity::class.java
 }

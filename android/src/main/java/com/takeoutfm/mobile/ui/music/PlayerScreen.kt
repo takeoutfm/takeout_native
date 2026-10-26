@@ -129,7 +129,8 @@ private fun PlayerDetails(playing: NowPlaying, favorite: Boolean, main: MainView
     val onAir = playing.streamTitle?.let(::parseStreamTitle)
     val title = onAir?.second ?: playing.streamTitle ?: item.title
     val subtitle = onAir?.first ?: item.artist
-    val third = if (playing.isLive) item.title.takeIf { it != title }.orEmpty() else item.album
+    val third = (if (playing.isLive) item.title.takeIf { it != title }.orEmpty() else item.album)
+        .takeIf { it != subtitle }.orEmpty()
     Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
     if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     if (third.isNotEmpty()) Text(third, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -166,7 +167,7 @@ private fun PlayerDetails(playing: NowPlaying, favorite: Boolean, main: MainView
                 tint = if (playing.repeatMode == Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             )
         }
-        if (item.etag.isNotEmpty()) {
+        if (item.etag.isNotEmpty() && !item.podcast) {
             IconButton(onClick = { main.setTrackFavorite(item.etag, !favorite) }) {
                 Icon(
                     if (favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,

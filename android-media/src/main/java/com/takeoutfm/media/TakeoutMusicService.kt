@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.StreamHistory
+import com.takeoutfm.shared.progress.TakeoutProgress
 
 /**
  * Plays music in the background: owns the music player and its queue, so playback continues
@@ -36,11 +37,15 @@ abstract class TakeoutMusicService : MediaSessionService() {
     /** Where songs heard on live streams are recorded; null to not keep them. */
     protected open val streamHistory: StreamHistory? = null
 
+    /** Where podcast episodes' positions are saved; null to not save them. */
+    protected open val progress: TakeoutProgress? = null
+
     /** The activity the system's now-playing controls open. */
     protected abstract val sessionActivity: Class<out Activity>
 
     private var session: MediaSession? = null
     private var listenTracker: ListenTracker? = null
+    private var podcastProgress: PodcastProgress? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -61,6 +66,7 @@ abstract class TakeoutMusicService : MediaSessionService() {
         // Reports plays to Takeout / ListenBrainz per the Music settings.
         listenTracker = ListenTracker(player, listenReporter).also { it.attach() }
         player.addListener(StreamTitles(player, streamHistory))
+        progress?.let { podcastProgress = PodcastProgress(player, it).also { p -> p.attach() } }
 
         // Opening the session from the system's now-playing controls returns to the app.
         val openApp = PendingIntent.getActivity(
@@ -89,6 +95,7 @@ abstract class TakeoutMusicService : MediaSessionService() {
 
     override fun onDestroy() {
         listenTracker?.detach()
+        podcastProgress?.detach()
         listenTracker = null
         session?.run {
             player.release()

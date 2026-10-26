@@ -10,6 +10,7 @@ import com.takeoutfm.shared.library.LibraryIndex
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.video.TakeoutVideoRepository
 import com.takeoutfm.shared.video.VideoCard
@@ -41,6 +42,7 @@ enum class MediaType(@StringRes val title: Int, val subtypes: List<Subtype>) {
         listOf(Subtype.FilmAdded, Subtype.FilmRecent, Subtype.FilmWatched, Subtype.FilmRecommended, Subtype.FilmGenres, Subtype.FilmFavorite),
     ),
     Tv(R.string.nav_tv_shows, listOf(Subtype.TvAdded, Subtype.TvAll)),
+    Podcast(R.string.nav_podcasts, listOf(Subtype.PodcastsAll, Subtype.PodcastsSubscribed)),
 }
 
 enum class Subtype(@StringRes val label: Int) {
@@ -54,6 +56,8 @@ enum class Subtype(@StringRes val label: Int) {
     FilmFavorite(R.string.film_favorite),
     TvAdded(R.string.tv_added),
     TvAll(R.string.tv_all),
+    PodcastsAll(R.string.podcasts_all),
+    PodcastsSubscribed(R.string.podcasts_subscribed),
 }
 
 data class HomeSelection(val type: MediaType = MediaType.Music, val subtype: Subtype = Subtype.MusicAdded)
@@ -66,6 +70,7 @@ class HomeViewModel @Inject constructor(
     private val library: TakeoutLibrary,
     private val music: TakeoutMusicRepository,
     private val video: TakeoutVideoRepository,
+    private val podcasts: TakeoutPodcastRepository,
     private val session: TakeoutSession,
 ) : ViewModel() {
     /** The media types this server's library has (all, until the index is known). */
@@ -143,6 +148,8 @@ class HomeViewModel @Inject constructor(
         Subtype.FilmFavorite -> video.favorites().map { it.toTile() }
         Subtype.TvAdded -> video.recentShows().map { it.toTile() }
         Subtype.TvAll -> video.shows().map { it.toTile() }
+        Subtype.PodcastsAll -> podcasts.series(subscribedOnly = false).map { Tile(it.id, it.title, it.author, it.imageUri) }
+        Subtype.PodcastsSubscribed -> podcasts.series(subscribedOnly = true).map { Tile(it.id, it.title, it.author, it.imageUri) }
     }
 
     private fun Album.toTile() = Tile(id, name, artist, coverUri)
@@ -156,6 +163,7 @@ class HomeViewModel @Inject constructor(
             if (index.hasMusic) add(MediaType.Music)
             if (index.hasMovies) add(MediaType.Film)
             if (index.hasShows) add(MediaType.Tv)
+            if (index.hasPodcasts) add(MediaType.Podcast)
         }
     }
 }

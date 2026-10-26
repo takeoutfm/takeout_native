@@ -165,4 +165,13 @@
     <string name="rating_tmdb">TMDB %1$.1f</string>
     <string name="no_playable_file">The server has no playable file for this title.</string>
     <string name="next_episode">Next episode</string>
+
+    <!-- Podcasts -->
+    <string name="nav_podcasts">Podcasts</string>
+    <string name="podcasts_all">All podcasts</string>
+    <string name="podcasts_subscribed">Subscribed</string>
+    <string name="subscribe">Subscribe</string>
+    <string name="subscribed">Subscribed</string>
+    <string name="complete">Complete</string>
+    <string name="episodes">Episodes</string>
 </resources>

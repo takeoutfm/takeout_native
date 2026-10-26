@@ -134,7 +134,8 @@ class ListenTracker(
         playedMs = 0
         reported = false
         lastTick = System.currentTimeMillis()
-        val track = mediaItem?.takeIf { it.mediaId.isNotEmpty() } ?: return
+        // Podcast episodes save progress instead (TakeoutMusicService); they aren't listens.
+        val track = mediaItem?.takeIf { it.mediaId.isNotEmpty() && !it.isPodcast } ?: return
         val m = track.mediaMetadata
         reporter.started(
             m.artist?.toString().orEmpty(), m.title?.toString().orEmpty(),
@@ -151,7 +152,7 @@ class ListenTracker(
         }
         lastTick = now
         val track = item ?: return
-        if (reported || track.mediaId.isEmpty()) return
+        if (reported || track.mediaId.isEmpty() || track.isPodcast) return
         val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
         if (countsAsListened(playedMs, duration)) {
             reported = true

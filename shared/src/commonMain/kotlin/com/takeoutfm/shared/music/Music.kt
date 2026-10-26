@@ -133,8 +133,10 @@ data class QueueItem(
     val backgroundUri: String = "",
     /** Full stream URL. */
     val uri: String,
-    /** The track's ETag; "" for radio streams. */
+    /** The track's ETag; "" for radio streams. For podcast episodes, the episode's GUID. */
     val etag: String,
+    /** A podcast episode: its position is saved as progress, and it isn't a listen. */
+    val podcast: Boolean = false,
 )
 
 /** What a "play this" request returns: a titled list of tracks and where to start. */

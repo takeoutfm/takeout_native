@@ -28,6 +28,7 @@ data class LibraryIndex(
     // Defaulted so an index saved by an older build still loads.
     val hasMusic: Boolean = false,
     val hasPlaylists: Boolean = false,
+    val hasPodcasts: Boolean = false,
     val hasMovies: Boolean,
     val hasShows: Boolean,
     val hasRecommendations: Boolean,
@@ -94,6 +95,7 @@ class TakeoutLibrary(
                         endpoint = session.endpoint,
                         hasMusic = view.hasMusic ?: false,
                         hasPlaylists = view.hasPlaylists ?: false,
+                        hasPodcasts = view.hasPodcasts ?: false,
                         hasMovies = view.hasMovies ?: true,
                         hasShows = view.hasShows ?: true,
                         hasRecommendations = hasRecommendations,

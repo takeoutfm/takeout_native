@@ -55,6 +55,7 @@ class MusicNav(
     val openPlaylists: () -> Unit,
     val openRecentTracks: () -> Unit,
     val openActivity: () -> Unit,
+    val openPodcast: (String) -> Unit,
     val openSearch: () -> Unit,
     val back: () -> Unit,
 )

@@ -184,6 +184,7 @@ data class ApiIndexView(
     @SerialName("HasMusic") val hasMusic: Boolean? = null,
     @SerialName("HasMovies") val hasMovies: Boolean? = null,
     @SerialName("HasShows") val hasShows: Boolean? = null,
+    @SerialName("HasPodcasts") val hasPodcasts: Boolean? = null,
     @SerialName("HasRecommendMovies") val hasRecommendMovies: Boolean? = null,
     @SerialName("HasPlaylists") val hasPlaylists: Boolean? = null,
     @SerialName("MovieGenres") val movieGenres: List<String>? = null,

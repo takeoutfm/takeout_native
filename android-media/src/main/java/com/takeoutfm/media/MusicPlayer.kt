@@ -269,13 +269,24 @@ internal fun QueueItem.toMediaItem(): MediaItem =
                 .setAlbumTitle(album)
                 .setArtworkUri(imageUri.ifEmpty { null }?.let(Uri::parse))
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                .setExtras(Bundle().apply { putString(BackgroundKey, backgroundUri) })
+                .setExtras(
+                    Bundle().apply {
+                        putString(BackgroundKey, backgroundUri)
+                        putBoolean(PodcastKey, podcast)
+                    }
+                )
                 .build()
         )
         .build()
 
 /** The artist background's URL in [MediaMetadata.extras] (Media3 has no field for it). */
 private const val BackgroundKey = "takeout.background"
+
+/** True in [MediaMetadata.extras] for a podcast episode (progress, not a listen). */
+internal const val PodcastKey = "takeout.podcast"
+
+/** A podcast episode, by its extras. */
+internal val MediaItem.isPodcast: Boolean get() = mediaMetadata.extras?.getBoolean(PodcastKey) == true
 
 /** A live stream's current "now playing" text in [MediaMetadata.extras]. */
 internal const val StreamTitleKey = "takeout.streamTitle"
@@ -288,6 +299,7 @@ internal fun MediaItem.toQueueItem(): QueueItem = QueueItem(
     backgroundUri = mediaMetadata.extras?.getString(BackgroundKey).orEmpty(),
     uri = requestMetadata.mediaUri?.toString().orEmpty(),
     etag = mediaId,
+    podcast = isPodcast,
 )
 
 private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { cont ->

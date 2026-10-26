@@ -66,7 +66,14 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, videoNav: VideoNav, onSettings: () -> Unit) {
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    main: MainViewModel,
+    nav: MusicNav,
+    videoNav: VideoNav,
+    onSettings: () -> Unit,
+    onLink: () -> Unit,
+) {
     val types by viewModel.types.collectAsStateWithLifecycle()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val content by viewModel.content.collectAsStateWithLifecycle()
@@ -111,6 +118,7 @@ fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, vid
                         onRecentTracks = nav.openRecentTracks,
                         onActivity = nav.openActivity,
                         onDownloads = nav.openDownloads,
+                        onLink = onLink,
                         onSettings = onSettings,
                         onAbout = { about = true },
                         onLogout = viewModel::logout,
@@ -162,6 +170,7 @@ private fun HomeMenu(
     onRecentTracks: () -> Unit,
     onActivity: () -> Unit,
     onDownloads: () -> Unit,
+    onLink: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onLogout: () -> Unit,
@@ -180,6 +189,7 @@ private fun HomeMenu(
                 R.string.playlists to onPlaylists,
                 R.string.settings_label to onSettings,
                 R.string.downloads to onDownloads,
+                R.string.link_label to onLink,
                 R.string.about_label to onAbout,
                 R.string.logout_label to onLogout,
             ).forEach { (label, action) ->

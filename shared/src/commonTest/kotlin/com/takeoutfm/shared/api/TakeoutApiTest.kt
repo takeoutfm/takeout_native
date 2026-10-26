@@ -104,6 +104,19 @@ class TakeoutApiTest {
     }
 
     @Test
+    fun linkingApprovesTheCodeOrReportsRejection() = runTest {
+        val bodies = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            bodies += (request.body as io.ktor.http.content.TextContent).text
+            if (bodies.size == 1) respond("", HttpStatusCode.NoContent) else respondError(HttpStatusCode.Unauthorized)
+        }
+        val api = TakeoutApi(TakeoutSession(store = null), "test", engine)
+        assertEquals(true, api.link(server, " ab12cd ", "defsub", "secret", ""))
+        assertEquals("""{"Code":"AB12CD","User":"defsub","Pass":"secret"}""", bodies[0])
+        assertEquals(false, api.link(server, "zzzzzz", "defsub", "wrong", null))
+    }
+
+    @Test
     fun endpointsAreNormalized() {
         assertEquals("https://takeout.fm", TakeoutApi.normalizeEndpoint(" takeout.fm/ "))
         assertEquals("http://nas:3000", TakeoutApi.normalizeEndpoint("http://nas:3000"))

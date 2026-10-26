@@ -189,4 +189,12 @@
     <string name="no_downloads">Download albums, playlists and podcast episodes to play them offline.</string>
     <string name="setting_auto_cache_title">Playback Caching</string>
     <string name="setting_auto_cache_subtitle">Keep what you play on this device, so it plays again offline</string>
+
+    <!-- Link -->
+    <string name="link_label">Link</string>
+    <string name="link_title">Link a device</string>
+    <string name="link_intro">Enter the code shown on the TV or other device, with your account to approve it.</string>
+    <string name="code_label">Code</string>
+    <string name="link_success">Linked. The other device signs in now.</string>
+    <string name="link_rejected">That code, user name or password wasn\'t accepted</string>
 </resources>

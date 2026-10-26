@@ -22,6 +22,7 @@ import com.takeoutfm.mobile.ui.music.QueueScreen
 import com.takeoutfm.mobile.ui.music.RadioScreen
 import com.takeoutfm.mobile.ui.music.RecentScreen
 import com.takeoutfm.mobile.ui.music.SearchScreen
+import com.takeoutfm.mobile.ui.settings.LinkScreen
 import com.takeoutfm.mobile.ui.settings.SettingsScreen
 import com.takeoutfm.mobile.ui.video.GenreScreen
 import com.takeoutfm.mobile.ui.video.PersonScreen
@@ -37,6 +38,7 @@ import kotlinx.serialization.Serializable
 @Serializable object RadioRoute
 @Serializable object PlayerRoute
 @Serializable object SettingsRoute
+@Serializable object LinkRoute
 @Serializable object SearchRoute
 @Serializable object PlaylistsRoute
 @Serializable object RecentTracksRoute
@@ -88,13 +90,18 @@ fun TabHost(
     }
     NavHost(navController, startDestination = start) {
         composable<HomeRoute> {
-            HomeScreen(homeViewModel, mainViewModel, nav, videoNav, onSettings = { navController.navigate(SettingsRoute) })
+            HomeScreen(
+                homeViewModel, mainViewModel, nav, videoNav,
+                onSettings = { navController.navigate(SettingsRoute) },
+                onLink = { navController.navigate(LinkRoute) },
+            )
         }
         composable<ArtistsRoute> { ArtistsScreen(mainViewModel, nav) }
         composable<RecentRoute> { RecentScreen(mainViewModel) }
         composable<RadioRoute> { RadioScreen(mainViewModel) }
         composable<PlayerRoute> { PlayerScreen(mainViewModel) }
         composable<SettingsRoute> { SettingsScreen(onBack = nav.back) }
+        composable<LinkRoute> { LinkScreen(onBack = nav.back) }
         musicPages(mainViewModel, nav, videoNav)
         composable<VideoRoute> { VideoScreen(videoNav) }
         composable<PersonRoute> { PersonScreen(videoNav) }

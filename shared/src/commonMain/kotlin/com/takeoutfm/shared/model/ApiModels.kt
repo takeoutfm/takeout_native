@@ -24,6 +24,15 @@ data class ApiLogin(
     @SerialName("Passcode") val passcode: String? = null,
 )
 
+/** Approving another device's sign-in code (POST /api/link) with this account's credentials. */
+@Serializable
+data class ApiLink(
+    @SerialName("Code") val code: String,
+    @SerialName("User") val user: String,
+    @SerialName("Pass") val password: String,
+    @SerialName("Passcode") val passcode: String? = null,
+)
+
 @Serializable
 data class ApiRefreshTokens(
     @SerialName("AccessToken") val accessToken: String = "",

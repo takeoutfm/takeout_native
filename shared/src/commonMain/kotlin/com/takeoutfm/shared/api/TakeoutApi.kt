@@ -8,6 +8,7 @@ import com.takeoutfm.shared.model.ApiFavoriteView
 import com.takeoutfm.shared.model.ApiGenreView
 import com.takeoutfm.shared.model.ApiHomeView
 import com.takeoutfm.shared.model.ApiIndexView
+import com.takeoutfm.shared.model.ApiLink
 import com.takeoutfm.shared.model.ApiLogin
 import com.takeoutfm.shared.model.ApiMovieView
 import com.takeoutfm.shared.model.ApiMoviesView
@@ -125,6 +126,24 @@ class TakeoutApi internal constructor(
             decode(ApiTokens.serializer(), text).takeIf { it.isValid() }
         } catch (e: HttpException) {
             if (e.code == 401 || e.code == 403) null else throw e
+        }
+    }
+
+    /**
+     * Signs in the device showing [code] (a TV, or a new phone) by approving it with this
+     * account's user, password and [passcode]; true when the server accepted it, false when it
+     * rejected the code or credentials. Throws on network errors.
+     */
+    suspend fun link(endpoint: String, code: String, user: String, password: String, passcode: String?): Boolean {
+        val body = json.encodeToString(
+            ApiLink.serializer(),
+            ApiLink(code.trim().uppercase(), user, password, passcode?.trim()?.ifEmpty { null }),
+        )
+        return try {
+            execute("$endpoint/api/link", HttpMethod.Post, body = body)
+            true
+        } catch (e: HttpException) {
+            if (e.code in 400..499) false else throw e
         }
     }
 

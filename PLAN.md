@@ -350,6 +350,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    **Still to do:** the JSON response cache for offline browsing, and the mobile-data policy
    (question open in 4.11).
 7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.
+   - [x] Link (2026-10-25): approve another device's code with this account (`POST /api/link`,
+         shared `TakeoutApi.link`, Home menu → Link).
 8. **Polish & release**: tablets/foldables, accessibility (TalkBack, font scale), Baseline
    Profiles, signing, migration from the Flutter app (if reusing `com.takeoutfm.mobile`).
 9. **Wear OS**: a standalone watch app (`wear/`) on `shared` + `android-media`:

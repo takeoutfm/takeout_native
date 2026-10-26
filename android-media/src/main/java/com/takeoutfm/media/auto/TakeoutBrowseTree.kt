@@ -177,8 +177,8 @@ class TakeoutBrowseTree(
 
     /** Records [queue] in Recently Played and gives its media items, as the app's player does. */
     fun startPlaying(queue: MusicQueue): List<MediaItem> {
-        history.record(queue)
-        return queue.items.map { it.toMediaItem() }
+        val id = history.record(queue)
+        return queue.items.map { it.toMediaItem(id) }
     }
 
     private fun folder(id: String, title: String, grid: Boolean, subtitle: String = "", imageUri: String = "") =

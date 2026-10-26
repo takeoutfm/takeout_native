@@ -67,9 +67,6 @@ class MusicPlayer(
     private val history: MusicHistory,
     private val service: Class<out MediaSessionService>,
 ) {
-    /** Recently Played entry of the queue playing now, updated with where it gets to. */
-    private var historyId: String? = null
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val connectLock = Mutex()
     private var controller: MediaController? = null
@@ -85,13 +82,16 @@ class MusicPlayer(
         }
     }
 
-    /** Replaces the queue with [queue] and plays from its start (index and position). */
+    /**
+     * Replaces the queue with [queue] and plays from its start (index and position), as a
+     * Recently Played entry (the service's [HistoryProgress] keeps where it got to).
+     */
     fun play(queue: MusicQueue) {
-        historyId = history.record(queue)
+        val historyId = history.record(queue)
         scope.launch {
             val c = controller() ?: return@launch
             c.setMediaItems(
-                queue.items.map { it.toMediaItem() },
+                queue.items.map { it.toMediaItem(historyId) },
                 queue.startIndex,
                 queue.startPositionMs,
             )
@@ -165,7 +165,6 @@ class MusicPlayer(
     }
 
     fun stop() {
-        historyId = null
         val c = controller ?: return
         c.stop()
         c.clearMediaItems()
@@ -192,12 +191,10 @@ class MusicPlayer(
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _state.value = _state.value.copy(error = null)
-                saveProgress(c)
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) startTicker(player = c) else ticker?.cancel()
-                saveProgress(c)
             }
         })
         controller = c
@@ -209,24 +206,15 @@ class MusicPlayer(
     /** Position only changes by itself, so poll it while playing. */
     private fun startTicker(player: Player) {
         ticker?.cancel()
-        var ticks = 0
         ticker = scope.launch {
             while (isActive) {
                 _state.value = _state.value.copy(
                     positionMs = player.currentPosition,
                     durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L,
                 )
-                if (++ticks % ProgressEveryTicks == 0) saveProgress(player)
                 delay(500)
             }
         }
-    }
-
-    /** Records where the queue got to, so Recently Played resumes there. */
-    private fun saveProgress(player: Player) {
-        val id = historyId ?: return
-        if (player.mediaItemCount == 0) return
-        history.progress(id, player.currentMediaItemIndex, player.currentPosition)
     }
 
     private fun update(player: Player) {
@@ -252,14 +240,12 @@ class MusicPlayer(
     }
 }
 
-/** Save the position every this many ticker ticks (500 ms each) while playing. */
-private const val ProgressEveryTicks = 20
-
 /**
  * The stream URI also goes in the request metadata, since Media3 doesn't pass a controller's
- * `localConfiguration` to the session ([TakeoutMusicService] restores it). The ETag is the media id.
+ * `localConfiguration` to the session ([TakeoutMusicService] restores it). The ETag is the media id;
+ * [historyId] is the Recently Played entry the item's queue was recorded as.
  */
-internal fun QueueItem.toMediaItem(): MediaItem =
+internal fun QueueItem.toMediaItem(historyId: String? = null): MediaItem =
     MediaItem.Builder()
         .setMediaId(etag)
         .setUri(uri)
@@ -279,6 +265,7 @@ internal fun QueueItem.toMediaItem(): MediaItem =
                     Bundle().apply {
                         putString(BackgroundKey, backgroundUri)
                         putBoolean(PodcastKey, podcast)
+                        historyId?.let { putString(HistoryKey, it) }
                     }
                 )
                 .build()
@@ -290,6 +277,11 @@ private const val BackgroundKey = "takeout.background"
 
 /** True in [MediaMetadata.extras] for a podcast episode (progress, not a listen). */
 internal const val PodcastKey = "takeout.podcast"
+
+/** The Recently Played entry id in [MediaMetadata.extras] (see [HistoryProgress]). */
+internal const val HistoryKey = "takeout.history"
+
+internal val MediaItem.historyId: String? get() = mediaMetadata.extras?.getString(HistoryKey)
 
 /** A podcast episode, by its extras. */
 internal val MediaItem.isPodcast: Boolean get() = mediaMetadata.extras?.getBoolean(PodcastKey) == true

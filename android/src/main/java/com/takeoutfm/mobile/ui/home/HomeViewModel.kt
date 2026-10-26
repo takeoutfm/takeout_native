@@ -80,6 +80,13 @@ class HomeViewModel @Inject constructor(
 
     private val chosen = MutableStateFlow(HomeSelection())
 
+    /** The list last shown for each type, so coming back to a type shows it again. */
+    private val lastSubtype = mutableMapOf<MediaType, Subtype>()
+
+    private fun HomeSelection.remembered(): HomeSelection = also { lastSubtype[type] = subtype }
+
+    private fun shown(type: MediaType) = HomeSelection(type, lastSubtype[type] ?: type.subtypes.first())
+
     /** The chosen type and subtype, kept to what the library has. */
     val selection: StateFlow<HomeSelection> = combine(chosen, types) { s, t ->
         if (s.type in t || t.isEmpty()) s else HomeSelection(t.first(), t.first().subtypes.first())
@@ -111,9 +118,9 @@ class HomeViewModel @Inject constructor(
     fun select(type: MediaType) = chosen.update { current ->
         if (selection.value.type == type) {
             val next = (type.subtypes.indexOf(selection.value.subtype) + 1) % type.subtypes.size
-            HomeSelection(type, type.subtypes[next])
+            HomeSelection(type, type.subtypes[next]).remembered()
         } else {
-            HomeSelection(type, type.subtypes.first())
+            shown(type)
         }
     }
 
@@ -122,7 +129,7 @@ class HomeViewModel @Inject constructor(
         val t = types.value
         if (t.isEmpty()) return
         val next = t[(t.indexOf(selection.value.type) + 1) % t.size]
-        chosen.value = HomeSelection(next, next.subtypes.first())
+        chosen.value = shown(next)
     }
 
     /** Pull to refresh / Reload: a fresh library index, then the current list again. */

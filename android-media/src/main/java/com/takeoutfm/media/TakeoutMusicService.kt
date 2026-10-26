@@ -34,6 +34,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.listen.ListenReporter
+import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.progress.TakeoutProgress
 
@@ -50,6 +51,9 @@ import com.takeoutfm.shared.progress.TakeoutProgress
 abstract class TakeoutMusicService : MediaLibraryService() {
     protected abstract val playerFactory: TakeoutPlayerFactory
     protected abstract val listenReporter: ListenReporter
+
+    /** Recently Played, which the playing queue's position is saved into. */
+    protected abstract val history: MusicHistory
 
     /** Where songs heard on live streams are recorded; null to not keep them. */
     protected open val streamHistory: StreamHistory? = null
@@ -72,6 +76,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private var listenTracker: ListenTracker? = null
     private var podcastProgress: PodcastProgress? = null
+    private var historyProgress: HistoryProgress? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -96,6 +101,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         // Reports plays to Takeout / ListenBrainz per the Music settings.
         listenTracker = ListenTracker(player, listenReporter).also { it.attach() }
         player.addListener(StreamTitles(player, streamHistory))
+        historyProgress = HistoryProgress(player, history).also { it.attach() }
         progress?.let { podcastProgress = PodcastProgress(player, it).also { p -> p.attach() } }
 
         // Opening the session from the system's now-playing controls returns to the app.
@@ -126,6 +132,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     override fun onDestroy() {
         listenTracker?.detach()
         podcastProgress?.detach()
+        historyProgress?.detach()
+        historyProgress = null
         listenTracker = null
         session?.run {
             player.release()

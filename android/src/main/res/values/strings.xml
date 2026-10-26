@@ -58,7 +58,12 @@
     <string name="radio_genres">Genres</string>
     <string name="radio_decades">Decades</string>
     <string name="radio_streams">Streams</string>
-    <string name="radio_other">Other</string>
+    <string name="radio_artists">Artists</string>
+    <string name="radio_similar">Similar</string>
+    <string name="radio_series">Series</string>
+    <string name="radio_other">More Stations</string>
+    <string name="show_all">Show all (%1$d)</string>
+    <string name="show_less">Show less</string>
 
     <!-- Settings -->
     <string name="setting_track_activity_title">Track Activity</string>

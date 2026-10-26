@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -206,8 +207,9 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                         items(details.cast, key = { it.personId }) { c ->
                             Column(Modifier.width(96.dp).clickable { nav.openPerson(c.personId) }, horizontalAlignment = Alignment.CenterHorizontally) {
                                 Art(c.avatarUri, c.name, Modifier.size(80.dp), RoundedCornerShape(50))
-                                Text(c.name, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-                                Text(c.role, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                // Names always take two lines so every role starts at the same height.
+                                Text(c.name, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                                Text(c.role, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }

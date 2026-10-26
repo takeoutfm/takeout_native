@@ -161,7 +161,7 @@
     <string name="starring_shows">Starring Shows</string>
     <string name="directing_shows">Directing Shows</string>
     <string name="writing_shows">Writing Shows</string>
-    <string name="rating_tmdb">TMDB %1$.1f</string>
+    <string name="rating_tmdb">★ %1$.1f/10</string>
     <string name="no_playable_file">The server has no playable file for this title.</string>
     <string name="next_episode">Next episode</string>
 

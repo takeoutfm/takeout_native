@@ -5,8 +5,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** The app's colour theme. */
+enum class ThemeMode { System, Light, Dark }
+
 /**
- * Per-device playback settings for the phone and watch apps (the TV keeps its own), with the
+ * Per-device settings for the phone and watch apps (the TV keeps its own), with the
  * Flutter app's defaults.
  */
 class PlaySettings(private val store: KeyValueStore) {
@@ -34,6 +37,18 @@ class PlaySettings(private val store: KeyValueStore) {
 
     fun setPlaybackCaching(on: Boolean) = set(_playbackCaching, KEY_PLAYBACK_CACHING, on)
 
+    private val _theme = MutableStateFlow(
+        store.getString(KEY_THEME)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.System
+    )
+
+    /** Light, dark, or following the system. */
+    val theme: StateFlow<ThemeMode> = _theme.asStateFlow()
+
+    fun setTheme(mode: ThemeMode) {
+        _theme.value = mode
+        store.putString(KEY_THEME, mode.name)
+    }
+
     private fun set(flow: MutableStateFlow<Boolean>, key: String, on: Boolean) {
         flow.value = on
         store.putString(key, on.toString())
@@ -43,5 +58,6 @@ class PlaySettings(private val store: KeyValueStore) {
         const val KEY_REPORT_PLAYS = "reportPlays"
         const val KEY_SUBMIT_LISTENS = "submitListens"
         const val KEY_PLAYBACK_CACHING = "playbackCaching"
+        const val KEY_THEME = "theme"
     }
 }

@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–6 done**, phase 7 done except Android Auto; phase 8 (polish & release) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–7 done** (Android Auto not yet seen in a car UI); phase 8 (polish & release) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -353,7 +353,16 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    only for now (the TV keeps its own saved index). Checked on the emulator with Wi-Fi and
    data off.
    No mobile-data limits (decided 2026-10-26).
-7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.
+7. **Platform** — done (2026-10-26): Android Auto, Assistant intents/app actions, playlist
+   editing, link code.
+   - [x] Android Auto: `TakeoutMusicService` is a `MediaLibraryService`; `:android-media`
+         `auto/TakeoutBrowseTree` gives Recently Played, New releases, Recently added, Radio
+         (streams first), Playlists and subscribed Podcasts (→ episodes), search, and expands a
+         played item (or car voice "play …") into its whole queue. Manifest: library service
+         filters + `automotive_app_desc`. Tested with a Media3 `MediaBrowser` instrumented test
+         (`android/src/androidTest/…/BrowseTreeTest`) against the server; **not yet seen in the
+         car UI** — the emulator's Android Auto is a stub, so the DHU needs a real phone (or
+         the emulator's Android Auto updated from Play).
    - [x] Assistant (2026-10-25): `MEDIA_PLAY_FROM_SEARCH` (artist / album / song focus, or the
          server's best match; empty = resume) and the Flutter app's `com.takeoutfm.action.*`
          intents with the same server search refs (`voice/VoiceRequests`, unit-tested;

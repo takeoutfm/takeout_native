@@ -14,7 +14,18 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.SessionError
+import com.google.common.collect.ImmutableList
+import com.takeoutfm.media.auto.TakeoutBrowseTree
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.launch
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.takeoutfm.media.offline.TakeoutMediaCache
@@ -24,14 +35,15 @@ import com.takeoutfm.shared.progress.TakeoutProgress
 
 /**
  * Plays music in the background: owns the music player and its queue, so playback continues
- * while browsing (or with the app in the background), and exposes a [MediaSession] so remote
- * keys, Assistant and Google TV's now-playing controls work anywhere. The UI talks to it
+ * while browsing (or with the app in the background), and exposes a media library session so
+ * remote keys, Assistant, the system's now-playing controls and Android Auto (browsing
+ * [browseTree]) work anywhere. The UI talks to it
  * through [MusicPlayer]. Video playback stays screen-scoped and separate.
  *
  * Each app subclasses it (declared in its manifest) to supply its singletons and the screen
  * that opening the session returns to; they're used from [onCreate] on, after injection.
  */
-abstract class TakeoutMusicService : MediaSessionService() {
+abstract class TakeoutMusicService : MediaLibraryService() {
     protected abstract val playerFactory: TakeoutPlayerFactory
     protected abstract val listenReporter: ListenReporter
 
@@ -44,10 +56,13 @@ abstract class TakeoutMusicService : MediaSessionService() {
     /** Where podcast episodes' positions are saved; null to not save them. */
     protected open val progress: TakeoutProgress? = null
 
+    /** What Android Auto and other media browsers can browse; null for none (the TV). */
+    protected open val browseTree: TakeoutBrowseTree? = null
+
     /** The activity the system's now-playing controls open. */
     protected abstract val sessionActivity: Class<out Activity>
 
-    private var session: MediaSession? = null
+    private var session: MediaLibrarySession? = null
     private var listenTracker: ListenTracker? = null
     private var podcastProgress: PodcastProgress? = null
 
@@ -80,14 +95,13 @@ abstract class TakeoutMusicService : MediaSessionService() {
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        session = MediaSession.Builder(this, player)
+        session = MediaLibrarySession.Builder(this, player, LibraryCallback())
             .setId("music")
             .setSessionActivity(openApp)
-            .setCallback(StreamUriCallback)
             .build()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
     /** Nothing playing when the app is swiped away: stop rather than linger. */
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -153,24 +167,112 @@ abstract class TakeoutMusicService : MediaSessionService() {
     }
 
     /**
-     * Items from a controller arrive without their stream URI (Media3 doesn't pass
-     * `localConfiguration` to the session); [MusicPlayer] puts it in the request metadata, and
-     * this restores it.
+     * The library session's answers: browsing and search from [browseTree] (empty without one),
+     * and playing a browsed item expands it into its whole queue. Items from the app's own
+     * controller arrive without their stream URI (Media3 doesn't pass `localConfiguration` to the
+     * session); [MusicPlayer] puts it in the request metadata, and this restores it.
      */
-    private object StreamUriCallback : MediaSession.Callback {
+    @OptIn(UnstableApi::class)
+    private inner class LibraryCallback : MediaLibraryService.MediaLibrarySession.Callback {
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val tree = browseTree ?: return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED))
+            return Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
+            val tree = browseTree ?: return@future LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+            try {
+                val all = tree.children(parentId)
+                val from = (page * pageSize).coerceAtMost(all.size)
+                LibraryResult.ofItemList(ImmutableList.copyOf(all.subList(from, (from + pageSize).coerceAtMost(all.size))), params)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                LibraryResult.ofError(SessionError.ERROR_IO)
+            }
+        }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<Void>> {
+            val tree = browseTree ?: return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED))
+            scope.launch {
+                val count = runCatching { tree.search(query).size }.getOrDefault(0)
+                session.notifySearchResultChanged(browser, query, count, params)
+            }
+            return Futures.immediateFuture(LibraryResult.ofVoid())
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
+            val tree = browseTree ?: return@future LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+            try {
+                val all = tree.search(query)
+                val from = (page * pageSize).coerceAtMost(all.size)
+                LibraryResult.ofItemList(ImmutableList.copyOf(all.subList(from, (from + pageSize).coerceAtMost(all.size))), params)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                LibraryResult.ofError(SessionError.ERROR_IO)
+            }
+        }
+
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
+            val tree = browseTree
+            val single = mediaItems.singleOrNull()
+            // A browsed item, or "play …" by voice: the queue it stands for.
+            val queue = if (tree != null && single != null) {
+                runCatching {
+                    tree.queue(single.mediaId)
+                        ?: single.requestMetadata.searchQuery?.let { q -> tree.searchQueue(q) }
+                }.getOrNull()
+            } else {
+                null
+            }
+            if (queue != null && tree != null) {
+                MediaSession.MediaItemsWithStartPosition(tree.startPlaying(queue), queue.startIndex, queue.startPositionMs)
+            } else {
+                MediaSession.MediaItemsWithStartPosition(withUris(mediaItems), startIndex, startPositionMs)
+            }
+        }
+
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
-        ): ListenableFuture<MutableList<MediaItem>> = Futures.immediateFuture(
-            mediaItems.map { item ->
-                val uri = item.requestMetadata.mediaUri
-                if (item.localConfiguration == null && uri != null) {
-                    item.buildUpon().setUri(uri).build()
-                } else {
-                    item
-                }
-            }.toMutableList()
-        )
+        ): ListenableFuture<MutableList<MediaItem>> = Futures.immediateFuture(withUris(mediaItems))
+
+        private fun withUris(items: List<MediaItem>): MutableList<MediaItem> = items.map { item ->
+            val uri = item.requestMetadata.mediaUri
+            if (item.localConfiguration == null && uri != null) item.buildUpon().setUri(uri).build() else item
+        }.toMutableList()
     }
 }

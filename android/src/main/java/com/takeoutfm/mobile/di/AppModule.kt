@@ -4,7 +4,9 @@ import android.content.Context
 import android.os.Build
 import com.takeoutfm.media.MusicPlayer
 import com.takeoutfm.media.TakeoutPlayerFactory
+import com.takeoutfm.media.auto.TakeoutBrowseTree
 import com.takeoutfm.media.offline.TakeoutMediaCache
+import com.takeoutfm.mobile.R
 import com.takeoutfm.mobile.BuildConfig
 import com.takeoutfm.mobile.playback.MusicService
 import com.takeoutfm.shared.api.DbResponseCache
@@ -140,6 +142,26 @@ object AppModule {
         playerFactory: TakeoutPlayerFactory,
         settings: PlaySettings,
     ): TakeoutMediaCache = TakeoutMediaCache(context, playerFactory.upstream) { settings.playbackCaching.value }
+
+    /** What Android Auto browses. */
+    @Provides
+    @Singleton
+    fun browseTree(
+        @ApplicationContext context: Context,
+        music: TakeoutMusicRepository,
+        podcasts: TakeoutPodcastRepository,
+        history: MusicHistory,
+    ): TakeoutBrowseTree = TakeoutBrowseTree(
+        music, podcasts, history,
+        TakeoutBrowseTree.Titles(
+            recent = context.getString(R.string.recently_played),
+            newReleases = context.getString(R.string.music_recent),
+            recentlyAdded = context.getString(R.string.music_added),
+            radio = context.getString(R.string.nav_radio),
+            playlists = context.getString(R.string.playlists),
+            podcasts = context.getString(R.string.nav_podcasts),
+        ),
+    )
 
     @Provides
     @Singleton

@@ -1,6 +1,13 @@
 package com.takeoutfm.mobile
 
 import android.content.Intent
+import android.graphics.Color
+import androidx.activity.SystemBarStyle
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.takeoutfm.mobile.ui.theme.isDark
+import com.takeoutfm.shared.settings.PlaySettings
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +32,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var progress: TakeoutProgress
     @Inject lateinit var listenReporter: ListenReporter
     @Inject lateinit var voice: VoiceHandler
+    @Inject lateinit var settings: PlaySettings
 
     /** Created here so every request from the start is kept for offline browsing. */
     @Inject lateinit var responseCache: ResponseCache
@@ -33,7 +41,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            TakeoutTheme {
+            val mode by settings.theme.collectAsStateWithLifecycle()
+            val dark = isDark(mode)
+            // Status and navigation bar icons follow the app's theme, not just the system's.
+            LaunchedEffect(dark) {
+                val style = if (dark) {
+                    SystemBarStyle.dark(Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+            }
+            TakeoutTheme(mode) {
                 App()
             }
         }

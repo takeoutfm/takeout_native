@@ -76,6 +76,14 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   episode GUID). Episodes play in the music service as `QueueItem(podcast = true)`:
   `PodcastProgress` saves their position, `ListenTracker` skips them. Subscribe changes the
   user's real subscriptions.
+- Android Auto: `TakeoutMusicService` is a `MediaLibraryService` browsing `:android-media`
+  `auto/TakeoutBrowseTree` (the phone provides it; the TV gives none). Test the tree with
+  `./gradlew :android:assembleDebug :android:assembleDebugAndroidTest`, `adb install -r` both
+  APKs (`-t` for the test one), then
+  `adb shell am instrument -w com.takeoutfm.mobile.debug.test/androidx.test.runner.AndroidJUnitRunner`
+  — not `connectedAndroidTest`, which uninstalls the app and its sign-in.
+- Theme: Settings → Theme (System / Light / Dark, `PlaySettings.theme`); `MainActivity` applies
+  it, status bar icons included.
 - Voice: `voice/VoiceRequests` turns `MEDIA_PLAY_FROM_SEARCH` and `com.takeoutfm.action.*`
   intents into server search refs; `VoiceHandler` (called from `MainActivity`) plays them via
   `TakeoutApi.resolveRef`, which rewrites the user's server-side current playlist. Test with

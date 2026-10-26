@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.DownloadForOffline
 import androidx.compose.material.icons.filled.Key
@@ -27,6 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -50,6 +54,7 @@ import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.listen.ListenBrainzUser
 import com.takeoutfm.shared.settings.PlaySettings
+import com.takeoutfm.shared.settings.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -97,6 +102,7 @@ class SettingsViewModel @Inject constructor(
 fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val reportPlays by viewModel.settings.reportPlays.collectAsStateWithLifecycle()
     val playbackCaching by viewModel.settings.playbackCaching.collectAsStateWithLifecycle()
+    val theme by viewModel.settings.theme.collectAsStateWithLifecycle()
     val submitListens by viewModel.settings.submitListens.collectAsStateWithLifecycle()
     val user by viewModel.user.collectAsStateWithLifecycle()
     Scaffold(
@@ -120,6 +126,33 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 leadingContent = { Icon(Icons.Filled.Dns, contentDescription = null) },
                 headlineContent = { Text(stringResource(R.string.setting_server)) },
                 supportingContent = { Text(viewModel.endpoint) },
+            )
+            ListItem(
+                leadingContent = { Icon(Icons.Filled.DarkMode, contentDescription = null) },
+                headlineContent = { Text(stringResource(R.string.setting_theme)) },
+                supportingContent = {
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        val modes = ThemeMode.entries
+                        modes.forEachIndexed { i, m ->
+                            SegmentedButton(
+                                selected = m == theme,
+                                onClick = { viewModel.settings.setTheme(m) },
+                                shape = SegmentedButtonDefaults.itemShape(i, modes.size),
+                            ) {
+                                Text(
+                                    stringResource(
+                                        when (m) {
+                                            ThemeMode.System -> R.string.theme_system
+                                            ThemeMode.Light -> R.string.theme_light
+                                            ThemeMode.Dark -> R.string.theme_dark
+                                        }
+                                    ),
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                },
             )
             HorizontalDivider()
             SwitchItem(

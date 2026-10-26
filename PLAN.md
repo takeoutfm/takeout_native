@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–3 done**; phase 4 (video) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–4 done**; phase 5 (podcasts) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -327,7 +327,13 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    Tracks (`/api/activity/tracks/recent`), Activity (artists / releases / tracks × Recent,
    Last Week, Last Month, This Month, with counts; Play / Shuffle), play reporting via the
    shared `ListenReporter`.
-4. **Video**: movies, TV, person pages, native video player, progress (offline cache).
+4. **Video** — done (2026-10-25): Home's Movies (added / new / continue watching /
+   recommended / genres / favorites) and TV Shows (added / all); details for movies, series
+   (seasons → episodes, Play / Resume picks the next episode) and episodes; person and genre
+   pages; `VideoPlayerActivity` on Media3 `PlayerView` (embedded audio/subtitle + speed
+   settings, best audio track, −10/+30, resume / play from start, progress saved through the
+   shared offline cache, next episode at the end, its own media session, picture-in-picture).
+   The track logic moved to `:android-media` `video/Tracks.kt` for both apps.
 5. **Podcasts**: series, subscriptions, episodes, resume.
 6. **Offline**: downloads (releases, playlists, episodes), playback caching, offline browsing,
    network policy.

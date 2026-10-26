@@ -29,6 +29,18 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.video.VideoPlayerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Takeout.Player"
+            android:launchMode="singleTask"
+            android:taskAffinity=".video"
+            android:excludeFromRecents="true"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden" />
+
         <service
             android:name=".playback.MusicService"
             android:exported="true"

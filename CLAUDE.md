@@ -8,10 +8,10 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 
 | Module | What |
 |---|---|
-| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–3 of `PLAN.md` (skeleton, music, history/activity). |
+| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–4 of `PLAN.md` (skeleton, music, history/activity, video). |
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
-| `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video audio-track ranking. Plain constructors, no Hilt. |
+| `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video track choices (`video/Tracks.kt`: audio/subtitle/speed options, best audio track). Plain constructors, no Hilt. |
 | `:shared` | Kotlin Multiplatform core shared by all apps (Android target only for now): API models (`com.takeoutfm.shared.model`), listen/progress rules, `TakeoutPaths`, sort keys. No Android or `java.*` imports in `commonMain` (platform bits go in `androidMain` as `actual`s); use kotlinx-datetime, not `java.time`. Tests live in `commonTest` (`kotlin.test`). |
 
 ## Commands
@@ -67,6 +67,11 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   queue sheet and live-stream layout; the bottom-bar layout shows the FAB, the rail layout a
   persistent `MiniPlayer` instead (as the Flutter app in landscape). The manifest allows
   cleartext http (radio streams, home servers).
+- Video (`ui/video/`): `VideoScreen` (movie / series / episode from the shared
+  `TakeoutVideoRepository`), person and genre pages (`VideoNav`), and `VideoPlayerActivity`
+  (its own task so picture-in-picture works; Media3 `PlayerView`; track helpers from
+  `:android-media` `video/Tracks.kt`, shared with the TV). Progress goes through the shared
+  `TakeoutProgress` — playing a title on the emulator changes the user's real progress.
 
 ## TV architecture
 

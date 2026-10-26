@@ -46,15 +46,11 @@ import kotlinx.coroutines.launch
 fun TabPage(
     title: String,
     subtitle: String? = null,
-    content: @Composable (PaddingValues, onComingSoon: () -> Unit) -> Unit,
+    content: @Composable (PaddingValues) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val comingSoon = stringResource(R.string.coming_soon)
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -72,7 +68,8 @@ fun TabPage(
                 },
             )
         },
-    ) { padding -> content(padding) { scope.launch { snackbar.showSnackbar(comingSoon) } } }
+        content = content,
+    )
 }
 
 /** Artists A–Z, or favorite artists; re-tapping the tab switches. */
@@ -84,7 +81,7 @@ fun ArtistsScreen(main: MainViewModel, nav: MusicNav, viewModel: MusicTabsViewMo
     TabPage(
         title = stringResource(R.string.nav_artists),
         subtitle = stringResource(if (type == ArtistType.All) R.string.artists_all else R.string.artists_favorite),
-    ) { padding, _ ->
+    ) { padding ->
         val list = artists
         if (list.isNullOrEmpty()) {
             LoadingOrEmpty(list == null, stringResource(R.string.nothing_here), Modifier.padding(padding))
@@ -109,7 +106,7 @@ fun ArtistsScreen(main: MainViewModel, nav: MusicNav, viewModel: MusicTabsViewMo
 @Composable
 fun RadioScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {
     val groups by viewModel.radio.collectAsStateWithLifecycle(initialValue = null)
-    TabPage(title = stringResource(R.string.nav_radio)) { padding, _ ->
+    TabPage(title = stringResource(R.string.nav_radio)) { padding ->
         val list = groups
         if (list.isNullOrEmpty()) {
             LoadingOrEmpty(list == null, stringResource(R.string.nothing_here), Modifier.padding(padding))

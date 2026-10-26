@@ -53,7 +53,6 @@
     <string name="nothing_playing">Nothing playing</string>
     <string name="nothing_playing_hint">Pick an album, playlist or station to start listening.</string>
     <string name="no_recent">Queues you play show up here.</string>
-    <string name="coming_soon">Opening titles arrives with the next update.</string>
 
     <!-- Radio -->
     <string name="radio_genres">Genres</string>
@@ -142,4 +141,28 @@
     <string name="activity_last_month">Last Month</string>
     <string name="activity_this_month">This Month</string>
     <string name="play_count">%1$d plays</string>
+
+    <!-- Video -->
+    <string name="resume">Resume</string>
+    <string name="play_from_start">Play from start</string>
+    <string name="minutes_left">%1$d min left</string>
+    <string name="cast_crew">Cast &amp; Crew</string>
+    <string name="related">Related</string>
+    <string name="season">Season %1$d</string>
+    <string name="specials">Specials</string>
+    <string name="seasons_episodes">%1$d seasons · %2$d episodes</string>
+    <string name="runtime">%1$dh %2$02dm</string>
+    <string name="runtime_minutes">%1$d min</string>
+    <string name="film_watched">Continue watching</string>
+    <string name="film_genres">Genres</string>
+    <string name="tv_all">All shows</string>
+    <string name="starring">Starring</string>
+    <string name="directing">Directing</string>
+    <string name="writing">Writing</string>
+    <string name="starring_shows">Starring Shows</string>
+    <string name="directing_shows">Directing Shows</string>
+    <string name="writing_shows">Writing Shows</string>
+    <string name="rating_tmdb">TMDB %1$.1f</string>
+    <string name="no_playable_file">The server has no playable file for this title.</string>
+    <string name="next_episode">Next episode</string>
 </resources>

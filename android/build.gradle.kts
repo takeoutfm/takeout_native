@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization)
     implementation(libs.coil.compose)
+    // PlayerView: the video player's controls, subtitles and track/speed settings
+    implementation(libs.androidx.media3.ui.views)
 
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)

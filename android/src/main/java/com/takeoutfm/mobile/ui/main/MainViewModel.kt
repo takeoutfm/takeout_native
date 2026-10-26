@@ -50,11 +50,6 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { runCatching { music.loadFavoriteTracks() } }
     }
 
-    /** Opening something the next phases add (movies, TV). */
-    fun comingSoon() {
-        _messages.tryEmit(R.string.coming_soon)
-    }
-
     fun togglePlay() = player.playPause()
     fun next() = player.next()
     fun previous() = player.previous()

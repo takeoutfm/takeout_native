@@ -55,6 +55,7 @@ import com.takeoutfm.mobile.ui.common.TileGrid
 import com.takeoutfm.mobile.ui.main.MainViewModel
 import com.takeoutfm.mobile.ui.music.MusicNav
 import com.takeoutfm.mobile.ui.music.QueueKind
+import com.takeoutfm.mobile.ui.video.VideoNav
 import kotlinx.coroutines.launch
 
 /**
@@ -63,7 +64,7 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, onSettings: () -> Unit) {
+fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, videoNav: VideoNav, onSettings: () -> Unit) {
     val types by viewModel.types.collectAsStateWithLifecycle()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val content by viewModel.content.collectAsStateWithLifecycle()
@@ -128,7 +129,13 @@ fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, onS
             } else {
                 TileGrid(
                     content.tiles,
-                    onClick = { tile -> if (tile.id.startsWith("al-")) nav.openAlbum(tile.id) else main.comingSoon() },
+                    onClick = { tile ->
+                        when {
+                            tile.id.startsWith("al-") -> nav.openAlbum(tile.id)
+                            tile.id.startsWith(GenrePrefix) -> videoNav.openGenre(tile.id.removePrefix(GenrePrefix))
+                            else -> videoNav.openVideo(tile.id)
+                        }
+                    },
                 )
             }
         }

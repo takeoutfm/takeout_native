@@ -130,7 +130,7 @@ class SearchViewModel @Inject constructor(
 /** Search across the library; the query syntax is the server's ("artist:name", "guitar:name"). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(main: MainViewModel, nav: MusicNav, viewModel: SearchViewModel = hiltViewModel()) {
+fun SearchScreen(main: MainViewModel, nav: MusicNav, videoNav: com.takeoutfm.mobile.ui.video.VideoNav, viewModel: SearchViewModel = hiltViewModel()) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val favorites by main.favoriteEtags.collectAsStateWithLifecycle()
@@ -201,22 +201,22 @@ fun SearchScreen(main: MainViewModel, nav: MusicNav, viewModel: SearchViewModel 
                     )
                 }
             }
-            item { VideoShelf(stringResource(R.string.search_movies), results.video.movies, main::comingSoon) }
-            item { VideoShelf(stringResource(R.string.search_shows), results.video.shows, main::comingSoon) }
-            item { VideoShelf(stringResource(R.string.search_episodes), results.video.episodes, main::comingSoon) }
+            item { VideoShelf(stringResource(R.string.search_movies), results.video.movies) { videoNav.openVideo(it.id) } }
+            item { VideoShelf(stringResource(R.string.search_shows), results.video.shows) { videoNav.openVideo(it.id) } }
+            item { VideoShelf(stringResource(R.string.search_episodes), results.video.episodes) { videoNav.openVideo(it.id) } }
             item { Spacer(Modifier.height(96.dp)) }
         }
     }
 }
 
-/** Movies, shows or episodes in search results (they open in the video phase). */
+/** Movies, shows or episodes in search results. */
 @Composable
-private fun VideoShelf(title: String, cards: List<VideoCard>, onClick: () -> Unit) {
+private fun VideoShelf(title: String, cards: List<VideoCard>, onClick: (VideoCard) -> Unit) {
     if (cards.isEmpty()) return
     SectionTitle(title)
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(cards, key = { it.id }) { card ->
-            Column(Modifier.width(112.dp).clickable(onClick = onClick)) {
+            Column(Modifier.width(112.dp).clickable { onClick(card) }) {
                 Art(card.posterUri, card.title, Modifier.width(112.dp).height(168.dp))
                 Text(card.title, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
             }

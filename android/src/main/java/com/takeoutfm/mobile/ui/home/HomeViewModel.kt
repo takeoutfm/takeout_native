@@ -10,6 +10,7 @@ import com.takeoutfm.shared.library.LibraryIndex
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.video.TakeoutVideoRepository
 import com.takeoutfm.shared.video.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,11 +30,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Tile ids for genres (they open a genre page). */
+const val GenrePrefix = "g-"
+
 /** What Home shows; the media bar picks the type, tapping it again cycles its [subtypes]. */
 enum class MediaType(@StringRes val title: Int, val subtypes: List<Subtype>) {
     Music(R.string.nav_music, listOf(Subtype.MusicAdded, Subtype.MusicRecent)),
-    Film(R.string.nav_movies, listOf(Subtype.FilmAdded, Subtype.FilmRecent, Subtype.FilmRecommended, Subtype.FilmFavorite)),
-    Tv(R.string.nav_tv_shows, listOf(Subtype.TvAdded)),
+    Film(
+        R.string.nav_movies,
+        listOf(Subtype.FilmAdded, Subtype.FilmRecent, Subtype.FilmWatched, Subtype.FilmRecommended, Subtype.FilmGenres, Subtype.FilmFavorite),
+    ),
+    Tv(R.string.nav_tv_shows, listOf(Subtype.TvAdded, Subtype.TvAll)),
 }
 
 enum class Subtype(@StringRes val label: Int) {
@@ -41,9 +48,12 @@ enum class Subtype(@StringRes val label: Int) {
     MusicRecent(R.string.music_recent),
     FilmAdded(R.string.film_added),
     FilmRecent(R.string.film_recent),
+    FilmWatched(R.string.film_watched),
     FilmRecommended(R.string.film_recommended),
+    FilmGenres(R.string.film_genres),
     FilmFavorite(R.string.film_favorite),
     TvAdded(R.string.tv_added),
+    TvAll(R.string.tv_all),
 }
 
 data class HomeSelection(val type: MediaType = MediaType.Music, val subtype: Subtype = Subtype.MusicAdded)
@@ -127,9 +137,12 @@ class HomeViewModel @Inject constructor(
         Subtype.MusicRecent -> music.newReleases().first().map { it.toTile() }
         Subtype.FilmAdded -> video.recentlyAdded().map { it.toTile() }
         Subtype.FilmRecent -> video.newReleases().map { it.toTile() }
+        Subtype.FilmWatched -> video.continueWatching(ProgressRules.AllTime).map { it.toTile() }
         Subtype.FilmRecommended -> video.recommended(0).map { it.toTile() }
+        Subtype.FilmGenres -> video.genres().map { Tile("$GenrePrefix${it.id}", it.name, "", "") }
         Subtype.FilmFavorite -> video.favorites().map { it.toTile() }
         Subtype.TvAdded -> video.recentShows().map { it.toTile() }
+        Subtype.TvAll -> video.shows().map { it.toTile() }
     }
 
     private fun Album.toTile() = Tile(id, name, artist, coverUri)

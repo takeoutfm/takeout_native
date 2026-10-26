@@ -77,7 +77,7 @@ fun PlayerScreen(main: MainViewModel) {
     val favorites by main.favoriteEtags.collectAsStateWithLifecycle()
     val item = playing.current
     if (item == null) {
-        TabPage(title = stringResource(R.string.nav_player)) { padding, _ ->
+        TabPage(title = stringResource(R.string.nav_player)) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.nothing_playing), style = MaterialTheme.typography.titleLarge)
                 Text(

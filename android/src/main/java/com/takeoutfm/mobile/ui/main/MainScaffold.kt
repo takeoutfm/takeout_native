@@ -56,6 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.takeoutfm.mobile.R
 import com.takeoutfm.mobile.ui.home.HomeViewModel
+import com.takeoutfm.mobile.ui.music.AddToPlaylistDialog
 import com.takeoutfm.mobile.ui.music.MiniPlayer
 
 /** The bottom tabs, as in the Flutter app (icons only). */
@@ -94,6 +95,10 @@ fun MainScaffold(
     LaunchedEffect(Unit) {
         mainViewModel.messages.collect { snackbar.showSnackbar(context.getString(it)) }
     }
+    LaunchedEffect(Unit) {
+        mainViewModel.formatted.collect { (id, arg) -> snackbar.showSnackbar(context.getString(id, arg)) }
+    }
+    AddToPlaylistDialog(mainViewModel)
     NotificationPermission(mainViewModel)
 
     // Back at a tab's first page goes Home, as the Flutter app does.

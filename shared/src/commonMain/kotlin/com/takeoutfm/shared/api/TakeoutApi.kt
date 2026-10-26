@@ -14,6 +14,7 @@ import com.takeoutfm.shared.model.ApiMovieView
 import com.takeoutfm.shared.model.ApiMoviesView
 import com.takeoutfm.shared.model.ApiOffsets
 import com.takeoutfm.shared.model.ApiPlaylist
+import com.takeoutfm.shared.model.ApiPlaylistSummary
 import com.takeoutfm.shared.model.ApiPlaylistsView
 import com.takeoutfm.shared.model.ApiPodcastSeriesView
 import com.takeoutfm.shared.model.ApiPodcastsView
@@ -341,6 +342,35 @@ class TakeoutApi internal constructor(
         val text = authed("/api/playlist", HttpMethod.Patch, patch.toString())
         // 204: the same tracks as last time, so the playlist is unchanged; fetch it.
         return decode(ApiPlaylist.serializer(), text.ifBlank { authed("/api/playlist") })
+    }
+
+    // ---- Playlist editing ----
+
+    /** Creates an empty playlist named [title]. */
+    suspend fun createPlaylist(title: String): ApiPlaylistSummary {
+        val body = buildJsonObject {
+            put("playlist", buildJsonObject {
+                put("title", title)
+                put("track", JsonArray(emptyList()))
+            })
+        }
+        return decode(ApiPlaylistSummary.serializer(), authed("/api/playlists", HttpMethod.Post, body.toString()))
+    }
+
+    /** Adds what server [ref] stands for ("/music/tracks/12", "/music/releases/3/tracks") at the end. */
+    suspend fun addToPlaylist(playlistId: Int, ref: String) {
+        val patch = buildJsonArray { add(op("add", "/playlist/track/-", buildJsonObject { put("\$ref", ref) })) }
+        authed("/api/playlists/$playlistId/playlist", HttpMethod.Patch, patch.toString())
+    }
+
+    /** Removes the track at [index] (0-based, as listed). */
+    suspend fun removeFromPlaylist(playlistId: Int, index: Int) {
+        val patch = buildJsonArray { add(buildJsonObject { put("op", "remove"); put("path", "/playlist/track/$index") }) }
+        authed("/api/playlists/$playlistId/playlist", HttpMethod.Patch, patch.toString())
+    }
+
+    suspend fun deletePlaylist(playlistId: Int) {
+        authed("/api/playlists/$playlistId", HttpMethod.Delete)
     }
 
     private fun op(op: String, path: String, value: JsonElement) = buildJsonObject {

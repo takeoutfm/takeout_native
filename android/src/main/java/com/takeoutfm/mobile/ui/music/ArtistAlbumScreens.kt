@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
@@ -153,6 +154,7 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
                         onClick = { main.playArtist(id, ArtistMix.Popular, index) },
                         onFavorite = { main.setTrackFavorite(track.etag, it) },
                         onEnqueue = { last -> main.enqueueTrack(track.id, last) },
+                        onAddToPlaylist = { main.addToPlaylist(com.takeoutfm.mobile.ui.main.AddTarget.TrackTarget(track.id)) },
                         showAlbum = true,
                     )
                 }
@@ -264,6 +266,9 @@ fun AlbumScreen(main: MainViewModel, nav: MusicNav, viewModel: AlbumViewModel = 
                     }
                     val allDownloaded = details.tracks.isNotEmpty() &&
                         details.tracks.all { downloads[it.etag]?.status == com.takeoutfm.media.offline.CacheStatus.Cached }
+                    IconButton(onClick = { main.addToPlaylist(com.takeoutfm.mobile.ui.main.AddTarget.AlbumTarget(id)) }) {
+                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.add_to_playlist))
+                    }
                     IconButton(onClick = { main.downloadAlbum(id) }, enabled = !allDownloaded) {
                         Icon(
                             if (allDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
@@ -286,6 +291,7 @@ fun AlbumScreen(main: MainViewModel, nav: MusicNav, viewModel: AlbumViewModel = 
                         onClick = { main.playAlbum(id, index) },
                         onFavorite = { main.setTrackFavorite(track.etag, it) },
                         onEnqueue = { last -> main.enqueueTrack(track.id, last) },
+                        onAddToPlaylist = { main.addToPlaylist(com.takeoutfm.mobile.ui.main.AddTarget.TrackTarget(track.id)) },
                         number = track.trackNum,
                     )
                 }

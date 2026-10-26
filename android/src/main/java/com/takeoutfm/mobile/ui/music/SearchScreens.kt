@@ -19,6 +19,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Clear
@@ -44,6 +51,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -190,6 +198,7 @@ fun SearchScreen(main: MainViewModel, nav: MusicNav, videoNav: com.takeoutfm.mob
                         onClick = { main.playTrack(track.id) },
                         onFavorite = { main.setTrackFavorite(track.etag, it) },
                         onEnqueue = { last -> main.enqueueTrack(track.id, last) },
+                        onAddToPlaylist = { main.addToPlaylist(com.takeoutfm.mobile.ui.main.AddTarget.TrackTarget(track.id)) },
                         showAlbum = true,
                     )
                 }
@@ -228,15 +237,25 @@ private fun VideoShelf(title: String, cards: List<VideoCard>, onClick: (VideoCar
 }
 
 @HiltViewModel
-class PlaylistsViewModel @Inject constructor(music: TakeoutMusicRepository) : ViewModel() {
-    val playlists: Flow<List<MusicPlaylist>> = listFlow { music.playlists() }
+class PlaylistsViewModel @Inject constructor(private val music: TakeoutMusicRepository) : ViewModel() {
+    fun playlists(): Flow<List<MusicPlaylist>> = listFlow { music.playlists() }
 }
 
-/** The user's playlists; one opens its tracks. */
+/** The user's playlists: open one, create one (+), or delete one from its menu. */
 @Composable
-fun PlaylistsScreen(nav: MusicNav, viewModel: PlaylistsViewModel = hiltViewModel()) {
-    val playlists by viewModel.playlists.collectAsStateWithLifecycle(initialValue = null)
-    MusicPage(title = stringResource(R.string.playlists), onBack = nav.back) { padding ->
+fun PlaylistsScreen(main: MainViewModel, nav: MusicNav, viewModel: PlaylistsViewModel = hiltViewModel()) {
+    val changed by main.playlistsChanged.collectAsStateWithLifecycle()
+    val flow = remember(changed) { viewModel.playlists() }
+    val playlists by flow.collectAsStateWithLifecycle(initialValue = null)
+    var creating by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<MusicPlaylist?>(null) }
+    MusicPage(
+        title = stringResource(R.string.playlists),
+        onBack = nav.back,
+        actions = {
+            IconButton(onClick = { creating = true }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_playlist)) }
+        },
+    ) { padding ->
         val list = playlists
         if (list.isNullOrEmpty()) {
             LoadingOrEmpty(list == null, stringResource(R.string.nothing_here), Modifier.padding(padding))
@@ -246,12 +265,26 @@ fun PlaylistsScreen(nav: MusicNav, viewModel: PlaylistsViewModel = hiltViewModel
                     ListItem(
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
                         headlineContent = { Text(p.name) },
-                        supportingContent = { Text(stringResource(R.string.track_count, p.trackCount)) },
+                        supportingContent = { Text(pluralStringResource(R.plurals.track_count, p.trackCount, p.trackCount)) },
+                        trailingContent = {
+                            IconButton(onClick = { deleting = p }) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_playlist)) }
+                        },
                         modifier = Modifier.clickable { nav.openQueue(QueueKind.Playlist, p.id, p.name) },
                     )
                 }
             }
         }
+    }
+    if (creating) {
+        NameDialog(stringResource(R.string.new_playlist), onConfirm = { main.createPlaylist(it); creating = false }, onDismiss = { creating = false })
+    }
+    deleting?.let { p ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            text = { Text(stringResource(R.string.delete_playlist_question, p.name)) },
+            confirmButton = { TextButton(onClick = { main.deletePlaylist(p.id); deleting = null }) { Text(stringResource(R.string.delete)) } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }
 
@@ -271,6 +304,10 @@ class QueueViewModel @Inject constructor(
     val state: StateFlow<Load<MusicQueue>> = _state.asStateFlow()
 
     init {
+        reload()
+    }
+
+    fun reload() {
         viewModelScope.launch {
             _state.value = try {
                 Load.Loaded(
@@ -290,6 +327,8 @@ class QueueViewModel @Inject constructor(
 fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val downloads by main.downloads.collectAsStateWithLifecycle()
+    val changed by main.playlistsChanged.collectAsStateWithLifecycle()
+    LaunchedEffect(changed) { if (changed > 0) viewModel.reload() }
     val route = viewModel.route
     val play = { index: Int ->
         if (route.kind == QueueKind.Favorites) main.playFavorites(index) else main.playPlaylist(route.id, index)
@@ -317,7 +356,16 @@ fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = 
                     leadingContent = { Art(item.imageUri, item.album, Modifier.size(48.dp), RoundedCornerShape(6.dp)) },
                     headlineContent = { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     supportingContent = { Text(listOf(item.artist, item.album).filter { it.isNotEmpty() }.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    trailingContent = { DownloadBadge(downloads[item.etag]?.status) },
+                    trailingContent = {
+                        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            DownloadBadge(downloads[item.etag]?.status)
+                            if (route.kind == QueueKind.Playlist) {
+                                IconButton(onClick = { main.removeFromPlaylist(route.id, index) }) {
+                                    Icon(Icons.Filled.RemoveCircleOutline, contentDescription = stringResource(R.string.remove_from_playlist))
+                                }
+                            }
+                        }
+                    },
                     modifier = Modifier.clickable { play(index) },
                 )
             }

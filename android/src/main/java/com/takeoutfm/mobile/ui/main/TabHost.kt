@@ -113,7 +113,7 @@ private fun NavGraphBuilder.musicPages(main: MainViewModel, nav: MusicNav, video
     composable<ArtistRoute> { ArtistScreen(main, nav) }
     composable<AlbumRoute> { AlbumScreen(main, nav) }
     composable<SearchRoute> { SearchScreen(main, nav, videoNav) }
-    composable<PlaylistsRoute> { PlaylistsScreen(nav) }
+    composable<PlaylistsRoute> { PlaylistsScreen(main, nav) }
     composable<QueueRoute> { QueueScreen(main, nav) }
     composable<RecentTracksRoute> { RecentTracksScreen(main, nav) }
     composable<PodcastRoute> { PodcastScreen(main, nav) }

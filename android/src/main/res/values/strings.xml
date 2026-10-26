@@ -115,7 +115,6 @@
     <string name="no_results">No matches</string>
     <string name="favorite_tracks">Favorite Tracks</string>
     <string name="playlists">Playlists</string>
-    <string name="track_count">%1$d tracks</string>
     <string name="play_all">Play</string>
     <string name="queue">Queue</string>
     <string name="repeat">Repeat</string>
@@ -197,4 +196,19 @@
     <string name="code_label">Code</string>
     <string name="link_success">Linked. The other device signs in now.</string>
     <string name="link_rejected">That code, user name or password wasn\'t accepted</string>
+
+    <!-- Playlist editing -->
+    <string name="add_to_playlist">Add to playlist</string>
+    <string name="new_playlist">New playlist</string>
+    <string name="playlist_name">Name</string>
+    <string name="create">Create</string>
+    <string name="added_to_playlist">Added to %1$s</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="delete_playlist">Delete playlist</string>
+    <string name="delete_playlist_question">Delete the playlist %1$s?</string>
+
+    <plurals name="track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
 </resources>

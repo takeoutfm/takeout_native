@@ -162,6 +162,7 @@ fun TrackRow(
     onClick: () -> Unit,
     onFavorite: (Boolean) -> Unit,
     onEnqueue: (last: Boolean) -> Unit,
+    onAddToPlaylist: (() -> Unit)? = null,
     number: Int? = null,
     showAlbum: Boolean = false,
     /** On the device (or downloading). */
@@ -206,6 +207,9 @@ fun TrackRow(
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.play_next)) }, onClick = { menu = false; onEnqueue(false) })
                         DropdownMenuItem(text = { Text(stringResource(R.string.add_to_queue)) }, onClick = { menu = false; onEnqueue(true) })
+                        if (onAddToPlaylist != null) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.add_to_playlist)) }, onClick = { menu = false; onAddToPlaylist() })
+                        }
                     }
                 }
             }

@@ -217,6 +217,7 @@ fun RecentTracksScreen(main: MainViewModel, nav: MusicNav, viewModel: RecentTrac
                     onClick = { main.playTracks(title, tracks, index) },
                     onFavorite = { main.setTrackFavorite(track.etag, it) },
                     onEnqueue = { last -> main.enqueueTrack(track.id, last) },
+                        onAddToPlaylist = { main.addToPlaylist(com.takeoutfm.mobile.ui.main.AddTarget.TrackTarget(track.id)) },
                     showAlbum = true,
                 )
             }

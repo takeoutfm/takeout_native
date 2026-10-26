@@ -162,6 +162,34 @@ class TakeoutApiTest {
     }
 
     @Test
+    fun playlistEditsUseTheServersRefsAndPatches() = runTest {
+        val seen = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            val body = (request.body as? io.ktor.http.content.TextContent)?.text.orEmpty()
+            seen += "${request.method.value} ${request.url.encodedPath} $body".trim()
+            if (request.method == HttpMethod.Post) {
+                respond("""{"ID":7,"Name":"Road trip","TrackCount":0}""", headers = jsonHeaders)
+            } else {
+                respond("", HttpStatusCode.NoContent)
+            }
+        }
+        val api = TakeoutApi(session(), "test", engine)
+        assertEquals(7, api.createPlaylist("Road trip").id)
+        api.addToPlaylist(7, "/music/tracks/12")
+        api.removeFromPlaylist(7, 0)
+        api.deletePlaylist(7)
+        assertEquals(
+            listOf(
+                """POST /api/playlists {"playlist":{"title":"Road trip","track":[]}}""",
+                """PATCH /api/playlists/7/playlist [{"op":"add","path":"/playlist/track/-","value":{"${'$'}ref":"/music/tracks/12"}}]""",
+                """PATCH /api/playlists/7/playlist [{"op":"remove","path":"/playlist/track/0"}]""",
+                "DELETE /api/playlists/7",
+            ),
+            seen,
+        )
+    }
+
+    @Test
     fun endpointsAreNormalized() {
         assertEquals("https://takeout.fm", TakeoutApi.normalizeEndpoint(" takeout.fm/ "))
         assertEquals("http://nas:3000", TakeoutApi.normalizeEndpoint("http://nas:3000"))

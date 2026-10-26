@@ -231,6 +231,22 @@ class TakeoutMusicRepository(
 
     // ---- Play queues ----
 
+    // ---- Playlist editing ----
+
+    suspend fun createPlaylist(name: String): MusicPlaylist =
+        api.createPlaylist(name.trim()).let { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
+
+    suspend fun addTrackToPlaylist(playlistId: String, trackId: String) =
+        api.addToPlaylist(numericId(playlistId, PlaylistPrefix), "/music/tracks/${numericId(trackId, TrackPrefix)}")
+
+    suspend fun addAlbumToPlaylist(playlistId: String, albumId: String) =
+        api.addToPlaylist(numericId(playlistId, PlaylistPrefix), "/music/releases/${numericId(albumId, AlbumPrefix)}/tracks")
+
+    suspend fun removeFromPlaylist(playlistId: String, index: Int) =
+        api.removeFromPlaylist(numericId(playlistId, PlaylistPrefix), index)
+
+    suspend fun deletePlaylist(playlistId: String) = api.deletePlaylist(numericId(playlistId, PlaylistPrefix))
+
     /** What a server search ref (see [TakeoutApi.resolveRef]) plays, titled [title]. */
     suspend fun refQueue(ref: String, title: String): MusicQueue =
         api.resolveRef(ref, title).toQueue(urls::absolute)

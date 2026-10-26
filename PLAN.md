@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–6 done** (mobile-data policy open); phase 7 (Android Auto, Assistant, playlist editing, link code) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–6 done** (mobile-data policy open), phase 7 done except Android Auto; phase 7 (Android Auto, Assistant, playlist editing, link code) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -360,6 +360,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          `VoiceHandler`). Refs resolve through the user's server playlist
          (`TakeoutApi.resolveRef`, `PATCH /api/playlist`), as Flutter does. Like Flutter there's
          no `shortcuts.xml`, so Assistant reaches the custom actions only by explicit intent.
+   - [x] Playlist editing (2026-10-25): create, delete, add a track or a whole release ("Add to
+         playlist" picker, with New playlist), remove a track — shared `TakeoutApi`
+         `createPlaylist` / `addToPlaylist` (server refs `/music/tracks/{id}`,
+         `/music/releases/{id}/tracks`) / `removeFromPlaylist` / `deletePlaylist`, mock-tested.
    - [x] Link (2026-10-25): approve another device's code with this account (`POST /api/link`,
          shared `TakeoutApi.link`, Home menu → Link).
 8. **Polish & release**: tablets/foldables, accessibility (TalkBack, font scale), Baseline

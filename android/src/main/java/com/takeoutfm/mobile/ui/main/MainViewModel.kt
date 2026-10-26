@@ -14,6 +14,7 @@ import com.takeoutfm.media.NowPlaying
 import com.takeoutfm.mobile.R
 import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicHistory
+import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.music.Track
@@ -30,6 +31,12 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** What "Add to playlist" adds. */
+sealed interface AddTarget {
+    data class TrackTarget(val trackId: String) : AddTarget
+    data class AlbumTarget(val albumId: String) : AddTarget
+}
 
 /** Which artists the Artists tab lists; re-tapping the tab cycles them. */
 enum class ArtistType { All, Favorite }
@@ -59,6 +66,70 @@ class MainViewModel @Inject constructor(
 
     private val _messages = MutableSharedFlow<Int>(extraBufferCapacity = 4)
     val messages: SharedFlow<Int> = _messages.asSharedFlow()
+
+    /** A message with one argument, e.g. "Added to Road trip". */
+    private val _formatted = MutableSharedFlow<Pair<Int, String>>(extraBufferCapacity = 4)
+    val formatted: SharedFlow<Pair<Int, String>> = _formatted.asSharedFlow()
+
+    /** What the "Add to playlist" picker is open for, or null. */
+    private val _adding = MutableStateFlow<AddTarget?>(null)
+    val adding: StateFlow<AddTarget?> = _adding.asStateFlow()
+
+    /** The user's playlists for the picker (loaded when it opens). */
+    private val _playlists = MutableStateFlow<List<MusicPlaylist>?>(null)
+    val playlists: StateFlow<List<MusicPlaylist>?> = _playlists.asStateFlow()
+
+    /** Bumped after a playlist changes, so pages showing playlists reload. */
+    private val _playlistsChanged = MutableStateFlow(0)
+    val playlistsChanged: StateFlow<Int> = _playlistsChanged.asStateFlow()
+
+    fun addToPlaylist(target: AddTarget) {
+        _adding.value = target
+        _playlists.value = null
+        viewModelScope.launch { _playlists.value = runCatching { music.playlists() }.getOrDefault(emptyList()) }
+    }
+
+    fun dismissAdd() {
+        _adding.value = null
+    }
+
+    /** Adds the picker's target to [playlist] (or to a new one named [newName]). */
+    fun addTo(playlist: MusicPlaylist?, newName: String? = null) {
+        val target = _adding.value ?: return
+        _adding.value = null
+        viewModelScope.launch {
+            try {
+                val list = playlist ?: music.createPlaylist(newName ?: return@launch)
+                when (target) {
+                    is AddTarget.TrackTarget -> music.addTrackToPlaylist(list.id, target.trackId)
+                    is AddTarget.AlbumTarget -> music.addAlbumToPlaylist(list.id, target.albumId)
+                }
+                _playlistsChanged.update { it + 1 }
+                _formatted.tryEmit(R.string.added_to_playlist to list.name)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _messages.tryEmit(R.string.cant_save)
+            }
+        }
+    }
+
+    fun createPlaylist(name: String) = edit { music.createPlaylist(name) }
+    fun deletePlaylist(playlistId: String) = edit { music.deletePlaylist(playlistId) }
+    fun removeFromPlaylist(playlistId: String, index: Int) = edit { music.removeFromPlaylist(playlistId, index) }
+
+    private fun edit(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                block()
+                _playlistsChanged.update { it + 1 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _messages.tryEmit(R.string.cant_save)
+            }
+        }
+    }
 
     init {
         // Show music that's already playing in the background.

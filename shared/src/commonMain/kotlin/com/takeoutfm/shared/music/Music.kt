@@ -43,6 +43,21 @@ data class Track(
     val coverUri: String,
     /** Favorites are keyed by it. */
     val etag: String = "",
+    /** The full stream URL, so lists of tracks can be played as they are; "" when unknown. */
+    val location: String = "",
+)
+
+/** A play count, from the user's Takeout activity. */
+data class Counted<T>(val item: T, val count: Int)
+
+/** Which period Activity covers (the server's interval names). */
+enum class ActivityInterval(val api: String) { Recent("recent"), LastWeek("lastweek"), LastMonth("lastmonth"), ThisMonth("month") }
+
+/** What was played in an [ActivityInterval], most played first. */
+data class ActivityStats(
+    val artists: List<Counted<Artist>> = emptyList(),
+    val albums: List<Counted<Album>> = emptyList(),
+    val tracks: List<Counted<Track>> = emptyList(),
 )
 
 /** A radio station ("st-<id>"): a server-made mix (genre, decade, artist…) or a live stream. */

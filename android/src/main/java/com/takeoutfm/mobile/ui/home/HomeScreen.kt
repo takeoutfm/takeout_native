@@ -105,6 +105,8 @@ fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, onS
                             nav.openQueue(QueueKind.Favorites, "", context.getString(R.string.favorite_tracks))
                         },
                         onPlaylists = nav.openPlaylists,
+                        onRecentTracks = nav.openRecentTracks,
+                        onActivity = nav.openActivity,
                         onSettings = onSettings,
                         onAbout = { about = true },
                         onLogout = viewModel::logout,
@@ -145,6 +147,8 @@ private fun HomeMenu(
     onReload: () -> Unit,
     onFavoriteTracks: () -> Unit,
     onPlaylists: () -> Unit,
+    onRecentTracks: () -> Unit,
+    onActivity: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onLogout: () -> Unit,
@@ -157,7 +161,9 @@ private fun HomeMenu(
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOf(
                 R.string.refresh_label to onReload,
+                R.string.recent_tracks to onRecentTracks,
                 R.string.favorite_tracks to onFavoriteTracks,
+                R.string.activity to onActivity,
                 R.string.playlists to onPlaylists,
                 R.string.settings_label to onSettings,
                 R.string.about_label to onAbout,

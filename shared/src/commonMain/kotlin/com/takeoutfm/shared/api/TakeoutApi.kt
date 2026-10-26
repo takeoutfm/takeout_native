@@ -21,6 +21,8 @@ import com.takeoutfm.shared.model.ApiRefreshTokens
 import com.takeoutfm.shared.model.ApiReleaseView
 import com.takeoutfm.shared.model.ApiSearchView
 import com.takeoutfm.shared.model.ApiTokens
+import com.takeoutfm.shared.model.ApiTrackHistoryView
+import com.takeoutfm.shared.model.ApiTrackStatsView
 import com.takeoutfm.shared.model.ApiTvEpisodeView
 import com.takeoutfm.shared.model.ApiTvListView
 import com.takeoutfm.shared.model.ApiTvSeriesView
@@ -264,6 +266,14 @@ class TakeoutApi internal constructor(
      */
     suspend fun playlist(path: String): ApiPlaylist =
         decode(ApiPlaylist.serializer(), getText(path))
+
+    /** Play counts by artist, release and track for an [interval] like "recent" or "lastweek". */
+    suspend fun trackStats(interval: String): ApiTrackStatsView =
+        decode(ApiTrackStatsView.serializer(), getText("/api/activity/tracks/$interval/stats"))
+
+    /** The user's listening history (Takeout activity), newest first. */
+    suspend fun recentTracks(): ApiTrackHistoryView =
+        decode(ApiTrackHistoryView.serializer(), getText("/api/activity/tracks/recent"))
 
     /** Records plays in the user's Takeout activity (listening stats). */
     suspend fun postActivity(events: ApiActivityEvents) {

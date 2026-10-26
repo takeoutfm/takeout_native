@@ -9,6 +9,7 @@ import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.Track
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -71,6 +72,12 @@ class MainViewModel @Inject constructor(
         play { music.artistQueue(artistId, mix, index) }
 
     fun playStation(stationId: String) = play { music.stationQueue(stationId) }
+
+    /** Plays a list of tracks as shown (e.g. Activity or Recent Tracks), from [index]. */
+    fun playTracks(title: String, tracks: List<Track>, index: Int = 0, shuffle: Boolean = false) = play {
+        val queue = music.tracksQueue(title, tracks, index)
+        if (shuffle) queue.copy(items = queue.items.shuffled(), startIndex = 0) else queue
+    }
     fun playTrack(trackId: String) = play { music.trackQueue(trackId) }
     fun playPlaylist(playlistId: String, index: Int = 0) = play { music.playlistQueue(playlistId, index) }
     fun playFavorites(index: Int = 0) = play { music.favoritesQueue(index) }

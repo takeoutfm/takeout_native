@@ -8,7 +8,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.takeoutfm.mobile.ui.home.HomeScreen
 import com.takeoutfm.mobile.ui.home.HomeViewModel
+import com.takeoutfm.mobile.ui.music.ActivityScreen
 import com.takeoutfm.mobile.ui.music.AlbumScreen
+import com.takeoutfm.mobile.ui.music.RecentTracksScreen
 import com.takeoutfm.mobile.ui.music.ArtistScreen
 import com.takeoutfm.mobile.ui.music.ArtistsScreen
 import com.takeoutfm.mobile.ui.music.MusicNav
@@ -31,6 +33,8 @@ import kotlinx.serialization.Serializable
 @Serializable object SettingsRoute
 @Serializable object SearchRoute
 @Serializable object PlaylistsRoute
+@Serializable object RecentTracksRoute
+@Serializable object ActivityRoute
 @Serializable data class ArtistRoute(val id: String)
 @Serializable data class AlbumRoute(val id: String)
 @Serializable data class QueueRoute(val kind: String, val id: String, val title: String)
@@ -55,6 +59,8 @@ fun TabHost(
             openAlbum = { navController.navigate(AlbumRoute(it)) },
             openQueue = { kind, id, title -> navController.navigate(QueueRoute(kind, id, title)) },
             openPlaylists = { navController.navigate(PlaylistsRoute) },
+            openRecentTracks = { navController.navigate(RecentTracksRoute) },
+            openActivity = { navController.navigate(ActivityRoute) },
             openSearch = { navController.navigate(SearchRoute) },
             back = { navController.popBackStack() },
         )
@@ -78,4 +84,6 @@ private fun NavGraphBuilder.musicPages(main: MainViewModel, nav: MusicNav) {
     composable<SearchRoute> { SearchScreen(main, nav) }
     composable<PlaylistsRoute> { PlaylistsScreen(nav) }
     composable<QueueRoute> { QueueScreen(main, nav) }
+    composable<RecentTracksRoute> { RecentTracksScreen(main, nav) }
+    composable<ActivityRoute> { ActivityScreen(main, nav) }
 }

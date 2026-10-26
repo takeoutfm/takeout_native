@@ -8,6 +8,7 @@ import com.takeoutfm.shared.model.ApiTokens
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
+import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.store.MemoryStore
 import io.ktor.client.engine.mock.MockEngine
@@ -82,6 +83,19 @@ class StoresTest {
         items = listOf(QueueItem("t$location", "", "", "", "", "/u$location", "")),
         location = location,
     )
+
+    @Test
+    fun streamSongsAreKeptNewestFirstWithoutRepeats() = runTest {
+        val db = testDb()
+        val history = StreamHistory(db)
+        history.heard("BAGeL Radio", "/img", "Beck - Loser", at = 1)
+        history.heard("BAGeL Radio", "/img", "Beck - Loser", at = 2) // same song, new ICY event
+        history.heard("BAGeL Radio", "/img", "Wilco - Jesus, Etc.", at = 3)
+        eventually { db.streamHistoryQueries.all().executeAsList().size == 2 }
+        assertEquals(listOf("Wilco - Jesus, Etc.", "Beck - Loser"), StreamHistory(db).songs.value.map { it.title })
+        history.clear()
+        eventually { db.streamHistoryQueries.all().executeAsList().isEmpty() }
+    }
 
     @Test
     fun recentlyPlayedIsSavedNewestFirstWithItsPosition() = runTest {

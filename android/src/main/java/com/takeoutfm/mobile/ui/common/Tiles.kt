@@ -62,7 +62,7 @@ fun TileGrid(
 }
 
 @Composable
-private fun TileItem(tile: Tile, onClick: (Tile) -> Unit) {
+fun TileItem(tile: Tile, onClick: (Tile) -> Unit) {
     Column(
         Modifier
             .clip(RoundedCornerShape(8.dp))

@@ -8,7 +8,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 
 | Module | What |
 |---|---|
-| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–2 of `PLAN.md` (skeleton, music browse + playback). |
+| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–3 of `PLAN.md` (skeleton, music, history/activity). |
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
 | `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video audio-track ranking. Plain constructors, no Hilt. |
@@ -101,8 +101,9 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   - **Database** (SQLDelight, `src/commonMain/sqldelight/…/db/*.sq`, file `takeout.db`):
     `progress/TakeoutProgress` (watch progress keyed by media ETag, pending until the server
     has it), `listen/ListenReporter` (unsent plays), `music/MusicHistory` (Recently Played).
-    Writes go through `DbWriter` (one at a time, in order, off the caller's thread). Schema
-    changes need a `.sqm` migration. Store tests use an in-memory JDBC driver (`testDb()`).
+    `music/StreamHistory` (songs heard on streams, recorded by `TakeoutMusicService`). Writes go
+    through `DbWriter` (one at a time, in order, off the caller's thread). Schema changes need
+    a `<version>.sqm` migration (currently v2; `MigrationTest` covers 1→2). Store tests use an in-memory JDBC driver (`testDb()`).
     `data/takeout/LegacyImport` moves pre-database SharedPreferences JSON in once.
 - **`data/takeout/`:** `TakeoutSettings` (per-device prefs), `TakeoutModule` (Hilt wiring for the
   shared core). Move more into `:shared` per `PLAN.md` phase 0.

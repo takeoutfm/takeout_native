@@ -1,0 +1,8 @@
+-- Version 1 → 2: stream history.
+CREATE TABLE stream_song (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    station TEXT NOT NULL,
+    image_uri TEXT NOT NULL,
+    title TEXT NOT NULL,
+    heard_at INTEGER NOT NULL
+);

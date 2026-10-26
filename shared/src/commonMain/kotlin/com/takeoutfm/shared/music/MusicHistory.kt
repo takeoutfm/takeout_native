@@ -125,6 +125,12 @@ class MusicHistory(
 
     fun find(id: String): PlayedQueue? = _entries.value.firstOrNull { it.id == id }
 
+    /** Forgets every played queue. */
+    fun clear() {
+        _entries.value = emptyList()
+        writer.write { db.historyQueries.clear() }
+    }
+
     private fun load(): List<PlayedQueue> =
         db.historyQueries.all().executeAsList().mapNotNull {
             val items = runCatching { json.decodeFromString(itemsSerializer, it.items) }

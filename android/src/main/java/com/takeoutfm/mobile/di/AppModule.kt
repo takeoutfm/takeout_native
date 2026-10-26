@@ -15,6 +15,7 @@ import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
+import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.settings.PlaySettings
@@ -72,6 +73,10 @@ object AppModule {
     @Provides
     @Singleton
     fun history(session: TakeoutSession, db: TakeoutDb): MusicHistory = MusicHistory(session, db)
+
+    @Provides
+    @Singleton
+    fun streamHistory(db: TakeoutDb): StreamHistory = StreamHistory(db)
 
     @Provides
     @Singleton

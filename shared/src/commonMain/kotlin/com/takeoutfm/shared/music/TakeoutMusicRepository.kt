@@ -181,6 +181,37 @@ class TakeoutMusicRepository(
             .sortedByTitle { it.name }
             .map { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
 
+    // ---- Activity ----
+
+    /** Play counts for [interval], from the user's Takeout activity. */
+    suspend fun activity(interval: ActivityInterval): ActivityStats {
+        val view = api.trackStats(interval.api)
+        return ActivityStats(
+            artists = view.artists.orEmpty().map { Counted(it.artist.toArtist(), it.count) },
+            albums = view.releases.orEmpty().map { Counted(it.release.toAlbum(), it.count) },
+            tracks = view.tracks.orEmpty().map { Counted(it.track.toTrack(), it.count) },
+        )
+    }
+
+    /** The user's listening history on Takeout (every device), newest first. */
+    suspend fun recentTracks(): List<Track> =
+        api.recentTracks().tracks.orEmpty().map { it.track.toTrack() }
+
+    /** [tracks] as a queue (those with a known stream), starting at [startIndex]. */
+    fun tracksQueue(title: String, tracks: List<Track>, startIndex: Int = 0): MusicQueue {
+        val playable = tracks.filter { it.location.isNotEmpty() }
+        val start = tracks.getOrNull(startIndex)?.let { playable.indexOf(it) }?.coerceAtLeast(0) ?: 0
+        return MusicQueue(
+            title = title,
+            creator = "",
+            imageUri = "",
+            items = playable.map {
+                QueueItem(it.title, it.artist, it.album, it.coverUri, uri = it.location, etag = it.etag)
+            },
+            startIndex = start,
+        )
+    }
+
     // ---- Search ----
 
     /**
@@ -262,6 +293,7 @@ class TakeoutMusicRepository(
         discNum = discNum,
         coverUri = urls.releaseCover(reid, rgid, artwork, frontArtwork, otherArtwork, groupArtwork),
         etag = etag,
+        location = if (uuid.isEmpty()) "" else urls.absolute("/api/tracks/$uuid/location"),
     )
 
     private fun ApiStation.toStation() = Station(

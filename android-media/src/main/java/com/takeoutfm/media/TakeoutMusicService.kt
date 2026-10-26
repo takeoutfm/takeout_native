@@ -18,6 +18,7 @@ import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.takeoutfm.shared.listen.ListenReporter
+import com.takeoutfm.shared.music.StreamHistory
 
 /**
  * Plays music in the background: owns the music player and its queue, so playback continues
@@ -31,6 +32,9 @@ import com.takeoutfm.shared.listen.ListenReporter
 abstract class TakeoutMusicService : MediaSessionService() {
     protected abstract val playerFactory: TakeoutPlayerFactory
     protected abstract val listenReporter: ListenReporter
+
+    /** Where songs heard on live streams are recorded; null to not keep them. */
+    protected open val streamHistory: StreamHistory? = null
 
     /** The activity the system's now-playing controls open. */
     protected abstract val sessionActivity: Class<out Activity>
@@ -56,7 +60,7 @@ abstract class TakeoutMusicService : MediaSessionService() {
             .also { playerFactory.addDebugLogging(it) }
         // Reports plays to Takeout / ListenBrainz per the Music settings.
         listenTracker = ListenTracker(player, listenReporter).also { it.attach() }
-        player.addListener(StreamTitles(player))
+        player.addListener(StreamTitles(player, streamHistory))
 
         // Opening the session from the system's now-playing controls returns to the app.
         val openApp = PendingIntent.getActivity(
@@ -101,7 +105,10 @@ abstract class TakeoutMusicService : MediaSessionService() {
      * metadata-only replace doesn't interrupt playback.
      */
     @OptIn(UnstableApi::class)
-    private class StreamTitles(private val player: ExoPlayer) : Player.Listener {
+    private class StreamTitles(
+        private val player: ExoPlayer,
+        private val history: StreamHistory?,
+    ) : Player.Listener {
         override fun onMetadata(metadata: Metadata) {
             val title = (0 until metadata.length())
                 .map { metadata[it] }
@@ -111,6 +118,11 @@ abstract class TakeoutMusicService : MediaSessionService() {
             val index = player.currentMediaItemIndex
             val item = player.currentMediaItem ?: return
             if (item.mediaMetadata.extras?.getString(StreamTitleKey) == title) return
+            history?.heard(
+                station = item.mediaMetadata.title?.toString().orEmpty(),
+                imageUri = item.mediaMetadata.artworkUri?.toString().orEmpty(),
+                title = title,
+            )
             val extras = Bundle(item.mediaMetadata.extras ?: Bundle()).apply {
                 putString(StreamTitleKey, title)
             }

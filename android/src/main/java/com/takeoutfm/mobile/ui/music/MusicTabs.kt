@@ -105,28 +105,6 @@ fun ArtistsScreen(main: MainViewModel, nav: MusicNav, viewModel: MusicTabsViewMo
     }
 }
 
-/** Queues played on this device, newest first. */
-@Composable
-fun RecentScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {
-    val played by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
-    TabPage(title = stringResource(R.string.nav_history)) { padding, _ ->
-        if (played.isEmpty()) {
-            LoadingOrEmpty(false, stringResource(R.string.no_recent), Modifier.padding(padding))
-        } else {
-            TileGrid(
-                played.map { Tile(it.id, it.title, it.creator, it.coverUri) },
-                onClick = { main.playRecent(it.id) },
-                contentPadding = PaddingValues(
-                    start = 12.dp,
-                    end = 12.dp,
-                    top = padding.calculateTopPadding() + 12.dp,
-                    bottom = 12.dp,
-                ),
-            )
-        }
-    }
-}
-
 /** Radio stations by kind, live streams first (as on the TV). */
 @Composable
 fun RadioScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {

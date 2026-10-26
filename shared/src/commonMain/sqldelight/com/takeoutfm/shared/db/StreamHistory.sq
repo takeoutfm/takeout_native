@@ -1,0 +1,26 @@
+-- Songs heard on live streams (from their ICY titles), newest first.
+CREATE TABLE stream_song (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    -- The station's name and image.
+    station TEXT NOT NULL,
+    image_uri TEXT NOT NULL,
+    -- What the stream said was playing, e.g. "Artist - Title".
+    title TEXT NOT NULL,
+    -- Epoch ms.
+    heard_at INTEGER NOT NULL
+);
+
+all:
+SELECT * FROM stream_song ORDER BY heard_at DESC, id DESC;
+
+insert:
+INSERT INTO stream_song(station, image_uri, title, heard_at) VALUES (?, ?, ?, ?);
+
+-- Keeps the newest :keep songs.
+prune:
+DELETE FROM stream_song WHERE id NOT IN (
+    SELECT id FROM stream_song ORDER BY heard_at DESC, id DESC LIMIT :keep
+);
+
+clear:
+DELETE FROM stream_song;

@@ -127,4 +127,19 @@
     <string name="live">LIVE</string>
     <string name="now_on_air">Now: %1$s</string>
     <string name="up_next">Up next</string>
+
+    <!-- History and activity -->
+    <string name="recently_played">Recently Played</string>
+    <string name="stream_history">Stream History</string>
+    <string name="clear_history">Clear history</string>
+    <string name="clear_history_question">Clear Recently Played and Stream History on this device?</string>
+    <string name="clear">Clear</string>
+    <string name="cancel">Cancel</string>
+    <string name="recent_tracks">Recent Tracks</string>
+    <string name="activity">Activity</string>
+    <string name="activity_recent">Recent</string>
+    <string name="activity_last_week">Last Week</string>
+    <string name="activity_last_month">Last Month</string>
+    <string name="activity_this_month">This Month</string>
+    <string name="play_count">%1$d plays</string>
 </resources>

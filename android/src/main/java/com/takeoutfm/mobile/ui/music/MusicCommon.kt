@@ -53,6 +53,8 @@ class MusicNav(
     val openAlbum: (String) -> Unit,
     val openQueue: (kind: String, id: String, title: String) -> Unit,
     val openPlaylists: () -> Unit,
+    val openRecentTracks: () -> Unit,
+    val openActivity: () -> Unit,
     val openSearch: () -> Unit,
     val back: () -> Unit,
 )

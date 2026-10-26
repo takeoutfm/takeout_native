@@ -166,3 +166,36 @@ data class ApiSpiffEntry(
     /** The track's ETag first, when it has one (radio streams don't). */
     @SerialName("identifier") val identifier: List<String>? = null,
 )
+
+/** A track, release or artist with how often it was played in the requested interval. */
+@Serializable
+data class ApiActivityTrack(
+    @SerialName("Track") val track: ApiTrack = ApiTrack(),
+    @SerialName("Count") val count: Int = 0,
+)
+
+@Serializable
+data class ApiActivityRelease(
+    @SerialName("Release") val release: ApiRelease = ApiRelease(),
+    @SerialName("Count") val count: Int = 0,
+)
+
+@Serializable
+data class ApiActivityArtist(
+    @SerialName("Artist") val artist: ApiArtist = ApiArtist(),
+    @SerialName("Count") val count: Int = 0,
+)
+
+/** GET /api/activity/tracks/{interval}/stats */
+@Serializable
+data class ApiTrackStatsView(
+    @SerialName("Artists") val artists: List<ApiActivityArtist>? = null,
+    @SerialName("Releases") val releases: List<ApiActivityRelease>? = null,
+    @SerialName("Tracks") val tracks: List<ApiActivityTrack>? = null,
+)
+
+/** GET /api/activity/tracks/recent: the user's listening history, newest first. */
+@Serializable
+data class ApiTrackHistoryView(
+    @SerialName("Tracks") val tracks: List<ApiActivityTrack>? = null,
+)

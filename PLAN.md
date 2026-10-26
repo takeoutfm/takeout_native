@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–2 done**; phase 3 next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–3 done**; phase 4 (video) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -196,8 +196,10 @@ dashboard top bar, D-pad handling.
 - [ ] Stations by type: **Genres, Decades, Other, Streams** (live), recently used first.
 - [ ] Live player: stream title from ICY ("Now: Artist – Title" → title/artist lines),
       **Stream History** of songs heard.
-- [ ] **Custom stations** (a Flutter TODO, in v1): create from a search query (`POST /api/radio`),
-      list with the other stations, delete.
+- [ ] **Custom stations** (a Flutter TODO, wanted in v1): create from a search query, list with
+      the other stations, delete. **Blocked on the server**: `apiRadioPost` exists in
+      `takeout/internal/server/api.go` but `server.go` registers no `POST /api/radio` route
+      (and there's no delete); needs that server change first.
 
 ### 4.7 Playlists
 - [ ] Playlists list; **create**, **add to playlist**, delete, open (spiff details).
@@ -319,8 +321,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    playback (`MediaSessionService`; `MediaLibraryService` comes with Android Auto in phase 7),
    FAB / mini player, Now Playing with queue sheet, repeat, −10/+30, ♥, live layout, play next
    / add to queue, favorite tracks, playlists (read), notification permission.
-3. **Radio, history, activity**: stations, live streams with ICY, Recent tab, stream history,
-   activity stats, play reporting (Takeout + ListenBrainz).
+3. **Radio, history, activity** — done (2026-10-25) except custom stations (server, see 4.6):
+   stations and live streams (phase 2), Recent tab with Recently Played + Stream History
+   (shared `StreamHistory`, SQLDelight `stream_song`, schema v2 with `1.sqm`) and Clear, Recent
+   Tracks (`/api/activity/tracks/recent`), Activity (artists / releases / tracks × Recent,
+   Last Week, Last Month, This Month, with counts; Play / Shuffle), play reporting via the
+   shared `ListenReporter`.
 4. **Video**: movies, TV, person pages, native video player, progress (offline cache).
 5. **Podcasts**: series, subscriptions, episodes, resume.
 6. **Offline**: downloads (releases, playlists, episodes), playback caching, offline browsing,

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TakeoutFM</string>
+
+    <!-- Sign-in -->
+    <string name="host_label">Host</string>
+    <string name="user_label">User</string>
+    <string name="password_label">Password</string>
+    <string name="passcode_label">Passcode</string>
+    <string name="passcode_hint">Only if your account uses two-factor codes</string>
+    <string name="login_label">Login</string>
+    <string name="sign_in_with_code">Sign in with a code instead</string>
+    <string name="sign_in_with_password">Sign in with a password instead</string>
+    <string name="get_code">Get a code</string>
+    <string name="code_instructions">On a signed-in device, open %1$s and enter this code:</string>
+    <string name="get_new_code">Get a new code</string>
+    <string name="code_waiting">Waiting for approval…</string>
+    <string name="error_no_host">Enter your Takeout server address</string>
+    <string name="error_no_credentials">Enter your user name and password</string>
+    <string name="error_rejected">That user name, password or passcode wasn\'t accepted</string>
+    <string name="error_unreachable">Couldn\'t reach %1$s</string>
+    <string name="error_code_expired">Code expired. Get a new code.</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_artists">Artists</string>
+    <string name="nav_history">Recent</string>
+    <string name="nav_radio">Radio</string>
+    <string name="nav_player">Now Playing</string>
+    <string name="nav_music">Music</string>
+    <string name="nav_movies">Movies</string>
+    <string name="nav_tv_shows">TV Shows</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+
+    <!-- Home -->
+    <string name="music_added">Recently added</string>
+    <string name="music_recent">New releases</string>
+    <string name="film_added">Recently added</string>
+    <string name="film_recent">New releases</string>
+    <string name="film_recommended">Recommended</string>
+    <string name="film_favorite">Favorites</string>
+    <string name="tv_added">Recently added</string>
+    <string name="artists_all">All artists</string>
+    <string name="artists_favorite">Favorite artists</string>
+    <string name="refresh_label">Reload</string>
+    <string name="settings_label">Settings</string>
+    <string name="about_label">About</string>
+    <string name="logout_label">Logout</string>
+    <string name="more_options">More options</string>
+    <string name="nothing_here">Nothing here yet</string>
+    <string name="cant_load">Couldn\'t load this. Pull down to try again.</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="nothing_playing_hint">Pick an album, playlist or station to start listening.</string>
+    <string name="no_recent">Queues you play show up here.</string>
+    <string name="coming_soon">Opening titles arrives with the next update.</string>
+
+    <!-- Radio -->
+    <string name="radio_genres">Genres</string>
+    <string name="radio_decades">Decades</string>
+    <string name="radio_streams">Streams</string>
+    <string name="radio_other">Other</string>
+
+    <!-- Settings -->
+    <string name="setting_track_activity_title">Track Activity</string>
+    <string name="setting_track_activity_subtitle">Add what you play to your Takeout listening history</string>
+    <string name="setting_listenbrainz_title">ListenBrainz</string>
+    <string name="setting_listenbrainz_subtitle">Submit what you play to your ListenBrainz profile</string>
+    <string name="setting_listenbrainz_token">ListenBrainz Token</string>
+    <string name="setting_listenbrainz_token_hint">Paste your user token from %1$s</string>
+    <string name="setting_listenbrainz_connect">Connect</string>
+    <string name="setting_listenbrainz_disconnect">Disconnect</string>
+    <string name="setting_listenbrainz_connected">Connected as %1$s</string>
+    <string name="setting_listenbrainz_rejected">ListenBrainz didn\'t accept that token</string>
+    <string name="setting_listenbrainz_unreachable">Couldn\'t reach ListenBrainz. Try again.</string>
+    <string name="setting_account">Account</string>
+    <string name="setting_server">Server</string>
+
+    <!-- About -->
+    <string name="about_version">Version %1$s</string>
+    <string name="about_copyleft">Copyleft © 2020-2026 defsub</string>
+    <string name="about_home">https://takeoutfm.com/</string>
+    <string name="close">Close</string>
+</resources>

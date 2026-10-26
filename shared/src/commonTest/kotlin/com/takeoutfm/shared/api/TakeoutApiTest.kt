@@ -82,6 +82,28 @@ class TakeoutApiTest {
     }
 
     @Test
+    fun passwordLoginReturnsTokensOrNullWhenRejected() = runTest {
+        val bodies = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            bodies += (request.body as io.ktor.http.content.TextContent).text
+            if (bodies.size == 1) {
+                respond(
+                    """{"AccessToken":"a","MediaToken":"m","RefreshToken":"r"}""",
+                    headers = jsonHeaders,
+                )
+            } else {
+                respondError(HttpStatusCode.Unauthorized)
+            }
+        }
+        val api = TakeoutApi(TakeoutSession(store = null), "test", engine)
+        val tokens = api.login(server, "defsub", "secret", " ")
+        assertEquals(ApiTokens("a", "m", "r"), tokens)
+        assertEquals("""{"User":"defsub","Pass":"secret"}""", bodies[0]) // blank passcode left out
+        assertEquals(null, api.login(server, "defsub", "wrong", "123456"))
+        assertEquals("""{"User":"defsub","Pass":"wrong","Passcode":"123456"}""", bodies[1])
+    }
+
+    @Test
     fun endpointsAreNormalized() {
         assertEquals("https://takeout.fm", TakeoutApi.normalizeEndpoint(" takeout.fm/ "))
         assertEquals("http://nas:3000", TakeoutApi.normalizeEndpoint("http://nas:3000"))

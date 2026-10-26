@@ -16,6 +16,14 @@ data class ApiTokens(
     fun isValid() = accessToken.isNotEmpty() && mediaToken.isNotEmpty() && refreshToken.isNotEmpty()
 }
 
+/** Password sign-in (POST /api/token); [passcode] only for accounts with two-factor auth. */
+@Serializable
+data class ApiLogin(
+    @SerialName("User") val user: String,
+    @SerialName("Pass") val password: String,
+    @SerialName("Passcode") val passcode: String? = null,
+)
+
 @Serializable
 data class ApiRefreshTokens(
     @SerialName("AccessToken") val accessToken: String = "",

@@ -30,6 +30,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Takeout"
 include(":shared")
+include(":android")
 include(":android-media")
 include(":tv")
 include(":tv-benchmark")

@@ -8,6 +8,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 
 | Module | What |
 |---|---|
+| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phase 1 (skeleton) of `PLAN.md` so far. |
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
 | `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video audio-track ranking. Plain constructors, no Hilt. |
@@ -18,6 +19,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't committed).
 
 ```
+./gradlew :android:assembleDebug            # phone app debug APK (com.takeoutfm.mobile.debug)
 ./gradlew :tv:assembleDebug                 # debug APK
 ./gradlew :tv:assembleRelease               # minified release APK (debug-signed)
 ./gradlew :tv:testDebugUnitTest             # TV JVM unit tests (JUnit 4)
@@ -34,9 +36,29 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   hide/cause problems that don't match real use. Its adb serial/port changes whenever wireless
   debugging is toggled — re-check `adb devices -l`.
 - Launch: `adb shell monkey -p com.takeoutfm.tv -c android.intent.category.LEANBACK_LAUNCHER 1`.
+- Phone app: the `Pixel_9` AVD (emulator-5556 when the TV emulator is also up); launch with
+  `adb shell monkey -p com.takeoutfm.mobile.debug -c android.intent.category.LAUNCHER 1`.
+  Sign in with the device code (the user approves it at <server>/link); never type the user's
+  password. Track Activity defaults on, as in the Flutter app, so playing music there adds to
+  the user's real stats.
 - Formatting: Spotless/ktlint is configured via `buildscripts/init.gradle.kts`
   (`./gradlew --init-script buildscripts/init.gradle.kts spotlessApply`) but hasn't been used in
   this port; it would stamp Google's license header (`spotless/copyright.kt`) onto Takeout files.
+
+## Phone app architecture (`android/src/main/java/com/takeoutfm/mobile/`)
+
+- `di/AppModule.kt` provides the shared core and `:android-media` (as the TV's `TakeoutModule`),
+  plus `PlaySettings` (`:shared` `settings/`, Flutter's defaults). `MainActivity` refreshes the
+  library and resends offline progress/listens on start.
+- `ui/App.kt`: sign-in gate (`ui/signin/`: password + passcode via `POST /api/token`, or a
+  device code). `ui/main/MainScaffold.kt`: `NavigationSuiteScaffold` (bottom bar when the width
+  is compact, else a rail), one `NavController` per `Tab` (Home · Artists · Recent · Radio · Now
+  Playing, icons only) so each keeps its back stack; re-tapping a tab pops to its root, and at
+  the root Home cycles the media type and Artists the artist type. Routes in `TabHost.kt`.
+  Play/pause FAB (with progress ring) when the music player has a queue.
+- `ui/home/`: the media bar (one icon per type the library index has; tapping the shown one
+  cycles its lists) over `ui/common/TileGrid` (adaptive columns by max tile width), with the
+  Flutter menu (Reload, Settings, About, Logout so far).
 
 ## TV architecture
 

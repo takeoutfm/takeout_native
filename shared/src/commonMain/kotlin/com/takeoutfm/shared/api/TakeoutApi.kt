@@ -8,6 +8,7 @@ import com.takeoutfm.shared.model.ApiFavoriteView
 import com.takeoutfm.shared.model.ApiGenreView
 import com.takeoutfm.shared.model.ApiHomeView
 import com.takeoutfm.shared.model.ApiIndexView
+import com.takeoutfm.shared.model.ApiLogin
 import com.takeoutfm.shared.model.ApiMovieView
 import com.takeoutfm.shared.model.ApiMoviesView
 import com.takeoutfm.shared.model.ApiOffsets
@@ -103,7 +104,27 @@ class TakeoutApi internal constructor(
         return text
     }
 
-    // ---- Authentication (device-code flow) ----
+    // ---- Authentication ----
+
+    /**
+     * Signs in with a user name and password (and the account's [passcode], when it has
+     * two-factor auth); returns the tokens, or null when the server rejects them. Throws on
+     * network errors.
+     */
+    suspend fun login(endpoint: String, user: String, password: String, passcode: String?): ApiTokens? {
+        val body = json.encodeToString(
+            ApiLogin.serializer(),
+            ApiLogin(user, password, passcode?.trim()?.ifEmpty { null }),
+        )
+        return try {
+            val text = execute("$endpoint/api/token", HttpMethod.Post, body = body)
+            decode(ApiTokens.serializer(), text).takeIf { it.isValid() }
+        } catch (e: HttpException) {
+            if (e.code == 401 || e.code == 403) null else throw e
+        }
+    }
+
+    // ---- Device-code flow ----
 
     suspend fun requestCode(endpoint: String): ApiAccessCode =
         decode(ApiAccessCode.serializer(), execute("$endpoint/api/code"))

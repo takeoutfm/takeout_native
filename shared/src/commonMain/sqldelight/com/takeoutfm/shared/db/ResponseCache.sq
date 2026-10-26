@@ -1,0 +1,16 @@
+-- The last server response for each GET (endpoint + path), for browsing offline.
+CREATE TABLE http_cache (
+    key TEXT NOT NULL PRIMARY KEY,
+    body TEXT NOT NULL,
+    -- Epoch ms.
+    saved_at INTEGER NOT NULL
+);
+
+get:
+SELECT body FROM http_cache WHERE key = ?;
+
+put:
+INSERT OR REPLACE INTO http_cache(key, body, saved_at) VALUES (?, ?, ?);
+
+clear:
+DELETE FROM http_cache;

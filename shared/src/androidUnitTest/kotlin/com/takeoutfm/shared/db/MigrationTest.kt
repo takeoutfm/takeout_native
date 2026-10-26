@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 
 class MigrationTest {
     @Test
-    fun aVersionOneDatabaseGainsStreamHistory() {
+    fun aVersionOneDatabaseMigratesToTheCurrentSchema() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         // A version 1 database (before stream history), then the migrations.
         listOf(
@@ -17,8 +17,10 @@ class MigrationTest {
 
         val db = TakeoutDb(driver)
         db.streamHistoryQueries.insert("BAGeL Radio", "", "Beck - Loser", 1)
+        db.responseCacheQueries.put("k", "{}", 1)
+        assertEquals("{}", db.responseCacheQueries.get("k").executeAsOne())
         assertEquals(1, db.streamHistoryQueries.all().executeAsList().size)
         assertEquals(listOf("e1"), db.progressQueries.all().executeAsList().map { it.etag }) // kept
-        assertEquals(2L, TakeoutDb.Schema.version)
+        assertEquals(3L, TakeoutDb.Schema.version)
     }
 }

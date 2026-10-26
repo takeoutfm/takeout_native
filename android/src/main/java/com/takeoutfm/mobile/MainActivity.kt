@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.takeoutfm.mobile.ui.App
 import com.takeoutfm.mobile.ui.theme.TakeoutTheme
+import com.takeoutfm.shared.api.ResponseCache
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.listen.ListenReporter
@@ -21,6 +22,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var library: TakeoutLibrary
     @Inject lateinit var progress: TakeoutProgress
     @Inject lateinit var listenReporter: ListenReporter
+
+    /** Created here so every request from the start is kept for offline browsing. */
+    @Inject lateinit var responseCache: ResponseCache
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

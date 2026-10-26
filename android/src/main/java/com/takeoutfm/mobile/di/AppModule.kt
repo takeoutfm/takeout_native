@@ -7,6 +7,8 @@ import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.mobile.BuildConfig
 import com.takeoutfm.mobile.playback.MusicService
+import com.takeoutfm.shared.api.DbResponseCache
+import com.takeoutfm.shared.api.ResponseCache
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.api.TakeoutUrls
@@ -61,6 +63,12 @@ object AppModule {
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): TakeoutDb = AndroidDatabase.open(context)
+
+    /** Kept for browsing offline once the database is available. */
+    @Provides
+    @Singleton
+    fun responseCache(db: TakeoutDb, session: TakeoutSession, api: TakeoutApi): ResponseCache =
+        DbResponseCache(db, session).also { api.responseCache = it }
 
     @Provides
     @Singleton

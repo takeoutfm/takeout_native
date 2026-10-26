@@ -117,6 +117,30 @@ class TakeoutApiTest {
     }
 
     @Test
+    fun unreachableServerAnswersFromTheResponseCacheButRefusalsDont() = runTest {
+        var online = true
+        var status = HttpStatusCode.OK
+        val engine = MockEngine {
+            if (!online) throw kotlinx.io.IOException("offline")
+            if (status != HttpStatusCode.OK) respondError(status) else respond("""{"Offsets":[{"ETag":"e1"}]}""", headers = jsonHeaders)
+        }
+        val kept = HashMap<String, String>()
+        val api = TakeoutApi(session(), "test", engine).apply {
+            responseCache = object : ResponseCache {
+                override fun get(key: String) = kept[key]
+                override fun put(key: String, body: String) { kept[key] = body }
+            }
+        }
+        assertEquals("e1", api.progress().offsets.single().etag)
+        online = false
+        assertEquals("e1", api.progress().offsets.single().etag) // from the cache
+        assertFailsWith<kotlinx.io.IOException> { api.index() } // never fetched: nothing kept
+        online = true
+        status = HttpStatusCode.NotFound
+        assertFailsWith<HttpException> { api.progress() } // the server said no: not hidden
+    }
+
+    @Test
     fun endpointsAreNormalized() {
         assertEquals("https://takeout.fm", TakeoutApi.normalizeEndpoint(" takeout.fm/ "))
         assertEquals("http://nas:3000", TakeoutApi.normalizeEndpoint("http://nas:3000"))

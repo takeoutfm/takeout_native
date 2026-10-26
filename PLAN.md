@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–5 done, 6 mostly** (offline browsing left); phase 7 (Android Auto, Assistant, playlist editing, link code) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–6 done** (mobile-data policy open); phase 7 (Android Auto, Assistant, playlist editing, link code) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -347,8 +347,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    releases, playlists, favorite tracks and podcast episodes, Playback Caching downloading the
    whole queue when on (off by default, as Flutter), ✓ / progress badges, the Downloads page
    (groups, play offline, delete one / all with sizes).
-   **Still to do:** the JSON response cache for offline browsing, and the mobile-data policy
-   (question open in 4.11).
+   Offline browsing (2026-10-25): shared `api/ResponseCache` (`DbResponseCache`, SQLDelight
+   `http_cache`, schema v3 via `2.sqm`): every GET's last response is kept, and a request that
+   can't reach the server answers from it (refusals still fail); cleared on sign-out. Phone
+   only for now (the TV keeps its own saved index). Checked on the emulator with Wi-Fi and
+   data off.
+   **Still to do:** the mobile-data policy (question open in 4.11).
 7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.
    - [x] Link (2026-10-25): approve another device's code with this account (`POST /api/link`,
          shared `TakeoutApi.link`, Home menu → Link).

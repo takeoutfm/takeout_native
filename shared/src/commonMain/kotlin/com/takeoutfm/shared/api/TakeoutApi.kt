@@ -43,6 +43,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.content.TextContent
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.isSuccess
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -207,7 +208,26 @@ class TakeoutApi internal constructor(
         }
     }
 
-    private suspend fun getText(path: String): String = authed(path)
+    /**
+     * Where GET responses are kept for offline browsing: a request that can't reach the server
+     * (not one it refuses) answers with the last response kept for it. Null keeps nothing.
+     */
+    var responseCache: ResponseCache? = null
+
+    private suspend fun getText(path: String): String {
+        val key = session.endpoint + path
+        return try {
+            authed(path).also { responseCache?.put(key, it) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            throw e
+        } catch (e: IllegalStateException) {
+            throw e // not signed in
+        } catch (e: Exception) {
+            responseCache?.get(key) ?: throw e
+        }
+    }
 
     // ---- Endpoints ----
 

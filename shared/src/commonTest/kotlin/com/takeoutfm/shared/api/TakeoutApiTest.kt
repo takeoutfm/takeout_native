@@ -12,6 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 class TakeoutApiTest {
@@ -138,6 +139,26 @@ class TakeoutApiTest {
         online = true
         status = HttpStatusCode.NotFound
         assertFailsWith<HttpException> { api.progress() } // the server said no: not hidden
+    }
+
+    @Test
+    fun searchRefsArePatchedIntoTheUsersPlaylistAndAnUnchangedOneIsFetched() = runTest {
+        val seen = mutableListOf<String>()
+        var patched = ""
+        val playlist = """{"playlist":{"title":"Beck","track":[{"title":"Loser","location":["/api/tracks/u/location"]}]},"type":"music"}"""
+        val engine = MockEngine { request ->
+            seen += "${request.method.value} ${request.url.encodedPath}"
+            if (request.method == HttpMethod.Patch) {
+                patched = (request.body as io.ktor.http.content.TextContent).text
+                respond("", HttpStatusCode.NoContent) // same tracks as before
+            } else {
+                respond(playlist, headers = jsonHeaders)
+            }
+        }
+        val result = TakeoutApi(session(), "test", engine).resolveRef("""/music/search?q=artist:"Beck"&radio=1""", "Beck")
+        assertEquals("Loser", result.playlist.tracks?.single()?.title)
+        assertEquals(listOf("PATCH /api/playlist", "GET /api/playlist"), seen)
+        assertTrue(patched.contains(""""path":"/playlist/track/-","value":{"${'$'}ref":"/music/search?q=artist:\"Beck\"&radio=1"}"""), patched)
     }
 
     @Test

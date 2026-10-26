@@ -29,6 +29,27 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Assistant: "play … on TakeoutFM" and the Takeout app actions (VoiceRequests). -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.takeoutfm.action.PLAY_ARTIST" />
+                <action android:name="com.takeoutfm.action.PLAY_ARTIST_SONG" />
+                <action android:name="com.takeoutfm.action.PLAY_ARTIST_ALBUM" />
+                <action android:name="com.takeoutfm.action.PLAY_ARTIST_RADIO" />
+                <action android:name="com.takeoutfm.action.PLAY_ARTIST_POPULAR_SONGS" />
+                <action android:name="com.takeoutfm.action.PLAY_ALBUM" />
+                <action android:name="com.takeoutfm.action.PLAY_SONG" />
+                <action android:name="com.takeoutfm.action.PLAY_RADIO" />
+                <action android:name="com.takeoutfm.action.PLAY_SEARCH" />
+                <action android:name="com.takeoutfm.action.PLAYER_PLAY" />
+                <action android:name="com.takeoutfm.action.PLAYER_PAUSE" />
+                <action android:name="com.takeoutfm.action.PLAYER_NEXT" />
+                <action android:name="com.takeoutfm.action.PLAY_MOVIE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <activity

@@ -76,6 +76,10 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   episode GUID). Episodes play in the music service as `QueueItem(podcast = true)`:
   `PodcastProgress` saves their position, `ListenTracker` skips them. Subscribe changes the
   user's real subscriptions.
+- Voice: `voice/VoiceRequests` turns `MEDIA_PLAY_FROM_SEARCH` and `com.takeoutfm.action.*`
+  intents into server search refs; `VoiceHandler` (called from `MainActivity`) plays them via
+  `TakeoutApi.resolveRef`, which rewrites the user's server-side current playlist. Test with
+  `adb shell "am start -a com.takeoutfm.action.PLAY_ARTIST -e artist 'Beck' -n com.takeoutfm.mobile.debug/com.takeoutfm.mobile.MainActivity"`.
 - Offline: `:android-media` `offline/TakeoutMediaCache` (cache keyed by ETag; playback reads it,
   writes only with Playback Caching on; Media3 downloads into the same cache) and
   `TakeoutDownloadService` (the app's `playback/DownloadService`). Offline browsing: the shared

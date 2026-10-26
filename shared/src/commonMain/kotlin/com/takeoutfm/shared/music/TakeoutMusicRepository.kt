@@ -231,6 +231,10 @@ class TakeoutMusicRepository(
 
     // ---- Play queues ----
 
+    /** What a server search ref (see [TakeoutApi.resolveRef]) plays, titled [title]. */
+    suspend fun refQueue(ref: String, title: String): MusicQueue =
+        api.resolveRef(ref, title).toQueue(urls::absolute)
+
     /** This track first; the server follows it with similar tracks (a radio from it). */
     suspend fun trackQueue(trackId: String): MusicQueue =
         api.playlist("/api/tracks/${numericId(trackId, TrackPrefix)}/playlist").toQueue(urls::absolute)

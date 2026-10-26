@@ -354,6 +354,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    data off.
    **Still to do:** the mobile-data policy (question open in 4.11).
 7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.
+   - [x] Assistant (2026-10-25): `MEDIA_PLAY_FROM_SEARCH` (artist / album / song focus, or the
+         server's best match; empty = resume) and the Flutter app's `com.takeoutfm.action.*`
+         intents with the same server search refs (`voice/VoiceRequests`, unit-tested;
+         `VoiceHandler`). Refs resolve through the user's server playlist
+         (`TakeoutApi.resolveRef`, `PATCH /api/playlist`), as Flutter does. Like Flutter there's
+         no `shortcuts.xml`, so Assistant reaches the custom actions only by explicit intent.
    - [x] Link (2026-10-25): approve another device's code with this account (`POST /api/link`,
          shared `TakeoutApi.link`, Home menu → Link).
 8. **Polish & release**: tablets/foldables, accessibility (TalkBack, font scale), Baseline

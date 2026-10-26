@@ -1,5 +1,6 @@
 package com.takeoutfm.mobile
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.takeoutfm.mobile.ui.App
 import com.takeoutfm.mobile.ui.theme.TakeoutTheme
+import com.takeoutfm.mobile.voice.VoiceHandler
 import com.takeoutfm.shared.api.ResponseCache
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.library.TakeoutLibrary
@@ -22,6 +24,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var library: TakeoutLibrary
     @Inject lateinit var progress: TakeoutProgress
     @Inject lateinit var listenReporter: ListenReporter
+    @Inject lateinit var voice: VoiceHandler
 
     /** Created here so every request from the start is kept for offline browsing. */
     @Inject lateinit var responseCache: ResponseCache
@@ -34,6 +37,17 @@ class MainActivity : ComponentActivity() {
                 App()
             }
         }
+        if (savedInstanceState == null) handleVoice(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleVoice(intent)
+    }
+
+    /** Assistant ("play Beck on TakeoutFM") and the Takeout app actions, once signed in. */
+    private fun handleVoice(intent: Intent?) {
+        if (session.state.value.isLoggedIn) voice.handle(intent)
     }
 
     /** Back in the foreground: refresh the library index and resend anything kept offline. */

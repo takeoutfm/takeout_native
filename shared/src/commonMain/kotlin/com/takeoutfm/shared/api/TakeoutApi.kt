@@ -51,6 +51,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /** A Takeout server response other than 2xx. */
 class HttpException(val code: Int) : IOException("HTTP $code")
@@ -315,6 +322,32 @@ class TakeoutApi internal constructor(
     /** The user's listening history (Takeout activity), newest first. */
     suspend fun recentTracks(): ApiTrackHistoryView =
         decode(ApiTrackHistoryView.serializer(), getText("/api/activity/tracks/recent"))
+
+    /**
+     * The tracks (or station) a server search ref like `/music/search?q=artist:"Beck"&radio=1`
+     * resolves to, by putting it in the user's own server playlist (as the Takeout apps do for
+     * voice requests). Empty when nothing matches.
+     */
+    suspend fun resolveRef(ref: String, title: String): ApiPlaylist {
+        val patch = buildJsonArray {
+            add(op("replace", "/playlist/title", JsonPrimitive(title)))
+            add(op("replace", "/playlist/creator", JsonPrimitive("")))
+            add(op("replace", "/type", JsonPrimitive("music")))
+            add(op("replace", "/playlist/track", JsonArray(emptyList())))
+            add(op("add", "/playlist/track/-", buildJsonObject { put("\$ref", ref) }))
+            add(op("replace", "/index", JsonPrimitive(0)))
+            add(op("replace", "/position", JsonPrimitive(0.0)))
+        }
+        val text = authed("/api/playlist", HttpMethod.Patch, patch.toString())
+        // 204: the same tracks as last time, so the playlist is unchanged; fetch it.
+        return decode(ApiPlaylist.serializer(), text.ifBlank { authed("/api/playlist") })
+    }
+
+    private fun op(op: String, path: String, value: JsonElement) = buildJsonObject {
+        put("op", op)
+        put("path", path)
+        put("value", value)
+    }
 
     // ---- Podcasts ----
 

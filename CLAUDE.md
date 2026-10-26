@@ -11,6 +11,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 | `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–6 of `PLAN.md` (skeleton, music, history/activity, video, podcasts, downloads). |
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
+| `:wear` | TakeoutFM for Wear OS (Wear Compose, Hilt), replacing the Flutter watch app: `applicationId` `com.takeoutfm.watch` (debug `.debug`). Phase 9 of `PLAN.md`: code sign-in, music/radio/podcast browsing, Now Playing, downloads, a Tile and a complication. Test on the `Wear_Round_API_36` AVD; add the tile with `adb shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation add-tile --ecn component com.takeoutfm.watch.debug/com.takeoutfm.watch.tile.PlayerTileService`. |
 | `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video track choices (`video/Tracks.kt`: audio/subtitle/speed options, best audio track). Plain constructors, no Hilt. |
 | `:shared` | Kotlin Multiplatform core shared by all apps (Android target only for now): API models (`com.takeoutfm.shared.model`), listen/progress rules, `TakeoutPaths`, sort keys. No Android or `java.*` imports in `commonMain` (platform bits go in `androidMain` as `actual`s); use kotlinx-datetime, not `java.time`. Tests live in `commonTest` (`kotlin.test`). |
 
@@ -21,6 +22,7 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 ```
 ./gradlew :android:assembleDebug            # phone app debug APK (com.takeoutfm.mobile.debug)
 ./gradlew :android:assembleRelease          # signed with android/key.properties if present, else debug
+./gradlew :wear:assembleDebug               # watch app debug APK (com.takeoutfm.watch.debug)
 ./gradlew :tv:assembleDebug                 # debug APK
 ./gradlew :tv:assembleRelease               # minified release APK (debug-signed)
 ./gradlew :tv:testDebugUnitTest             # TV JVM unit tests (JUnit 4)

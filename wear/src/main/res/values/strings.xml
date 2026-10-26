@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TakeoutFM</string>
+    <string name="host_label">Server</string>
+    <string name="get_code">Sign in</string>
+    <string name="code_instructions">On your phone: TakeoutFM → Link, and enter</string>
+    <string name="code_or_web">or open %1$s</string>
+    <string name="get_new_code">New code</string>
+    <string name="cant_reach">Couldn\'t reach the server</string>
+    <string name="recent">Recent</string>
+    <string name="music">New Music</string>
+    <string name="artists">Artists</string>
+    <string name="playlists">Playlists</string>
+    <string name="favorites">Favorites</string>
+    <string name="radio">Radio</string>
+    <string name="podcasts">Podcasts</string>
+    <string name="downloads">Downloads</string>
+    <string name="settings">Settings</string>
+    <string name="now_playing">Now Playing</string>
+    <string name="nothing_here">Nothing here yet</string>
+    <string name="cant_load">Couldn\'t load this</string>
+    <string name="cant_play">Couldn\'t play that</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="download">Download</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="delete">Delete</string>
+    <string name="live">LIVE</string>
+    <string name="track_activity">Track Activity</string>
+    <string name="playback_caching">Playback Caching</string>
+    <string name="sign_out">Sign out</string>
+    <string name="server">Server</string>
+    <string name="version">Version %1$s</string>
+    <string name="tap_to_open">Open TakeoutFM</string>
+    <string name="downloading">Downloading</string>
+</resources>

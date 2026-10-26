@@ -29,6 +29,11 @@ navigation-compose = "2.8.8"
 profileinstaller = "1.4.1"
 uiautomator = "2.3.0"
 rules = "1.6.1"
+wear-compose = "1.4.1"
+wear-tiles = "1.4.1"
+wear-protolayout = "1.2.1"
+wear-complications = "1.2.1"
+wear-input = "1.1.0"
 test-runner = "1.6.2"
 
 [libraries]
@@ -77,6 +82,13 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "test-runner" }
+wear-compose-material = { module = "androidx.wear.compose:compose-material", version.ref = "wear-compose" }
+wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "wear-compose" }
+wear-compose-navigation = { module = "androidx.wear.compose:compose-navigation", version.ref = "wear-compose" }
+wear-tiles = { module = "androidx.wear.tiles:tiles", version.ref = "wear-tiles" }
+wear-protolayout = { module = "androidx.wear.protolayout:protolayout", version.ref = "wear-protolayout" }
+wear-protolayout-material = { module = "androidx.wear.protolayout:protolayout-material", version.ref = "wear-protolayout" }
+wear-complications-data-source = { module = "androidx.wear.watchface:watchface-complications-data-source-ktx", version.ref = "wear-complications" }
 androidx-rules = { group = "androidx.test", name = "rules", version.ref = "rules" }
 
 [plugins]

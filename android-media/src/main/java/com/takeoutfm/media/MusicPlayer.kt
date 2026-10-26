@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -120,6 +121,9 @@ class MusicPlayer(
 
     /** Connects to the music service, so [state] shows what's already playing in the background. */
     fun connect() = withController { }
+
+    /** Connects (if not yet) and waits for it; true once [state] reflects the service. */
+    suspend fun awaitConnected(): Boolean = withContext(Dispatchers.Main.immediate) { controller() != null }
 
     /**
      * Plays [items] after the current item (or starts them when nothing's queued); with

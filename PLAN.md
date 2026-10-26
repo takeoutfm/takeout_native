@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–8 done** (Android Auto not yet seen in a car UI); phase 9 (Wear OS) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–8 done** (Android Auto not yet seen in a car UI); phase 9 (Wear OS) in progress (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -403,6 +403,18 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - a Tile (recent queues / play-pause) and a complication.
    Controlling playback on the phone needs nothing extra: Wear OS mirrors the phone's media
    session.
+   - [x] Module `wear/` (`com.takeoutfm.watch`, `.debug` for debug builds; versionCode 3000 over
+         Flutter's 2600; release key shared with the phone): Wear Compose Material (1.4) home
+         list, Recent, New Music, Artists, album/artist pages, Playlists (+ Favorites), Radio,
+         Podcasts, Downloads, Settings; Now Playing with progress ring, LIVE badge and the
+         stream's song, crown volume. `TakeoutMusicService.configure()` lets the watch
+         suppress playback on the speaker (release builds only, so the emulator can play).
+   - [x] Tile (title + play/pause, refreshed when the player changes) and complication.
+   - [x] Checked on the `Wear_Round_API_36` emulator (2026-10-26): browse, album play, radio
+         (LIVE), tile play/pause.
+   - [ ] Not yet checked: sign-in by code from a fresh install, downloads and offline play,
+         the output switcher on a release build / real watch, the complication, crown volume;
+         downloads aren't limited to Wi-Fi yet.
 10. **Later — Apple**: add `iosArm64`/`iosSimulatorArm64`/`macosArm64` targets to `shared`, then
    SwiftUI apps with AVFoundation, Now Playing, CarPlay and Siri intents.
 

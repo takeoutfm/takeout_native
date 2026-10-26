@@ -59,6 +59,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     /** What Android Auto and other media browsers can browse; null for none (the TV). */
     protected open val browseTree: TakeoutBrowseTree? = null
 
+    /** App-specific player options (e.g. Wear OS's output checks), applied last. */
+    protected open fun configure(builder: ExoPlayer.Builder): ExoPlayer.Builder = builder
+
     /** The activity the system's now-playing controls open. */
     protected abstract val sessionActivity: Class<out Activity>
 
@@ -80,6 +83,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                 /* handleAudioFocus = */ true
             )
             .setHandleAudioBecomingNoisy(true)
+            .let(::configure)
             .build()
             .also { playerFactory.addDebugLogging(it) }
         // Reports plays to Takeout / ListenBrainz per the Music settings.

@@ -77,7 +77,7 @@ fun TabHost(
             openPodcast = { navController.navigate(PodcastRoute(it)) },
             openDownloads = { navController.navigate(DownloadsRoute) },
             openSearch = { navController.navigate(SearchRoute) },
-            back = { navController.popBackStack() },
+            back = { navController.back() },
         )
     }
     val videoNav = remember(navController) {
@@ -85,7 +85,7 @@ fun TabHost(
             openVideo = { navController.navigate(VideoRoute(it)) },
             openPerson = { navController.navigate(PersonRoute(it)) },
             openGenre = { navController.navigate(GenreRoute(it)) },
-            back = { navController.popBackStack() },
+            back = { navController.back() },
         )
     }
     NavHost(navController, startDestination = start) {
@@ -119,4 +119,12 @@ private fun NavGraphBuilder.musicPages(main: MainViewModel, nav: MusicNav, video
     composable<PodcastRoute> { PodcastScreen(main, nav) }
     composable<ActivityRoute> { ActivityScreen(main, nav) }
     composable<DownloadsRoute> { DownloadsScreen(main, nav) }
+}
+
+/**
+ * Back from a pushed page: pops it, but never the tab's first page. A second tap while a page is
+ * still closing would otherwise pop that too and leave the tab empty.
+ */
+private fun NavHostController.back() {
+    if (previousBackStackEntry != null) popBackStack()
 }

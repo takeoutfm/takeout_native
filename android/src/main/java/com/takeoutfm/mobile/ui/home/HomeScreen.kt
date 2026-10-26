@@ -24,6 +24,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -34,6 +36,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.colorResource
@@ -87,37 +91,49 @@ fun HomeScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = nav.openSearch) {
-                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_label))
-                    }
-                },
-                title = { BarTitle(stringResource(selection.type.title), stringResource(selection.subtype.label)) },
-                actions = {
-                    types.forEach { type ->
-                        val selected = type == selection.type
-                        IconButton(onClick = { viewModel.select(type) }) {
-                            Icon(type.icon(selected), contentDescription = stringResource(type.title))
+            // Six 48dp buttons leave a 360dp phone about 60dp for the title ("Mu…"): there,
+            // pack them at their 40dp visual size and use the smaller title style.
+            val narrow = LocalConfiguration.current.screenWidthDp.dp < 48.dp * (types.size + 2) + TitleRoom
+            CompositionLocalProvider(
+                LocalMinimumInteractiveComponentSize provides if (narrow) 40.dp else 48.dp,
+            ) {
+                TopAppBar(
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        IconButton(onClick = nav.openSearch) {
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_label))
                         }
-                    }
-                    HomeMenu(
-                        onReload = viewModel::reload,
-                        onFavoriteTracks = {
-                            nav.openQueue(QueueKind.Favorites, "", context.getString(R.string.favorite_tracks))
-                        },
-                        onPlaylists = nav.openPlaylists,
-                        onRecentTracks = nav.openRecentTracks,
-                        onActivity = nav.openActivity,
-                        onDownloads = nav.openDownloads,
-                        onLink = onLink,
-                        onSettings = onSettings,
-                        onAbout = { about = true },
-                        onLogout = viewModel::logout,
-                    )
-                },
-            )
+                    },
+                    title = {
+                        val style = if (narrow) MaterialTheme.typography.titleMedium else LocalTextStyle.current
+                        CompositionLocalProvider(LocalTextStyle provides style) {
+                            BarTitle(stringResource(selection.type.title), stringResource(selection.subtype.label), compact = narrow)
+                        }
+                    },
+                    actions = {
+                        types.forEach { type ->
+                            val selected = type == selection.type
+                            IconButton(onClick = { viewModel.select(type) }) {
+                                Icon(type.icon(selected), contentDescription = stringResource(type.title))
+                            }
+                        }
+                        HomeMenu(
+                            onReload = viewModel::reload,
+                            onFavoriteTracks = {
+                                nav.openQueue(QueueKind.Favorites, "", context.getString(R.string.favorite_tracks))
+                            },
+                            onPlaylists = nav.openPlaylists,
+                            onRecentTracks = nav.openRecentTracks,
+                            onActivity = nav.openActivity,
+                            onDownloads = nav.openDownloads,
+                            onLink = onLink,
+                            onSettings = onSettings,
+                            onAbout = { about = true },
+                            onLogout = viewModel::logout,
+                        )
+                    },
+                )
+            }
         },
     ) { padding ->
         PullToRefreshBox(
@@ -147,6 +163,9 @@ fun HomeScreen(
     }
     if (about) AboutDialog(onDismiss = { about = false })
 }
+
+/** What the title and subtitle ("Recently added") need beside the bar's icons. */
+private val TitleRoom = 120.dp
 
 private fun MediaType.icon(selected: Boolean): ImageVector = when (this) {
     MediaType.Music -> if (selected) Icons.Filled.Speaker else Icons.Outlined.Speaker

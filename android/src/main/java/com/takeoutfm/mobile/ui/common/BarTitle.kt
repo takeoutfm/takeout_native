@@ -10,15 +10,17 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
 
 /**
  * An app bar title with an optional smaller [subtitle] underneath, as the Flutter app. With
  * large fonts the two lines don't fit the bar's fixed height, so the subtitle goes on the same
- * line instead ("Music · Recently added").
+ * line instead ("Music · Recently added"). [compact] drops the subtitle's letter spacing, for
+ * a bar short of room.
  */
 @Composable
-fun BarTitle(title: String, subtitle: String? = null) {
-    val subtitleStyle = MaterialTheme.typography.labelMedium
+fun BarTitle(title: String, subtitle: String? = null, compact: Boolean = false) {
+    val subtitleStyle = MaterialTheme.typography.labelMedium.let { if (compact) it.copy(letterSpacing = 0.sp) else it }
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     if (subtitle.isNullOrEmpty()) {
         Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)

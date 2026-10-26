@@ -52,12 +52,23 @@ class BrowseTreeTest {
     fun theTreeHasTheTakeoutFolders() {
         val root = onMain { browser.getLibraryRoot(null) }.get(10, TimeUnit.SECONDS).value!!
         val folders = children(root.mediaId)
-        assertEquals(listOf("recent", "new", "added", "radio", "playlists", "podcasts"), folders.map { it.mediaId })
+        assertEquals(listOf("recent", "new", "added", "radio", "playlists", "podcasts", "artists"), folders.map { it.mediaId })
         assertTrue(folders.all { it.mediaMetadata.isBrowsable == true })
         val radio = children("radio")
         assertTrue("stations", radio.isNotEmpty())
         assertTrue(radio.all { it.mediaMetadata.isPlayable == true && it.mediaId.startsWith("play:station:") })
         assertTrue("new releases", children("new").isNotEmpty())
+    }
+
+    @Test
+    fun artistsHaveMixesAndReleases() {
+        assertEquals(listOf("artists:recent", "artists:favorite", "artists:all"), children("artists").map { it.mediaId })
+        assertTrue("at most 5 recent", children("artists:recent").size <= 5)
+        val all = children("artists:all")
+        assertTrue("artists", all.isNotEmpty())
+        val items = children(all.first().mediaId)
+        assertEquals(3, items.count { it.mediaId.startsWith("play:artist:") })
+        assertTrue(items.all { it.mediaMetadata.isPlayable == true })
     }
 
     @Test

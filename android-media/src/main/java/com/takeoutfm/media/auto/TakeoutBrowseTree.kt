@@ -6,17 +6,21 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaConstants
 import com.takeoutfm.media.toMediaItem
+import com.takeoutfm.shared.music.Album
+import com.takeoutfm.shared.music.Artist
+import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.StationKind
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import kotlinx.coroutines.flow.first
 
 /**
  * What Android Auto (and any media browser) can browse and play: Recently Played, new and
- * recently added releases, radio (live streams first), playlists and subscribed podcasts, plus
- * search. Folders are browsable items; playable items have ids [PlayPrefix]…, which
+ * recently added releases, radio (live streams first), playlists, subscribed podcasts and
+ * artists (recently played, favorites, all; each with its mixes and releases), plus search. Folders are browsable items; playable items have ids [PlayPrefix]…, which
  * [queue] expands into the whole queue they stand for (an album, a station, an episode list…).
  */
 class TakeoutBrowseTree(
@@ -33,6 +37,13 @@ class TakeoutBrowseTree(
         val radio: String,
         val playlists: String,
         val podcasts: String,
+        val artists: String,
+        val artistsRecent: String,
+        val artistsFavorite: String,
+        val artistsAll: String,
+        val popular: String,
+        val shuffle: String,
+        val radioMix: String,
     )
 
     fun root(): MediaItem = folder(Root, "TakeoutFM", grid = false)
@@ -42,19 +53,16 @@ class TakeoutBrowseTree(
             folder(Recent, titles.recent, grid = true),
             folder(New, titles.newReleases, grid = true),
             folder(Added, titles.recentlyAdded, grid = true),
-            folder(Radio, titles.radio, grid = false),
+            folder(Radio, titles.radio, grid = true),
             folder(Playlists, titles.playlists, grid = false),
             folder(Podcasts, titles.podcasts, grid = true),
+            folder(Artists, titles.artists, grid = false),
         )
         parentId == Recent -> history.entries.value.map {
             playable("${PlayPrefix}recent:${it.id}", it.title, it.creator, it.coverUri)
         }
-        parentId == New -> music.newReleases().first().map {
-            playable("${PlayPrefix}album:${it.id}", it.name, it.artist, it.coverUri)
-        }
-        parentId == Added -> music.recentlyAdded().first().map {
-            playable("${PlayPrefix}album:${it.id}", it.name, it.artist, it.coverUri)
-        }
+        parentId == New -> music.newReleases().first().map(::albumItem)
+        parentId == Added -> music.recentlyAdded().first().map(::albumItem)
         parentId == Radio -> music.radio()
             .sortedBy { it.kind != StationKind.Stream }
             .flatMap { it.stations }
@@ -68,8 +76,30 @@ class TakeoutBrowseTree(
         parentId.startsWith(PodcastPrefix) -> {
             val details = podcasts.details(parentId.removePrefix(PodcastPrefix))
             details.episodes.mapIndexed { i, e ->
-                playable("${PlayPrefix}episode:${details.series.id}:$i", e.title, details.series.title, e.imageUri.ifEmpty { details.series.imageUri })
+                playable(
+                    "${PlayPrefix}episode:${details.series.id}:$i",
+                    e.title,
+                    details.series.title,
+                    e.imageUri.ifEmpty { details.series.imageUri },
+                    extras = completion(e.progress),
+                )
             }
+        }
+        parentId == Artists -> listOf(
+            folder(ArtistsRecent, titles.artistsRecent, grid = true),
+            folder(ArtistsFavorite, titles.artistsFavorite, grid = true),
+            folder(ArtistsAll, titles.artistsAll, grid = false),
+        )
+        parentId == ArtistsRecent -> recentArtists().map(::artistFolder)
+        parentId == ArtistsFavorite -> music.favorites().artists.map(::artistFolder)
+        parentId == ArtistsAll -> music.artists().first().map(::artistFolder)
+        parentId.startsWith(ArtistPrefix) -> {
+            val id = parentId.removePrefix(ArtistPrefix)
+            val details = music.artistDetails(id)
+            val image = details.artist.imageUri
+            listOf(ArtistMix.Popular to titles.popular, ArtistMix.Shuffle to titles.shuffle, ArtistMix.Radio to titles.radioMix)
+                .map { (mix, title) -> playable("${PlayPrefix}artist:${mix.name}:$id", title, details.artist.name, image) } +
+                (details.albums + details.singles).map(::albumItem)
         }
         else -> emptyList()
     }
@@ -92,6 +122,10 @@ class TakeoutBrowseTree(
             "station" -> music.stationQueue(rest)
             "playlist" -> music.playlistQueue(rest)
             "track" -> music.trackQueue(rest)
+            "artist" -> {
+                val mix = ArtistMix.valueOf(rest.substringBefore(":"))
+                music.artistQueue(rest.substringAfter(":"), mix)
+            }
             "episode" -> {
                 val seriesId = rest.substringBeforeLast(":")
                 val index = rest.substringAfterLast(":").toIntOrNull() ?: 0
@@ -99,6 +133,37 @@ class TakeoutBrowseTree(
                 podcasts.episodesQueue(details.series.title, details.series.imageUri, details.episodes, index)
             }
             else -> null
+        }
+    }
+
+    /**
+     * The last [RecentArtists] different artists played: from the user's Takeout listening
+     * history (every device), else this device's Recently Played; matched to the artist list by
+     * name.
+     */
+    private suspend fun recentArtists(): List<Artist> {
+        val names = runCatching { music.recentTracks().map { it.artist } }.getOrDefault(emptyList())
+            .ifEmpty { history.entries.value.mapNotNull { it.items.getOrNull(it.index)?.artist } }
+        val byName = music.artists().first().associateBy { it.name.lowercase() }
+        return names.mapNotNull { byName[it.lowercase()] }.distinct().take(RecentArtists)
+    }
+
+    private fun artistFolder(artist: Artist) =
+        folder("$ArtistPrefix${artist.id}", artist.name, grid = true, subtitle = artist.genre, imageUri = artist.imageUri)
+
+    private fun albumItem(album: Album) = playable("${PlayPrefix}album:${album.id}", album.name, album.artist, album.coverUri)
+
+    /** The car's played / unplayed marks for an episode. */
+    private fun completion(progress: EpisodeProgress) = Bundle().apply {
+        when (progress) {
+            EpisodeProgress.NotStarted ->
+                putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_NOT_PLAYED)
+            is EpisodeProgress.Started -> {
+                putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_PARTIALLY_PLAYED)
+                putDouble(MediaConstants.EXTRAS_KEY_COMPLETION_PERCENTAGE, progress.fraction.toDouble())
+            }
+            EpisodeProgress.Complete ->
+                putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_FULLY_PLAYED)
         }
     }
 
@@ -129,17 +194,17 @@ class TakeoutBrowseTree(
                     .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
                     .setExtras(
                         Bundle().apply {
-                            putInt(
-                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
-                                if (grid) MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM else MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
-                            )
+                            // The same style for the folder's playable items and its sub-folders.
+                            val style = if (grid) MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM else MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, style)
+                            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, style)
                         }
                     )
                     .build()
             )
             .build()
 
-    private fun playable(id: String, title: String, subtitle: String, imageUri: String) =
+    private fun playable(id: String, title: String, subtitle: String, imageUri: String, extras: Bundle? = null) =
         MediaItem.Builder()
             .setMediaId(id)
             .setMediaMetadata(
@@ -151,6 +216,7 @@ class TakeoutBrowseTree(
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .setExtras(extras)
                     .build()
             )
             .build()
@@ -171,6 +237,12 @@ class TakeoutBrowseTree(
         const val Playlists = "playlists"
         const val Podcasts = "podcasts"
         const val PodcastPrefix = "podcast:"
+        const val Artists = "artists"
+        const val ArtistsRecent = "artists:recent"
+        const val ArtistsFavorite = "artists:favorite"
+        const val ArtistsAll = "artists:all"
+        const val ArtistPrefix = "artist:"
+        private const val RecentArtists = 5
         const val PlayPrefix = "play:"
     }
 }

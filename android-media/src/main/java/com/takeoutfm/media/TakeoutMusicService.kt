@@ -13,11 +13,15 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
 import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.takeoutfm.media.auto.TakeoutBrowseTree
 import kotlin.coroutines.cancellation.CancellationException
@@ -83,6 +87,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                 /* handleAudioFocus = */ true
             )
             .setHandleAudioBecomingNoisy(true)
+            // Podcasts' seek buttons (PodcastButtons).
+            .setSeekBackIncrementMs(SeekBackMs)
+            .setSeekForwardIncrementMs(SeekForwardMs)
             .let(::configure)
             .build()
             .also { playerFactory.addDebugLogging(it) }
@@ -103,6 +110,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             .setId("music")
             .setSessionActivity(openApp)
             .build()
+            .also { player.addListener(PodcastButtons(it)) }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -170,6 +178,70 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         }
     }
 
+    private val seekBack = SessionCommand(SeekBackAction, Bundle.EMPTY)
+    private val seekForward = SessionCommand(SeekForwardAction, Bundle.EMPTY)
+
+    /** Back 10 s and forward 30 s in place of previous / next, for podcast episodes. */
+    private fun mediaButtons(podcast: Boolean): List<CommandButton> = if (!podcast) emptyList() else listOf(
+        CommandButton.Builder(CommandButton.ICON_SKIP_BACK_10)
+            .setSessionCommand(seekBack)
+            .setDisplayName(getString(R.string.seek_back))
+            .setSlots(CommandButton.SLOT_BACK)
+            .build(),
+        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
+            .setSessionCommand(seekForward)
+            .setDisplayName(getString(R.string.seek_forward))
+            .setSlots(CommandButton.SLOT_FORWARD)
+            .build(),
+    )
+
+    private val sessionCommands: SessionCommands =
+        MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+            .add(seekBack)
+            .add(seekForward)
+            .build()
+
+    /** Without previous / next for a podcast episode, so its seek buttons take their places. */
+    private fun playerCommands(podcast: Boolean): Player.Commands =
+        if (!podcast) {
+            MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+        } else {
+            MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+                .removeAll(
+                    Player.COMMAND_SEEK_TO_PREVIOUS,
+                    Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                    Player.COMMAND_SEEK_TO_NEXT,
+                    Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                )
+                .build()
+        }
+
+    /**
+     * The system's controls (the notification, which the platform session and so Android Auto
+     * follow) and other apps' controllers get [mediaButtons] / [playerCommands]; the app's own
+     * player keeps every command.
+     */
+    private fun MediaSession.followsPodcastButtons(controller: MediaSession.ControllerInfo) =
+        isMediaNotificationController(controller) || controller.packageName != packageName
+
+    private val Player.playingPodcast: Boolean get() = currentMediaItem?.isPodcast == true
+
+    /** Switches the seek buttons on and off as the playing item becomes, or stops being, a podcast. */
+    private inner class PodcastButtons(private val session: MediaSession) : Player.Listener {
+        private var podcast = false
+
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (!events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED)) return
+            val now = player.playingPodcast
+            if (now == podcast) return
+            podcast = now
+            session.connectedControllers.filter { session.followsPodcastButtons(it) }.forEach {
+                session.setAvailableCommands(it, sessionCommands, playerCommands(now))
+            }
+            session.setMediaButtonPreferences(mediaButtons(now))
+        }
+    }
+
     /**
      * The library session's answers: browsing and search from [browseTree] (empty without one),
      * and playing a browsed item expands it into its whole queue. Items from the app's own
@@ -179,6 +251,32 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     @OptIn(UnstableApi::class)
     private inner class LibraryCallback : MediaLibraryService.MediaLibrarySession.Callback {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            val podcast = session.player.playingPodcast
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .apply { if (session.followsPodcastButtons(controller)) setAvailablePlayerCommands(playerCommands(podcast)) }
+                .setMediaButtonPreferences(mediaButtons(podcast))
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                SeekBackAction -> session.player.seekBack()
+                SeekForwardAction -> session.player.seekForward()
+                else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
 
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
@@ -280,3 +378,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         }.toMutableList()
     }
 }
+
+private const val SeekBackMs = 10_000L
+private const val SeekForwardMs = 30_000L
+private const val SeekBackAction = "takeout.SEEK_BACK"
+private const val SeekForwardAction = "takeout.SEEK_FORWARD"

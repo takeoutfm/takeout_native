@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="downloads_channel">Downloads</string>
+    <string name="seek_back">Back 10 seconds</string>
+    <string name="seek_forward">Forward 30 seconds</string>
 </resources>

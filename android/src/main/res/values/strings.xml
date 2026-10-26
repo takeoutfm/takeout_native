@@ -133,6 +133,10 @@
 
     <!-- History and activity -->
     <string name="recently_played">Recently Played</string>
+    <!-- Android Auto folders -->
+    <string name="auto_recent">Recent</string>
+    <string name="auto_added">Added</string>
+    <string name="auto_all">All</string>
     <string name="stream_history">Stream History</string>
     <string name="clear_history">Clear history</string>
     <string name="clear_history_question">Clear Recently Played and Stream History on this device?</string>

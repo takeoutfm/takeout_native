@@ -154,12 +154,20 @@ object AppModule {
     ): TakeoutBrowseTree = TakeoutBrowseTree(
         music, podcasts, history,
         TakeoutBrowseTree.Titles(
-            recent = context.getString(R.string.recently_played),
+            // Short: the car's tabs have little room.
+            recent = context.getString(R.string.auto_recent),
             newReleases = context.getString(R.string.music_recent),
-            recentlyAdded = context.getString(R.string.music_added),
+            recentlyAdded = context.getString(R.string.auto_added),
             radio = context.getString(R.string.nav_radio),
             playlists = context.getString(R.string.playlists),
             podcasts = context.getString(R.string.nav_podcasts),
+            artists = context.getString(R.string.nav_artists),
+            artistsRecent = context.getString(R.string.auto_recent),
+            artistsFavorite = context.getString(R.string.favorite),
+            artistsAll = context.getString(R.string.auto_all),
+            popular = context.getString(R.string.popular),
+            shuffle = context.getString(R.string.shuffle),
+            radioMix = context.getString(R.string.radio),
         ),
     )
 

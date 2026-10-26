@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–8 done** (Android Auto not yet seen in a car UI; release upgrade over the Flutter app untested); phase 9 (Wear OS) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–8 done** (Android Auto not yet seen in a car UI); phase 9 (Wear OS) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -375,7 +375,7 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          `/music/releases/{id}/tracks`) / `removeFromPlaylist` / `deletePlaylist`, mock-tested.
    - [x] Link (2026-10-25): approve another device's code with this account (`POST /api/link`,
          shared `TakeoutApi.link`, Home menu → Link).
-8. **Polish & release** — done (2026-10-26) except installing over the Flutter app:
+8. **Polish & release** — done (2026-10-26):
    - [x] Signing: release builds use `android/key.properties` (same keys as the Flutter app's,
          not committed; `.gitignore` covers keys) or fall back to the debug key; target SDK 36
          like the Flutter app.
@@ -387,8 +387,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          Home's title still truncates at 2× because of the five icons.
    - [x] Startup: `profileinstaller` ships the libraries' baseline profiles; no app-specific
          generated profile (a generator run can't sign in).
-   - [ ] Install over the Flutter app with the real key (needs `key.properties`), check the
-         upgrade on a device and that it starts signed out (Flutter's tokens aren't migrated).
+   - [x] Upgrade over the Flutter app (2026-10-26): `android/key.properties` points at the
+         Flutter keystore; the signed release has the same certificate (SHA-256 8d25f6b6…) and
+         installed over Flutter 0.26.0 (versionCode 2600 → 3000) as an update on the emulator,
+         then started at sign-in (Flutter's tokens aren't migrated). Note: Flutter's minSdk was
+         24, ours is 28, so Android 7–8 devices won't get the update.
 9. **Wear OS**: a standalone watch app (`wear/`) on `shared` + `android-media`:
    - sign-in by link code / device code from the phone or TV (no typing on the watch);
    - browse Recent, Radio, favorites, playlists and downloads with Wear Compose Material 3

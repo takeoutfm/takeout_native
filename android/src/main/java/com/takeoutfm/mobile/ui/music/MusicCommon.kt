@@ -56,6 +56,7 @@ class MusicNav(
     val openRecentTracks: () -> Unit,
     val openActivity: () -> Unit,
     val openPodcast: (String) -> Unit,
+    val openDownloads: () -> Unit,
     val openSearch: () -> Unit,
     val back: () -> Unit,
 )
@@ -163,6 +164,8 @@ fun TrackRow(
     onEnqueue: (last: Boolean) -> Unit,
     number: Int? = null,
     showAlbum: Boolean = false,
+    /** On the device (or downloading). */
+    downloaded: com.takeoutfm.media.offline.CacheStatus? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
     ListItem(
@@ -186,6 +189,7 @@ fun TrackRow(
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                DownloadBadge(downloaded)
                 if (track.etag.isNotEmpty()) {
                     IconButton(onClick = { onFavorite(!favorite) }) {
                         Icon(

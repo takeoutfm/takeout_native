@@ -259,6 +259,8 @@ internal fun QueueItem.toMediaItem(): MediaItem =
     MediaItem.Builder()
         .setMediaId(etag)
         .setUri(uri)
+        // Kept on the device by ETag (see TakeoutMediaCache); streams have none.
+        .setCustomCacheKey(etag.ifEmpty { null })
         .setRequestMetadata(
             MediaItem.RequestMetadata.Builder().setMediaUri(Uri.parse(uri)).build()
         )

@@ -17,6 +17,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.progress.TakeoutProgress
@@ -37,6 +38,9 @@ abstract class TakeoutMusicService : MediaSessionService() {
     /** Where songs heard on live streams are recorded; null to not keep them. */
     protected open val streamHistory: StreamHistory? = null
 
+    /** Tracks kept on the device (downloads, Playback Caching); null to always stream. */
+    protected open val mediaCache: TakeoutMediaCache? = null
+
     /** Where podcast episodes' positions are saved; null to not save them. */
     protected open val progress: TakeoutProgress? = null
 
@@ -50,7 +54,7 @@ abstract class TakeoutMusicService : MediaSessionService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-        val player = playerFactory.builder()
+        val player = playerFactory.builder(mediaCache)
             // Music: pauses for calls, other apps' audio and video in this app; resumes after
             // short interruptions.
             .setAudioAttributes(

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -134,6 +135,7 @@ fun SearchScreen(main: MainViewModel, nav: MusicNav, videoNav: com.takeoutfm.mob
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val favorites by main.favoriteEtags.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) { if (query.isEmpty()) focus.requestFocus() }
@@ -184,6 +186,7 @@ fun SearchScreen(main: MainViewModel, nav: MusicNav, videoNav: com.takeoutfm.mob
                     TrackRow(
                         track = track,
                         favorite = track.etag in favorites,
+                        downloaded = downloads[track.etag]?.status,
                         onClick = { main.playTrack(track.id) },
                         onFavorite = { main.setTrackFavorite(track.etag, it) },
                         onEnqueue = { last -> main.enqueueTrack(track.id, last) },
@@ -286,6 +289,7 @@ class QueueViewModel @Inject constructor(
 @Composable
 fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val route = viewModel.route
     val play = { index: Int ->
         if (route.kind == QueueKind.Favorites) main.playFavorites(index) else main.playPlaylist(route.id, index)
@@ -298,9 +302,14 @@ fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = 
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item {
-                Button(onClick = { play(0) }, modifier = Modifier.padding(16.dp)) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(stringResource(R.string.play_all), modifier = Modifier.padding(start = 6.dp))
+                androidx.compose.foundation.layout.Row(Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Button(onClick = { play(0) }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.play_all), modifier = Modifier.padding(start = 6.dp))
+                    }
+                    IconButton(onClick = { if (route.kind == QueueKind.Favorites) main.downloadFavorites() else main.downloadPlaylist(route.id) }) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.Download, contentDescription = stringResource(R.string.download))
+                    }
                 }
             }
             itemsIndexed(queue.items) { index, item ->
@@ -308,6 +317,7 @@ fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = 
                     leadingContent = { Art(item.imageUri, item.album, Modifier.size(48.dp), RoundedCornerShape(6.dp)) },
                     headlineContent = { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     supportingContent = { Text(listOf(item.artist, item.album).filter { it.isNotEmpty() }.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    trailingContent = { DownloadBadge(downloads[item.etag]?.status) },
                     modifier = Modifier.clickable { play(index) },
                 )
             }

@@ -174,4 +174,19 @@
     <string name="subscribed">Subscribed</string>
     <string name="complete">Complete</string>
     <string name="episodes">Episodes</string>
+
+    <!-- Offline -->
+    <string name="downloads">Downloads</string>
+    <string name="download">Download</string>
+    <string name="downloading">Downloading…</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="download_started">Downloading for offline listening</string>
+    <string name="delete_download">Delete download</string>
+    <string name="delete_all_downloads">Delete all</string>
+    <string name="delete_all_question">Delete every download? This frees %1$s.</string>
+    <string name="delete">Delete</string>
+    <string name="downloads_used">%1$s on this device</string>
+    <string name="no_downloads">Download albums, playlists and podcast episodes to play them offline.</string>
+    <string name="setting_auto_cache_title">Playback Caching</string>
+    <string name="setting_auto_cache_subtitle">Keep what you play on this device, so it plays again offline</string>
 </resources>

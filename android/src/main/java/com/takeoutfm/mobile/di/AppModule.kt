@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import com.takeoutfm.media.MusicPlayer
 import com.takeoutfm.media.TakeoutPlayerFactory
+import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.mobile.BuildConfig
 import com.takeoutfm.mobile.playback.MusicService
 import com.takeoutfm.shared.api.TakeoutApi
@@ -123,6 +124,14 @@ object AppModule {
         @ApplicationContext context: Context,
         session: TakeoutSession,
     ): TakeoutPlayerFactory = TakeoutPlayerFactory(context, session, BuildConfig.DEBUG)
+
+    @Provides
+    @Singleton
+    fun mediaCache(
+        @ApplicationContext context: Context,
+        playerFactory: TakeoutPlayerFactory,
+        settings: PlaySettings,
+    ): TakeoutMediaCache = TakeoutMediaCache(context, playerFactory.upstream) { settings.playbackCaching.value }
 
     @Provides
     @Singleton

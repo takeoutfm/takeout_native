@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.DownloadForOffline
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Button
@@ -95,6 +96,7 @@ class SettingsViewModel @Inject constructor(
 @Composable
 fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val reportPlays by viewModel.settings.reportPlays.collectAsStateWithLifecycle()
+    val playbackCaching by viewModel.settings.playbackCaching.collectAsStateWithLifecycle()
     val submitListens by viewModel.settings.submitListens.collectAsStateWithLifecycle()
     val user by viewModel.user.collectAsStateWithLifecycle()
     Scaffold(
@@ -120,6 +122,13 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 supportingContent = { Text(viewModel.endpoint) },
             )
             HorizontalDivider()
+            SwitchItem(
+                icon = Icons.Filled.DownloadForOffline,
+                title = stringResource(R.string.setting_auto_cache_title),
+                subtitle = stringResource(R.string.setting_auto_cache_subtitle),
+                checked = playbackCaching,
+                onChange = viewModel.settings::setPlaybackCaching,
+            )
             SwitchItem(
                 icon = Icons.Filled.Timeline,
                 title = stringResource(R.string.setting_track_activity_title),

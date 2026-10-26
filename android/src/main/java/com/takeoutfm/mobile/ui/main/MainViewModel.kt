@@ -1,6 +1,13 @@
 package com.takeoutfm.mobile.ui.main
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.media3.exoplayer.offline.DownloadService
+import com.takeoutfm.media.offline.DownloadedItem
+import com.takeoutfm.media.offline.TakeoutMediaCache
+import com.takeoutfm.shared.music.QueueItem
+import com.takeoutfm.shared.settings.PlaySettings
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.media.MusicPlayer
 import com.takeoutfm.media.NowPlaying
@@ -34,6 +41,9 @@ enum class ArtistType { All, Favorite }
  */
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val mediaCache: TakeoutMediaCache,
+    private val settings: PlaySettings,
     private val player: MusicPlayer,
     private val music: TakeoutMusicRepository,
     private val history: MusicHistory,
@@ -43,6 +53,9 @@ class MainViewModel @Inject constructor(
 
     /** ETags of favorite tracks, for ♥ buttons. */
     val favoriteEtags: StateFlow<Set<String>> = music.favoriteTrackEtags
+
+    /** Tracks on the device (downloaded or downloading), by ETag. */
+    val downloads: StateFlow<Map<String, DownloadedItem>> = mediaCache.items
 
     private val _messages = MutableSharedFlow<Int>(extraBufferCapacity = 4)
     val messages: SharedFlow<Int> = _messages.asSharedFlow()
@@ -120,13 +133,58 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val queue = load()
-                if (queue.items.isEmpty()) _messages.tryEmit(R.string.nothing_to_play) else player.play(queue)
+                if (queue.items.isEmpty()) {
+                    _messages.tryEmit(R.string.nothing_to_play)
+                } else {
+                    player.play(queue)
+                    // Playback Caching: the whole queue downloads (as the Flutter app does).
+                    if (settings.playbackCaching.value) addDownloads(queue, notify = false)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _messages.tryEmit(R.string.cant_play)
             }
         }
+    }
+
+    fun downloadAlbum(albumId: String) = download { music.albumQueue(albumId) }
+    fun downloadPlaylist(playlistId: String) = download { music.playlistQueue(playlistId) }
+    fun downloadFavorites() = download { music.favoritesQueue() }
+
+    fun downloadEpisode(title: String, imageUri: String, episodes: List<PodcastEpisode>, index: Int) = download {
+        val queue = podcasts.episodesQueue(title, imageUri, episodes, index)
+        queue.copy(items = listOfNotNull(queue.items.getOrNull(index)))
+    }
+
+    /** Plays downloaded [items] from [index] (works offline). */
+    fun playDownloads(title: String, items: List<QueueItem>, index: Int) =
+        play { MusicQueue(title = title, creator = "", imageUri = "", items = items, startIndex = index) }
+
+    fun removeDownloads(etags: Collection<String>) {
+        etags.forEach { DownloadService.sendRemoveDownload(context, com.takeoutfm.mobile.playback.DownloadService::class.java, it, false) }
+    }
+
+    private fun download(load: suspend () -> MusicQueue) {
+        viewModelScope.launch {
+            try {
+                addDownloads(load(), notify = true)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _messages.tryEmit(R.string.cant_load)
+            }
+        }
+    }
+
+    private fun addDownloads(queue: MusicQueue, notify: Boolean) {
+        val group = queue.location.ifEmpty { queue.title }
+        val requests = mediaCache.requests(queue.items, group, queue.title)
+            .filter { it.id !in mediaCache.items.value }
+        requests.forEach {
+            DownloadService.sendAddDownload(context, com.takeoutfm.mobile.playback.DownloadService::class.java, it, false)
+        }
+        if (notify && requests.isNotEmpty()) _messages.tryEmit(R.string.download_started)
     }
 
     private val _artistType = MutableStateFlow(ArtistType.All)

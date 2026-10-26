@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // Android playback shared by the Takeout apps: Media3 player setup, the background music
@@ -24,5 +25,6 @@ dependencies {
     api(project(":shared"))
     api(libs.androidx.media3.exoplayer)
     api(libs.androidx.media3.session)
+    implementation(libs.kotlinx.serialization)
     testImplementation(libs.junit4)
 }

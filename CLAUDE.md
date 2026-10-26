@@ -8,7 +8,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 
 | Module | What |
 |---|---|
-| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–5 of `PLAN.md` (skeleton, music, history/activity, video, podcasts). |
+| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–6 of `PLAN.md` (skeleton, music, history/activity, video, podcasts, downloads). |
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
 | `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video track choices (`video/Tracks.kt`: audio/subtitle/speed options, best audio track). Plain constructors, no Hilt. |
@@ -76,6 +76,11 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   episode GUID). Episodes play in the music service as `QueueItem(podcast = true)`:
   `PodcastProgress` saves their position, `ListenTracker` skips them. Subscribe changes the
   user's real subscriptions.
+- Offline: `:android-media` `offline/TakeoutMediaCache` (cache keyed by ETag; playback reads it,
+  writes only with Playback Caching on; Media3 downloads into the same cache) and
+  `TakeoutDownloadService` (the app's `playback/DownloadService`). `MainViewModel` adds/removes
+  downloads; `DownloadsScreen` lists them; `DownloadBadge` shows ✓ / progress. The TV doesn't
+  pass a cache, so it always streams.
 
 ## TV architecture
 

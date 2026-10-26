@@ -110,6 +110,7 @@ fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, vid
                         onPlaylists = nav.openPlaylists,
                         onRecentTracks = nav.openRecentTracks,
                         onActivity = nav.openActivity,
+                        onDownloads = nav.openDownloads,
                         onSettings = onSettings,
                         onAbout = { about = true },
                         onLogout = viewModel::logout,
@@ -160,6 +161,7 @@ private fun HomeMenu(
     onPlaylists: () -> Unit,
     onRecentTracks: () -> Unit,
     onActivity: () -> Unit,
+    onDownloads: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onLogout: () -> Unit,
@@ -177,6 +179,7 @@ private fun HomeMenu(
                 R.string.activity to onActivity,
                 R.string.playlists to onPlaylists,
                 R.string.settings_label to onSettings,
+                R.string.downloads to onDownloads,
                 R.string.about_label to onAbout,
                 R.string.logout_label to onLogout,
             ).forEach { (label, action) ->

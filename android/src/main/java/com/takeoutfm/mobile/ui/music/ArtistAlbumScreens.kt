@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -108,6 +110,7 @@ class ArtistViewModel @Inject constructor(
 fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val favorites by main.favoriteEtags.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val details = (state as? Load.Loaded)?.value
     MusicPage(
         title = details?.artist?.name.orEmpty(),
@@ -146,6 +149,7 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
                     TrackRow(
                         track = track,
                         favorite = track.etag in favorites,
+                        downloaded = downloads[track.etag]?.status,
                         onClick = { main.playArtist(id, ArtistMix.Popular, index) },
                         onFavorite = { main.setTrackFavorite(track.etag, it) },
                         onEnqueue = { last -> main.enqueueTrack(track.id, last) },
@@ -225,6 +229,7 @@ class AlbumViewModel @Inject constructor(
 fun AlbumScreen(main: MainViewModel, nav: MusicNav, viewModel: AlbumViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val favorites by main.favoriteEtags.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val details = (state as? Load.Loaded)?.value
     MusicPage(title = details?.album?.name.orEmpty(), onBack = nav.back) { padding ->
         if (details == null) {
@@ -257,6 +262,14 @@ fun AlbumScreen(main: MainViewModel, nav: MusicNav, viewModel: AlbumViewModel = 
                         Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 6.dp))
                     }
+                    val allDownloaded = details.tracks.isNotEmpty() &&
+                        details.tracks.all { downloads[it.etag]?.status == com.takeoutfm.media.offline.CacheStatus.Cached }
+                    IconButton(onClick = { main.downloadAlbum(id) }, enabled = !allDownloaded) {
+                        Icon(
+                            if (allDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                            contentDescription = stringResource(if (allDownloaded) R.string.downloaded else R.string.download),
+                        )
+                    }
                 }
             }
             var disc = -1
@@ -269,6 +282,7 @@ fun AlbumScreen(main: MainViewModel, nav: MusicNav, viewModel: AlbumViewModel = 
                     TrackRow(
                         track = track,
                         favorite = track.etag in favorites,
+                        downloaded = downloads[track.etag]?.status,
                         onClick = { main.playAlbum(id, index) },
                         onFavorite = { main.setTrackFavorite(track.etag, it) },
                         onEnqueue = { last -> main.enqueueTrack(track.id, last) },

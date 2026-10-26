@@ -5,6 +5,8 @@
     <!-- Music keeps playing in the background (MusicService). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Downloads keep going in the background (DownloadService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -40,6 +42,16 @@
             android:resizeableActivity="true"
             android:screenOrientation="sensorLandscape"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden" />
+
+        <service
+            android:name=".playback.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync">
+            <intent-filter>
+                <action android:name="androidx.media3.exoplayer.downloadService.action.RESTART" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".playback.MusicService"

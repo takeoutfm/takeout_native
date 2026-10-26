@@ -196,6 +196,7 @@ class RecentTracksViewModel @Inject constructor(music: TakeoutMusicRepository) :
 fun RecentTracksScreen(main: MainViewModel, nav: MusicNav, viewModel: RecentTracksViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val favorites by main.favoriteEtags.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val title = stringResource(R.string.recent_tracks)
     val tracks = (state as? Load.Loaded)?.value.orEmpty()
     MusicPage(
@@ -212,6 +213,7 @@ fun RecentTracksScreen(main: MainViewModel, nav: MusicNav, viewModel: RecentTrac
                 TrackRow(
                     track = track,
                     favorite = track.etag in favorites,
+                        downloaded = downloads[track.etag]?.status,
                     onClick = { main.playTracks(title, tracks, index) },
                     onFavorite = { main.setTrackFavorite(track.etag, it) },
                     onEnqueue = { last -> main.enqueueTrack(track.id, last) },

@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -93,6 +94,7 @@ class PodcastViewModel @Inject constructor(
 @Composable
 fun PodcastScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
     val details = (state as? Load.Loaded)?.value
     MusicPage(title = details?.series?.title.orEmpty(), onBack = nav.back) { padding ->
@@ -145,8 +147,18 @@ fun PodcastScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastViewMode
                         }
                     },
                     trailingContent = {
-                        if (e.progress == EpisodeProgress.Complete) {
-                            Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.complete), tint = MaterialTheme.colorScheme.primary)
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            if (e.progress == EpisodeProgress.Complete) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.complete), tint = MaterialTheme.colorScheme.primary)
+                            }
+                            val status = downloads[e.eid]?.status
+                            if (status != null) {
+                                DownloadBadge(status, Modifier.padding(start = 8.dp))
+                            } else {
+                                androidx.compose.material3.IconButton(onClick = { main.downloadEpisode(series.title, series.imageUri, details.episodes, index) }) {
+                                    Icon(Icons.Filled.Download, contentDescription = stringResource(R.string.download))
+                                }
+                            }
                         }
                     },
                     leadingContent = if (e.imageUri.isNotEmpty() && e.imageUri != series.imageUri) {

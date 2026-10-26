@@ -12,6 +12,7 @@ import com.takeoutfm.mobile.ui.music.ActivityScreen
 import com.takeoutfm.mobile.ui.music.AlbumScreen
 import com.takeoutfm.mobile.ui.music.RecentTracksScreen
 import com.takeoutfm.mobile.ui.music.ArtistScreen
+import com.takeoutfm.mobile.ui.music.DownloadsScreen
 import com.takeoutfm.mobile.ui.music.ArtistsScreen
 import com.takeoutfm.mobile.ui.music.MusicNav
 import com.takeoutfm.mobile.ui.music.PlayerScreen
@@ -40,6 +41,7 @@ import kotlinx.serialization.Serializable
 @Serializable object PlaylistsRoute
 @Serializable object RecentTracksRoute
 @Serializable object ActivityRoute
+@Serializable object DownloadsRoute
 @Serializable data class ArtistRoute(val id: String)
 @Serializable data class AlbumRoute(val id: String)
 @Serializable data class VideoRoute(val id: String)
@@ -71,6 +73,7 @@ fun TabHost(
             openRecentTracks = { navController.navigate(RecentTracksRoute) },
             openActivity = { navController.navigate(ActivityRoute) },
             openPodcast = { navController.navigate(PodcastRoute(it)) },
+            openDownloads = { navController.navigate(DownloadsRoute) },
             openSearch = { navController.navigate(SearchRoute) },
             back = { navController.popBackStack() },
         )
@@ -108,4 +111,5 @@ private fun NavGraphBuilder.musicPages(main: MainViewModel, nav: MusicNav, video
     composable<RecentTracksRoute> { RecentTracksScreen(main, nav) }
     composable<PodcastRoute> { PodcastScreen(main, nav) }
     composable<ActivityRoute> { ActivityScreen(main, nav) }
+    composable<DownloadsRoute> { DownloadsScreen(main, nav) }
 }

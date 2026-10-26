@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–5 done**; phase 6 (offline: downloads, playback caching) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–5 done, 6 mostly** (offline browsing left); phase 7 (Android Auto, Assistant, playlist editing, link code) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -339,8 +339,16 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    Complete), playback through the music service with progress saved by GUID (shared
    `TakeoutPodcastRepository`, `:android-media` `PodcastProgress`; episodes aren't listens),
    resume. Downloads come with phase 6.
-6. **Offline**: downloads (releases, playlists, episodes), playback caching, offline browsing,
-   network policy.
+6. **Offline** — mostly done (2026-10-25): `:android-media` `offline/TakeoutMediaCache`
+   (one `SimpleCache` in `files/media`, keyed by ETag via the media items' custom cache key,
+   `NoOpCacheEvictor`; playback reads it always and writes only while Playback Caching is on;
+   unset-length requests (live streams) bypass it; video isn't cached), Media3
+   `DownloadManager` + `TakeoutDownloadService` (the app's `DownloadService`), downloads of
+   releases, playlists, favorite tracks and podcast episodes, Playback Caching downloading the
+   whole queue when on (off by default, as Flutter), ✓ / progress badges, the Downloads page
+   (groups, play offline, delete one / all with sizes).
+   **Still to do:** the JSON response cache for offline browsing, and the mobile-data policy
+   (question open in 4.11).
 7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.
 8. **Polish & release**: tablets/foldables, accessibility (TalkBack, font scale), Baseline
    Profiles, signing, migration from the Flutter app (if reusing `com.takeoutfm.mobile`).

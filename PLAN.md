@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–6 done** (mobile-data policy open), phase 7 done except Android Auto; phase 7 (Android Auto, Assistant, playlist editing, link code) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–6 done**, phase 7 done except Android Auto; phase 8 (polish & release) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -252,14 +252,14 @@ dashboard top bar, D-pad handling.
       - updates live from `Cache.Listener` span events and `DownloadManager.Listener`.
       UI: ✓ (or offline icon) on cached tracks, a progress ring while downloading, "N of M
       cached" / ✓ for albums, playlists and episodes; nothing for live streams.
-- [ ] Offline playback from downloads; network policy (streaming / downloads / artwork on
-      mobile data) — the Flutter settings for these are disabled today ❓.
+- [x] Offline playback from downloads. Mobile-data limits (streaming / downloads / artwork) are
+      **not wanted** (decided 2026-10-26: the old Flutter settings are dropped).
 - [ ] JSON response cache with TTL so browsing works offline.
 - [ ] Offline progress + listen queues (from TV).
 
 ### 4.12 Settings
 - [ ] Playback caching; Track Activity (report plays to Takeout); ListenBrainz token +
-      enable (paste on phone; validate); network policy.
+      enable (paste on phone; validate).
 
 ### 4.13 Platform integration
 - [ ] **Android Auto**: browse music, podcasts, radio (recent stations first), search.
@@ -352,7 +352,7 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    can't reach the server answers from it (refusals still fail); cleared on sign-out. Phone
    only for now (the TV keeps its own saved index). Checked on the emulator with Wi-Fi and
    data off.
-   **Still to do:** the mobile-data policy (question open in 4.11).
+   No mobile-data limits (decided 2026-10-26).
 7. **Platform**: Android Auto, Assistant intents/app actions, playlist editing, link code.
    - [x] Assistant (2026-10-25): `MEDIA_PLAY_FROM_SEARCH` (artist / album / song focus, or the
          server's best match; empty = resume) and the Flutter app's `com.takeoutfm.action.*`

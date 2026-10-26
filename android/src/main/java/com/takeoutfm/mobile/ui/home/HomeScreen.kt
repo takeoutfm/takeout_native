@@ -48,10 +48,12 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.takeoutfm.mobile.BuildConfig
 import com.takeoutfm.mobile.R
+import com.takeoutfm.mobile.ui.common.BarTitle
 import com.takeoutfm.mobile.ui.common.LoadingOrEmpty
 import com.takeoutfm.mobile.ui.common.TileGrid
 import com.takeoutfm.mobile.ui.main.MainViewModel
@@ -92,16 +94,7 @@ fun HomeScreen(
                         Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_label))
                     }
                 },
-                title = {
-                    Column {
-                        Text(stringResource(selection.type.title))
-                        Text(
-                            stringResource(selection.subtype.label),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
+                title = { BarTitle(stringResource(selection.type.title), stringResource(selection.subtype.label)) },
                 actions = {
                     types.forEach { type ->
                         val selected = type == selection.type

@@ -20,6 +20,7 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 
 ```
 ./gradlew :android:assembleDebug            # phone app debug APK (com.takeoutfm.mobile.debug)
+./gradlew :android:assembleRelease          # signed with android/key.properties if present, else debug
 ./gradlew :tv:assembleDebug                 # debug APK
 ./gradlew :tv:assembleRelease               # minified release APK (debug-signed)
 ./gradlew :tv:testDebugUnitTest             # TV JVM unit tests (JUnit 4)

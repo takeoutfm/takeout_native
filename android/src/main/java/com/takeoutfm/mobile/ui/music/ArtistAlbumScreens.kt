@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,7 +41,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -172,13 +177,26 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
 
 private const val PopularShown = 10
 
+/** The tallest a page header (artist or video backdrop) gets. */
+val HeaderMaxHeight = 360.dp
+
+/** Full width, 16:9 on phones but no taller than [HeaderMaxHeight] (tablets, landscape); clipped. */
+fun Modifier.headerSize(): Modifier = this
+    .fillMaxWidth()
+    .layout { measurable, constraints ->
+        val width = constraints.maxWidth
+        val height = minOf(width * 9 / 16, HeaderMaxHeight.roundToPx())
+        val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width, height))
+        layout(width, height) { placeable.place(0, 0) }
+    }
+    .clipToBounds()
+
 /** The artist's background image with the name over a dark fade. */
 @Composable
 private fun Header(imageUri: String, title: String, subtitle: String) {
     Box(
         Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+            .headerSize()
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
         if (imageUri.isNotEmpty()) {
@@ -242,10 +260,25 @@ fun AlbumScreen(main: MainViewModel, nav: MusicNav, viewModel: AlbumViewModel = 
         val id = viewModel.id
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item {
-                Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Large fonts: the title goes under the cover, where it has the full width.
+                val stacked = LocalDensity.current.fontScale > 1.3f
+                val header = @Composable { content: @Composable () -> Unit ->
+                    if (stacked) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+                    } else {
+                        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) { content() }
+                    }
+                }
+                header {
                     Art(album.coverUri, album.name, Modifier.size(160.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(album.name, style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        // Whole words only, even when large fonts leave little room beside the cover.
+                        Text(
+                            album.name,
+                            style = MaterialTheme.typography.titleLarge.copy(hyphens = Hyphens.None, lineBreak = LineBreak.Heading),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Text(
                             album.artist,
                             style = MaterialTheme.typography.bodyLarge,

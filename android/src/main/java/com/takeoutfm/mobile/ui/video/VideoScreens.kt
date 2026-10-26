@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import com.takeoutfm.mobile.ui.music.headerSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -252,7 +253,11 @@ private fun facts(d: VideoDetails): String = listOfNotNull(
 
 @Composable
 private fun Backdrop(details: VideoDetails) {
-    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(MaterialTheme.colorScheme.surfaceVariant)) {
+    Box(
+        Modifier
+            .headerSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
         if (details.backdropUri.isNotEmpty()) {
             AsyncImage(details.backdropUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }

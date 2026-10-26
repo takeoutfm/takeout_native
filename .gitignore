@@ -8,3 +8,7 @@
 /.idea/
 local.properties
 .kotlin
+# Release signing (see android/build.gradle.kts)
+key.properties
+*.jks
+*.keystore

@@ -55,16 +55,7 @@ fun TabPage(
             TopAppBar(
                 scrollBehavior = scrollBehavior,
                 title = {
-                    Column {
-                        Text(title)
-                        if (subtitle != null) {
-                            Text(
-                                subtitle,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    com.takeoutfm.mobile.ui.common.BarTitle(title, subtitle)
                 },
             )
         },

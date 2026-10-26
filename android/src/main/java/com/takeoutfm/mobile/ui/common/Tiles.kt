@@ -88,7 +88,7 @@ fun TileItem(tile: Tile, onClick: (Tile) -> Unit) {
     }
 }
 
-/** Artwork, or the title on a tinted tile when there's none. */
+/** Artwork, or [title] on a tinted tile when there's none. */
 @Composable
 fun Art(uri: String, title: String, modifier: Modifier, shape: RoundedCornerShape = RoundedCornerShape(8.dp)) {
     Box(
@@ -109,7 +109,8 @@ fun Art(uri: String, title: String, modifier: Modifier, shape: RoundedCornerShap
         } else {
             AsyncImage(
                 model = uri,
-                contentDescription = title,
+                // Decorative: the title is always shown beside it, so TalkBack reads it once.
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )

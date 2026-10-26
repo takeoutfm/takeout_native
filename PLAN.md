@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–7 done** (Android Auto not yet seen in a car UI); phase 8 (polish & release) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–8 done** (Android Auto not yet seen in a car UI; release upgrade over the Flutter app untested); phase 9 (Wear OS) next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -375,8 +375,20 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          `/music/releases/{id}/tracks`) / `removeFromPlaylist` / `deletePlaylist`, mock-tested.
    - [x] Link (2026-10-25): approve another device's code with this account (`POST /api/link`,
          shared `TakeoutApi.link`, Home menu → Link).
-8. **Polish & release**: tablets/foldables, accessibility (TalkBack, font scale), Baseline
-   Profiles, signing, migration from the Flutter app (if reusing `com.takeoutfm.mobile`).
+8. **Polish & release** — done (2026-10-26) except installing over the Flutter app:
+   - [x] Signing: release builds use `android/key.properties` (same keys as the Flutter app's,
+         not committed; `.gitignore` covers keys) or fall back to the debug key; target SDK 36
+         like the Flutter app.
+   - [x] Tablets / foldables (checked at 1600×2560 and 2560×1600): rail, wider grids; page
+         headers (artist, video) are 16:9 but capped at 360dp (`headerSize()`).
+   - [x] Accessibility: no unlabeled tappable elements on the main screens (uiautomator
+         scan); artwork is decorative (titles beside it are read); at 2× font, app bar titles
+         are one line with the subtitle beside, and the album title moves under the cover.
+         Home's title still truncates at 2× because of the five icons.
+   - [x] Startup: `profileinstaller` ships the libraries' baseline profiles; no app-specific
+         generated profile (a generator run can't sign in).
+   - [ ] Install over the Flutter app with the real key (needs `key.properties`), check the
+         upgrade on a device and that it starts signed out (Flutter's tokens aren't migrated).
 9. **Wear OS**: a standalone watch app (`wear/`) on `shared` + `android-media`:
    - sign-in by link code / device code from the phone or TV (no typing on the watch);
    - browse Recent, Radio, favorites, playlists and downloads with Wear Compose Material 3

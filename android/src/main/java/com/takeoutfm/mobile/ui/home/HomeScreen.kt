@@ -63,6 +63,7 @@ import com.takeoutfm.mobile.ui.common.TileGrid
 import com.takeoutfm.mobile.ui.main.MainViewModel
 import com.takeoutfm.mobile.ui.music.MusicNav
 import com.takeoutfm.mobile.ui.music.QueueKind
+import com.takeoutfm.mobile.ui.video.GenreGrid
 import com.takeoutfm.mobile.ui.video.VideoNav
 import kotlinx.coroutines.launch
 
@@ -146,6 +147,8 @@ fun HomeScreen(
                     loading = content.loading,
                     empty = stringResource(if (content.failed) R.string.cant_load else R.string.nothing_here),
                 )
+            } else if (content.tiles.first().id.startsWith(GenrePrefix)) {
+                GenreGrid(content.tiles) { videoNav.openGenre(it.id.removePrefix(GenrePrefix)) }
             } else {
                 TileGrid(
                     content.tiles,
@@ -153,7 +156,6 @@ fun HomeScreen(
                         when {
                             tile.id.startsWith("al-") -> nav.openAlbum(tile.id)
                             tile.id.startsWith("ps-") -> nav.openPodcast(tile.id)
-                            tile.id.startsWith(GenrePrefix) -> videoNav.openGenre(tile.id.removePrefix(GenrePrefix))
                             else -> videoNav.openVideo(tile.id)
                         }
                     },

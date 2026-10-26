@@ -19,9 +19,11 @@ package com.takeoutfm.tv.presentation.screens.categories
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.takeoutfm.tv.data.entities.MovieCategoryList
@@ -51,6 +54,7 @@ import com.takeoutfm.tv.presentation.common.MovieCard
 import com.takeoutfm.tv.presentation.common.TileGridSkeleton
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
 import com.takeoutfm.tv.presentation.utils.GradientBg
+import com.takeoutfm.tv.presentation.utils.genreIcon
 import com.takeoutfm.tv.presentation.utils.rememberFocus
 import com.takeoutfm.tv.presentation.utils.rememberFocusMemory
 import com.takeoutfm.tv.presentation.utils.restoreFocus
@@ -140,18 +144,28 @@ private fun Catalog(
                         targetValue = if (isFocused) .6f else 0.2f,
                         label = ""
                     )
-                    val textColor = if (isFocused) Color.White else Color.White
+                    // Focus brightens the (light, 300-tone) gradient, so white no longer reads.
+                    val textColor = if (isFocused) Color.Black.copy(alpha = 0.87f) else Color.White
 
                     Box(contentAlignment = Alignment.Center) {
                         Box(modifier = Modifier.alpha(itemAlpha)) {
                             GradientBg()
                         }
-                        Text(
-                            text = movieCategory.name,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = textColor,
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                genreIcon(movieCategory.name),
+                                contentDescription = null,
+                                tint = textColor,
+                                modifier = Modifier.size(32.dp),
                             )
-                        )
+                            Text(
+                                text = movieCategory.name,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = textColor,
+                                ),
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
                     }
                 }
             }

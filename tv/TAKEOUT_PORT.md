@@ -156,6 +156,11 @@ opens its details page (Resume / Start over). The row refreshes whenever Home is
 is hidden when empty. How far back it looks is a per-device setting on the Profile screen
 (Continue Watching section): 7, 14, **30** (default), 90 days or All time.
 
+### Genres
+A 4-column grid of genre tiles (`CategoriesScreen`), each with the Flutter app's icon for the
+genre above its name (`presentation/utils/GenreIcons.kt`, a film reel for unknown genres; the
+phone app's `ui/video/Genres.kt` has the same list).
+
 ### Poster grids (Movies, Shows, genre pages, recommendation tabs)
 `PosterGrid`: 6 columns, focused poster shows its title, dashboard top bar hides on scroll.
 Movies, Shows and genre pages are A–Z by the server's `SortTitle` / `SortName` (falling back to

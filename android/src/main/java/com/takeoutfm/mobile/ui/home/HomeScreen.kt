@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.outlined.Movie
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -50,6 +52,9 @@ import com.takeoutfm.mobile.BuildConfig
 import com.takeoutfm.mobile.R
 import com.takeoutfm.mobile.ui.common.LoadingOrEmpty
 import com.takeoutfm.mobile.ui.common.TileGrid
+import com.takeoutfm.mobile.ui.main.MainViewModel
+import com.takeoutfm.mobile.ui.music.MusicNav
+import com.takeoutfm.mobile.ui.music.QueueKind
 import kotlinx.coroutines.launch
 
 /**
@@ -58,23 +63,25 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onSettings: () -> Unit) {
+fun HomeScreen(viewModel: HomeViewModel, main: MainViewModel, nav: MusicNav, onSettings: () -> Unit) {
     val types by viewModel.types.collectAsStateWithLifecycle()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val content by viewModel.content.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     var about by remember { mutableStateOf(false) }
-    val comingSoon = stringResource(R.string.coming_soon)
+    val context = LocalContext.current
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = nav.openSearch) {
+                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_label))
+                    }
+                },
                 title = {
                     Column {
                         Text(stringResource(selection.type.title))
@@ -94,6 +101,10 @@ fun HomeScreen(viewModel: HomeViewModel, onSettings: () -> Unit) {
                     }
                     HomeMenu(
                         onReload = viewModel::reload,
+                        onFavoriteTracks = {
+                            nav.openQueue(QueueKind.Favorites, "", context.getString(R.string.favorite_tracks))
+                        },
+                        onPlaylists = nav.openPlaylists,
                         onSettings = onSettings,
                         onAbout = { about = true },
                         onLogout = viewModel::logout,
@@ -113,7 +124,10 @@ fun HomeScreen(viewModel: HomeViewModel, onSettings: () -> Unit) {
                     empty = stringResource(if (content.failed) R.string.cant_load else R.string.nothing_here),
                 )
             } else {
-                TileGrid(content.tiles, onClick = { scope.launch { snackbar.showSnackbar(comingSoon) } })
+                TileGrid(
+                    content.tiles,
+                    onClick = { tile -> if (tile.id.startsWith("al-")) nav.openAlbum(tile.id) else main.comingSoon() },
+                )
             }
         }
     }
@@ -127,7 +141,14 @@ private fun MediaType.icon(selected: Boolean): ImageVector = when (this) {
 }
 
 @Composable
-private fun HomeMenu(onReload: () -> Unit, onSettings: () -> Unit, onAbout: () -> Unit, onLogout: () -> Unit) {
+private fun HomeMenu(
+    onReload: () -> Unit,
+    onFavoriteTracks: () -> Unit,
+    onPlaylists: () -> Unit,
+    onSettings: () -> Unit,
+    onAbout: () -> Unit,
+    onLogout: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
@@ -136,6 +157,8 @@ private fun HomeMenu(onReload: () -> Unit, onSettings: () -> Unit, onAbout: () -
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOf(
                 R.string.refresh_label to onReload,
+                R.string.favorite_tracks to onFavoriteTracks,
+                R.string.playlists to onPlaylists,
                 R.string.settings_label to onSettings,
                 R.string.about_label to onAbout,
                 R.string.logout_label to onLogout,

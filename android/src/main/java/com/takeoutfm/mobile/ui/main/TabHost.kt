@@ -1,26 +1,39 @@
 package com.takeoutfm.mobile.ui.main
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.takeoutfm.mobile.ui.home.HomeScreen
 import com.takeoutfm.mobile.ui.home.HomeViewModel
+import com.takeoutfm.mobile.ui.music.AlbumScreen
+import com.takeoutfm.mobile.ui.music.ArtistScreen
 import com.takeoutfm.mobile.ui.music.ArtistsScreen
+import com.takeoutfm.mobile.ui.music.MusicNav
 import com.takeoutfm.mobile.ui.music.PlayerScreen
+import com.takeoutfm.mobile.ui.music.PlaylistsScreen
+import com.takeoutfm.mobile.ui.music.QueueScreen
 import com.takeoutfm.mobile.ui.music.RadioScreen
 import com.takeoutfm.mobile.ui.music.RecentScreen
+import com.takeoutfm.mobile.ui.music.SearchScreen
 import com.takeoutfm.mobile.ui.settings.SettingsScreen
 import kotlinx.serialization.Serializable
 
-// Routes. Each tab has its own NavHost (and so its own back stack); pages any tab can open
-// are added to every tab's graph as they arrive.
+// Routes. Each tab has its own NavHost (and so its own back stack); the pages any tab can
+// open (artists, albums, search, playlists) are in every tab's graph.
 @Serializable object HomeRoute
 @Serializable object ArtistsRoute
 @Serializable object RecentRoute
 @Serializable object RadioRoute
 @Serializable object PlayerRoute
 @Serializable object SettingsRoute
+@Serializable object SearchRoute
+@Serializable object PlaylistsRoute
+@Serializable data class ArtistRoute(val id: String)
+@Serializable data class AlbumRoute(val id: String)
+@Serializable data class QueueRoute(val kind: String, val id: String, val title: String)
 
 @Composable
 fun TabHost(
@@ -36,14 +49,33 @@ fun TabHost(
         Tab.Radio -> RadioRoute
         Tab.Player -> PlayerRoute
     }
+    val nav = remember(navController) {
+        MusicNav(
+            openArtist = { navController.navigate(ArtistRoute(it)) },
+            openAlbum = { navController.navigate(AlbumRoute(it)) },
+            openQueue = { kind, id, title -> navController.navigate(QueueRoute(kind, id, title)) },
+            openPlaylists = { navController.navigate(PlaylistsRoute) },
+            openSearch = { navController.navigate(SearchRoute) },
+            back = { navController.popBackStack() },
+        )
+    }
     NavHost(navController, startDestination = start) {
         composable<HomeRoute> {
-            HomeScreen(homeViewModel, onSettings = { navController.navigate(SettingsRoute) })
+            HomeScreen(homeViewModel, mainViewModel, nav, onSettings = { navController.navigate(SettingsRoute) })
         }
-        composable<ArtistsRoute> { ArtistsScreen(mainViewModel) }
-        composable<RecentRoute> { RecentScreen() }
-        composable<RadioRoute> { RadioScreen() }
+        composable<ArtistsRoute> { ArtistsScreen(mainViewModel, nav) }
+        composable<RecentRoute> { RecentScreen(mainViewModel) }
+        composable<RadioRoute> { RadioScreen(mainViewModel) }
         composable<PlayerRoute> { PlayerScreen(mainViewModel) }
-        composable<SettingsRoute> { SettingsScreen(onBack = { navController.popBackStack() }) }
+        composable<SettingsRoute> { SettingsScreen(onBack = nav.back) }
+        musicPages(mainViewModel, nav)
     }
+}
+
+private fun NavGraphBuilder.musicPages(main: MainViewModel, nav: MusicNav) {
+    composable<ArtistRoute> { ArtistScreen(main, nav) }
+    composable<AlbumRoute> { AlbumScreen(main, nav) }
+    composable<SearchRoute> { SearchScreen(main, nav) }
+    composable<PlaylistsRoute> { PlaylistsScreen(nav) }
+    composable<QueueRoute> { QueueScreen(main, nav) }
 }

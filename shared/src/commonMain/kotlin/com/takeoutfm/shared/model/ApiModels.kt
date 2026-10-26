@@ -240,6 +240,10 @@ data class ApiTvEpisodeView(
 
 @Serializable
 data class ApiSearchView(
+    @SerialName("Artists") val artists: List<ApiArtist>? = null,
+    @SerialName("Releases") val releases: List<ApiRelease>? = null,
+    @SerialName("Tracks") val tracks: List<ApiTrack>? = null,
+    @SerialName("Stations") val stations: List<ApiStation>? = null,
     @SerialName("Movies") val movies: List<ApiMovie>? = null,
     @SerialName("TVEpisodes") val tvEpisodes: List<ApiEpisode>? = null,
     @SerialName("Query") val query: String = "",

@@ -8,7 +8,7 @@ app and later Wear OS / Apple apps; keep it updated as phases land.
 
 | Module | What |
 |---|---|
-| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phase 1 (skeleton) of `PLAN.md` so far. |
+| `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–2 of `PLAN.md` (skeleton, music browse + playback). |
 | `:tv` | Takeout TV — Android TV app built on Google's JetStream Compose-for-TV sample (Compose for TV, Hilt, Media3/ExoPlayer, Coil). Design, every screen's behaviour and known gaps: **`tv/TAKEOUT_PORT.md`**; read it before larger TV changes and keep it updated. |
 | `:tv-benchmark` | Macrobenchmarks / baseline-profile generation for `:tv`. |
 | `:android-media` | Android playback for the apps (`com.takeoutfm.media`): `TakeoutPlayerFactory`, the abstract background `TakeoutMusicService`, `MusicPlayer` (its `MediaController`), `ListenTracker`, video audio-track ranking. Plain constructors, no Hilt. |
@@ -58,7 +58,15 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   Play/pause FAB (with progress ring) when the music player has a queue.
 - `ui/home/`: the media bar (one icon per type the library index has; tapping the shown one
   cycles its lists) over `ui/common/TileGrid` (adaptive columns by max tile width), with the
-  Flutter menu (Reload, Settings, About, Logout so far).
+  Flutter menu (Reload, Favorite Tracks, Playlists, Settings, About, Logout).
+- Music (`ui/music/`): artist, album, search (server query syntax, music + video results),
+  playlists and queue pages are in every tab's graph (`TabHost.musicPages`, `MusicNav`).
+  `MainViewModel` holds all playback actions (play album/mix/station/playlist/Recently Played,
+  play next / add to queue — one track only; the server's track playlist goes on with similar
+  tracks), track favorites and the snackbar messages. Now Playing (`PlayerScreen.kt`) has the
+  queue sheet and live-stream layout; the bottom-bar layout shows the FAB, the rail layout a
+  persistent `MiniPlayer` instead (as the Flutter app in landscape). The manifest allows
+  cleartext http (radio streams, home servers).
 
 ## TV architecture
 

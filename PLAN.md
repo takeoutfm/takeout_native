@@ -6,7 +6,7 @@ to a native app, built on the architecture proven in the Android TV app (`takeou
 shares code with it through a common Kotlin module that is designed from the start to become a
 Kotlin Multiplatform (KMP) module for future native iOS and macOS apps.
 
-Status: **phases 0–1 done**; phase 2 (music browse + playback on the phone) next (see section 5). Decisions are recorded in section 7; items
+Status: **phases 0–2 done**; phase 3 next (see section 5). Decisions are recorded in section 7; items
 still marked ❓ need an answer before the phase that uses them.
 
 ---
@@ -313,8 +313,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    (music: added/new; movies: added/new/recommended/favorites; TV: added), read-only Artists
    (all/favorite), Recent, Radio (streams first), Now Playing placeholder, FAB, Settings
    (Track Activity, ListenBrainz paste + validate), About. Opening titles shows "next update".
-2. **Music browse + background playback**: artists, artist and release pages, search,
-   `MediaLibraryService`, mini player, Now Playing, queue sheet, favorites, playlists (read).
+2. **Music browse + background playback** — done (2026-10-25): artist pages (background,
+   Shuffle / Popular / Radio, popular tracks, releases, singles, similar, ♥), release pages
+   (discs, Play / Shuffle, similar), search (music + video; server query syntax), background
+   playback (`MediaSessionService`; `MediaLibraryService` comes with Android Auto in phase 7),
+   FAB / mini player, Now Playing with queue sheet, repeat, −10/+30, ♥, live layout, play next
+   / add to queue, favorite tracks, playlists (read), notification permission.
 3. **Radio, history, activity**: stations, live streams with ICY, Recent tab, stream history,
    activity stats, play reporting (Takeout + ListenBrainz).
 4. **Video**: movies, TV, person pages, native video player, progress (offline cache).

@@ -181,7 +181,28 @@ class TakeoutMusicRepository(
             .sortedByTitle { it.name }
             .map { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
 
+    // ---- Search ----
+
+    /**
+     * Artists, releases, tracks and stations matching [query], which is passed to the server
+     * as typed so its query syntax works ("artist:name", "guitar:person", plain words).
+     */
+    suspend fun search(query: String): MusicSearchResults {
+        if (query.isBlank()) return MusicSearchResults()
+        val view = api.search(query.trim())
+        return MusicSearchResults(
+            artists = view.artists.orEmpty().map { it.toArtist() },
+            albums = view.releases.orEmpty().map { it.toAlbum() },
+            tracks = view.tracks.orEmpty().map { it.toTrack() },
+            stations = view.stations.orEmpty().map { it.toStation() },
+        )
+    }
+
     // ---- Play queues ----
+
+    /** This track first; the server follows it with similar tracks (a radio from it). */
+    suspend fun trackQueue(trackId: String): MusicQueue =
+        api.playlist("/api/tracks/${numericId(trackId, TrackPrefix)}/playlist").toQueue(urls::absolute)
 
     /** The album's tracks, starting at [startIndex]. */
     suspend fun albumQueue(albumId: String, startIndex: Int = 0): MusicQueue =

@@ -97,6 +97,17 @@ data class AlbumDetails(
     val similar: List<Album>,
 )
 
+/** Music matches for a search (the server's query syntax, e.g. "artist:Beck" or "guitar:…"). */
+data class MusicSearchResults(
+    val artists: List<Artist> = emptyList(),
+    val albums: List<Album> = emptyList(),
+    val tracks: List<Track> = emptyList(),
+    val stations: List<Station> = emptyList(),
+) {
+    val isEmpty: Boolean
+        get() = artists.isEmpty() && albums.isEmpty() && tracks.isEmpty() && stations.isEmpty()
+}
+
 /** One playable entry of a queue, from a spiff playlist. */
 data class QueueItem(
     val title: String,

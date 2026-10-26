@@ -116,6 +116,27 @@ class MusicPlayer(
 
     fun next() = withController { it.seekToNextMediaItem() }
 
+    fun seekTo(positionMs: Long) = withController { it.seekTo(positionMs.coerceAtLeast(0)) }
+
+    /** Connects to the music service, so [state] shows what's already playing in the background. */
+    fun connect() = withController { }
+
+    /**
+     * Plays [items] after the current item (or starts them when nothing's queued); with
+     * [last], adds them to the end instead.
+     */
+    fun enqueue(items: List<QueueItem>, last: Boolean = false) = withController {
+        if (items.isEmpty()) return@withController
+        val media = items.map { item -> item.toMediaItem() }
+        if (it.mediaItemCount == 0) {
+            it.setMediaItems(media)
+            it.prepare()
+            it.play()
+        } else {
+            it.addMediaItems(if (last) it.mediaItemCount else it.currentMediaItemIndex + 1, media)
+        }
+    }
+
     /** To the start of the track, or the previous one when already near its start. */
     fun previous() = withController { it.seekToPrevious() }
 

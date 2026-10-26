@@ -1,8 +1,14 @@
 package com.takeoutfm.mobile.ui.main
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,20 +28,26 @@ import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -44,6 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.takeoutfm.mobile.R
 import com.takeoutfm.mobile.ui.home.HomeViewModel
+import com.takeoutfm.mobile.ui.music.MiniPlayer
 
 /** The bottom tabs, as in the Flutter app (icons only). */
 enum class Tab(
@@ -75,6 +88,13 @@ fun MainScaffold(
     val current = controllers.getValue(tab)
     val entry by current.currentBackStackEntryAsState()
     val atRoot = entry == null || current.previousBackStackEntry == null
+
+    val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        mainViewModel.messages.collect { snackbar.showSnackbar(context.getString(it)) }
+    }
+    NotificationPermission(mainViewModel)
 
     // Back at a tab's first page goes Home, as the Flutter app does.
     BackHandler(enabled = tab != Tab.Home && atRoot) { tab = Tab.Home }
@@ -116,17 +136,29 @@ fun MainScaffold(
             }
         },
     ) {
-        Box(Modifier.fillMaxSize()) {
-            stateHolder.SaveableStateProvider(tab) {
-                TabHost(tab, current, homeViewModel, mainViewModel)
+        val playing by mainViewModel.nowPlaying.collectAsStateWithLifecycle()
+        val rail = layoutType == NavigationSuiteType.NavigationRail
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                stateHolder.SaveableStateProvider(tab) {
+                    TabHost(tab, current, homeViewModel, mainViewModel)
+                }
+                // Phones in portrait: the play/pause button, as the Flutter app; wide layouts
+                // get the persistent mini player below instead.
+                if (!rail) {
+                    PlayPauseFab(
+                        visible = tab != Tab.Player,
+                        mainViewModel = mainViewModel,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                    )
+                }
+                SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
             }
-            PlayPauseFab(
-                visible = tab != Tab.Player,
-                mainViewModel = mainViewModel,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-            )
+            if (rail && tab != Tab.Player) {
+                MiniPlayer(playing, mainViewModel, onOpen = { tab = Tab.Player })
+            }
         }
     }
 }
@@ -156,6 +188,27 @@ private fun PlayPauseFab(visible: Boolean, mainViewModel: MainViewModel, modifie
                 modifier = Modifier.size(52.dp),
                 strokeWidth = 2.dp,
             )
+        }
+    }
+}
+
+/**
+ * The media notification (lock screen and shade controls) needs the notification permission
+ * on Android 13+; ask the first time music starts.
+ */
+@Composable
+private fun NotificationPermission(mainViewModel: MainViewModel) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val playing by mainViewModel.nowPlaying.collectAsStateWithLifecycle()
+    var asked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(playing.hasQueue) {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (playing.hasQueue && !granted && !asked) {
+            asked = true
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }

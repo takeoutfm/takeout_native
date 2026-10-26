@@ -77,14 +77,14 @@ fun TabPage(
 
 /** Artists A–Z, or favorite artists; re-tapping the tab switches. */
 @Composable
-fun ArtistsScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {
+fun ArtistsScreen(main: MainViewModel, nav: MusicNav, viewModel: MusicTabsViewModel = hiltViewModel()) {
     val type by main.artistType.collectAsStateWithLifecycle()
     val artistsFlow = remember(type) { viewModel.artists(type) }
     val artists by artistsFlow.collectAsStateWithLifecycle(initialValue = null)
     TabPage(
         title = stringResource(R.string.nav_artists),
         subtitle = stringResource(if (type == ArtistType.All) R.string.artists_all else R.string.artists_favorite),
-    ) { padding, comingSoon ->
+    ) { padding, _ ->
         val list = artists
         if (list.isNullOrEmpty()) {
             LoadingOrEmpty(list == null, stringResource(R.string.nothing_here), Modifier.padding(padding))
@@ -97,7 +97,7 @@ fun ArtistsScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewM
                         leadingContent = {
                             Art(artist.imageUri, artist.name.take(1), Modifier.size(48.dp), RoundedCornerShape(50))
                         },
-                        modifier = Modifier.clickable(onClick = comingSoon),
+                        modifier = Modifier.clickable { nav.openArtist(artist.id) },
                     )
                 }
             }
@@ -107,15 +107,15 @@ fun ArtistsScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewM
 
 /** Queues played on this device, newest first. */
 @Composable
-fun RecentScreen(viewModel: MusicTabsViewModel = hiltViewModel()) {
+fun RecentScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {
     val played by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
-    TabPage(title = stringResource(R.string.nav_history)) { padding, comingSoon ->
+    TabPage(title = stringResource(R.string.nav_history)) { padding, _ ->
         if (played.isEmpty()) {
             LoadingOrEmpty(false, stringResource(R.string.no_recent), Modifier.padding(padding))
         } else {
             TileGrid(
                 played.map { Tile(it.id, it.title, it.creator, it.coverUri) },
-                onClick = { comingSoon() },
+                onClick = { main.playRecent(it.id) },
                 contentPadding = PaddingValues(
                     start = 12.dp,
                     end = 12.dp,
@@ -129,9 +129,9 @@ fun RecentScreen(viewModel: MusicTabsViewModel = hiltViewModel()) {
 
 /** Radio stations by kind, live streams first (as on the TV). */
 @Composable
-fun RadioScreen(viewModel: MusicTabsViewModel = hiltViewModel()) {
+fun RadioScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {
     val groups by viewModel.radio.collectAsStateWithLifecycle(initialValue = null)
-    TabPage(title = stringResource(R.string.nav_radio)) { padding, comingSoon ->
+    TabPage(title = stringResource(R.string.nav_radio)) { padding, _ ->
         val list = groups
         if (list.isNullOrEmpty()) {
             LoadingOrEmpty(list == null, stringResource(R.string.nothing_here), Modifier.padding(padding))
@@ -154,7 +154,7 @@ fun RadioScreen(viewModel: MusicTabsViewModel = hiltViewModel()) {
                             leadingContent = {
                                 Art(station.imageUri, station.name, Modifier.size(48.dp), RoundedCornerShape(6.dp))
                             },
-                            modifier = Modifier.clickable(onClick = comingSoon),
+                            modifier = Modifier.clickable { main.playStation(station.id) },
                         )
                     }
                 }
@@ -168,33 +168,4 @@ private fun StationKind.label(): Int = when (this) {
     StationKind.Genre -> R.string.radio_genres
     StationKind.Period -> R.string.radio_decades
     else -> R.string.radio_other
-}
-
-/** Now Playing; the full player arrives with music playback. */
-@Composable
-fun PlayerScreen(main: MainViewModel) {
-    val playing by main.nowPlaying.collectAsStateWithLifecycle()
-    TabPage(title = stringResource(R.string.nav_player)) { padding, _ ->
-        val item = playing.current
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (item == null) {
-                Text(stringResource(R.string.nothing_playing), style = MaterialTheme.typography.titleLarge)
-                Text(
-                    stringResource(R.string.nothing_playing_hint),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            } else {
-                Art(item.imageUri, item.album, Modifier.size(280.dp))
-                Text(item.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
-                Text(item.artist, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
 }

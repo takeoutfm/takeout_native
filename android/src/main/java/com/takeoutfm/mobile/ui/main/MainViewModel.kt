@@ -6,7 +6,6 @@ import androidx.media3.exoplayer.offline.DownloadService
 import com.takeoutfm.media.offline.DownloadedItem
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.music.QueueItem
-import com.takeoutfm.shared.settings.PlaySettings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.media.MusicPlayer
@@ -50,7 +49,6 @@ enum class ArtistType { All, Favorite }
 class MainViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mediaCache: TakeoutMediaCache,
-    private val settings: PlaySettings,
     private val player: MusicPlayer,
     private val music: TakeoutMusicRepository,
     private val history: MusicHistory,
@@ -207,9 +205,9 @@ class MainViewModel @Inject constructor(
                 if (queue.items.isEmpty()) {
                     _messages.tryEmit(R.string.nothing_to_play)
                 } else {
+                    // Playback Caching keeps what plays; the music service lists whole tracks
+                    // as downloads (nothing is fetched ahead).
                     player.play(queue)
-                    // Playback Caching: the whole queue downloads (as the Flutter app does).
-                    if (settings.playbackCaching.value) addDownloads(queue, notify = false)
                 }
             } catch (e: CancellationException) {
                 throw e

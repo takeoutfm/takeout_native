@@ -72,16 +72,17 @@ class TakeoutMediaCache(
 
     val cache: Cache = SimpleCache(File(context.filesDir, "media"), NoOpCacheEvictor(), database)
 
+    // No FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS: ExoPlayer's progressive requests never
+    // set a length, so it would bypass the cache for all playback. Live streams stay out anyway:
+    // ExoPlayer marks its requests DataSpec.FLAG_DONT_CACHE_IF_LENGTH_UNKNOWN.
     private val readOnly = CacheDataSource.Factory()
         .setCache(cache)
         .setUpstreamDataSourceFactory(upstream)
         .setCacheWriteDataSinkFactory(null)
-        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS)
 
     private val readWrite = CacheDataSource.Factory()
         .setCache(cache)
         .setUpstreamDataSourceFactory(upstream)
-        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS)
 
     /** For the music player: reads the cache, and writes to it while caching is on. */
     val playbackDataSourceFactory: DataSource.Factory =
@@ -129,6 +130,9 @@ class TakeoutMediaCache(
         val length = androidx.media3.datasource.cache.ContentMetadata.getContentLength(cache.getContentMetadata(etag))
         return length > 0 && cache.isCached(etag, 0, length)
     }
+
+    /** Whether playback is writing what it streams into the cache (Playback Caching). */
+    val isWriting: Boolean get() = cachingEnabled()
 
     /** Bytes the cache holds in all (downloads and cached playback). */
     fun usedBytes(): Long = cache.cacheSpace

@@ -32,6 +32,7 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.takeoutfm.media.offline.PlayedDownloads
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
@@ -61,6 +62,12 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     /** Tracks kept on the device (downloads, Playback Caching); null to always stream. */
     protected open val mediaCache: TakeoutMediaCache? = null
 
+    /**
+     * The app's download service: with it (and [mediaCache]), tracks that Playback Caching
+     * cached whole while playing are listed as downloads.
+     */
+    protected open val downloadService: Class<out androidx.media3.exoplayer.offline.DownloadService>? = null
+
     /** Where podcast episodes' positions are saved; null to not save them. */
     protected open val progress: TakeoutProgress? = null
 
@@ -80,6 +87,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private var listenTracker: ListenTracker? = null
     private var podcastProgress: PodcastProgress? = null
     private var historyProgress: HistoryProgress? = null
+    private var playedDownloads: PlayedDownloads? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -106,6 +114,11 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         listenTracker = ListenTracker(player, listenReporter).also { it.attach() }
         player.addListener(StreamTitles(player, streamHistory))
         historyProgress = HistoryProgress(player, history).also { it.attach() }
+        val cache = mediaCache
+        val downloads = downloadService
+        if (cache != null && downloads != null) {
+            playedDownloads = PlayedDownloads(this, player, cache, history, downloads).also { it.attach() }
+        }
         progress?.let { podcastProgress = PodcastProgress(player, it).also { p -> p.attach() } }
 
         // Opening the session from the system's now-playing controls returns to the app.
@@ -138,6 +151,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         podcastProgress?.detach()
         historyProgress?.detach()
         historyProgress = null
+        playedDownloads?.detach()
+        playedDownloads = null
         listenTracker = null
         session?.run {
             player.release()

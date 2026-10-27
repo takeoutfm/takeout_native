@@ -233,10 +233,12 @@ dashboard top bar, D-pad handling.
       - The player reads through a Media3 `CacheDataSource` over a `SimpleCache` (in
         `TakeoutPlayerFactory`, behind the media-token resolver), so streamed bytes are kept
         and later plays are local and work offline.
-      - With Playback Caching on, starting a queue also enqueues a `DownloadRequest` per track
-        in Media3's `DownloadManager`: tracks finish even if skipped, show on the Downloads
-        page, and share the same cache (a half-downloaded track that's playing isn't fetched
-        twice).
+      - With Playback Caching on, nothing is fetched ahead: a track that playback has cached
+        whole is added as a `DownloadRequest` (`:android-media` `offline/PlayedDownloads`,
+        in the music service), which completes from the cache, so it shows on the Downloads
+        page under the queue it played in. Partly played tracks keep their chunks for
+        playback but aren't listed. (The Flutter app downloaded the whole queue; changed
+        2026-10-26 at the user's request.)
       - **Cache key = the track's ETag** (custom `CacheKeyFactory`): the stream URL redirects
         to a signed, expiring URL, so URL keys would never hit.
       - Downloads cache uses no eviction (`NoOpCacheEvictor`). **With Playback Caching off,
@@ -342,10 +344,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
 6. **Offline** — mostly done (2026-10-25): `:android-media` `offline/TakeoutMediaCache`
    (one `SimpleCache` in `files/media`, keyed by ETag via the media items' custom cache key,
    `NoOpCacheEvictor`; playback reads it always and writes only while Playback Caching is on;
-   unset-length requests (live streams) bypass it; video isn't cached), Media3
+   live streams stay out via ExoPlayer's `FLAG_DONT_CACHE_IF_LENGTH_UNKNOWN` — not
+   `FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS`, which bypassed the cache for all playback
+   until 2026-10-26; video isn't cached), Media3
    `DownloadManager` + `TakeoutDownloadService` (the app's `DownloadService`), downloads of
-   releases, playlists, favorite tracks and podcast episodes, Playback Caching downloading the
-   whole queue when on (off by default, as Flutter), ✓ / progress badges, the Downloads page
+   releases, playlists, favorite tracks and podcast episodes, Playback Caching listing tracks
+   it cached whole as downloads (off by default, as Flutter; nothing fetched ahead), ✓ / progress badges, the Downloads page
    (groups, play offline, delete one / all with sizes).
    Offline browsing (2026-10-25): shared `api/ResponseCache` (`DbResponseCache`, SQLDelight
    `http_cache`, schema v3 via `2.sqm`): every GET's last response is kept, and a request that

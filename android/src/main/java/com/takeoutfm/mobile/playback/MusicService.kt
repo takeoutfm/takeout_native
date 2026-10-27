@@ -22,5 +22,6 @@ class MusicService : TakeoutMusicService() {
     @Inject public override lateinit var progress: TakeoutProgress
     @Inject public override lateinit var mediaCache: TakeoutMediaCache
     @Inject public override lateinit var browseTree: TakeoutBrowseTree
+    override val downloadService = DownloadService::class.java
     override val sessionActivity = MainActivity::class.java
 }

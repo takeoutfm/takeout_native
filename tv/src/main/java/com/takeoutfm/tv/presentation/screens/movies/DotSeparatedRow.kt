@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -40,12 +41,19 @@ fun DotSeparatedRow(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // The longest text (usually the genres) takes what room is left and ends in "…"; the
+        // rest stay whole on one line, so e.g. the running time never wraps letter by letter.
+        val longest = texts.indices.maxByOrNull { texts[it].length }
         texts.forEachIndexed { index, text ->
             Text(
                 text = text,
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Normal
-                )
+                ),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                modifier = if (index == longest) Modifier.weight(1f, fill = false) else Modifier,
             )
             if (index != texts.lastIndex) {
                 Box(

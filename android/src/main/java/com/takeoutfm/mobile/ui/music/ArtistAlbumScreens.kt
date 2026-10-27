@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -215,10 +217,16 @@ private fun Header(imageUri: String, title: String, subtitle: String) {
 }
 
 @Composable
-private fun MixButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    FilledTonalButton(onClick = onClick) {
+private fun RowScope.MixButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    // An equal share of the row each, one line: on a narrow phone the default padding left
+    // too little room and the label wrapped a letter per line.
+    FilledTonalButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.weight(1f),
+    ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        Text(label, modifier = Modifier.padding(start = 6.dp))
+        Text(label, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 6.dp))
     }
 }
 

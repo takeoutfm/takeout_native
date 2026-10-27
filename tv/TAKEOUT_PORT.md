@@ -525,7 +525,8 @@ Each step is its own commit(s), checked on the emulator and TV.
 - **Podcast page** (`PodcastScreen.kt`, route `Podcast/{seriesId}`): cover, author,
   description (HTML as plain text), Play (the newest episode) and Subscribe / Subscribed
   (changes the user's real subscriptions), then the episodes: title, then date · progress
-  ("16 min left", Played) · summary, and a ✓ when played. The row's second line uses
+  ("16 min left", Played) · summary, a progress bar under a started one, and a ✓ when played
+  (in a fixed slot, so titles line up). The row's second line uses
   `LocalContentColor` so it stays readable on the light focused row. Progress reloads when
   coming back from the player.
 - **Playback**: `QueueRef.Episodes(seriesId, index)` ("episodes:ps-4:2") → the shared

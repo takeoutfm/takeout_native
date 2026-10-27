@@ -2,7 +2,11 @@ package com.takeoutfm.tv.presentation.screens.music.podcasts
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -189,17 +193,42 @@ private fun EpisodeListItem(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+                val progress = episode.progress
+                if (progress is EpisodeProgress.Started && progress.fraction > 0f) {
+                    ProgressBar(progress.fraction, Modifier.padding(top = 8.dp))
+                }
             }
-            if (episode.progress == EpisodeProgress.Complete) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = stringResource(R.string.podcast_played),
-                    modifier = Modifier
-                        .padding(start = 24.dp)
-                        .size(24.dp),
-                )
+            // A fixed slot, so titles line up whether or not an episode is played.
+            Box(Modifier.padding(start = 24.dp).size(28.dp), contentAlignment = Alignment.Center) {
+                if (episode.progress == EpisodeProgress.Complete) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.podcast_played),
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
             }
         }
+    }
+}
+
+/** How far into an episode: a short bar in the row's content colour (dark when focused). */
+@Composable
+private fun ProgressBar(fraction: Float, modifier: Modifier = Modifier) {
+    val color = LocalContentColor.current
+    Box(
+        modifier
+            .width(240.dp)
+            .height(4.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(color.copy(alpha = 0.25f))
+    ) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .background(color)
+        )
     }
 }
 

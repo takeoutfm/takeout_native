@@ -141,7 +141,6 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music_disc">Disc %1$d</string>
     <string name="music_back_10">Back 10 seconds</string>
     <string name="series">Series</string>
-    <string name="trailer">Trailer</string>
     <string name="trailers">Trailers</string>
     <string name="podcast_resume">Resume</string>
     <string name="podcast_mark_played">Mark as played</string>

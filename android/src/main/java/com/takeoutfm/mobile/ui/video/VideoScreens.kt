@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -209,12 +208,6 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                         Text(details.tagline, style = MaterialTheme.typography.bodyMedium, fontStyleItalic = true)
                     }
                     PlayButtons(details, offset, play)
-                    details.trailers.firstOrNull()?.let { trailer ->
-                        OutlinedButton(onClick = { openTrailer(context, trailer) }) {
-                            Icon(Icons.Filled.OndemandVideo, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text(stringResource(R.string.trailer), modifier = Modifier.padding(start = 6.dp))
-                        }
-                    }
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
                     if (details.episode != null) EpisodeSteps(details, nav)
                     if (details.genres.isNotEmpty()) {
@@ -242,9 +235,6 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                     }
                 }
             }
-            if (details.trailers.size > 1) item(key = "trailers") {
-                TrailerShelf(details.trailers) { openTrailer(context, it) }
-            }
             details.seasons.forEach { season ->
                 item(key = "season-${season.number}") {
                     SectionTitle(if (season.number == 0) stringResource(R.string.specials) else stringResource(R.string.season, season.number))
@@ -271,6 +261,8 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
             }
             item {
                 CardShelf(stringResource(R.string.related), details.similar) { nav.openVideo(it.id) }
+                // Last on the page: the main trailer first.
+                if (details.trailers.isNotEmpty()) TrailerShelf(details.trailers) { openTrailer(context, it) }
                 Spacer(Modifier.height(96.dp))
             }
         }

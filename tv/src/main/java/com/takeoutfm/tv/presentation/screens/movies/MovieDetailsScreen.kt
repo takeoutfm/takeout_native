@@ -163,7 +163,6 @@ private fun Details(
                 },
                 openSeries = openSeries,
                 openEpisode = openEpisode,
-                openTrailer = openTrailer,
             )
         }
 
@@ -173,27 +172,6 @@ private fun Details(
                 focusMemory = focusMemory,
                 // Opens the episode's page (on an episode's page, another of its season).
                 onEpisodeSelected = { openEpisode(it.id) }
-            )
-        }
-
-        if (movieDetails.trailers.size > 1 && openTrailer != null) item {
-            TileRow(
-                items = movieDetails.trailers,
-                key = { "trailer-${it.key}" },
-                itemTitle = { it.name },
-                itemImage = { trailer, _, imageModifier ->
-                    AsyncImage(
-                        model = trailer.thumbnailUri,
-                        contentDescription = trailer.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = imageModifier.fillMaxWidth(),
-                    )
-                },
-                itemDirection = ItemDirection.Horizontal,
-                title = stringResource(R.string.trailers),
-                titleStyle = MaterialTheme.typography.titleMedium,
-                onItemSelected = openTrailer,
-                focusMemory = focusMemory,
             )
         }
 
@@ -222,6 +200,29 @@ private fun Details(
             MovieReviews(
                 modifier = Modifier.padding(top = childPadding.top),
                 reviewsAndRatings = movieDetails.reviewsAndRatings
+            )
+        }
+
+        // After everything else, just above the facts at the bottom: the main trailer first.
+        if (movieDetails.trailers.isNotEmpty() && openTrailer != null) item {
+            TileRow(
+                modifier = Modifier.padding(top = childPadding.top),
+                items = movieDetails.trailers,
+                key = { "trailer-${it.key}" },
+                itemTitle = { it.name },
+                itemImage = { trailer, _, imageModifier ->
+                    AsyncImage(
+                        model = trailer.thumbnailUri,
+                        contentDescription = trailer.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = imageModifier.fillMaxWidth(),
+                    )
+                },
+                itemDirection = ItemDirection.Horizontal,
+                title = stringResource(R.string.trailers),
+                titleStyle = MaterialTheme.typography.titleMedium,
+                onItemSelected = openTrailer,
+                focusMemory = focusMemory,
             )
         }
 
@@ -268,6 +269,7 @@ private fun Details(
                 )
             }
         }
+
     }
 }
 

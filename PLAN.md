@@ -337,9 +337,9 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    shared offline cache, next episode at the end, its own media session, picture-in-picture).
    The track logic moved to `:android-media` `video/Tracks.kt` for both apps.
    Movie trailers (2026-10-27): the movie view's `Trailers` (official YouTube trailers the
-   server syncs from TMDB) as `VideoDetails.trailers`, main trailer first; a Trailer button
-   and a Trailers row of YouTube thumbnails (`i.ytimg.com`), opened in the YouTube app on
-   both the phone and the TV. Not for series (the server syncs none).
+   server syncs from TMDB) as `VideoDetails.trailers`, main trailer first; a Trailers row of
+   YouTube thumbnails (`i.ytimg.com`) last on the page, opened in the YouTube app on both the
+   phone and the TV. Not for series (the server syncs none).
    Episode pages (2026-10-27): the episode's name, a link to its series, "S1E2 · air date ·
    49 min · ★", guest stars & crew (the episode view's `Cast`/`Directing`/`Writing`, now read by
    the shared repository as `VideoDetails.episode` / cast), Previous / Next episode and a

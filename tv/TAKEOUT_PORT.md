@@ -204,10 +204,10 @@ library), A–Z.
 - Series: one row per season (specials last), episode cards with still, number, name, runtime;
   selecting an episode opens its details page (Play focused).
 - Movie trailers: the server's official YouTube trailers (synced from TMDB; movies synced before
-  it supported them have none). A **Trailer** button opens the main one ("Official Trailer"
-  first, then other trailers, then spots / sign-language versions, newest first in each) in
-  the YouTube app; with more than one, a **Trailers** row of YouTube thumbnails follows. Both
-  are hidden when nothing can open YouTube links (a `<queries>` entry lets the app check).
+  it supported them have none). A **Trailers** row of YouTube thumbnails after Reviews,
+  just above the divider and the Status / Budget facts, which stay last ("Official Trailer" first, then other trailers, then spots / sign-language
+  versions, newest first in each), opens one in the YouTube app. Hidden when nothing can
+  open YouTube links (a `<queries>` entry lets the app check).
   The TV emulator's YouTube opens but says the device isn't supported.
 - Episode details: "Series · S1E2 Name", the episode's own cast and crew and rating, Resume /
   Start over, **Series** (back to the series: pops if that's where it was opened from), and

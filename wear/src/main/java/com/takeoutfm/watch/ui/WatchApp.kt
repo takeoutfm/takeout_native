@@ -43,7 +43,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -70,6 +69,8 @@ import androidx.wear.compose.material.Switch
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.ToggleChip
+import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
+import androidx.wear.compose.foundation.rememberActiveFocusRequester
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
@@ -333,13 +334,15 @@ private fun Home(vm: WatchViewModel, go: (String) -> Unit) {
  * Now Playing: progress ring, title and artist (a stream's song from its ICY title), previous
  * · play/pause · next (play/pause only for live streams); the crown turns the volume.
  */
+@OptIn(ExperimentalWearFoundationApi::class)
 @Composable
 private fun Player(vm: WatchViewModel) {
     val playing by vm.nowPlaying.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    // Rotary input goes to the focused screen; this takes focus once the nav host makes the
+    // screen active (a plain requestFocus on first composition can be dropped).
+    val focus = rememberActiveFocusRequester()
     Scaffold(timeText = { TimeText() }) {
         Box(
             Modifier

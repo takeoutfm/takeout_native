@@ -418,8 +418,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] Checked on the `Wear_Round_API_36` emulator (2026-10-26): browse, album play, radio
          (LIVE), tile play/pause.
    - [x] Real watch (Galaxy Watch, 2026-10-26): release installed over the Flutter app;
-         browsing, and the output picker when no headphones are connected.
-   - [ ] Not yet checked: downloads and offline play, the complication, crown volume;
+         browsing, the output picker when no headphones are connected, and bezel volume on
+         Now Playing (it needs `rememberActiveFocusRequester()`: a plain `requestFocus()` on
+         first composition is dropped inside `SwipeDismissableNavHost`).
+   - [ ] Not yet checked: downloads and offline play, the complication;
          downloads aren't limited to Wi-Fi yet.
 10. **Later — Apple**: add `iosArm64`/`iosSimulatorArm64`/`macosArm64` targets to `shared`, then
    SwiftUI apps with AVFoundation, Now Playing, CarPlay and Siri intents.

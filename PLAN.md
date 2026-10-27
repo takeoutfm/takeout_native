@@ -17,8 +17,8 @@ still marked ❓ need an answer before the phase that uses them.
    where the TV app already did better (offline progress sync, focus/navigation polish,
    live-stream handling, local Recently Played).
 2. **One Kotlin codebase for the Takeout domain**: API, models, play queues, progress, listen
-   reporting, offline cache — shared by `takeout_tv` and `takeout_android`, so a fix lands in
-   both.
+   reporting, offline cache — shared by the TV, phone, watch and Mac apps, so a fix lands in
+   all of them.
 3. **Native everywhere**: Compose on Android, Media3 for playback, Android Auto and Assistant
    integration; later SwiftUI + AVFoundation on iOS/macOS on top of the same shared core.
 4. **Same server, no server changes required** for parity (the TV app already speaks the whole
@@ -37,7 +37,7 @@ for iOS) — see section 7.
 ### 2.1 Modules
 
 ```
-takeout_android/                     (this repo: one Gradle build — see 2.3)
+takeout_native/                      (this repo: one Gradle build — see 2.3)
 ├── shared/            KMP: commonMain + androidMain (+ iosMain/macosMain later)
 │   ├── api/           Ktor client, auth + token refresh, media-token URLs, all endpoints
 │   ├── model/         API models (PascalCase JSON), spiff, domain entities

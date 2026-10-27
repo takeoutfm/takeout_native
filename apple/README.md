@@ -25,7 +25,7 @@ commands and the system's Now Playing (media keys, Control Center).
 3. Get the code. There's no git remote; either clone straight from the Linux machine over SSH
    (it needs an SSH server running):
    ```
-   git clone ssh://boyns@<linux-host>/home/boyns/projects/takeout_android
+   git clone ssh://boyns@<linux-host>/home/boyns/projects/takeout_native
    ```
    and later `git pull` the same way, or push the repo to a private GitHub repository and
    clone that on both machines.
@@ -35,7 +35,7 @@ No Android SDK is needed on the Mac: building `:shared` for macOS doesn't touch 
 ## Build and run
 
 ```
-cd takeout_android/apple
+cd takeout_native/apple
 xcodegen                 # writes TakeoutFM.xcodeproj from project.yml (not committed)
 open TakeoutFM.xcodeproj # then Run (⌘R)
 ```

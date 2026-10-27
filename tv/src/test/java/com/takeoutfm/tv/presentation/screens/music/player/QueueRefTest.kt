@@ -16,6 +16,7 @@ class QueueRefTest {
             QueueRef.Playlist("pl-2", 4),
             QueueRef.Favorites(5),
             QueueRef.History("h1700000000000"),
+            QueueRef.Episodes("ps-4", 2),
         )
         refs.forEach { assertEquals(it, QueueRef.parse(it.encode())) }
         assertEquals("album:al-12:3", refs[0].encode())

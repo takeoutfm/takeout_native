@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -83,6 +85,7 @@ import com.takeoutfm.tv.R
 import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
+import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.media.MusicPlayer
 import com.takeoutfm.media.NowPlaying
@@ -243,9 +246,9 @@ private fun NowPlayingContent(
                     state = state,
                     player = player,
                     onOpenQueue = { showQueue = true },
-                    // Radio streams have no ETag, so they can't be favorites.
+                    // Radio streams have no ETag, so they can't be favorites; episodes aren't tracks.
                     isFavorite = item.etag.isNotEmpty() && item.etag in favoriteEtags,
-                    onToggleFavorite = item.etag.takeIf { it.isNotEmpty() }?.let { etag ->
+                    onToggleFavorite = item.etag.takeIf { it.isNotEmpty() && !item.podcast }?.let { etag ->
                         { onToggleFavorite(etag, etag !in favoriteEtags) }
                     },
                     queueButton = queueButton,
@@ -502,7 +505,15 @@ private fun Controls(
     ) {
         // A live stream only plays or pauses: nothing to skip, repeat, favorite or queue.
         val live = state.isLive
-        if (!live) {
+        // A podcast episode seeks back 10 s / forward 30 s instead of skipping, as on the phone.
+        val podcast = state.current?.podcast == true
+        if (podcast) {
+            ControlButton(
+                icon = Icons.Default.Replay10,
+                description = stringResource(R.string.music_back_10),
+                onClick = { player.seekBy(-PodcastBackMs) },
+            )
+        } else if (!live) {
             ControlButton(
                 icon = Icons.Default.SkipPrevious,
                 description = stringResource(R.string.music_previous),
@@ -520,12 +531,20 @@ private fun Controls(
             modifier = Modifier.focusOnInitialVisibility(firstFocus),
         )
         if (live) return@Row
-        ControlButton(
-            icon = Icons.Default.SkipNext,
-            description = stringResource(R.string.music_next),
-            onClick = player::next,
-        )
-        ControlButton(
+        if (podcast) {
+            ControlButton(
+                icon = Icons.Default.Forward30,
+                description = stringResource(R.string.music_forward_30),
+                onClick = { player.seekBy(PodcastForwardMs) },
+            )
+        } else {
+            ControlButton(
+                icon = Icons.Default.SkipNext,
+                description = stringResource(R.string.music_next),
+                onClick = player::next,
+            )
+        }
+        if (!podcast) ControlButton(
             icon = if (state.repeatMode == Player.REPEAT_MODE_ONE) {
                 Icons.Default.RepeatOne
             } else {
@@ -672,6 +691,8 @@ private fun ControlButton(
 }
 
 private const val SeekStepMs = 10_000L
+private const val PodcastBackMs = 10_000L
+private const val PodcastForwardMs = 30_000L
 
 private fun formatTime(ms: Long): String {
     val totalSeconds = (ms / 1000).coerceAtLeast(0)
@@ -685,6 +706,7 @@ class MusicPlayerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: TakeoutMusicRepository,
     private val history: MusicHistory,
+    private val podcasts: TakeoutPodcastRepository,
     val player: MusicPlayer,
 ) : ViewModel() {
     private val ref: QueueRef? =
@@ -727,6 +749,12 @@ class MusicPlayerViewModel @Inject constructor(
                     is QueueRef.Favorites -> repository.favoritesQueue(ref.startIndex)
                     is QueueRef.History -> history.find(ref.entryId)?.toQueue()
                         ?: throw IllegalStateException("No such Recently Played entry")
+                    is QueueRef.Episodes -> {
+                        val details = podcasts.details(ref.seriesId)
+                        podcasts.episodesQueue(
+                            details.series.title, details.series.imageUri, details.episodes, ref.startIndex,
+                        )
+                    }
                 }
                 if (queue.items.isEmpty()) {
                     QueueLoad.Error

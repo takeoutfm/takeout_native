@@ -24,6 +24,7 @@ import com.takeoutfm.tv.presentation.screens.movies.MovieDetailsScreen
 import com.takeoutfm.tv.presentation.screens.music.album.AlbumScreen
 import com.takeoutfm.tv.presentation.screens.music.artist.ArtistScreen
 import com.takeoutfm.tv.presentation.screens.music.player.MusicPlayerScreen
+import com.takeoutfm.tv.presentation.screens.music.podcasts.PodcastScreen
 import com.takeoutfm.tv.presentation.screens.person.PersonScreen
 import com.takeoutfm.tv.presentation.screens.videoPlayer.VideoPlayerScreen
 
@@ -54,8 +55,10 @@ enum class Screens(
     MusicFavorites(isMusicTab = true, tabLabel = "Favorites"),
     Playlists(isMusicTab = true),
     Radio(isMusicTab = true),
+    Podcasts(isMusicTab = true),
     Artist(listOf(ArtistScreen.ArtistIdBundleKey)),
     Album(listOf(AlbumScreen.AlbumIdBundleKey)),
+    Podcast(listOf(PodcastScreen.SeriesIdBundleKey)),
     MusicPlayer(listOf(MusicPlayerScreen.QueueBundleKey)),
     NowPlaying;
 

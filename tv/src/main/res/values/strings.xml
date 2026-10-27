@@ -139,6 +139,15 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music_repeat">Repeat</string>
     <string name="music_now_playing">Now playing</string>
     <string name="music_disc">Disc %1$d</string>
+    <string name="music_back_10">Back 10 seconds</string>
+    <string name="music_forward_30">Forward 30 seconds</string>
+    <string name="podcasts_subscribed">Subscribed</string>
+    <string name="podcasts_all">All podcasts</string>
+    <string name="podcasts_none_subscribed">No subscriptions yet. Subscribe from a podcast\'s page in All podcasts.</string>
+    <string name="podcast_subscribe">Subscribe</string>
+    <string name="podcast_subscribed">Subscribed</string>
+    <string name="podcast_played">Played</string>
+    <string name="podcast_minutes_left">%1$d min left</string>
     <string name="music_up_next">Up next: %1$s · %2$s</string>
     <string name="music_cant_play">Can\'t play this track (%1$s)</string>
     <plurals name="music_track_count">

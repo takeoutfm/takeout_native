@@ -77,6 +77,7 @@ import com.takeoutfm.tv.presentation.screens.music.favorites.MusicFavoritesScree
 import com.takeoutfm.tv.presentation.screens.music.home.MusicHomeScreen
 import com.takeoutfm.tv.presentation.screens.music.player.QueueRef
 import com.takeoutfm.tv.presentation.screens.music.playlists.PlaylistsScreen
+import com.takeoutfm.tv.presentation.screens.music.podcasts.PodcastsScreen
 import com.takeoutfm.tv.presentation.screens.music.radio.RadioScreen
 import com.takeoutfm.tv.presentation.screens.profile.ProfileScreen
 import com.takeoutfm.tv.presentation.screens.search.SearchScreen
@@ -109,6 +110,7 @@ fun DashboardScreen(
     onBackPressed: () -> Unit,
     openArtist: (artistId: String) -> Unit = {},
     openAlbum: (albumId: String) -> Unit = {},
+    openPodcast: (seriesId: String) -> Unit = {},
     playMusic: (QueueRef) -> Unit = {},
     dashboardViewModel: DashboardViewModel = hiltViewModel(),
 ) {
@@ -284,6 +286,7 @@ fun DashboardScreen(
             openVideoPlayer = openVideoPlayer,
             openArtist = openArtist,
             openAlbum = openAlbum,
+            openPodcast = openPodcast,
             playMusic = playMusic,
             startDestination = startDestination,
             updateTopBarVisibility = { isTopBarVisible = it },
@@ -322,6 +325,7 @@ private fun Body(
     openVideoPlayer: (Movie) -> Unit,
     openArtist: (artistId: String) -> Unit,
     openAlbum: (albumId: String) -> Unit,
+    openPodcast: (seriesId: String) -> Unit,
     playMusic: (QueueRef) -> Unit,
     startDestination: String,
     updateTopBarVisibility: (Boolean) -> Unit,
@@ -426,6 +430,13 @@ private fun Body(
         composable(Screens.Radio()) {
             RadioScreen(
                 onStationClick = { playMusic(QueueRef.Station(it.id)) },
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+            )
+        }
+        composable(Screens.Podcasts()) {
+            PodcastsScreen(
+                onPodcastClick = { openPodcast(it.id) },
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible,
             )

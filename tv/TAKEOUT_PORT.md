@@ -337,10 +337,11 @@ the rest of this section is the plan for what's next.
 - The top bar's TAKEOUT logo becomes a focusable, labelled switch (`TAKEOUT · Video ▾` /
   `TAKEOUT · Music ▾`). Selecting it swaps the whole tab set; a hidden toggle on the plain logo
   would be hard to discover on a TV.
-- **Video**: today's tabs. **Music**: Home · Artists · Favorites · Playlists · Radio · Search.
-  Shown only when `/api/index` says `HasMusic`; Playlists only with `HasPlaylists`. Without
-  music, the logo stays a plain logo. No Albums tab (an all-releases list is too big; albums are
-  reached through artists, search and Home), and no Podcasts for now.
+- **Video**: today's tabs. **Music**: Home · Artists · Favorites · Playlists · Radio ·
+  Podcasts · Search. Shown only when `/api/index` says `HasMusic`; Playlists only with
+  `HasPlaylists`, Podcasts only with `HasPodcasts`. Without music, the logo stays a plain logo.
+  No Albums tab (an all-releases list is too big; albums are reached through artists, search
+  and Home).
 - The last mode is saved per device (`TakeoutSettings`) and the app starts in it. Search is
   shared; it shows the current mode's results first (the server's `/api/search` already returns
   `Artists`, `Releases`, `Tracks` and `Stations` alongside video).
@@ -515,6 +516,27 @@ Each step is its own commit(s), checked on the emulator and TV.
   Wrong paths 404; the page stops on Cancel/Done or after 10 minutes. The token is stored
   encrypted (`ListenBrainzAccount` in `:shared`, EncryptedSharedPreferences).
 
+### Podcasts
+- **Podcasts tab** (Music mode, `presentation/screens/music/podcasts/PodcastsScreen.kt`):
+  podcast covers in the `TileGrid`, under a Subscribed / All podcasts choice (starts on
+  Subscribed when there are any). The choice is one button type filled or outlined
+  (`ListChoice`): `MusicButton` swaps composables between primary and not, which drops focus
+  from the button just selected. Coming back to the tab reloads the subscriptions.
+- **Podcast page** (`PodcastScreen.kt`, route `Podcast/{seriesId}`): cover, author,
+  description (HTML as plain text), Play (the newest episode) and Subscribe / Subscribed
+  (changes the user's real subscriptions), then the episodes: title, then date · progress
+  ("16 min left", Played) · summary, and a ✓ when played. The row's second line uses
+  `LocalContentColor` so it stays readable on the light focused row. Progress reloads when
+  coming back from the player.
+- **Playback**: `QueueRef.Episodes(seriesId, index)` ("episodes:ps-4:2") → the shared
+  `TakeoutPodcastRepository.episodesQueue`, which resumes a started episode. The TV's
+  `MusicService` now passes `TakeoutProgress`, so `PodcastProgress` saves positions (every
+  10 s and on pause, synced with the phone) and Recently Played resumes episodes too.
+- **Now Playing for an episode**: back 10 s · play/pause · forward 30 s (instead of previous /
+  next), no repeat or favorite; the seek bar and queue as for music.
+- Not done: a Continue Listening row on Music Home, podcasts in Search (the TV always streams,
+  so no downloads).
+
 ## Progress
 
 | Commit | Change |
@@ -561,7 +583,7 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
 - Hiding tabs for a library without movies or shows is untested (the test library has both).
-- Music search isn't there yet (search is video-only). No podcasts.
+- Music search isn't there yet (search is video-only); podcasts aren't in search either.
 - Not verified end to end: a real ListenBrainz connect and submission (tested with an invalid
   token only) and Takeout activity reporting (settings left off during testing).
 - The mini player covers part of the last visible row on long pages (grids, details); it could

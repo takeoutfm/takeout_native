@@ -57,6 +57,7 @@ import com.takeoutfm.tv.presentation.screens.music.album.AlbumScreen
 import com.takeoutfm.tv.presentation.screens.music.artist.ArtistScreen
 import com.takeoutfm.tv.presentation.screens.music.player.MiniPlayer
 import com.takeoutfm.tv.presentation.screens.music.player.MusicPlayerScreen
+import com.takeoutfm.tv.presentation.screens.music.podcasts.PodcastScreen
 import com.takeoutfm.tv.presentation.screens.music.player.NowPlayingScreen
 import com.takeoutfm.tv.presentation.screens.person.PersonScreen
 import com.takeoutfm.tv.presentation.screens.videoPlayer.VideoPlayerScreen
@@ -218,6 +219,9 @@ private fun AppContent(
                         openAlbum = { albumId ->
                             navController.navigate(Screens.Album.withArgs(albumId))
                         },
+                        openPodcast = { seriesId ->
+                            navController.navigate(Screens.Podcast.withArgs(seriesId))
+                        },
                         playMusic = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
                         },
@@ -291,6 +295,23 @@ private fun AppContent(
                         onAlbumClick = { album ->
                             navController.navigate(Screens.Album.withArgs(album.id))
                         },
+                        onPlay = { ref ->
+                            navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                        },
+                        onBackPressed = {
+                            if (navController.navigateUp()) {
+                                isComingBackFromDifferentScreen = true
+                            }
+                        },
+                    )
+                }
+                composable(
+                    route = Screens.Podcast(),
+                    arguments = listOf(
+                        navArgument(PodcastScreen.SeriesIdBundleKey) { type = NavType.StringType }
+                    )
+                ) {
+                    PodcastScreen(
                         onPlay = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
                         },

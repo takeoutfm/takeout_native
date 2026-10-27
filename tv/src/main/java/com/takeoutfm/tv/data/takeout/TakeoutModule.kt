@@ -14,6 +14,7 @@ import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.store.AndroidStores
 import com.takeoutfm.shared.video.TakeoutVideoRepository
@@ -70,6 +71,11 @@ object TakeoutModule {
     @Singleton
     fun progress(api: TakeoutApi, session: TakeoutSession, db: TakeoutDb): TakeoutProgress =
         TakeoutProgress(api, session, db)
+
+    @Provides
+    @Singleton
+    fun podcasts(api: TakeoutApi, urls: TakeoutUrls, progress: TakeoutProgress): TakeoutPodcastRepository =
+        TakeoutPodcastRepository(api, urls, progress)
 
     @Provides
     @Singleton

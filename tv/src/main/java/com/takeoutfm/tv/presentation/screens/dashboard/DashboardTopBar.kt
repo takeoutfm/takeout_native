@@ -89,7 +89,8 @@ const val RecommendedRoutePattern = "$RecommendedRouteName/{$RecommendedIndexKey
 
 /**
  * Video: Home, then a tab per recommendation set, then Genres, Movies, Shows, Favorites, Search.
- * Music: Home, Artists, Favorites, Playlists (when the user has any), Radio.
+ * Music: Home, Artists, Favorites, Playlists (when the user has any), Radio, Podcasts (when the
+ * server has any).
  */
 fun dashboardTabs(
     recommendations: List<Recommendation>,
@@ -98,7 +99,11 @@ fun dashboardTabs(
 ): List<DashboardTab> {
     if (mode == LibraryMode.Music) {
         return Screens.entries
-            .filter { it.isMusicTab && (it != Screens.Playlists || index?.hasPlaylists != false) }
+            .filter {
+                it.isMusicTab &&
+                    (it != Screens.Playlists || index?.hasPlaylists != false) &&
+                    (it != Screens.Podcasts || index?.hasPodcasts != false)
+            }
             .map { DashboardTab(route = it(), label = it.tabLabel ?: it(), icon = it.tabIcon) }
     }
     // Before the first index is known, show everything rather than guess.

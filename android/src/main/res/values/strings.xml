@@ -173,6 +173,9 @@
     <string name="rating_tmdb">★ %1$.1f/10</string>
     <string name="no_playable_file">The server has no playable file for this title.</string>
     <string name="next_episode">Next episode</string>
+    <string name="trailer">Trailer</string>
+    <string name="trailers">Trailers</string>
+    <string name="no_app_for_trailer">No app can play YouTube trailers</string>
     <string name="mark_played">Mark as played</string>
     <string name="mark_unplayed">Mark as unplayed</string>
     <string name="previous_episode">Previous episode</string>

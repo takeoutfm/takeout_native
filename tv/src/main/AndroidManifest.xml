@@ -36,10 +36,15 @@ https://www.apache.org/licenses/LICENSE-2.0
         android:name="android.hardware.microphone"
         android:required="false" />
 
-    <!-- Lets voice search find the speech recognition service (Android 11+ visibility). -->
+    <!-- Lets voice search find the speech recognition service, and the Trailer button find an
+         app for YouTube links (Android 11+ visibility). -->
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="www.youtube.com" />
         </intent>
     </queries>
 

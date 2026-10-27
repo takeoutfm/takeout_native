@@ -199,6 +199,7 @@ class TakeoutMovieRepository @Inject constructor(
         seasons = episode?.let { e -> listOf(Season(e.season, e.seasonEpisodes.map { it.toEpisode() })) }
             ?: seasons.map { s -> Season(s.number, s.episodes.map { it.toEpisode() }) },
         seriesId = episode?.seriesId,
+        trailers = trailers,
         playTarget = playTarget,
         previousEpisodeId = previousEpisodeId,
         nextEpisodeId = nextEpisodeId,

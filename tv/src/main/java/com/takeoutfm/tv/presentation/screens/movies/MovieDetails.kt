@@ -35,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
@@ -85,6 +86,8 @@ fun MovieDetails(
     /** An episode's Series / Previous / Next buttons. */
     openSeries: (seriesId: String) -> Unit = {},
     openEpisode: (episodeId: String) -> Unit = {},
+    /** Opens a trailer (null when nothing on the device can play YouTube links). */
+    openTrailer: ((com.takeoutfm.shared.video.Trailer) -> Unit)? = null,
 ) {
     val childPadding = rememberChildPadding()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -157,6 +160,12 @@ fun MovieDetails(
                             modifier = bringIntoViewOnFocus,
                             onClick = { onToggleFavorite(path) }
                         )
+                    }
+                    val trailer = movieDetails.trailers.firstOrNull()
+                    if (trailer != null && openTrailer != null) {
+                        DetailsButton(Icons.Outlined.OndemandVideo, stringResource(R.string.trailer), bringIntoViewOnFocus) {
+                            openTrailer(trailer)
+                        }
                     }
                     movieDetails.seriesId?.let { seriesId ->
                         DetailsButton(Icons.Outlined.Tv, stringResource(R.string.series), bringIntoViewOnFocus) {

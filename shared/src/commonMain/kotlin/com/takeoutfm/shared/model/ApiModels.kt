@@ -217,6 +217,18 @@ data class ApiMovieView(
     @SerialName("Writing") val writing: List<ApiPerson>? = null,
     @SerialName("Genres") val genres: List<String>? = null,
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
+    /** Official YouTube trailers, as the server synced them from TMDB. */
+    @SerialName("Trailers") val trailers: List<ApiTrailer>? = null,
+)
+
+@Serializable
+data class ApiTrailer(
+    @SerialName("Name") val name: String = "",
+    @SerialName("Site") val site: String = "",
+    /** The YouTube video id. */
+    @SerialName("Key") val key: String = "",
+    @SerialName("URL") val url: String = "",
+    @SerialName("Date") val date: String = "",
 )
 
 @Serializable

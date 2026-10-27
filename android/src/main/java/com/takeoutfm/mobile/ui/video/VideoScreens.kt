@@ -29,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -80,6 +82,7 @@ import com.takeoutfm.shared.video.CreditKind
 import com.takeoutfm.shared.video.GenreMovies
 import com.takeoutfm.shared.video.PersonInfo
 import com.takeoutfm.shared.video.TakeoutVideoRepository
+import com.takeoutfm.shared.video.Trailer
 import com.takeoutfm.shared.video.VideoCard
 import com.takeoutfm.shared.video.VideoDetails
 import com.takeoutfm.shared.video.VideoKind
@@ -206,6 +209,12 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                         Text(details.tagline, style = MaterialTheme.typography.bodyMedium, fontStyleItalic = true)
                     }
                     PlayButtons(details, offset, play)
+                    details.trailers.firstOrNull()?.let { trailer ->
+                        OutlinedButton(onClick = { openTrailer(context, trailer) }) {
+                            Icon(Icons.Filled.OndemandVideo, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text(stringResource(R.string.trailer), modifier = Modifier.padding(start = 6.dp))
+                        }
+                    }
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
                     if (details.episode != null) EpisodeSteps(details, nav)
                     if (details.genres.isNotEmpty()) {
@@ -232,6 +241,9 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                         }
                     }
                 }
+            }
+            if (details.trailers.size > 1) item(key = "trailers") {
+                TrailerShelf(details.trailers) { openTrailer(context, it) }
             }
             details.seasons.forEach { season ->
                 item(key = "season-${season.number}") {
@@ -284,6 +296,37 @@ private fun facts(d: VideoDetails): String = listOfNotNull(
     d.voteAverage?.let { stringResource(R.string.rating_tmdb, it) },
     d.directors.takeIf { it.isNotEmpty() }?.joinToString(", "),
 ).joinToString(" · ")
+
+/** Opens [trailer] in the YouTube app (it handles YouTube links), else the browser. */
+private fun openTrailer(context: android.content.Context, trailer: Trailer) {
+    try {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(trailer.uri)))
+    } catch (e: android.content.ActivityNotFoundException) {
+        android.widget.Toast.makeText(context, R.string.no_app_for_trailer, android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** A movie's trailers as YouTube thumbnails with their names. */
+@Composable
+private fun TrailerShelf(trailers: List<Trailer>, onClick: (Trailer) -> Unit) {
+    SectionTitle(stringResource(R.string.trailers))
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(trailers, key = { it.key }) { t ->
+            Column(Modifier.width(200.dp).clickable { onClick(t) }) {
+                Box(contentAlignment = Alignment.Center) {
+                    Art(t.thumbnailUri, t.name, Modifier.width(200.dp).aspectRatio(16f / 9f), RoundedCornerShape(6.dp))
+                    Icon(
+                        Icons.Filled.PlayCircle,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(40.dp),
+                    )
+                }
+                Text(t.name, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
+}
 
 /** "Jan 27, 2008" for an ISO date ("2008-01-27"); null when it doesn't parse. */
 private fun airDate(iso: String): String? = runCatching {

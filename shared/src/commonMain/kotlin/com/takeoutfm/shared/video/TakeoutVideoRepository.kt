@@ -6,6 +6,7 @@ import com.takeoutfm.shared.api.TakeoutUrls
 import com.takeoutfm.shared.library.LibraryIndex
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.model.ApiCast
+import com.takeoutfm.shared.model.ApiTrailer
 import com.takeoutfm.shared.model.ApiEpisode
 import com.takeoutfm.shared.model.ApiMovie
 import com.takeoutfm.shared.model.ApiOffset
@@ -166,6 +167,7 @@ class TakeoutVideoRepository(
             etag = m.etag,
             isFavorite = view.isFavorite,
             favoritePath = m.imid.ifEmpty { null }?.let { "movies/$it" },
+            trailers = trailers(view.trailers.orEmpty()),
         )
     }
 
@@ -455,6 +457,34 @@ class TakeoutVideoRepository(
     }
 
     companion object {
+        /**
+         * YouTube trailers, the main one first: "Official Trailer"s, then other trailers, then
+         * the rest (spots, sign-language and audio-described versions), newest first in each.
+         * Others (not on YouTube) are dropped.
+         */
+        fun trailers(trailers: List<ApiTrailer>): List<Trailer> =
+            trailers
+                .filter { it.key.isNotEmpty() && it.site.equals("YouTube", ignoreCase = true) }
+                .distinctBy { it.key }
+                .sortedWith(compareBy<ApiTrailer>({ trailerRank(it.name) }).thenByDescending { it.date })
+                .map {
+                    Trailer(
+                        name = it.name,
+                        key = it.key,
+                        uri = it.url.ifEmpty { "https://www.youtube.com/watch?v=${it.key}" },
+                        thumbnailUri = "https://i.ytimg.com/vi/${it.key}/hqdefault.jpg",
+                    )
+                }
+
+        private val SecondaryTrailer = Regex("sign language|audio descri|tickets|teaser|spot|featurette", RegexOption.IGNORE_CASE)
+
+        private fun trailerRank(name: String): Int = when {
+            SecondaryTrailer.containsMatchIn(name) -> 2
+            name.contains("official trailer", ignoreCase = true) -> 0
+            name.contains("trailer", ignoreCase = true) -> 1
+            else -> 2
+        }
+
         const val MoviePrefix = "m-"
         const val SeriesPrefix = "s-"
         const val EpisodePrefix = "e-"

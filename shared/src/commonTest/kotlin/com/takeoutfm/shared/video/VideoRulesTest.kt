@@ -1,6 +1,7 @@
 package com.takeoutfm.shared.video
 
 import com.takeoutfm.shared.model.ApiEpisode
+import com.takeoutfm.shared.model.ApiTrailer
 import com.takeoutfm.shared.model.ApiOffset
 import com.takeoutfm.shared.video.TakeoutVideoRepository.Companion.dollars
 import com.takeoutfm.shared.video.TakeoutVideoRepository.Companion.fraction
@@ -87,5 +88,33 @@ class VideoRulesTest {
         assertEquals(0L, dollars(""))
         assertEquals(0L, dollars("n/a"))
         assertEquals(0L, dollars("0"))
+    }
+
+    @Test
+    fun theMainTrailerComesFirst() {
+        val trailers = TakeoutVideoRepository.trailers(
+            listOf(
+                ApiTrailer("Official American Sign Language Trailer", "YouTube", "asl", "", "2025-07-01T00:00:00Z"),
+                ApiTrailer("Tickets on Sale Now", "YouTube", "tix", "", "2025-06-20T00:00:00Z"),
+                ApiTrailer("Trailer 2", "YouTube", "t2", "", "2025-05-01T00:00:00Z"),
+                ApiTrailer("Official Trailer", "YouTube", "main", "", "2025-04-16T00:00:00Z"),
+            )
+        )
+        assertEquals(listOf("main", "t2", "asl", "tix"), trailers.map { it.key })
+    }
+
+    @Test
+    fun trailersAreYouTubeOnesNewestFirst() {
+        val trailers = TakeoutVideoRepository.trailers(
+            listOf(
+                ApiTrailer("Teaser", "YouTube", "aaa", "https://www.youtube.com/watch?v=aaa", "2009-01-10T00:00:00Z"),
+                ApiTrailer("Official Trailer", "YouTube", "bbb", "", "2009-04-02T00:00:00Z"),
+                ApiTrailer("Elsewhere", "Vimeo", "ccc", "", "2009-05-01T00:00:00Z"),
+                ApiTrailer("Teaser again", "YouTube", "aaa", "", "2009-01-10T00:00:00Z"),
+            )
+        )
+        assertEquals(listOf("bbb", "aaa"), trailers.map { it.key })
+        assertEquals("https://www.youtube.com/watch?v=bbb", trailers[0].uri)
+        assertEquals("https://i.ytimg.com/vi/bbb/hqdefault.jpg", trailers[0].thumbnailUri)
     }
 }

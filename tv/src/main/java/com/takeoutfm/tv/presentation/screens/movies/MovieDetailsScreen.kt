@@ -16,6 +16,15 @@
 
 package com.takeoutfm.tv.presentation.screens.movies
 
+import com.takeoutfm.tv.presentation.common.ItemDirection
+import com.takeoutfm.tv.presentation.common.TileRow
+import com.takeoutfm.shared.video.Trailer
+import coil.compose.AsyncImage
+import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import android.net.Uri
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -121,6 +130,19 @@ private fun Details(
     modifier: Modifier = Modifier,
 ) {
     val childPadding = rememberChildPadding()
+    val context = LocalContext.current
+    // Only when something can play YouTube links (the YouTube app on Google TV).
+    val openTrailer: ((Trailer) -> Unit)? = remember(context) {
+        val probe = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=x"))
+        if (context.packageManager.resolveActivity(probe, 0) == null) {
+            null
+        } else {
+            { trailer: Trailer ->
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(trailer.uri))) }
+                Unit
+            }
+        }
+    }
 
     BackHandler(onBack = onBackPressed)
     RestoreRememberedFocus(focusMemory)
@@ -141,6 +163,7 @@ private fun Details(
                 },
                 openSeries = openSeries,
                 openEpisode = openEpisode,
+                openTrailer = openTrailer,
             )
         }
 
@@ -150,6 +173,27 @@ private fun Details(
                 focusMemory = focusMemory,
                 // Opens the episode's page (on an episode's page, another of its season).
                 onEpisodeSelected = { openEpisode(it.id) }
+            )
+        }
+
+        if (movieDetails.trailers.size > 1 && openTrailer != null) item {
+            TileRow(
+                items = movieDetails.trailers,
+                key = { "trailer-${it.key}" },
+                itemTitle = { it.name },
+                itemImage = { trailer, _, imageModifier ->
+                    AsyncImage(
+                        model = trailer.thumbnailUri,
+                        contentDescription = trailer.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = imageModifier.fillMaxWidth(),
+                    )
+                },
+                itemDirection = ItemDirection.Horizontal,
+                title = stringResource(R.string.trailers),
+                titleStyle = MaterialTheme.typography.titleMedium,
+                onItemSelected = openTrailer,
+                focusMemory = focusMemory,
             )
         }
 

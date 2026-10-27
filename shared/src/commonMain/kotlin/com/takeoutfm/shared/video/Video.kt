@@ -43,6 +43,15 @@ data class EpisodeInfo(
 
 data class SeasonInfo(val number: Int, val episodes: List<EpisodeInfo>)
 
+/** A movie trailer on YouTube; [uri] opens it (in the YouTube app when there is one). */
+data class Trailer(
+    val name: String,
+    val key: String,
+    val uri: String,
+    /** YouTube's own thumbnail for it. */
+    val thumbnailUri: String,
+)
+
 /** Where an episode sits: its series (for "go to series"), number, air date and season. */
 data class EpisodeContext(
     val seriesId: String,
@@ -99,6 +108,8 @@ data class VideoDetails(
     val playTarget: String? = null,
     val previousEpisodeId: String? = null,
     val nextEpisodeId: String? = null,
+    /** A movie's trailers, newest first (TMDB often lists teasers before the final one). */
+    val trailers: List<Trailer> = emptyList(),
     /** An episode's series, number and season; null for movies and series. */
     val episode: EpisodeContext? = null,
 )

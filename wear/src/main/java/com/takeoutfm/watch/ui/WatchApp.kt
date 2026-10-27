@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.People
@@ -157,9 +158,13 @@ private fun Pages(vm: WatchViewModel) {
                 }
             }
         }
-        composable("music") {
-            val state = load("new") { vm.music.recentlyAdded().first() }
-            ListPage(stringResource(R.string.music)) {
+        // Recently Added and New Music: the same album list from the server's Home.
+        composable("albums/{kind}") { entry ->
+            val added = entry.arguments?.getString("kind") == "added"
+            val state = load(if (added) "added" else "new") {
+                if (added) vm.music.recentlyAdded().first() else vm.music.newReleases().first()
+            }
+            ListPage(stringResource(if (added) R.string.recently_added else R.string.music)) {
                 status(state)
                 val albums = (state as? Load.Loaded)?.value.orEmpty()
                 items(albums.size) { i ->
@@ -197,14 +202,20 @@ private fun Pages(vm: WatchViewModel) {
                 }
             }
         }
+        // Favorite artists only: the whole library's list is too long to scroll on a watch.
         composable("artists") {
-            val state = load("artists") { vm.music.artists().first() }
+            // Favorites come without images; fetching the whole artist list for them was slow
+            // over Bluetooth, so the list is names only.
+            val state = load("artists") { vm.music.favorites().artists }
             ListPage(stringResource(R.string.artists)) {
                 status(state)
+                if ((state as? Load.Loaded)?.value?.isEmpty() == true) {
+                    item { Text(stringResource(R.string.no_favorite_artists), textAlign = TextAlign.Center) }
+                }
                 val artists = (state as? Load.Loaded)?.value.orEmpty()
                 items(artists.size) { i ->
                     val a = artists[i]
-                    Entry(a.name, onClick = { nav.navigate("artist/${a.id}") }, secondary = a.genre, imageUri = a.imageUri)
+                    Entry(a.name, onClick = { nav.navigate("artist/${a.id}") }, secondary = a.genre)
                 }
             }
         }
@@ -320,7 +331,8 @@ private fun Home(vm: WatchViewModel, go: (String) -> Unit) {
             }
         }
         item { Entry(stringResource(R.string.recent), onClick = { go("recent") }, icon = Icons.Filled.History) }
-        item { Entry(stringResource(R.string.music), onClick = { go("music") }, icon = Icons.Filled.Speaker) }
+        item { Entry(stringResource(R.string.recently_added), onClick = { go("albums/added") }, icon = Icons.Filled.LibraryAdd) }
+        item { Entry(stringResource(R.string.music), onClick = { go("albums/new") }, icon = Icons.Filled.Speaker) }
         item { Entry(stringResource(R.string.artists), onClick = { go("artists") }, icon = Icons.Filled.People) }
         item { Entry(stringResource(R.string.playlists), onClick = { go("playlists") }, icon = Icons.AutoMirrored.Filled.QueueMusic) }
         item { Entry(stringResource(R.string.radio), onClick = { go("radio") }, icon = Icons.Filled.Radio) }

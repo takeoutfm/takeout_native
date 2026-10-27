@@ -9,7 +9,9 @@
     <string name="cant_reach">Couldn\'t reach the server</string>
     <string name="recent">Recent</string>
     <string name="music">New Music</string>
+    <string name="recently_added">Recently Added</string>
     <string name="artists">Artists</string>
+    <string name="no_favorite_artists">No favorite artists yet. Add them from an artist\'s page on your phone.</string>
     <string name="playlists">Playlists</string>
     <string name="favorites">Favorites</string>
     <string name="radio">Radio</string>

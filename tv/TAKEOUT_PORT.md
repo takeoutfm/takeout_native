@@ -202,7 +202,11 @@ library), A–Z.
   doesn't), sharing the row's width. Budget/Revenue as dollars ("$325,000"), "—" when unknown.
 - Empty metadata (e.g. an episode's genres) and empty Cast & Crew / Reviews sections are hidden.
 - Series: one row per season (specials last), episode cards with still, number, name, runtime;
-  selecting an episode plays it.
+  selecting an episode opens its details page (Play focused).
+- Episode details: "Series · S1E2 Name", the episode's own cast and crew and rating, Resume /
+  Start over, **Series** (back to the series: pops if that's where it was opened from), and
+  **Previous / Next** episode; a row of its season. Previous, Next and the season row replace
+  the page, so Back still returns to the series.
 - Cast & Crew cards show TMDB profile photos (coloured block if none) and open the person page.
   The directors come first, subtitled "Director"; a director who also acts gets one card,
   "Director · as <role>". Writers aren't shown (the server sends `Writing`; they'd push the
@@ -535,6 +539,12 @@ Each step is its own commit(s), checked on the emulator and TV.
   10 s and on pause, synced with the phone) and Recently Played resumes episodes too.
 - **Now Playing for an episode**: back 10 s · play/pause · forward 30 s (instead of previous /
   next), no repeat or favorite; the seek bar and queue as for music.
+- **Episode page** (`PodcastEpisodeScreen.kt`, route `PodcastEpisode/{seriesId}/{episodeId}`;
+  selecting an episode on the podcast page opens it): art, title, podcast, date · progress
+  and bar; Play / Resume (focused on open), Start over (`QueueRef.Episodes(…, fromStart =
+  true)`, "episodes:ps-4:2:start"), Mark as played / unplayed (as the phone), Previous (older)
+  / Next (newer), which replace the page. Show notes are plain text paragraphs (HTML via
+  `HtmlCompat`), each focusable with a faint highlight so the D-pad scrolls through them.
 - Not done: a Continue Listening row on Music Home, podcasts in Search (the TV always streams,
   so no downloads).
 

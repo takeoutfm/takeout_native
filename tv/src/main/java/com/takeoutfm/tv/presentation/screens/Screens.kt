@@ -59,6 +59,7 @@ enum class Screens(
     Artist(listOf(ArtistScreen.ArtistIdBundleKey)),
     Album(listOf(AlbumScreen.AlbumIdBundleKey)),
     Podcast(listOf(PodcastScreen.SeriesIdBundleKey)),
+    PodcastEpisode(listOf(PodcastScreen.SeriesIdBundleKey, PodcastScreen.EpisodeIdBundleKey)),
     MusicPlayer(listOf(MusicPlayerScreen.QueueBundleKey)),
     NowPlaying;
 

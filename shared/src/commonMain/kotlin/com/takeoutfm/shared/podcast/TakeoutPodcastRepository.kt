@@ -78,6 +78,9 @@ class TakeoutPodcastRepository(
         )
     }
 
+    /** The saved position of the episode with GUID [eid], or null. */
+    suspend fun offset(eid: String): ApiOffset? = orNull { progress.latest()[eid] }
+
     suspend fun setSubscribed(seriesId: String, subscribed: Boolean) =
         api.setSubscribed(numericId(seriesId, SeriesPrefix), subscribed)
 
@@ -144,6 +147,16 @@ class TakeoutPodcastRepository(
 
         fun numericId(id: String, prefix: String): Int =
             id.removePrefix(prefix).toIntOrNull() ?: throw IllegalArgumentException("Not a $prefix id: $id")
+
+        /**
+         * The position and length (seconds) to save to mark an episode played, or not played:
+         * its known length if it has been played before; otherwise a token length, since the
+         * real one isn't known until it plays (played → Complete, not played → Not started).
+         */
+        fun playedMark(known: ApiOffset?, played: Boolean): Pair<Int, Int> {
+            val duration = known?.duration?.takeIf { it > 0 } ?: ProgressRules.MinResumeSeconds
+            return (if (played) duration else 0) to duration
+        }
 
         /** Not started (or barely), started with time left, or within the end (Complete). */
         fun episodeProgress(offset: ApiOffset?): EpisodeProgress = when {

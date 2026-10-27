@@ -336,11 +336,20 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    settings, best audio track, −10/+30, resume / play from start, progress saved through the
    shared offline cache, next episode at the end, its own media session, picture-in-picture).
    The track logic moved to `:android-media` `video/Tracks.kt` for both apps.
+   Episode pages (2026-10-27): the episode's name, a link to its series, "S1E2 · air date ·
+   49 min · ★", guest stars & crew (the episode view's `Cast`/`Directing`/`Writing`, now read by
+   the shared repository as `VideoDetails.episode` / cast), Previous / Next episode and a
+   More from Season N row; the series page's episode rows open the page, ▶ plays.
 5. **Podcasts** — done (2026-10-25): Home's Podcasts (all / subscribed, shown when the index
    has podcasts), podcast pages (Subscribe, description, episodes with date, "N min left" /
    Complete), playback through the music service with progress saved by GUID (shared
    `TakeoutPodcastRepository`, `:android-media` `PodcastProgress`; episodes aren't listens),
-   resume. Downloads come with phase 6.
+   resume. Downloads come with phase 6. Episode pages (2026-10-27, `PodcastEpisodeScreen`):
+   art, podcast link, date and progress, Play / Resume and Play from start, Download, Mark as
+   played / unplayed (`TakeoutPodcastRepository.playedMark`: the known length, else a token
+   one, since the length isn't known before playing), show notes with tappable links
+   (`AnnotatedString.fromHtml`), Previous (older) / Next (newer); podcast rows open the page,
+   ▶ plays.
 6. **Offline** — mostly done (2026-10-25): `:android-media` `offline/TakeoutMediaCache`
    (one `SimpleCache` in `files/media`, keyed by ETag via the media items' custom cache key,
    `NoOpCacheEvictor`; playback reads it always and writes only while Playback Caching is on;

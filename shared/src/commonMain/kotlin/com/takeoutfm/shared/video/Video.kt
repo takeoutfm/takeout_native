@@ -43,6 +43,22 @@ data class EpisodeInfo(
 
 data class SeasonInfo(val number: Int, val episodes: List<EpisodeInfo>)
 
+/** Where an episode sits: its series (for "go to series"), number, air date and season. */
+data class EpisodeContext(
+    val seriesId: String,
+    val seriesTitle: String,
+    val season: Int,
+    val episode: Int,
+    val name: String,
+    /** ISO date it aired, "" when unknown. */
+    val airDate: String,
+    /** Every episode of its season, in order (itself included). */
+    val seasonEpisodes: List<EpisodeInfo>,
+) {
+    /** "S2E5". */
+    val label: String get() = "S${season}E$episode"
+}
+
 enum class VideoKind { Movie, Series, Episode }
 
 /** Details for a movie, a series (Play starts [playTarget]) or an episode. */
@@ -83,6 +99,8 @@ data class VideoDetails(
     val playTarget: String? = null,
     val previousEpisodeId: String? = null,
     val nextEpisodeId: String? = null,
+    /** An episode's series, number and season; null for movies and series. */
+    val episode: EpisodeContext? = null,
 )
 
 enum class CreditKind {

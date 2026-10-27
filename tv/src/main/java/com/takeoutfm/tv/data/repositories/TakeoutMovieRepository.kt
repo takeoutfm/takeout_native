@@ -195,7 +195,10 @@ class TakeoutMovieRepository @Inject constructor(
         isFavorite = isFavorite,
         favoritePath = favoritePath,
         tagline = tagline,
-        seasons = seasons.map { s -> Season(s.number, s.episodes.map { it.toEpisode() }) },
+        // An episode's page shows the rest of its season.
+        seasons = episode?.let { e -> listOf(Season(e.season, e.seasonEpisodes.map { it.toEpisode() })) }
+            ?: seasons.map { s -> Season(s.number, s.episodes.map { it.toEpisode() }) },
+        seriesId = episode?.seriesId,
         playTarget = playTarget,
         previousEpisodeId = previousEpisodeId,
         nextEpisodeId = nextEpisodeId,

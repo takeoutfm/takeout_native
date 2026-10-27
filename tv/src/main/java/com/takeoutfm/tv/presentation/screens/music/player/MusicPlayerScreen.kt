@@ -753,7 +753,7 @@ class MusicPlayerViewModel @Inject constructor(
                         val details = podcasts.details(ref.seriesId)
                         podcasts.episodesQueue(
                             details.series.title, details.series.imageUri, details.episodes, ref.startIndex,
-                        )
+                        ).let { if (ref.fromStart) it.copy(startPositionMs = 0) else it }
                     }
                 }
                 if (queue.items.isEmpty()) {

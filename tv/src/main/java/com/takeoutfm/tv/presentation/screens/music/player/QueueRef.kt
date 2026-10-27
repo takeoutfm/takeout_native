@@ -7,7 +7,8 @@ import com.takeoutfm.shared.music.ArtistMix
  * from its 4th track), "artist:ar-5:shuffle:0" (an artist mix), "station:st-3:0",
  * "playlist:pl-2:0", "favorites:4" (favorite tracks from the 5th), "history:h123:0" (a
  * Recently Played entry, which resumes where it was left; the index is unused) or
- * "episodes:ps-4:2" (a podcast's episodes from the 3rd, resuming it if started).
+ * "episodes:ps-4:2" (a podcast's episodes from the 3rd, resuming it if started;
+ * "episodes:ps-4:2:start" plays it from its start).
  */
 sealed class QueueRef {
     abstract val startIndex: Int
@@ -28,7 +29,11 @@ sealed class QueueRef {
 
     data class History(val entryId: String, override val startIndex: Int = 0) : QueueRef()
 
-    data class Episodes(val seriesId: String, override val startIndex: Int = 0) : QueueRef()
+    data class Episodes(
+        val seriesId: String,
+        override val startIndex: Int = 0,
+        val fromStart: Boolean = false,
+    ) : QueueRef()
 
     fun encode(): String = when (this) {
         is Album -> "album:$albumId:$startIndex"
@@ -37,7 +42,7 @@ sealed class QueueRef {
         is Playlist -> "playlist:$playlistId:$startIndex"
         is Favorites -> "favorites:$startIndex"
         is History -> "history:$entryId:$startIndex"
-        is Episodes -> "episodes:$seriesId:$startIndex"
+        is Episodes -> "episodes:$seriesId:$startIndex" + if (fromStart) ":start" else ""
     }
 
     companion object {
@@ -49,15 +54,21 @@ sealed class QueueRef {
                 } else {
                     null
                 }
-                "station", "playlist", "history", "episodes" -> if (parts.size == 3) {
+                "station", "playlist", "history" -> if (parts.size == 3) {
                     parts[2].toIntOrNull()?.let { start ->
                         when (parts[0]) {
                             "station" -> Station(parts[1], start)
                             "playlist" -> Playlist(parts[1], start)
-                            "episodes" -> Episodes(parts[1], start)
                             else -> History(parts[1], start)
                         }
                     }
+                } else {
+                    null
+                }
+                "episodes" -> if (parts.size == 4 && parts[3] == "start") {
+                    parts[2].toIntOrNull()?.let { Episodes(parts[1], it, fromStart = true) }
+                } else if (parts.size == 3) {
+                    parts[2].toIntOrNull()?.let { Episodes(parts[1], it) }
                 } else {
                     null
                 }

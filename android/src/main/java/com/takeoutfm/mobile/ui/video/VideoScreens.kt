@@ -1,6 +1,10 @@
 package com.takeoutfm.mobile.ui.video
 
 import androidx.compose.foundation.background
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -148,7 +152,9 @@ class VideoViewModel @Inject constructor(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 /**
  * A movie, series or episode: backdrop, facts, Resume / Play from start, genres, cast & crew
- * (directors first), seasons with their episodes, related titles.
+ * (directors first), seasons with their episodes (▶ plays one; the row opens its page), related
+ * titles. An episode's page leads with its name, links back to its series, and adds previous /
+ * next and the rest of its season.
  */
 @Composable
 fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
@@ -159,7 +165,8 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
     LaunchedEffect(details?.etag) { viewModel.refresh() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
     MusicPage(
-        title = details?.title.orEmpty(),
+        // An episode's bar names its series; the page itself leads with the episode's name.
+        title = details?.episode?.seriesTitle ?: details?.title.orEmpty(),
         onBack = nav.back,
         actions = {
             if (details?.favoritePath != null) {
@@ -184,13 +191,23 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
             item {
                 Backdrop(details)
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(details.title, style = MaterialTheme.typography.headlineSmall)
+                    val episode = details.episode
+                    Text(episode?.name?.ifEmpty { null } ?: details.title, style = MaterialTheme.typography.headlineSmall)
+                    if (episode != null) {
+                        Text(
+                            episode.seriesTitle + " ›",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { nav.openVideo(episode.seriesId) },
+                        )
+                    }
                     Text(facts(details), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (details.tagline.isNotEmpty() && details.kind != VideoKind.Episode) {
                         Text(details.tagline, style = MaterialTheme.typography.bodyMedium, fontStyleItalic = true)
                     }
                     PlayButtons(details, offset, play)
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
+                    if (details.episode != null) EpisodeSteps(details, nav)
                     if (details.genres.isNotEmpty()) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             details.genres.forEach { g ->
@@ -202,7 +219,7 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
             }
             if (details.cast.isNotEmpty()) {
                 item {
-                    SectionTitle(stringResource(R.string.cast_crew))
+                    SectionTitle(stringResource(if (details.episode != null) R.string.guest_stars_crew else R.string.cast_crew))
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(details.cast, key = { it.personId }) { c ->
                             Column(Modifier.width(96.dp).clickable { nav.openPerson(c.personId) }, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -225,8 +242,19 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                         leadingContent = { Art(e.stillUri, e.name, Modifier.width(112.dp).aspectRatio(16f / 9f), RoundedCornerShape(6.dp)) },
                         headlineContent = { Text("${e.episode}. ${e.name}", maxLines = 2, overflow = TextOverflow.Ellipsis) },
                         supportingContent = { if (e.runtimeMinutes > 0) Text(stringResource(R.string.runtime_minutes, e.runtimeMinutes)) },
+                        // Plays it (resuming if started); the row opens its page.
+                        trailingContent = {
+                            IconButton(onClick = { VideoPlayerActivity.start(context, e.id, startOver = false) }) {
+                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.play))
+                            }
+                        },
                         modifier = Modifier.clickable { nav.openVideo(e.id) },
                     )
+                }
+            }
+            details.episode?.let { episode ->
+                if (episode.seasonEpisodes.size > 1) item(key = "season-row") {
+                    SeasonShelf(episode, current = details.id) { nav.openVideo(it) }
                 }
             }
             item {
@@ -243,16 +271,85 @@ private fun Text(text: String, style: androidx.compose.ui.text.TextStyle, fontSt
 
 @Composable
 private fun facts(d: VideoDetails): String = listOfNotNull(
-    d.year.takeIf { it.isNotEmpty() && it != "0001" },
+    d.episode?.label,
+    // An episode shows when it aired rather than its year.
+    d.episode?.airDate?.let(::airDate) ?: d.year.takeIf { it.isNotEmpty() && it != "0001" },
     d.rating.takeIf { it.isNotEmpty() },
     when {
         d.kind == VideoKind.Series -> stringResource(R.string.seasons_episodes, d.seasonCount, d.episodeCount)
+        d.runtimeMinutes in 1..59 -> stringResource(R.string.runtime_minutes, d.runtimeMinutes)
         d.runtimeMinutes > 0 -> stringResource(R.string.runtime, d.runtimeMinutes / 60, d.runtimeMinutes % 60)
         else -> null
     },
     d.voteAverage?.let { stringResource(R.string.rating_tmdb, it) },
     d.directors.takeIf { it.isNotEmpty() }?.joinToString(", "),
 ).joinToString(" · ")
+
+/** "Jan 27, 2008" for an ISO date ("2008-01-27"); null when it doesn't parse. */
+private fun airDate(iso: String): String? = runCatching {
+    java.time.LocalDate.parse(iso)
+        .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
+}.getOrNull()
+
+/** An episode's previous / next episode buttons (in play order, across seasons). */
+@Composable
+private fun EpisodeSteps(details: VideoDetails, nav: VideoNav) {
+    val previous = details.previousEpisodeId
+    val next = details.nextEpisodeId
+    if (previous == null && next == null) return
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (previous != null) {
+            OutlinedButton(onClick = { nav.openVideo(previous) }) {
+                Icon(Icons.Filled.SkipPrevious, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.previous_episode), modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+        if (next != null) {
+            OutlinedButton(onClick = { nav.openVideo(next) }) {
+                Text(stringResource(R.string.next_episode), modifier = Modifier.padding(end = 6.dp))
+                Icon(Icons.Filled.SkipNext, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+/** The rest of an episode's season as stills; [current] is outlined. */
+@Composable
+private fun SeasonShelf(episode: com.takeoutfm.shared.video.EpisodeContext, current: String, onClick: (String) -> Unit) {
+    SectionTitle(
+        if (episode.season == 0) stringResource(R.string.specials)
+        else stringResource(R.string.more_from_season, episode.season)
+    )
+    val state = androidx.compose.foundation.lazy.rememberLazyListState(
+        initialFirstVisibleItemIndex = episode.seasonEpisodes.indexOfFirst { it.id == current }.coerceAtLeast(0),
+    )
+    LazyRow(state = state, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(episode.seasonEpisodes, key = { it.id }) { e ->
+            val isCurrent = e.id == current
+            Column(Modifier.width(160.dp).clickable(enabled = !isCurrent) { onClick(e.id) }) {
+                Art(
+                    e.stillUri, e.name,
+                    Modifier
+                        .width(160.dp)
+                        .aspectRatio(16f / 9f)
+                        .then(
+                            if (isCurrent) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
+                            else Modifier
+                        ),
+                    RoundedCornerShape(6.dp),
+                )
+                Text(
+                    "${e.episode}. ${e.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun Backdrop(details: VideoDetails) {

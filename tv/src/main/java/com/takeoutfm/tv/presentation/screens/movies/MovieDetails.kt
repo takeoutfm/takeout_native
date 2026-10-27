@@ -36,6 +36,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -78,7 +81,10 @@ fun MovieDetails(
     resumePositionMs: Long,
     isFavorite: Boolean,
     onToggleFavorite: (favoritePath: String) -> Unit,
-    goToMoviePlayer: (startOver: Boolean) -> Unit
+    goToMoviePlayer: (startOver: Boolean) -> Unit,
+    /** An episode's Series / Previous / Next buttons. */
+    openSeries: (seriesId: String) -> Unit = {},
+    openEpisode: (episodeId: String) -> Unit = {},
 ) {
     val childPadding = rememberChildPadding()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -152,6 +158,21 @@ fun MovieDetails(
                             onClick = { onToggleFavorite(path) }
                         )
                     }
+                    movieDetails.seriesId?.let { seriesId ->
+                        DetailsButton(Icons.Outlined.Tv, stringResource(R.string.series), bringIntoViewOnFocus) {
+                            openSeries(seriesId)
+                        }
+                    }
+                    movieDetails.previousEpisodeId?.let { id ->
+                        DetailsButton(Icons.Outlined.SkipPrevious, stringResource(R.string.previous_episode), bringIntoViewOnFocus) {
+                            openEpisode(id)
+                        }
+                    }
+                    movieDetails.nextEpisodeId?.let { id ->
+                        DetailsButton(Icons.Outlined.SkipNext, stringResource(R.string.next_episode), bringIntoViewOnFocus) {
+                            openEpisode(id)
+                        }
+                    }
                 }
             }
         }
@@ -212,6 +233,27 @@ private fun StartOverButton(
             text = stringResource(R.string.start_over),
             style = MaterialTheme.typography.titleSmall
         )
+    }
+}
+
+/** An outlined icon + label button, styled like [StartOverButton]. */
+@Composable
+private fun DetailsButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        shape = OutlinedButtonDefaults.shape(shape = JetStreamButtonShape),
+        border = outlinedButtonBorder()
+    ) {
+        Icon(imageVector = icon, contentDescription = null)
+        Spacer(Modifier.size(8.dp))
+        Text(text = text, style = MaterialTheme.typography.titleSmall)
     }
 }
 

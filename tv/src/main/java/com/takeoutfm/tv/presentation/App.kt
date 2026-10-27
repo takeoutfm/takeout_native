@@ -57,6 +57,7 @@ import com.takeoutfm.tv.presentation.screens.music.album.AlbumScreen
 import com.takeoutfm.tv.presentation.screens.music.artist.ArtistScreen
 import com.takeoutfm.tv.presentation.screens.music.player.MiniPlayer
 import com.takeoutfm.tv.presentation.screens.music.player.MusicPlayerScreen
+import com.takeoutfm.tv.presentation.screens.music.podcasts.PodcastEpisodeScreen
 import com.takeoutfm.tv.presentation.screens.music.podcasts.PodcastScreen
 import com.takeoutfm.tv.presentation.screens.music.player.NowPlayingScreen
 import com.takeoutfm.tv.presentation.screens.person.PersonScreen
@@ -165,8 +166,21 @@ private fun AppContent(
                         openPerson = { personId ->
                             navController.navigate(Screens.Person.withArgs(personId))
                         },
-                        playEpisode = { episodeId ->
-                            navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
+                        // From a series, push the episode's page; from an episode (previous, next,
+                        // its season), replace it, so Back still returns to the series.
+                        openEpisode = { episodeId ->
+                            if (movieId?.startsWith("e-") == true) navController.popBackStack()
+                            navController.navigate(Screens.MovieDetails.withArgs(episodeId))
+                        },
+                        // Back to the series if that's where this episode was opened from.
+                        openSeries = { seriesId ->
+                            val previous = navController.previousBackStackEntry?.arguments
+                                ?.getString(MovieDetailsScreen.MovieIdBundleKey)
+                            if (previous == seriesId) {
+                                navController.popBackStack()
+                            } else {
+                                navController.navigate(Screens.MovieDetails.withArgs(seriesId))
+                            }
                         },
                         // A new details page on top, so Back returns to this one.
                         refreshScreenWithNewMovie = { movie ->
@@ -314,6 +328,32 @@ private fun AppContent(
                     PodcastScreen(
                         onPlay = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                        },
+                        onOpenEpisode = { seriesId, episodeId ->
+                            navController.navigate(Screens.PodcastEpisode.withArgs(seriesId, episodeId))
+                        },
+                        onBackPressed = {
+                            if (navController.navigateUp()) {
+                                isComingBackFromDifferentScreen = true
+                            }
+                        },
+                    )
+                }
+                composable(
+                    route = Screens.PodcastEpisode(),
+                    arguments = listOf(
+                        navArgument(PodcastScreen.SeriesIdBundleKey) { type = NavType.StringType },
+                        navArgument(PodcastScreen.EpisodeIdBundleKey) { type = NavType.StringType },
+                    )
+                ) {
+                    PodcastEpisodeScreen(
+                        onPlay = { ref ->
+                            navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                        },
+                        // Previous / Next replace this page, so Back returns to the podcast.
+                        onOpenEpisode = { seriesId, episodeId ->
+                            navController.popBackStack()
+                            navController.navigate(Screens.PodcastEpisode.withArgs(seriesId, episodeId))
                         },
                         onBackPressed = {
                             if (navController.navigateUp()) {

@@ -83,16 +83,17 @@ import kotlinx.coroutines.launch
 
 object PodcastScreen {
     const val SeriesIdBundleKey = "seriesId"
+    const val EpisodeIdBundleKey = "episodeId"
 }
 
 /**
  * A podcast: cover, author, description, Play (the newest episode) and Subscribe, then its
- * episodes with date and progress; selecting one plays the episodes from there, resuming it
- * if it was started.
+ * episodes with date and progress; selecting one opens its page.
  */
 @Composable
 fun PodcastScreen(
     onPlay: (QueueRef) -> Unit,
+    onOpenEpisode: (seriesId: String, episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     viewModel: PodcastScreenViewModel = hiltViewModel(),
 ) {
@@ -110,6 +111,7 @@ fun PodcastScreen(
                 details = s.details,
                 focusMemory = focusMemory,
                 onPlay = onPlay,
+                onOpenEpisode = onOpenEpisode,
                 onSubscribe = viewModel::setSubscribed,
             )
         }
@@ -121,6 +123,7 @@ private fun PodcastContent(
     details: PodcastDetails,
     focusMemory: FocusMemory,
     onPlay: (QueueRef) -> Unit,
+    onOpenEpisode: (seriesId: String, episodeId: String) -> Unit,
     onSubscribe: (Boolean) -> Unit,
 ) {
     val seriesId = details.series.id
@@ -139,10 +142,10 @@ private fun PodcastContent(
                 onSubscribe = onSubscribe,
             )
         }
-        itemsIndexed(details.episodes, key = { _, e -> e.id }) { index, episode ->
+        itemsIndexed(details.episodes, key = { _, e -> e.id }) { _, episode ->
             EpisodeListItem(
                 episode = episode,
-                onClick = { onPlay(QueueRef.Episodes(seriesId, index)) },
+                onClick = { onOpenEpisode(seriesId, episode.id) },
                 modifier = Modifier
                     .padding(horizontal = childPadding.start)
                     .rememberFocus(focusMemory, episode.id)
@@ -214,7 +217,7 @@ private fun EpisodeListItem(
 
 /** How far into an episode: a short bar in the row's content colour (dark when focused). */
 @Composable
-private fun ProgressBar(fraction: Float, modifier: Modifier = Modifier) {
+internal fun ProgressBar(fraction: Float, modifier: Modifier = Modifier) {
     val color = LocalContentColor.current
     Box(
         modifier
@@ -318,7 +321,7 @@ private fun PodcastHeader(
 }
 
 @Composable
-private fun progressLabel(p: EpisodeProgress): String? = when (p) {
+internal fun progressLabel(p: EpisodeProgress): String? = when (p) {
     EpisodeProgress.NotStarted -> null
     EpisodeProgress.Complete -> stringResource(R.string.podcast_played)
     is EpisodeProgress.Started ->
@@ -326,12 +329,12 @@ private fun progressLabel(p: EpisodeProgress): String? = when (p) {
 }
 
 /** "Oct 21, 2026" for an ISO date; null when unknown. */
-private fun published(date: String): String? =
+internal fun published(date: String): String? =
     runCatching { Instant.parse(date).toEpochMilli() }.getOrNull()?.takeIf { it > 0 }
         ?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it)) }
 
 /** Podcast descriptions are often HTML; show them as plain text. */
-private fun plain(html: String): String =
+internal fun plain(html: String): String =
     HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).toString()
         .replace(Regex("\\s+"), " ")
         .trim()

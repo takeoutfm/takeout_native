@@ -60,7 +60,8 @@ object MovieDetailsScreen {
 fun MovieDetailsScreen(
     goToMoviePlayer: (startOver: Boolean) -> Unit,
     openPerson: (personId: String) -> Unit,
-    playEpisode: (episodeId: String) -> Unit,
+    openEpisode: (episodeId: String) -> Unit,
+    openSeries: (seriesId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
     movieDetailsScreenViewModel: MovieDetailsScreenViewModel = hiltViewModel()
@@ -92,7 +93,8 @@ fun MovieDetailsScreen(
                 focusMemory = rememberFocusMemory(movieDetailsScreenViewModel.focusedCardKey),
                 goToMoviePlayer = goToMoviePlayer,
                 openPerson = openPerson,
-                playEpisode = playEpisode,
+                openEpisode = openEpisode,
+                openSeries = openSeries,
                 onBackPressed = onBackPressed,
                 refreshScreenWithNewMovie = refreshScreenWithNewMovie,
                 modifier = Modifier
@@ -112,7 +114,8 @@ private fun Details(
     focusMemory: FocusMemory,
     goToMoviePlayer: (startOver: Boolean) -> Unit,
     openPerson: (personId: String) -> Unit,
-    playEpisode: (episodeId: String) -> Unit,
+    openEpisode: (episodeId: String) -> Unit,
+    openSeries: (seriesId: String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
     modifier: Modifier = Modifier,
@@ -135,7 +138,9 @@ private fun Details(
                 goToMoviePlayer = { startOver ->
                     focusMemory.lastKey.value = null
                     goToMoviePlayer(startOver)
-                }
+                },
+                openSeries = openSeries,
+                openEpisode = openEpisode,
             )
         }
 
@@ -143,7 +148,8 @@ private fun Details(
             SeasonEpisodesRow(
                 season = season,
                 focusMemory = focusMemory,
-                onEpisodeSelected = { playEpisode(it.id) }
+                // Opens the episode's page (on an episode's page, another of its season).
+                onEpisodeSelected = { openEpisode(it.id) }
             )
         }
 

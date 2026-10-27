@@ -173,6 +173,11 @@
     <string name="rating_tmdb">★ %1$.1f/10</string>
     <string name="no_playable_file">The server has no playable file for this title.</string>
     <string name="next_episode">Next episode</string>
+    <string name="mark_played">Mark as played</string>
+    <string name="mark_unplayed">Mark as unplayed</string>
+    <string name="previous_episode">Previous episode</string>
+    <string name="guest_stars_crew">Guest Stars &amp; Crew</string>
+    <string name="more_from_season">More from Season %1$d</string>
 
     <!-- Podcasts -->
     <string name="nav_podcasts">Podcasts</string>

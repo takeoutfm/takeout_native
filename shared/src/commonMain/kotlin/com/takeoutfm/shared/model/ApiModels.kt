@@ -147,6 +147,8 @@ data class ApiEpisode(
     @SerialName("Date") val date: String = "",
     @SerialName("StillPath") val stillPath: String = "",
     @SerialName("ETag") val etag: String = "",
+    @SerialName("VoteAverage") val voteAverage: Float? = null,
+    @SerialName("VoteCount") val voteCount: Int? = null,
 )
 
 @Serializable
@@ -246,6 +248,11 @@ data class ApiTvEpisodeView(
     @SerialName("Series") val series: ApiSeries = ApiSeries(),
     @SerialName("Episode") val episode: ApiEpisode = ApiEpisode(),
     @SerialName("Location") val location: String = "",
+    /** The episode's own cast (guest stars) and crew. */
+    @SerialName("Cast") val cast: List<ApiCast>? = null,
+    @SerialName("Crew") val crew: List<ApiCrew>? = null,
+    @SerialName("Directing") val directing: List<ApiPerson>? = null,
+    @SerialName("Writing") val writing: List<ApiPerson>? = null,
 )
 
 @Serializable

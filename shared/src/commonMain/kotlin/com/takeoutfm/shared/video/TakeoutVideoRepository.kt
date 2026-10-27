@@ -227,8 +227,10 @@ class TakeoutVideoRepository(
         val view = api.tvEpisode(id)
         val e = view.episode
         val s = view.series
-        // Neighbours for the player's previous/next episode buttons; none if the series won't load.
-        val order = orNull { playOrder(api.tvSeries(s.id).episodes.orEmpty()) }.orEmpty()
+        // Neighbours for the player's previous/next episode buttons, and the season's episodes;
+        // none if the series won't load.
+        val all = orNull { api.tvSeries(s.id).episodes.orEmpty() }.orEmpty()
+        val order = playOrder(all)
         val index = order.indexOfFirst { it.id == e.id }
         return VideoDetails(
             id = "$EpisodePrefix${e.id}",
@@ -243,7 +245,21 @@ class TakeoutVideoRepository(
             year = e.date.take(4),
             genres = emptyList(),
             runtimeMinutes = e.runtime,
+            directors = view.directing.names(),
+            writers = view.writing.names(),
+            cast = castAndCrew(view.cast, view.directing),
+            voteAverage = e.voteAverage?.takeIf { it > 0f },
+            voteCount = e.voteCount ?: 0,
             etag = e.etag,
+            episode = EpisodeContext(
+                seriesId = "$SeriesPrefix${s.id}",
+                seriesTitle = s.name,
+                season = e.season,
+                episode = e.episode,
+                name = e.name,
+                airDate = e.date.take(10).takeIf { it.length == 10 && !it.startsWith("0001") }.orEmpty(),
+                seasonEpisodes = all.filter { it.season == e.season }.sortedBy { it.episode }.map { it.toEpisodeInfo() },
+            ),
             previousEpisodeId = order.getOrNull(index - 1)?.takeIf { index > 0 }
                 ?.let { "$EpisodePrefix${it.id}" },
             nextEpisodeId = order.getOrNull(index + 1)?.takeIf { index >= 0 }

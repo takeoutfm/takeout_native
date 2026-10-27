@@ -16,7 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -151,13 +151,11 @@ fun PodcastScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastViewMode
                             if (e.progress == EpisodeProgress.Complete) {
                                 Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.complete), tint = MaterialTheme.colorScheme.primary)
                             }
-                            val status = downloads[e.eid]?.status
-                            if (status != null) {
-                                DownloadBadge(status, Modifier.padding(start = 8.dp))
-                            } else {
-                                androidx.compose.material3.IconButton(onClick = { main.downloadEpisode(series.title, series.imageUri, details.episodes, index) }) {
-                                    Icon(Icons.Filled.Download, contentDescription = stringResource(R.string.download))
-                                }
+                            downloads[e.eid]?.status?.let { DownloadBadge(it, Modifier.padding(start = 8.dp)) }
+                            // Plays from here (resuming it if started); the row opens its page,
+                            // where Download is.
+                            androidx.compose.material3.IconButton(onClick = { main.playEpisodes(series.title, series.imageUri, details.episodes, index) }) {
+                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.play))
                             }
                         }
                     },
@@ -166,7 +164,7 @@ fun PodcastScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastViewMode
                     } else {
                         null
                     },
-                    modifier = Modifier.clickable { main.playEpisodes(series.title, series.imageUri, details.episodes, index) },
+                    modifier = Modifier.clickable { nav.openEpisode(series.id, e.id) },
                 )
             }
             item { Spacer(Modifier.height(96.dp)) }
@@ -175,16 +173,16 @@ fun PodcastScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastViewMode
 }
 
 @Composable
-private fun progressLabel(p: EpisodeProgress): String? = when (p) {
+internal fun progressLabel(p: EpisodeProgress): String? = when (p) {
     EpisodeProgress.NotStarted -> null
     EpisodeProgress.Complete -> stringResource(R.string.complete)
     is EpisodeProgress.Started -> if (p.minutesLeft > 0) stringResource(R.string.minutes_left, p.minutesLeft) else null
 }
 
 /** "3 days ago" for an ISO date; null when unknown. */
-private fun published(date: String): String? =
+internal fun published(date: String): String? =
     runCatching { Instant.parse(date).toEpochMilliseconds() }.getOrNull()?.takeIf { it > 0 }?.let(::ago)
 
 /** Podcast descriptions are often HTML; show them as plain text. */
-private fun plain(html: String): String =
+internal fun plain(html: String): String =
     HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().replace(Regex("\\s+"), " ").trim()

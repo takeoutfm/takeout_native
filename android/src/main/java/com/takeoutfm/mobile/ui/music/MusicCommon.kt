@@ -56,6 +56,8 @@ class MusicNav(
     val openRecentTracks: () -> Unit,
     val openActivity: () -> Unit,
     val openPodcast: (String) -> Unit,
+    /** A podcast episode's page: (series id, episode id). */
+    val openEpisode: (String, String) -> Unit,
     val openDownloads: () -> Unit,
     val openSearch: () -> Unit,
     val back: () -> Unit,

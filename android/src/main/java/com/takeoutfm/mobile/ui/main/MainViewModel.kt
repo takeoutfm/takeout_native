@@ -163,8 +163,12 @@ class MainViewModel @Inject constructor(
     fun playFavorites(index: Int = 0) = play { music.favoritesQueue(index) }
 
     /** Plays podcast [episodes] from [index], resuming that episode where it was left. */
-    fun playEpisodes(title: String, imageUri: String, episodes: List<PodcastEpisode>, index: Int) =
-        play { podcasts.episodesQueue(title, imageUri, episodes, index) }
+    /** [episodes] from [index], resuming that one if it was started (unless [fromStart]). */
+    fun playEpisodes(title: String, imageUri: String, episodes: List<PodcastEpisode>, index: Int, fromStart: Boolean = false) =
+        play {
+            podcasts.episodesQueue(title, imageUri, episodes, index)
+                .let { if (fromStart) it.copy(startPositionMs = 0) else it }
+        }
 
     /** Replays a Recently Played queue where it was left. */
     fun playRecent(entryId: String) = play {

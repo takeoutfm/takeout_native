@@ -208,21 +208,30 @@ private fun EpisodeContent(
                             icon = if (played) Icons.Default.RadioButtonUnchecked else Icons.Default.CheckCircle,
                             onClick = { onSetPlayed(!played) },
                         )
+                    }
+                    // A row of their own: beside Resume, Start over and Mark as played they
+                    // didn't fit, and Previous wrapped a letter pair per line.
+                    val older = details.episodes.getOrNull(index + 1)
+                    val newer = details.episodes.getOrNull(index - 1)
+                    if (older != null || newer != null) Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.padding(top = 16.dp),
+                    ) {
                         // Episodes are listed newest first: the previous one is older.
-                        details.episodes.getOrNull(index + 1)?.let { older ->
+                        older?.let {
                             MusicButton(
                                 modifier = bringHeaderIntoView,
                                 text = stringResource(R.string.previous_episode),
                                 icon = Icons.Outlined.SkipPrevious,
-                                onClick = { onOpenEpisode(series.id, older.id) },
+                                onClick = { onOpenEpisode(series.id, it.id) },
                             )
                         }
-                        details.episodes.getOrNull(index - 1)?.let { newer ->
+                        newer?.let {
                             MusicButton(
                                 modifier = bringHeaderIntoView,
                                 text = stringResource(R.string.next_episode),
                                 icon = Icons.Outlined.SkipNext,
-                                onClick = { onOpenEpisode(series.id, newer.id) },
+                                onClick = { onOpenEpisode(series.id, it.id) },
                             )
                         }
                     }

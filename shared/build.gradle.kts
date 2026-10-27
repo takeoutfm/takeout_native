@@ -6,12 +6,21 @@ plugins {
 }
 
 // The Takeout core shared by every app: API models and the rules that must behave the same on
-// all platforms. Android-only for now; Apple targets are added in the Apple phase (PLAN.md).
-// commonMain must not import Android or java.* APIs.
+// all platforms. Android, and macOS for the SwiftUI app in apple/ (PLAN.md phase 10).
+// commonMain must not import Android or java.* APIs; Apple pieces go in appleMain.
 kotlin {
     jvmToolchain(17)
 
     androidTarget()
+
+    // The Mac app's framework ("Shared"), linked on a Mac (apple/README.md). Its klibs also
+    // compile on Linux (kotlin.native.enableKlibsCrossCompilation), which checks appleMain here.
+    listOf(macosArm64()).forEach {
+        it.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -25,6 +34,10 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.security.crypto)
             implementation(libs.sqldelight.android.driver)
+        }
+        appleMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+            implementation(libs.sqldelight.native.driver)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

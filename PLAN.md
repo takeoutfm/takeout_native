@@ -79,8 +79,8 @@ What goes where:
   (Ktor uses OkHttp on Android), kotlinx.serialization (already used), kotlinx-datetime instead
   of `java.time` in common code, SQLDelight and multiplatform settings instead of
   SharedPreferences.
-- **Not shared**: UI and playback. SwiftUI and AVFoundation give the best native result on
-  Apple; Compose Multiplatform for iOS is possible later but not recommended for a media app
+- **Not shared**: UI and playback. SwiftUI and AVFoundation (VLCKit for MKV video) give the
+  best native result on Apple; Compose Multiplatform for iOS is possible later but not recommended for a media app
   that needs native players, Now Playing, CarPlay and Siri.
 - **Swift ergonomics**: use SKIE (or KMP-NativeCoroutines) so Flows and sealed classes are
   natural in Swift; keep the shared API small (repositories + models).
@@ -447,8 +447,26 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          failed every request. Speed-up not yet measured on a working Wi‑Fi.
    - [ ] Not yet checked: downloads and offline play, the complication;
          downloads aren't limited to Wi-Fi yet.
-10. **Later — Apple**: add `iosArm64`/`iosSimulatorArm64`/`macosArm64` targets to `shared`, then
-   SwiftUI apps with AVFoundation, Now Playing, CarPlay and Siri intents.
+10. **Apple — macOS first** (started 2026-10-27; `apple/`, see `apple/README.md`). A native
+   SwiftUI app, no Compose UI. Work happens on Linux (the user pulls on their MacBook to build):
+   - [x] `shared` gets `macosArm64` (static `Shared` framework) and `appleMain`: Darwin Ktor
+         engine, NFD via `NSString`, `UserDefaultsStore`, `AppleDatabase` (SQLDelight native
+         driver, in Application Support), `TakeoutCore` (the shared graph), `SwiftCalls`
+         (`@Throws` wrappers: an undeclared Kotlin exception crashes Swift), `watch()` for
+         Flows, `CodeSignIn`. The klibs compile on Linux
+         (`kotlin.native.enableKlibsCrossCompilation`); linking needs the Mac. No SKIE yet: the
+         small hand-written bridge is enough and builds here.
+   - [x] Skeleton (written on Linux, **not yet compiled**): XcodeGen `project.yml`, Keychain
+         store, device-code sign-in, sidebar (Recently Added, New Releases), album pages,
+         AVQueuePlayer music with a Now Playing bar, Playback menu, media keys / Control Center.
+   - [ ] First build on the Mac and fixes.
+   - [ ] Music: artists, playlists, radio (live streams: AVPlayer handles Icecast/HLS), search,
+         Recently Played, favorites; listens (`ListenReporter`, with a ListenTracker port).
+   - [ ] Podcasts with synced progress; Movies and TV pages.
+   - [ ] Video with **VLCKit** (the files are MKV with embedded audio/subtitle tracks, which
+         AVFoundation can't open): a player window with track pickers, progress, next episode.
+   - [ ] Menu bar mini player, app icon, offline downloads; iOS later from the same Swift code
+         (with CarPlay and Siri).
 
 ---
 

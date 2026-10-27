@@ -25,12 +25,15 @@ fun <T> listFlow(block: suspend () -> List<T>): Flow<List<T>> = flow {
  * A–Z key: case- and accent-insensitive, with punctuation ignored, so "Airplane!" sorts
  * before "Airplane II" and "Amélie" with the A's.
  */
-fun sortKey(title: String): String =
-    decompose(title)
-        .replace(Accents, "")
-        .lowercase()
-        .replace(NonAlphanumerics, " ")
-        .trim()
+fun sortKey(title: String): String = buildString {
+    for (c in decompose(title)) {
+        when {
+            c.category in Marks -> {}
+            c.isLetterOrDigit() -> append(c.lowercaseChar())
+            isNotEmpty() && last() != ' ' -> append(' ')
+        }
+    }
+}.trimEnd()
 
 /** Sorts by [sortKey] of [title], computing each key once rather than per comparison. */
 fun <T> List<T>.sortedByTitle(title: (T) -> String): List<T> =
@@ -39,5 +42,9 @@ fun <T> List<T>.sortedByTitle(title: (T) -> String): List<T> =
 /** [s] in Unicode canonical decomposition (NFD), so accents become separate marks. */
 internal expect fun decompose(s: String): String
 
-private val Accents = Regex("\\p{M}+")
-private val NonAlphanumerics = Regex("[^\\p{L}\\p{N}]+")
+// Not a Regex of Unicode classes: Kotlin/Native's regex rejects them, failing the whole file.
+private val Marks = setOf(
+    CharCategory.NON_SPACING_MARK,
+    CharCategory.COMBINING_SPACING_MARK,
+    CharCategory.ENCLOSING_MARK,
+)

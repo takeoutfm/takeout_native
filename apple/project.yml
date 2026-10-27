@@ -28,6 +28,9 @@ targets:
         CODE_SIGN_IDENTITY: "-"
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: ["-framework", "Shared", "-lsqlite3"]
+        # SQLiter's cinterop wraps SQLite functions macOS doesn't export (Windows, extension
+        # loading); stripping the unused wrappers is what lets Debug builds link.
+        DEAD_CODE_STRIPPING: YES
         SWIFT_VERSION: "5.10"
         # The Gradle step writes outside the project's own files.
         ENABLE_USER_SCRIPT_SANDBOXING: NO
@@ -42,5 +45,8 @@ targets:
         script: |
           # Xcode's PATH doesn't include Homebrew's JDK.
           export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17 2>/dev/null)}"
+          for jdk in /opt/homebrew/opt/openjdk@17 /usr/local/opt/openjdk@17; do
+            [ -n "$JAVA_HOME" ] || [ ! -d "$jdk/libexec/openjdk.jdk" ] || JAVA_HOME="$jdk/libexec/openjdk.jdk/Contents/Home"
+          done
           cd "$SRCROOT/.."
           ./gradlew :shared:embedAndSignAppleFrameworkForXcode

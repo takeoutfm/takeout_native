@@ -31,7 +31,7 @@ struct AlbumGrid: View {
         .navigationTitle(title)
         .navigationDestination(for: String.self) { AlbumView(albumId: $0) }
         .task {
-            do { albums = try await load() } catch { failed = true }
+            do { albums = try await load() } catch { NSLog("\(title) failed: \(error)"); failed = true }
         }
     }
 }
@@ -96,7 +96,7 @@ struct AlbumView: View {
         }
         .navigationTitle(details?.album.name ?? "")
         .task {
-            do { details = try await model.calls.albumDetails(albumId: albumId) } catch { failed = true }
+            do { details = try await model.calls.albumDetails(albumId: albumId) } catch { NSLog("Album \(albumId) failed: \(error)"); failed = true }
         }
     }
 

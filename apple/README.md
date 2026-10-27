@@ -5,8 +5,7 @@ A native SwiftUI app on top of the Kotlin shared core (`:shared`), linked as the
 the Authorization header). Video (MKV with embedded audio and subtitle tracks, which
 AVFoundation can't open) will play with VLCKit. Plan and status: `PLAN.md` → Apple.
 
-**Status:** the skeleton was written on Linux and hasn't been compiled yet, so expect small
-fixes on the first build. It has: device-code sign-in, a sidebar with Recently Added and New
+**Status:** builds and launches on the Mac (Xcode 27, first built 2026-10-27). It has: device-code sign-in, a sidebar with Recently Added and New
 Releases, album pages, and an AVQueuePlayer queue with a Now Playing bar, the menu's Playback
 commands and the system's Now Playing (media keys, Control Center).
 
@@ -21,7 +20,8 @@ commands and the system's Now Playing (media keys, Control Center).
    brew install openjdk@17 xcodegen
    sudo ln -sfn "$(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk-17.jdk
    ```
-   (The link lets `/usr/libexec/java_home -v 17`, which the Xcode build step uses, find it.)
+   (The link lets `/usr/libexec/java_home -v 17` find it; without it the Xcode build step
+   falls back to Homebrew's `openjdk@17` directly.)
 3. Get the code. There's no git remote; either clone straight from the Linux machine over SSH
    (it needs an SSH server running):
    ```
@@ -58,9 +58,13 @@ a few minutes). Run `xcodegen` again after adding or removing Swift files.
   user defaults (`UserDefaultsStore`); the database in Application Support/TakeoutFM.
 - `SwiftCalls` wraps the suspend functions Swift calls with `@Throws`: without it a Kotlin
   exception (a network error) crashes the app instead of throwing in Swift. Add new calls
-  there.
+  there. Kotlin/Native prefixes names that start with `new`, `copy`, `alloc` or `init` with
+  `do` (Objective-C ownership rules), so `newReleases()` is `doNewReleases()` in Swift.
 - `WatchKt.watch(flow:onEach:)` follows a Kotlin Flow on the main thread (e.g. the session
   state); `CodeSignIn` runs the device-code sign-in.
 - Shared logic is tested on the JVM on Linux (`./gradlew :shared:testDebugUnitTest`), and the
   macOS klibs compile there too (`./gradlew :shared:compileKotlinMacosArm64`), so Kotlin
-  changes can be checked without the Mac. Linking and all Swift need the Mac.
+  changes can be checked without the Mac. Linking and all Swift need the Mac. On the Mac, also
+  run `./gradlew :shared:macosArm64Test`: Kotlin/Native differs from the JVM in places (its
+  `Regex` rejects Unicode classes like `\p{L}`, and a failed top-level initializer breaks
+  every function in that file with `FileFailedToInitializeException`).

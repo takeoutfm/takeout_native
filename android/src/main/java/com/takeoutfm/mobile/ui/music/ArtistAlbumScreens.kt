@@ -36,6 +36,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -139,6 +143,8 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
             return@MusicPage
         }
         val id = viewModel.id
+        // Popular shows its first few tracks until Show all, as Radio's sections.
+        var allPopular by rememberSaveable { mutableStateOf(false) }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item {
                 Header(details.backgroundUri.ifEmpty { details.artist.imageUri }, details.artist.name, details.artist.genre)
@@ -153,7 +159,8 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
             }
             if (details.popular.isNotEmpty()) {
                 item { SectionTitle(stringResource(R.string.popular_tracks)) }
-                itemsIndexed(details.popular.take(PopularShown), key = { _, t -> "p-${t.id}" }) { index, track ->
+                val popular = details.popular.take(PopularMax)
+                itemsIndexed(if (allPopular) popular else popular.take(PopularCollapsed), key = { _, t -> "p-${t.id}" }) { index, track ->
                     TrackRow(
                         track = track,
                         favorite = track.etag in favorites,
@@ -164,6 +171,16 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
                         onAddToPlaylist = { main.addToPlaylist(com.takeoutfm.mobile.ui.main.AddTarget.TrackTarget(track.id)) },
                         showAlbum = true,
                     )
+                }
+                if (popular.size > PopularCollapsed) {
+                    item(key = "popular-more") {
+                        TextButton(onClick = { allPopular = !allPopular }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                            Text(
+                                if (allPopular) stringResource(R.string.show_less)
+                                else stringResource(R.string.show_all, popular.size),
+                            )
+                        }
+                    }
                 }
             }
             item {
@@ -177,7 +194,8 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
     }
 }
 
-private const val PopularShown = 10
+private const val PopularMax = 10
+private const val PopularCollapsed = 3
 
 /** The tallest a page header (artist or video backdrop) gets. */
 val HeaderMaxHeight = 360.dp

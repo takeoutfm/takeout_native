@@ -31,6 +31,7 @@
     <string name="live">LIVE</string>
     <string name="track_activity">Track Activity</string>
     <string name="playback_caching">Playback Caching</string>
+    <string name="stream_mobile_data">Stream over mobile data</string>
     <string name="sign_out">Sign out</string>
     <string name="server">Server</string>
     <string name="version">Version %1$s</string>

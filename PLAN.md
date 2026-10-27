@@ -434,6 +434,13 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          browsing, the output picker when no headphones are connected, and bezel volume on
          Now Playing (it needs `rememberActiveFocusRequester()`: a plain `requestFocus()` on
          first composition is dropped inside `SwipeDismissableNavHost`).
+   - [x] Faster streaming (2026-10-27, `playback/StreamingNetwork`): near its phone a watch
+         routes everything over Bluetooth, slow to start songs (2–19 s measured). While the
+         app is open or playing (released 30 s after), it requests a *validated* Wi‑Fi — or
+         mobile data too with Settings → Stream over mobile data (off by default) — and binds
+         the process to it. Unvalidated Wi‑Fi is ignored: on the user's watch the router blocks
+         its Wi‑Fi (Android's check gets a 404 and a cut-off TLS handshake), and binding to it
+         failed every request. Speed-up not yet measured on a working Wi‑Fi.
    - [ ] Not yet checked: downloads and offline play, the complication;
          downloads aren't limited to Wi-Fi yet.
 10. **Later — Apple**: add `iosArm64`/`iosSimulatorArm64`/`macosArm64` targets to `shared`, then

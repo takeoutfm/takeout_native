@@ -2,6 +2,7 @@ package com.takeoutfm.watch.playback
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.WearUnsuitableOutputPlaybackSuppressionResolverListener
 import com.takeoutfm.media.TakeoutMusicService
@@ -25,6 +26,7 @@ class MusicService : TakeoutMusicService() {
     @Inject public override lateinit var streamHistory: StreamHistory
     @Inject public override lateinit var progress: TakeoutProgress
     @Inject public override lateinit var mediaCache: TakeoutMediaCache
+    @Inject lateinit var streamingNetwork: StreamingNetwork
     override val sessionActivity = MainActivity::class.java
 
     /**
@@ -40,5 +42,20 @@ class MusicService : TakeoutMusicService() {
     @OptIn(UnstableApi::class)
     override fun onPlayerCreated(player: ExoPlayer) {
         player.addListener(WearUnsuitableOutputPlaybackSuppressionResolverListener(this))
+        // A fast network while there's something to play.
+        player.addListener(object : Player.Listener {
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (playWhenReady) streamingNetwork.hold(Playback) else streamingNetwork.release(Playback)
+            }
+        })
+    }
+
+    override fun onDestroy() {
+        streamingNetwork.release(Playback)
+        super.onDestroy()
+    }
+
+    private companion object {
+        const val Playback = "playback"
     }
 }

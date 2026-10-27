@@ -37,6 +37,13 @@ class PlaySettings(private val store: KeyValueStore) {
 
     fun setPlaybackCaching(on: Boolean) = set(_playbackCaching, KEY_PLAYBACK_CACHING, on)
 
+    private val _mobileData = flag(KEY_MOBILE_DATA, false)
+
+    /** Watch: stream over the watch's own mobile data too, not only Wi‑Fi, to start songs sooner. */
+    val streamOverMobileData: StateFlow<Boolean> = _mobileData.asStateFlow()
+
+    fun setStreamOverMobileData(on: Boolean) = set(_mobileData, KEY_MOBILE_DATA, on)
+
     private val _theme = MutableStateFlow(
         store.getString(KEY_THEME)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.System
     )
@@ -59,5 +66,6 @@ class PlaySettings(private val store: KeyValueStore) {
         const val KEY_SUBMIT_LISTENS = "submitListens"
         const val KEY_PLAYBACK_CACHING = "playbackCaching"
         const val KEY_THEME = "theme"
+        const val KEY_MOBILE_DATA = "streamOverMobileData"
     }
 }

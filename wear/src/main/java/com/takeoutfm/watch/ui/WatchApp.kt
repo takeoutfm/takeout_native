@@ -431,6 +431,7 @@ private fun Player(vm: WatchViewModel) {
 private fun Settings(vm: WatchViewModel) {
     val reportPlays by vm.settings.reportPlays.collectAsStateWithLifecycle()
     val caching by vm.settings.playbackCaching.collectAsStateWithLifecycle()
+    val mobileData by vm.settings.streamOverMobileData.collectAsStateWithLifecycle()
     ListPage(stringResource(R.string.settings)) {
         item {
             ToggleChip(
@@ -438,6 +439,15 @@ private fun Settings(vm: WatchViewModel) {
                 onCheckedChange = vm.settings::setPlaybackCaching,
                 label = { Text(stringResource(R.string.playback_caching)) },
                 toggleControl = { Switch(checked = caching) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            ToggleChip(
+                checked = mobileData,
+                onCheckedChange = vm.settings::setStreamOverMobileData,
+                label = { Text(stringResource(R.string.stream_mobile_data)) },
+                toggleControl = { Switch(checked = mobileData) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

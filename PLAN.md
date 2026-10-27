@@ -459,7 +459,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] Skeleton (written on Linux, **not yet compiled**): XcodeGen `project.yml`, Keychain
          store, device-code sign-in, sidebar (Recently Added, New Releases), album pages,
          AVQueuePlayer music with a Now Playing bar, Playback menu, media keys / Control Center.
-   - [ ] First build on the Mac and fixes.
+   - [x] First build on the Mac and fixes (Homebrew JDK fallback, dead-code stripping for
+         SQLiter's wrappers, `doNewReleases`). Sign-in and playback not yet tried.
    - [ ] Music: artists, playlists, radio (live streams: AVPlayer handles Icecast/HLS), search,
          Recently Played, favorites; listens (`ListenReporter`, with a ListenTracker port).
    - [ ] Podcasts with synced progress; Movies and TV pages.

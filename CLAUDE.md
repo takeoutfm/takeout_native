@@ -31,6 +31,7 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 ./gradlew :android-media:testDebugUnitTest  # playback unit tests
 ./gradlew :shared:testDebugUnitTest         # shared commonTest, run on the JVM
 ./gradlew :shared:compileKotlinMacosArm64   # shared macOS klib (appleMain), compiles on Linux
+./gradlew :shared:macosArm64Test            # shared commonTest on Kotlin/Native (Mac only)
 ./gradlew :tv:compileDebugKotlin            # fast compile check
 ```
 

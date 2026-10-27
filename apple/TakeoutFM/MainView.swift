@@ -40,7 +40,7 @@ struct MainView: View {
                 case .recentlyAdded:
                     AlbumGrid(title: "Recently Added") { try await model.calls.recentlyAdded() }
                 case .newReleases:
-                    AlbumGrid(title: "New Releases") { try await model.calls.newReleases() }
+                    AlbumGrid(title: "New Releases") { try await model.calls.doNewReleases() }  // Kotlin adds "do" to names starting with "new"
                 }
             }
         }

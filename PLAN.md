@@ -411,12 +411,15 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          list, Recent, New Music, Artists, album/artist pages, Playlists (+ Favorites), Radio,
          Podcasts, Downloads, Settings; Now Playing with progress ring, LIVE badge and the
          stream's song, crown volume. `TakeoutMusicService.configure()` lets the watch
-         suppress playback on the speaker (release builds only, so the emulator can play).
+         suppress playback on the speaker (release builds only, so the emulator can play), and
+         `onPlayerCreated()` adds Media3's `WearUnsuitableOutputPlaybackSuppressionResolverListener`
+         (`media3-ui`), which opens the output picker — suppression alone shows nothing.
    - [x] Tile (title + play/pause, refreshed when the player changes) and complication.
    - [x] Checked on the `Wear_Round_API_36` emulator (2026-10-26): browse, album play, radio
          (LIVE), tile play/pause.
-   - [ ] Not yet checked: sign-in by code from a fresh install, downloads and offline play,
-         the output switcher on a release build / real watch, the complication, crown volume;
+   - [x] Real watch (Galaxy Watch, 2026-10-26): release installed over the Flutter app;
+         browsing, and the output picker when no headphones are connected.
+   - [ ] Not yet checked: downloads and offline play, the complication, crown volume;
          downloads aren't limited to Wi-Fi yet.
 10. **Later — Apple**: add `iosArm64`/`iosSimulatorArm64`/`macosArm64` targets to `shared`, then
    SwiftUI apps with AVFoundation, Now Playing, CarPlay and Siri intents.

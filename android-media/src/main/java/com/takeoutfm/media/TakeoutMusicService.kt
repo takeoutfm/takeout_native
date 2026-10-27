@@ -70,6 +70,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     /** App-specific player options (e.g. Wear OS's output checks), applied last. */
     protected open fun configure(builder: ExoPlayer.Builder): ExoPlayer.Builder = builder
 
+    /** App-specific listeners on the new player (e.g. Wear OS's output picker). */
+    protected open fun onPlayerCreated(player: ExoPlayer) {}
+
     /** The activity the system's now-playing controls open. */
     protected abstract val sessionActivity: Class<out Activity>
 
@@ -98,6 +101,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             .let(::configure)
             .build()
             .also { playerFactory.addDebugLogging(it) }
+            .also(::onPlayerCreated)
         // Reports plays to Takeout / ListenBrainz per the Music settings.
         listenTracker = ListenTracker(player, listenReporter).also { it.attach() }
         player.addListener(StreamTitles(player, streamHistory))

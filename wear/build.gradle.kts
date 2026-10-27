@@ -70,6 +70,8 @@ android {
 dependencies {
     implementation(project(":shared"))
     implementation(project(":android-media"))
+    // WearUnsuitableOutputPlaybackSuppressionResolverListener (the output picker).
+    implementation(libs.androidx.media3.ui.views)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

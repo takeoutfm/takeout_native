@@ -3,6 +3,7 @@ package com.takeoutfm.watch.playback
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.WearUnsuitableOutputPlaybackSuppressionResolverListener
 import com.takeoutfm.media.TakeoutMusicService
 import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.media.offline.TakeoutMediaCache
@@ -28,10 +29,16 @@ class MusicService : TakeoutMusicService() {
 
     /**
      * On a watch, music should play to headphones, not the speaker: until one's connected the
-     * system offers its output switcher instead of playing. Debug builds skip this so the
-     * emulator (no Bluetooth) can play.
+     * player holds playback ([onPlayerCreated] opens the system's output picker). Debug builds
+     * skip this so the emulator (no Bluetooth) can play.
      */
     @OptIn(UnstableApi::class)
     override fun configure(builder: ExoPlayer.Builder): ExoPlayer.Builder =
         builder.setSuppressPlaybackOnUnsuitableOutput(!BuildConfig.DEBUG)
+
+    /** Held for want of headphones: the system's output picker, to connect some. */
+    @OptIn(UnstableApi::class)
+    override fun onPlayerCreated(player: ExoPlayer) {
+        player.addListener(WearUnsuitableOutputPlaybackSuppressionResolverListener(this))
+    }
 }

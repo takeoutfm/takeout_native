@@ -1,0 +1,46 @@
+# XcodeGen spec for the macOS app; `xcodegen` (in apple/) writes TakeoutFM.xcodeproj, which isn't
+# committed. The Kotlin shared core is linked as the static "Shared" framework that Gradle builds
+# in the pre-build script (see README.md).
+name: TakeoutFM
+options:
+  bundleIdPrefix: com.takeoutfm
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    MARKETING_VERSION: "3.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  TakeoutFM:
+    type: application
+    platform: macOS
+    sources:
+      - TakeoutFM
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.takeoutfm.mac
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TakeoutFM
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
+        # Home servers are often plain http.
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS: ["-framework", "Shared", "-lsqlite3"]
+        SWIFT_VERSION: "5.10"
+        # The Gradle step writes outside the project's own files.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    entitlements:
+      path: TakeoutFM/TakeoutFM.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+    preBuildScripts:
+      - name: Build the Kotlin shared framework
+        basedOnDependencyAnalysis: false
+        script: |
+          # Xcode's PATH doesn't include Homebrew's JDK.
+          export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17 2>/dev/null)}"
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode

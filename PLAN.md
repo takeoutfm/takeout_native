@@ -510,6 +510,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          Out); iPad: the Mac's sidebar. Full-screen VLC video player. Background audio.
    - [x] Checked in the iPhone 17 Pro simulator: device-code sign-in, Library, album pages,
          playback, mini player, Now Playing, video (resume, track menus).
+   - [x] iPhone design pass (decided 2026-10-28: iPhone conventions, Android's structure): tabs
+         Home · Artists · Recent · Radio · Search, a Home tab of artwork rows (Recently Added,
+         New Releases, Continue Watching, New Films) over the library's lists; Now Playing as a
+         swipe-down card tinted from the cover, swipe the cover to skip; AirPlay (Mac too);
+         cover art on the lock screen / Control Center (Mac too); ♥ always shown on touch;
+         swipe actions (Play Next / Add to Queue) and haptics.
    - [ ] iPad check; downloads, radio and podcasts on the phone; a real device (needs a team).
    - [ ] Lock screen / Control Center check, picture in picture, CarPlay and Siri.
 

@@ -261,6 +261,8 @@ struct TrackRow: View {
     let play: () -> Void
     @EnvironmentObject private var model: AppModel
     @State private var hovering = false
+    /// Bumped when a swipe queues the track, for its haptic.
+    @State private var queued = 0
 
     var body: some View {
         HStack(spacing: 12) {
@@ -279,14 +281,35 @@ struct TrackRow: View {
             Spacer()
             if !etag.isEmpty {
                 DownloadBadge(etag: etag)
+                #if os(macOS)
                 // Shown while it's a favorite, or under the pointer.
                 FavoriteButton(etag: etag).opacity(model.isFavorite(etag) || hovering ? 1 : 0)
+                #else
+                // No hover on a touch screen: always there (an outline when it isn't a favorite).
+                FavoriteButton(etag: etag).foregroundStyle(model.isFavorite(etag) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                #endif
             }
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(perform: play)
+        #if os(iOS)
+        // Swipe right: Play Next; left: Add to Queue (in lists; elsewhere the long-press menu has them).
+        .swipeActions(edge: .leading) {
+            if let enqueue {
+                Button { queued += 1; enqueue(false) } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
+                    .tint(.orange)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if let enqueue {
+                Button { queued += 1; enqueue(true) } label: { Label("Add to Queue", systemImage: "text.append") }
+                    .tint(.indigo)
+            }
+        }
+        .sensoryFeedback(.success, trigger: queued)
+        #endif
         .contextMenu {
             Button("Play", action: play)
             if let enqueue {
@@ -315,6 +338,7 @@ struct FavoriteButton: View {
         }
         .buttonStyle(.borderless)
         .help(favorite ? "Remove from Favorites" : "Add to Favorites")
+        .sensoryFeedback(.selection, trigger: favorite)
     }
 }
 

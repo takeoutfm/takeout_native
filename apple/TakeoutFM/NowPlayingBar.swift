@@ -55,6 +55,7 @@ struct NowPlayingBar: View {
                     Text(format(player.position) + " / " + format(player.duration))
                         .monospacedDigit().foregroundStyle(.secondary)
                 }
+                RoutePicker()
                 Button { showQueue.toggle() } label: { Image(systemName: "list.bullet") }
                     .help("Queue")
                     .popover(isPresented: $showQueue, arrowEdge: .top) { QueueView().frame(width: 380, height: 480) }

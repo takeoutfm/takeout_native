@@ -2,26 +2,31 @@ import SwiftUI
 import Shared
 
 /**
- * The iPhone app, as the Android phone app: tabs (Library · Recent · Artists · Radio · Search),
- * each keeping its own pages, with a mini player above the tab bar that opens Now Playing.
+ * The iPhone app: the Android phone app's tabs (Home · Artists · Recent · Radio, with Search
+ * as the iPhone's fifth tab), each keeping its own pages, with a mini player above the tab
+ * bar that opens Now Playing as a card (swiped down to close).
  */
 struct PhoneTabs: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
         TabView {
-            tab { LibraryHome() }
-                .tabItem { Label("Library", systemImage: "music.note.house") }
-            tab { RecentlyPlayedView() }
-                .tabItem { Label("Recent", systemImage: "clock.arrow.circlepath") }
+            tab { HomeTab() }
+                .tabItem { Label("Home", systemImage: "house") }
             tab { ArtistList() }
                 .tabItem { Label("Artists", systemImage: "music.mic") }
+            tab { RecentlyPlayedView() }
+                .tabItem { Label("Recent", systemImage: "clock.arrow.circlepath") }
             tab { RadioView() }
                 .tabItem { Label("Radio", systemImage: "dot.radiowaves.left.and.right") }
             tab { PhoneSearch() }
                 .tabItem { Label("Search", systemImage: "magnifyingglass") }
         }
-        .fullScreenCover(isPresented: $model.showNowPlaying) { NowPlayingView() }
+        // A card over the app, swiped down to close (as Apple Music's).
+        .sheet(isPresented: $model.showNowPlaying) {
+            NowPlayingView()
+                .presentationDragIndicator(.visible)
+        }
         .overlay(alignment: .bottom) {
             if let message = model.message {
                 Text(message)
@@ -44,32 +49,40 @@ struct PhoneTabs: View {
     }
 }
 
-/** The Library tab: the music and video lists, Downloads, and Settings. */
-private struct LibraryHome: View {
+/**
+ * The Home tab, as the Android app's and Apple Music's: rows of artwork to start from (new
+ * music, Continue Watching, new films), then the library's lists. Pull to refresh.
+ */
+private struct HomeTab: View {
     @EnvironmentObject private var model: AppModel
     @State private var showSettings = false
+    @State private var version = 0
+
+    private struct Rows {
+        var recentlyAdded: [Album] = []
+        var newReleases: [Album] = []
+        var continueWatching: [VideoCard] = []
+        var newVideo: [VideoCard] = []
+    }
 
     var body: some View {
-        List {
-            Section("Music") {
-                link("Recently Added", "plus.square.on.square", .recentlyAdded)
-                link("New Releases", "sparkles", .newReleases)
-                link("Favorites", "heart", .favorites)
-                if model.hasPlaylists { link("Playlists", "music.note.list", .playlists) }
-                if model.hasPodcasts { link("Podcasts", "antenna.radiowaves.left.and.right", .podcasts) }
-            }
-            if model.hasMovies || model.hasShows {
-                Section("Video") {
-                    link("Watch", "play.tv", .watch)
-                    if model.hasMovies { link("Movies", "film", .movies) }
-                    if model.hasShows { link("TV Shows", "tv", .shows) }
+        // Again when the library index arrives (at launch it can come just after): it says
+        // whether there's video for the Continue Watching and New Films rows.
+        Loaded(id: "\(version)/\(model.hasMovies || model.hasShows)", load: load) { rows in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    AlbumRow(title: "Recently Added", albums: rows.recentlyAdded)
+                    AlbumRow(title: "New Releases", albums: rows.newReleases)
+                    VideoRow(title: "Continue Watching", cards: rows.continueWatching, wide: true)
+                    VideoRow(title: "New Films", cards: rows.newVideo)
+                    library
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
-            Section("On This iPhone") {
-                link("Downloads", "arrow.down.circle", .downloads)
-            }
+            .refreshable { version += 1 }
         }
-        .navigationTitle("Library")
+        .navigationTitle("Home")
         .toolbar {
             Button { showSettings = true } label: { Image(systemName: "gearshape") }
         }
@@ -82,10 +95,48 @@ private struct LibraryHome: View {
         }
     }
 
+    /// Each row is extra: one failing (say, no video on the server) leaves the others.
+    private func load() async throws -> Rows {
+        let calls = model.calls
+        let video = model.hasMovies || model.hasShows
+        async let added = (try? await calls.recentlyAdded()) ?? []
+        async let new = (try? await calls.doNewReleases()) ?? []  // "do": Kotlin's prefix for "new…"
+        async let watching = video ? ((try? await calls.continueWatching()) ?? []) : []
+        async let films = video ? ((try? await calls.videoRecentlyAdded()) ?? []) : []
+        return Rows(recentlyAdded: await added, newReleases: await new,
+                    continueWatching: await watching, newVideo: await films)
+    }
+
+    /// The library's lists, as the Mac's sidebar has them.
+    private var library: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionTitle("Library").padding(.bottom, 8)
+            link("Favorites", "heart", .favorites)
+            if model.hasPlaylists { link("Playlists", "music.note.list", .playlists) }
+            if model.hasPodcasts { link("Podcasts", "antenna.radiowaves.left.and.right", .podcasts) }
+            link("Recently Added", "plus.square.on.square", .recentlyAdded)
+            link("New Releases", "sparkles", .newReleases)
+            if model.hasMovies || model.hasShows { link("Watch", "play.tv", .watch) }
+            if model.hasMovies { link("Movies", "film", .movies) }
+            if model.hasShows { link("TV Shows", "tv", .shows) }
+            link("Downloads", "arrow.down.circle", .downloads)
+        }
+    }
+
     // Value links, as every page's own are: a view-pushed page's Route links don't reach the
     // stack's navigationDestination.
     private func link(_ title: String, _ icon: String, _ list: LibraryList) -> some View {
-        NavigationLink(value: Route.list(list)) { Label(title, systemImage: icon) }
+        NavigationLink(value: Route.list(list)) {
+            HStack {
+                Label(title, systemImage: icon).font(.title3)
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 
@@ -116,6 +167,7 @@ private struct PhoneSearch: View {
 private struct MiniPlayer: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: AudioPlayer
+    @State private var presses = 0
 
     var body: some View {
         if let item = player.current {
@@ -126,11 +178,12 @@ private struct MiniPlayer: View {
                     Text(player.displaySubtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
-                Button { player.togglePlay() } label: {
+                Button { presses += 1; player.togglePlay() } label: {
                     Image(systemName: player.isPlaying ? (player.isLive ? "stop.fill" : "pause.fill") : "play.fill")
                         .font(.title2)
                         .frame(width: 44, height: 44)
                 }
+                .sensoryFeedback(.impact(weight: .light), trigger: presses)
                 if !player.isLive {
                     Button { player.next() } label: {
                         Image(systemName: "forward.fill").font(.title3).frame(width: 36, height: 44)

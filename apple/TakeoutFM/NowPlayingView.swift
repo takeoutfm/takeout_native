@@ -2,32 +2,49 @@ import SwiftUI
 import Shared
 
 /**
- * Now Playing, as on the phone and TV: the artist's background behind a large cover; title,
- * artist and album; the seek bar; previous · −10 s · play/pause · +30 s · next; repeat, ♥ and
- * the queue (a column beside it when the window is wide). A live stream shows LIVE, the song
- * on air (its ICY title) and play/stop only. Esc closes it.
+ * Now Playing, as on the phone and TV: a large cover over a gradient of its colour (and the
+ * artist's background); title, artist and album; the seek bar; previous · −10 s · play/pause ·
+ * +30 s · next; repeat, ♥, AirPlay and the queue (a column beside it when the window is wide).
+ * Swiping the cover skips. A live stream shows LIVE, the song on air (its ICY title) and
+ * play/stop only. Esc closes it (on iPhone it's a card, swiped down to close).
  */
 struct NowPlayingView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: AudioPlayer
     @State private var showQueue = false
     @State private var scrub: Double?
+    /// Bumped on each play/pause press, for its haptic (not on buffering changes).
+    @State private var presses = 0
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Rectangle().fill(.background)
-                if let background = player.current?.backgroundUri, !background.isEmpty {
-                    Artwork(url: background)
-                        .opacity(0.25)
-                        .blur(radius: 12)
+                // The backdrop runs under the safe areas (on iPhone, past the card's bottom edge).
+                Group {
+                    Rectangle().fill(.background)
+                    if let color = player.artwork?.color {
+                        LinearGradient(colors: [color.opacity(0.6), color.opacity(0.12)], startPoint: .top, endPoint: .bottom)
+                            .animation(.easeInOut, value: player.artwork?.url)
+                    }
+                    if let background = player.current?.backgroundUri, !background.isEmpty {
+                        Artwork(url: background)
+                            .opacity(0.25)
+                            .blur(radius: 12)
+                    }
                 }
+                .ignoresSafeArea()
                 if let item = player.current {
                     let wide = geo.size.width > 1100
                     let cover = Artwork(url: item.imageUri, symbol: "music.note")
                         .aspectRatio(1, contentMode: .fit)
                         .frame(maxWidth: 520, maxHeight: 520)
                         .shadow(radius: 24, y: 8)
+                        // Swipe the cover: left for the next track, right for the previous.
+                        .gesture(DragGesture(minimumDistance: 30).onEnded { drag in
+                            guard !player.isLive, abs(drag.translation.width) > abs(drag.translation.height) else { return }
+                            if drag.translation.width < -60 { player.next() }
+                            if drag.translation.width > 60 { player.previous() }
+                        })
                     if geo.size.height > geo.size.width {
                         // Upright (a phone): the cover above the details.
                         VStack(spacing: 28) {
@@ -80,6 +97,7 @@ struct NowPlayingView: View {
                 HStack {
                     playPause
                     Spacer()
+                    RoutePicker()
                     if showQueueButton { queueButton }
                 }
             } else {
@@ -109,6 +127,7 @@ struct NowPlayingView: View {
                         FavoriteButton(etag: item.etag)
                     }
                     Spacer()
+                    RoutePicker()
                     if showQueueButton { queueButton }
                 }
                 .font(.title2)
@@ -119,7 +138,7 @@ struct NowPlayingView: View {
     }
 
     private var playPause: some View {
-        Button { player.togglePlay() } label: {
+        Button { presses += 1; player.togglePlay() } label: {
             Image(systemName: player.isPlaying ? (player.isLive ? "stop.fill" : "pause.fill") : "play.fill")
                 .font(.system(size: 30))
                 .frame(width: 72, height: 72)
@@ -127,6 +146,7 @@ struct NowPlayingView: View {
                 .foregroundStyle(.white)
         }
         .buttonStyle(.plain)  // Space is the Playback menu's Play/Pause
+        .sensoryFeedback(.impact(weight: .light), trigger: presses)
     }
 
     private var queueButton: some View {

@@ -10,9 +10,11 @@ status: `PLAN.md` → Apple.
   listens, and almost every page.
 - `macOS/`: the Mac app (`TakeoutFMApp`, the menu bar player, the video window), its
   entitlements and icon.
-- `iOS/`: the iOS app (`TakeoutFMiOSApp`): on iPhone, tabs (Library · Recent · Artists ·
-  Radio · Search) with a mini player and Now Playing full screen; on iPad (regular width), the
-  Mac's sidebar (`MainView`). The full-screen video player, and its icon.
+- `iOS/`: the iOS app (`TakeoutFMiOSApp`): on iPhone, iPhone conventions over the Android
+  app's structure — tabs (Home · Artists · Recent · Radio · Search; Home is rows of artwork
+  over the library's lists), a mini player, Now Playing as a swipe-down card, swipe actions on
+  tracks; on iPad (regular width), the Mac's sidebar (`MainView`). The full-screen video
+  player, and its icon.
 - Platform differences inside shared files are `#if os(macOS)`; opening a video goes through
   the `playVideo` environment action (a window on the Mac, a full-screen cover on iOS), and
   page headers stack on iPhone (`compactLayout`, `HeaderStack`).

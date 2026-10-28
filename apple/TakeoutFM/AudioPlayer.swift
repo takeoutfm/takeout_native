@@ -33,6 +33,8 @@ final class AudioPlayer: ObservableObject {
             #endif
         }
     }
+    /// The playing item's cover (for the lock screen, and Now Playing's tint), once loaded.
+    @Published private(set) var artwork: LoadedArtwork?
     /// The live stream's current ICY title ("Artist - Title"), when it sends one.
     @Published private(set) var streamTitle: String?
 
@@ -296,7 +298,24 @@ final class AudioPlayer: ObservableObject {
         streamTitle = nil
         isLive = false
         listens.track(item: current)
+        loadArtwork()
         updateNowPlaying()
+    }
+
+    private var artworkTask: Task<Void, Never>?
+
+    /// The new item's cover; an album's tracks share one, so it's only fetched when it changes.
+    private func loadArtwork() {
+        let url = current?.imageUri ?? ""
+        guard url != artwork?.url else { return }
+        artworkTask?.cancel()
+        artwork = nil
+        artworkTask = Task {
+            let loaded = await LoadedArtwork.load(url)
+            guard !Task.isCancelled, current?.imageUri == url else { return }
+            artwork = loaded
+            updateNowPlaying()
+        }
     }
 
     private func playingChanged(_ playing: Bool) {
@@ -358,7 +377,7 @@ final class AudioPlayer: ObservableObject {
         guard let item = current else { return }
         // A stream's song is "Artist - Title"; the station goes where the album would.
         let song = streamTitle.flatMap(Self.split)
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: song?.title ?? item.title,
             MPMediaItemPropertyArtist: song?.artist ?? item.artist,
             MPMediaItemPropertyAlbumTitle: song == nil ? item.album : item.title,
@@ -367,6 +386,11 @@ final class AudioPlayer: ObservableObject {
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
         ]
+        // The cover on the lock screen, in Control Center and the Mac's Now Playing.
+        if let image = artwork?.image {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
     }
 

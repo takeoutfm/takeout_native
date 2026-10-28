@@ -10,7 +10,8 @@ device-code sign-in; a sidebar with Recently Added, New Releases, Recently Playe
 Favorites, Playlists and Radio; search from the toolbar; album, artist and playlist pages with
 ♥ for tracks; and an AVQueuePlayer queue with a Now Playing bar (a LIVE layout with the song
 playing for streams), the menu's Playback commands and the system's Now Playing (media keys,
-Control Center). Plays are reported to the server's activity (Settings → Track Activity, on
+Control Center); Movies and TV pages, and a VLCKit video window (audio and subtitle tracks,
+resume, saved progress, next episode). Plays are reported to the server's activity (Settings → Track Activity, on
 by default as in the other apps), so playing music here changes your real stats.
 
 ## Mac setup (once)
@@ -19,7 +20,7 @@ by default as in the other apps), so playing music here changes your real stats.
    ```
    sudo xcode-select -s /Applications/Xcode.app
    ```
-2. Install [Homebrew](https://brew.sh), then a JDK for Gradle and XcodeGen:
+2. Install [Homebrew](https://brew.sh), then a JDK for Gradle and XcodeGen (step 4 fetches VLCKit):
    ```
    brew install openjdk@17 xcodegen
    sudo ln -sfn "$(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk-17.jdk
@@ -33,6 +34,11 @@ by default as in the other apps), so playing music here changes your real stats.
    ```
    and later `git pull` the same way, or push the repo to a private GitHub repository and
    clone that on both machines.
+
+4. Fetch VLCKit (VideoLAN's prebuilt macOS framework, 411 MB, LGPL 2.1; not committed):
+   ```
+   apple/fetch-vlckit.sh
+   ```
 
 No Android SDK is needed on the Mac: building `:shared` for macOS doesn't touch it.
 
@@ -73,6 +79,18 @@ a few minutes). Run `xcodegen` again after adding or removing Swift files.
   when the item changes, playback starts or stops, every half second, and each ICY title
   (from an `AVPlayerItemMetadataOutput` on stream items); it decides and reports through
   `ListenReporter`, which keeps failures and is retried on launch and on activate.
+- Video: `VideoPlayerModel` (VLCKit) plays in its own window (`WindowGroup` "video", opened
+  with a `VideoPlayRequest`). VLC can't send the media token as a header, and after a
+  redirect it keeps requesting (and seeking with) the presigned storage URL, which expires
+  after 15 minutes. So VLC plays from `StreamProxy`, an HTTP server on 127.0.0.1 (the
+  `network.server` entitlement): each video gets a random path while it's open, and every
+  range VLC asks for is fetched from storage with a presigned URL from `StreamResolver` (the
+  location requested with the token, redirects not followed), reused for 10 minutes and
+  fetched again if storage answers 403. The bytes pass through the app on loopback; neither
+  the token nor a presigned URL reaches VLC. Progress goes through the shared
+  `TakeoutProgress` (first save 10 s in, then every 10 s, on pause and on close), so playing
+  a title changes your real watch progress. Debug builds take `-playVideo e-57` (and
+  `-noProgress YES` to save nothing) to test playback without the UI.
 - `WatchKt.watch(flow:onEach:)` follows a Kotlin Flow on the main thread (e.g. the session
   state); `CodeSignIn` runs the device-code sign-in.
 - Shared logic is tested on the JVM on Linux (`./gradlew :shared:testDebugUnitTest`), and the

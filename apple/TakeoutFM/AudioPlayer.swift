@@ -94,6 +94,10 @@ final class AudioPlayer: ObservableObject {
         player.play()
     }
 
+    func pause() {
+        player.pause()
+    }
+
     func togglePlay() {
         if player.timeControlStatus == .paused { player.play() } else { player.pause() }
     }

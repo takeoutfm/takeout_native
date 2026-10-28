@@ -7,6 +7,7 @@ struct MainView: View {
 
     enum Page: Hashable {
         case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio
+        case watch, movies, shows
         case search(String)
 
         var title: String {
@@ -18,6 +19,9 @@ struct MainView: View {
             case .favorites: return "Favorites"
             case .playlists: return "Playlists"
             case .radio: return "Radio"
+            case .watch: return "Watch"
+            case .movies: return "Movies"
+            case .shows: return "TV Shows"
             case .search(let query): return query
             }
         }
@@ -31,6 +35,9 @@ struct MainView: View {
             case .favorites: return "heart"
             case .playlists: return "music.note.list"
             case .radio: return "dot.radiowaves.left.and.right"
+            case .watch: return "play.tv"
+            case .movies: return "film"
+            case .shows: return "tv"
             case .search: return "magnifyingglass"
             }
         }
@@ -40,11 +47,20 @@ struct MainView: View {
     @State private var path: [Route] = []
     @State private var query = ""
     @State private var lastSearch = ""
+    @Environment(\.openWindow) private var openWindow
 
     private var musicPages: [Page] {
         var pages: [Page] = [.recentlyAdded, .newReleases, .recentlyPlayed, .artists, .favorites]
         if model.hasPlaylists { pages.append(.playlists) }
         pages.append(.radio)
+        return pages
+    }
+
+    private var videoPages: [Page] {
+        guard model.hasMovies || model.hasShows else { return [] }
+        var pages: [Page] = [.watch]
+        if model.hasMovies { pages.append(.movies) }
+        if model.hasShows { pages.append(.shows) }
         return pages
     }
 
@@ -54,6 +70,13 @@ struct MainView: View {
                 Section("Music") {
                     ForEach(musicPages, id: \.self) { p in
                         Label(p.title, systemImage: p.icon).tag(p)
+                    }
+                }
+                if !videoPages.isEmpty {
+                    Section("Video") {
+                        ForEach(videoPages, id: \.self) { p in
+                            Label(p.title, systemImage: p.icon).tag(p)
+                        }
                     }
                 }
                 if !lastSearch.isEmpty {
@@ -85,6 +108,14 @@ struct MainView: View {
             lastSearch = q
             page = .search(q)
         }
+        #if DEBUG
+        // For testing video without the UI: `TakeoutFM -playVideo e-123` (add `-noProgress YES`).
+        .onAppear {
+            if let id = UserDefaults.standard.string(forKey: "playVideo") {
+                openWindow(id: "video", value: VideoPlayRequest(id: id))
+            }
+        }
+        #endif
         .onChange(of: page) {
             // After the sidebar's selection callback: changing the stack inside it re-enters
             // the sidebar's table (AppKit warns, and says it will assert).
@@ -106,6 +137,9 @@ struct MainView: View {
         case .favorites: FavoritesView()
         case .playlists: PlaylistList()
         case .radio: RadioView()
+        case .watch: WatchView()
+        case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
+        case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
         case .search(let query): SearchView(query: query)
         }
     }
@@ -116,6 +150,8 @@ struct MainView: View {
         case .album(let id): AlbumView(albumId: id)
         case .artist(let id): ArtistView(artistId: id)
         case .playlist(let id, let name): PlaylistView(playlistId: id, name: name)
+        case .video(let id): VideoView(videoId: id)
+        case .person(let id): PersonView(personId: id)
         }
     }
 }

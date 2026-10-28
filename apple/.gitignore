@@ -3,3 +3,5 @@ TakeoutFM.xcodeproj/
 TakeoutFM/Info.plist
 build/
 DerivedData/
+# VLCKit, fetched by fetch-vlckit.sh.
+Vendor/

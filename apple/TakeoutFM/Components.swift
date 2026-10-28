@@ -6,6 +6,9 @@ enum Route: Hashable {
     case album(String)
     case artist(String)
     case playlist(id: String, name: String)
+    /** A movie, series or episode ("m-", "s-", "e-"). */
+    case video(String)
+    case person(String)
 }
 
 /**

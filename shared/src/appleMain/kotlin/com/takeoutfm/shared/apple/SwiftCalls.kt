@@ -13,6 +13,11 @@ import com.takeoutfm.shared.music.MusicSearchResults
 import com.takeoutfm.shared.music.PlayedQueue
 import com.takeoutfm.shared.music.StationGroup
 import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.video.PersonInfo
+import com.takeoutfm.shared.video.VideoCard
+import com.takeoutfm.shared.video.VideoDetails
+import com.takeoutfm.shared.video.VideoSearchResults
 import kotlinx.coroutines.flow.first
 
 /**
@@ -90,6 +95,50 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun setTrackFavorite(etag: String, favorite: Boolean) =
         core.music.setTrackFavorite(etag, favorite)
+
+    // ---- Video ----
+
+    /** Started-but-unfinished movies and episodes, most recently watched first. */
+    @Throws(Throwable::class)
+    suspend fun continueWatching(): List<VideoCard> = core.video.continueWatching(ProgressRules.AllTime)
+
+    @Throws(Throwable::class)
+    suspend fun videoRecentlyAdded(): List<VideoCard> = core.video.recentlyAdded()
+
+    @Throws(Throwable::class)
+    suspend fun videoNewReleases(): List<VideoCard> = core.video.newReleases()
+
+    @Throws(Throwable::class)
+    suspend fun recentShows(): List<VideoCard> = core.video.recentShows()
+
+    /** Every movie, A–Z. */
+    @Throws(Throwable::class)
+    suspend fun movies(): List<VideoCard> = core.video.movies()
+
+    /** Every TV series, A–Z. */
+    @Throws(Throwable::class)
+    suspend fun shows(): List<VideoCard> = core.video.shows()
+
+    /** A movie ("m-"), series ("s-") or episode ("e-"). */
+    @Throws(Throwable::class)
+    suspend fun videoDetails(id: String): VideoDetails = core.video.details(id)
+
+    @Throws(Throwable::class)
+    suspend fun person(personId: String): PersonInfo = core.video.person(personId)
+
+    @Throws(Throwable::class)
+    suspend fun videoSearch(query: String): VideoSearchResults = core.video.search(query)
+
+    @Throws(Throwable::class)
+    suspend fun setVideoFavorite(path: String, favorite: Boolean) = core.video.setFavorite(path, favorite)
+
+    /** Where to resume the video with [etag], in ms; 0 to start from the beginning. */
+    @Throws(Throwable::class)
+    suspend fun resumePositionMs(etag: String): Long = core.progress.resumePositionMs(etag)
+
+    /** Saves watch progress (kept on the device until the server has it). */
+    fun reportProgress(etag: String, positionMs: Long, durationMs: Long) =
+        core.progress.report(etag, positionMs, durationMs)
 
     /** Starts [queue] in Recently Played; returns its entry id. */
     fun recordPlayed(queue: MusicQueue): String = core.history.record(queue)

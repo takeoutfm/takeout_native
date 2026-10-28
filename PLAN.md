@@ -470,9 +470,16 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          commonTest) fed by `AudioPlayer`, reporting through `ListenReporter`. Android's
          `ListenTracker` could move onto `ListenSession` too.
    - [ ] ListenBrainz sign-in on the Mac (stream songs only go there).
-   - [ ] Podcasts with synced progress; Movies and TV pages.
-   - [ ] Video with **VLCKit** (the files are MKV with embedded audio/subtitle tracks, which
-         AVFoundation can't open): a player window with track pickers, progress, next episode.
+   - [x] Movies and TV: Watch (Continue Watching, Recently Added, New Releases, TV), Movies and
+         TV Shows grids, title pages (Resume / Start Over, seasons, cast, similar, ♥), person
+         pages, video results in Search.
+   - [x] Video with **VLCKit 3.7.3** (VideoLAN's binary, `apple/fetch-vlckit.sh`; the files are
+         MKV with embedded tracks, which AVFoundation can't open): a player window with audio
+         and subtitle pickers, resume and saved progress, next episode. VLC can't send the media
+         token, and after a redirect it seeks against the presigned URL, which expires in
+         15 minutes; so VLC plays from `StreamProxy` (loopback), which fetches every range from
+         storage with a fresh-enough presigned URL (re-fetched on a 403). Best-audio-track ranking (Media3-only on Android) not ported yet.
+   - [ ] Podcasts with synced progress.
    - [ ] Menu bar mini player, app icon, offline downloads; iOS later from the same Swift code
          (with CarPlay and Siri).
 

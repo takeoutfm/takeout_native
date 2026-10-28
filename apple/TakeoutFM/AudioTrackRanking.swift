@@ -1,5 +1,9 @@
 import Foundation
+#if os(macOS)
 import VLCKit
+#else
+import MobileVLCKit
+#endif
 
 /**
  * The phone's best-audio-track choice (`:android-media` `bestAudioTrack`), for VLC's tracks:

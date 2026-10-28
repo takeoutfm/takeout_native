@@ -1,42 +1,62 @@
-# XcodeGen spec for the macOS app; `xcodegen` (in apple/) writes TakeoutFM.xcodeproj, which isn't
-# committed. The Kotlin shared core is linked as the static "Shared" framework that Gradle builds
+# XcodeGen spec for the macOS and iOS apps; `xcodegen` (in apple/) writes TakeoutFM.xcodeproj,
+# which isn't committed. TakeoutFM/ is shared by both; macOS/ and iOS/ hold each app's own
+# pieces. The Kotlin shared core is linked as the static "Shared" framework that Gradle builds
 # in the pre-build script (see README.md).
 name: TakeoutFM
 options:
   bundleIdPrefix: com.takeoutfm
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
 settings:
   base:
     MARKETING_VERSION: "3.0.0"
     CURRENT_PROJECT_VERSION: "1"
+    FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+    OTHER_LDFLAGS: ["-framework", "Shared", "-lsqlite3"]
+    # SQLiter's cinterop wraps SQLite functions the OS doesn't export (Windows, extension
+    # loading); stripping the unused wrappers is what lets Debug builds link.
+    DEAD_CODE_STRIPPING: YES
+    SWIFT_VERSION: "5.10"
+    # The Gradle step writes outside the project's own files.
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: TakeoutFM
+
+# The Gradle step that builds the Shared framework for the SDK being built (macOS, iOS device or
+# simulator).
+x-shared-framework: &sharedFramework
+  name: Build the Kotlin shared framework
+  basedOnDependencyAnalysis: false
+  script: |
+    # Xcode's PATH doesn't include Homebrew's JDK.
+    export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17 2>/dev/null)}"
+    for jdk in /opt/homebrew/opt/openjdk@17 /usr/local/opt/openjdk@17; do
+      [ -n "$JAVA_HOME" ] || [ ! -d "$jdk/libexec/openjdk.jdk" ] || JAVA_HOME="$jdk/libexec/openjdk.jdk/Contents/Home"
+    done
+    cd "$SRCROOT/.."
+    ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
 targets:
   TakeoutFM:
     type: application
     platform: macOS
     sources:
       - TakeoutFM
+      # Its Info.plist is written by xcodegen (info: below), not a resource.
+      - path: macOS
+        excludes: [Info.plist]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.takeoutfm.mac
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: TakeoutFM
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_IDENTITY: "-"
-        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
-        OTHER_LDFLAGS: ["-framework", "Shared", "-lsqlite3"]
-        # SQLiter's cinterop wraps SQLite functions macOS doesn't export (Windows, extension
-        # loading); stripping the unused wrappers is what lets Debug builds link.
-        DEAD_CODE_STRIPPING: YES
-        SWIFT_VERSION: "5.10"
-        # The Gradle step writes outside the project's own files.
-        ENABLE_USER_SCRIPT_SANDBOXING: NO
     # Merged with the generated keys above. Radio streams and home servers are often plain
     # http, which App Transport Security blocks (and INFOPLIST_KEY_ can't set it).
     info:
-      path: TakeoutFM/Info.plist
+      path: macOS/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -49,20 +69,45 @@ targets:
         embed: true
         codeSign: true
     entitlements:
-      path: TakeoutFM/TakeoutFM.entitlements
+      path: macOS/TakeoutFM.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
         # StreamProxy listens on 127.0.0.1 for VLC.
         com.apple.security.network.server: true
     preBuildScripts:
-      - name: Build the Kotlin shared framework
-        basedOnDependencyAnalysis: false
-        script: |
-          # Xcode's PATH doesn't include Homebrew's JDK.
-          export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17 2>/dev/null)}"
-          for jdk in /opt/homebrew/opt/openjdk@17 /usr/local/opt/openjdk@17; do
-            [ -n "$JAVA_HOME" ] || [ ! -d "$jdk/libexec/openjdk.jdk" ] || JAVA_HOME="$jdk/libexec/openjdk.jdk/Contents/Home"
-          done
-          cd "$SRCROOT/.."
-          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+      - *sharedFramework
+
+  TakeoutFM-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - TakeoutFM
+      - path: iOS
+        excludes: [Info.plist]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.takeoutfm.ios
+        PRODUCT_NAME: TakeoutFM
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        # Simulator builds need no team; a device build needs DEVELOPMENT_TEAM (README).
+        CODE_SIGN_STYLE: Automatic
+    info:
+      path: iOS/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Music keeps playing when the app is in the background or the phone is locked.
+        UIBackgroundModes: [audio]
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    dependencies:
+      - framework: Vendor/MobileVLCKit.xcframework
+        embed: true
+        codeSign: true
+    preBuildScripts:
+      - *sharedFramework

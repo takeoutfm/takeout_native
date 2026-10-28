@@ -6,16 +6,17 @@ plugins {
 }
 
 // The Takeout core shared by every app: API models and the rules that must behave the same on
-// all platforms. Android, and macOS for the SwiftUI app in apple/ (PLAN.md phase 10).
+// all platforms. Android, and macOS and iOS for the SwiftUI apps in apple/ (PLAN.md phase 10).
 // commonMain must not import Android or java.* APIs; Apple pieces go in appleMain.
 kotlin {
     jvmToolchain(17)
 
     androidTarget()
 
-    // The Mac app's framework ("Shared"), linked on a Mac (apple/README.md). Its klibs also
-    // compile on Linux (kotlin.native.enableKlibsCrossCompilation), which checks appleMain here.
-    listOf(macosArm64()).forEach {
+    // The Mac and iOS apps' framework ("Shared"), linked on a Mac (apple/README.md). Its klibs
+    // also compile on Linux (kotlin.native.enableKlibsCrossCompilation), which checks appleMain
+    // here.
+    listOf(macosArm64(), iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
             baseName = "Shared"
             isStatic = true

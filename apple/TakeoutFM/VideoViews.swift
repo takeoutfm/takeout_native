@@ -146,7 +146,7 @@ private struct VideoPage: View {
     let details: VideoDetails
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var cache: MediaCache
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.playVideo) private var playVideo
     @State private var resumeMs: Int64 = 0
     @State private var favorite: Bool
     @State private var season: Int32
@@ -283,7 +283,7 @@ private struct VideoPage: View {
 
     private func play(startOver: Bool) {
         // A series plays its next episode, which details resolve from the series id.
-        openWindow(id: "video", value: VideoPlayRequest(id: details.id, startOver: startOver))
+        playVideo(VideoPlayRequest(id: details.id, startOver: startOver))
     }
 
     private func toggleFavorite(_ path: String) {
@@ -311,7 +311,7 @@ private struct VideoPage: View {
 private struct EpisodeRow: View {
     let episode: EpisodeInfo
     let current: Bool
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.playVideo) private var playVideo
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -333,7 +333,7 @@ private struct EpisodeRow: View {
             }
             .buttonStyle(.plain)
             .disabled(current)
-            Button { openWindow(id: "video", value: VideoPlayRequest(id: episode.id)) } label: {
+            Button { playVideo(VideoPlayRequest(id: episode.id)) } label: {
                 Image(systemName: "play.circle").font(.title)
             }
             .buttonStyle(.borderless)
@@ -368,7 +368,7 @@ struct PersonView: View {
         Loaded(id: personId, load: { try await model.calls.person(personId: personId) }) { person in
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    HStack(alignment: .top, spacing: 20) {
+                    HeaderStack(alignment: .top) {
                         Artwork(url: person.photoUri, symbol: "person.fill")
                             .frame(width: 160, height: 240)
                         VStack(alignment: .leading, spacing: 8) {

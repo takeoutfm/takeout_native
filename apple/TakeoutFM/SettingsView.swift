@@ -1,7 +1,7 @@
 import SwiftUI
 import Shared
 
-/** TakeoutFM → Settings (⌘,). */
+/** TakeoutFM → Settings (⌘,) on the Mac; the Library tab's ⚙︎ on iPhone. */
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @AppStorage("showMenuBarPlayer") private var showMenuBarPlayer = true
@@ -18,7 +18,9 @@ struct SettingsView: View {
                     Text("Dark").tag(ThemeMode.dark)
                 }
                 .pickerStyle(.segmented)
+                #if os(macOS)
                 Toggle("Show in Menu Bar", isOn: $showMenuBarPlayer)
+                #endif
             }
             Section("Music") {
                 Toggle("Track Activity", isOn: $model.reportPlays)
@@ -53,10 +55,17 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            #if os(iOS)
+            Section {
+                Button("Sign Out", role: .destructive) { model.signOut() }
+            }
+            #endif
         }
         .formStyle(.grouped)
+        #if os(macOS)
         .frame(width: 480)
         .fixedSize()
+        #endif
     }
 
     private func connect() {

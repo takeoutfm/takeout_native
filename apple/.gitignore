@@ -1,6 +1,7 @@
 TakeoutFM.xcodeproj/
 # Written by xcodegen from project.yml.
-TakeoutFM/Info.plist
+macOS/Info.plist
+iOS/Info.plist
 build/
 DerivedData/
 # VLCKit, fetched by fetch-vlckit.sh.

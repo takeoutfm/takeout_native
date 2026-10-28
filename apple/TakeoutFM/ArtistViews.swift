@@ -62,7 +62,7 @@ private struct ArtistPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                HStack(alignment: .bottom, spacing: 20) {
+                HeaderStack(alignment: .bottom) {
                     Artwork(url: details.artist.imageUri, symbol: "person.fill")
                         .frame(width: 180, height: 180)
                         .clipShape(Circle())

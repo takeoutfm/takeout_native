@@ -1,9 +1,21 @@
-# TakeoutFM for macOS
+# TakeoutFM for macOS and iOS
 
-A native SwiftUI app on top of the Kotlin shared core (`:shared`), linked as the static
-`Shared` framework. Music plays with AVFoundation (FLAC, MP3 and M4A; the media token goes in
-the Authorization header). Video (MKV with embedded audio and subtitle tracks, which
-AVFoundation can't open) will play with VLCKit. Plan and status: `PLAN.md` → Apple.
+Native SwiftUI apps for the Mac and for iPhone / iPad on top of the Kotlin shared core
+(`:shared`), linked as the static `Shared` framework. Music plays with AVFoundation (FLAC, MP3
+and M4A; the media token goes in the Authorization header); video (MKV with embedded audio and
+subtitle tracks, which AVFoundation can't open) with VLCKit (MobileVLCKit on iOS). Plan and
+status: `PLAN.md` → Apple.
+
+- `TakeoutFM/`: shared by both apps — `AppModel`, the player, stream proxy, downloads,
+  listens, and almost every page.
+- `macOS/`: the Mac app (`TakeoutFMApp`, the menu bar player, the video window), its
+  entitlements and icon.
+- `iOS/`: the iOS app (`TakeoutFMiOSApp`): on iPhone, tabs (Library · Recent · Artists ·
+  Radio · Search) with a mini player and Now Playing full screen; on iPad (regular width), the
+  Mac's sidebar (`MainView`). The full-screen video player, and its icon.
+- Platform differences inside shared files are `#if os(macOS)`; opening a video goes through
+  the `playVideo` environment action (a window on the Mac, a full-screen cover on iOS), and
+  page headers stack on iPhone (`compactLayout`, `HeaderStack`).
 
 **Status:** builds and launches on the Mac (Xcode 27, first built 2026-10-27). It has:
 device-code sign-in; a sidebar with Recently Added, New Releases, Recently Played, Artists,
@@ -40,7 +52,8 @@ stats. The app icon is rendered by `tools/render-icon.swift` (see its header).
    and later `git pull` the same way, or push the repo to a private GitHub repository and
    clone that on both machines.
 
-4. Fetch VLCKit (VideoLAN's prebuilt macOS framework, 411 MB, LGPL 2.1; not committed):
+4. Fetch VLCKit and MobileVLCKit (VideoLAN's prebuilt frameworks, 88 + 264 MB downloads,
+   LGPL 2.1; not committed):
    ```
    apple/fetch-vlckit.sh
    ```
@@ -61,9 +74,20 @@ or from the command line:
 xcodebuild -project TakeoutFM.xcodeproj -scheme TakeoutFM -configuration Debug build
 ```
 
+iOS (the `TakeoutFM-iOS` scheme, `com.takeoutfm.ios`), for the simulator:
+
+```
+xcodebuild -project TakeoutFM.xcodeproj -scheme TakeoutFM-iOS -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+```
+
+A real iPhone needs signing: set your team in Xcode (TakeoutFM-iOS → Signing & Capabilities),
+or `DEVELOPMENT_TEAM` in `project.yml`.
+
 The build's first step runs `./gradlew :shared:embedAndSignAppleFrameworkForXcode`, which
-compiles the Kotlin core for macOS (the first time it downloads the Kotlin/Native toolchain,
-a few minutes). Run `xcodegen` again after adding or removing Swift files.
+compiles the Kotlin core for the SDK being built (the first time it downloads the
+Kotlin/Native toolchain, a few minutes). Run `xcodegen` again after adding or removing Swift
+files.
 
 ## How it fits together
 

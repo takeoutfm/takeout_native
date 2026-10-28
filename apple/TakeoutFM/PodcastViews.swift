@@ -82,7 +82,7 @@ private struct PodcastPage: View {
 
     var body: some View {
         List {
-            HStack(alignment: .top, spacing: 20) {
+            HeaderStack(alignment: .top) {
                 Artwork(url: details.series.imageUri, symbol: "antenna.radiowaves.left.and.right")
                     .frame(width: 180, height: 180)
                 VStack(alignment: .leading, spacing: 8) {
@@ -230,7 +230,7 @@ struct PodcastEpisodeView: View {
         let newer = index > 0 ? details.episodes[index - 1] : nil
         return ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top, spacing: 20) {
+                HeaderStack(alignment: .top) {
                     // Episode art is often wide (a video still): shown whole.
                     Artwork(url: episode.imageUri.isEmpty ? series.imageUri : episode.imageUri,
                             symbol: "antenna.radiowaves.left.and.right", fit: true)
@@ -340,15 +340,27 @@ enum ShowNotes {
                options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],
                documentAttributes: nil
            ),
-           var converted = try? AttributedString(parsed, including: \.appKit) {
+           var converted = try? Self.convert(parsed) {
             // The parser sets black text (and its font); drop them to follow light / dark mode.
+            #if os(macOS)
             converted.appKit.foregroundColor = nil
+            #else
+            converted.uiKit.foregroundColor = nil
+            #endif
             converted.foregroundColor = nil
             converted.font = nil
             result = converted
         }
         cache[notes] = result
         return result
+    }
+
+    private static func convert(_ parsed: NSAttributedString) throws -> AttributedString {
+        #if os(macOS)
+        try AttributedString(parsed, including: \.appKit)
+        #else
+        try AttributedString(parsed, including: \.uiKit)
+        #endif
     }
 
     /** Tags dropped and entities decoded, for one- or two-line previews. */

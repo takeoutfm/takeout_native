@@ -56,7 +56,7 @@ struct DownloadBadge: View {
 struct DownloadsView: View {
     @EnvironmentObject private var cache: MediaCache
     @EnvironmentObject private var player: AudioPlayer
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.playVideo) private var playVideo
     @State private var confirmRemoveAll = false
 
     private struct DownloadGroup: Identifiable {
@@ -137,7 +137,7 @@ struct DownloadsView: View {
     /// Music and episodes play as their group's downloaded items; videos in the video window.
     private func play(_ entry: MediaCache.Entry, in group: DownloadGroup) {
         if entry.video {
-            openWindow(id: "video", value: VideoPlayRequest(id: entry.group))
+            playVideo(VideoPlayRequest(id: entry.group))
             return
         }
         let playable = group.entries.filter { !$0.video && $0.isDone }

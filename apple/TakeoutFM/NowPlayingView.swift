@@ -24,21 +24,32 @@ struct NowPlayingView: View {
                 }
                 if let item = player.current {
                     let wide = geo.size.width > 1100
-                    HStack(alignment: .center, spacing: 40) {
-                        Artwork(url: item.imageUri, symbol: "music.note")
-                            .aspectRatio(1, contentMode: .fit)
-                            .frame(maxWidth: 520, maxHeight: 520)
-                            .shadow(radius: 24, y: 8)
-                        details(item, showQueueButton: !wide)
-                            .frame(maxWidth: 460)
-                        if wide {
-                            QueueView()
-                                .frame(width: 360)
-                                .frame(maxHeight: 560)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    let cover = Artwork(url: item.imageUri, symbol: "music.note")
+                        .aspectRatio(1, contentMode: .fit)
+                        .frame(maxWidth: 520, maxHeight: 520)
+                        .shadow(radius: 24, y: 8)
+                    if geo.size.height > geo.size.width {
+                        // Upright (a phone): the cover above the details.
+                        VStack(spacing: 28) {
+                            cover
+                            details(item, showQueueButton: true)
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 56)
+                    } else {
+                        HStack(alignment: .center, spacing: 40) {
+                            cover
+                            details(item, showQueueButton: !wide)
+                                .frame(maxWidth: 460)
+                            if wide {
+                                QueueView()
+                                    .frame(width: 360)
+                                    .frame(maxHeight: 560)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                        .padding(48)
                     }
-                    .padding(48)
                 } else {
                     ContentUnavailableView("Nothing Playing", systemImage: "music.note",
                                            description: Text("Play an album, a mix, a station or a podcast."))

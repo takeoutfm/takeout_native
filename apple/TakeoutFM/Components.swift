@@ -1,6 +1,90 @@
 import SwiftUI
 import Shared
 
+private struct CompactLayoutKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /** A narrow screen (iPhone): page headers stack their art above the details. */
+    var compactLayout: Bool {
+        get { self[CompactLayoutKey.self] }
+        set { self[CompactLayoutKey.self] = newValue }
+    }
+}
+
+/** A page header: the art beside the details, or above them on a narrow screen. */
+struct HeaderStack<Content: View>: View {
+    var alignment: VerticalAlignment = .bottom
+    @ViewBuilder let content: () -> Content
+    @Environment(\.compactLayout) private var compact
+
+    var body: some View {
+        if compact {
+            VStack(alignment: .leading, spacing: 16, content: content)
+        } else {
+            HStack(alignment: alignment, spacing: 20, content: content)
+        }
+    }
+}
+
+/** The page a [Route] opens, in any NavigationStack (the Mac's and iPad's sidebar, the iPhone's tabs). */
+struct RouteView: View {
+    let route: Route
+
+    var body: some View {
+        switch route {
+        case .album(let id): AlbumView(albumId: id)
+        case .artist(let id): ArtistView(artistId: id)
+        case .playlist(let id, let name): PlaylistView(playlistId: id, name: name)
+        case .video(let id): VideoView(videoId: id)
+        case .person(let id): PersonView(personId: id)
+        case .podcast(let id): PodcastView(seriesId: id)
+        case .podcastEpisode(let seriesId, let episodeId): PodcastEpisodeView(seriesId: seriesId, episodeId: episodeId)
+        case .list(let list): ListPage(list: list)
+        }
+    }
+}
+
+private struct ListPage: View {
+    let list: LibraryList
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        switch list {
+        case .recentlyAdded: AlbumGrid(title: "Recently Added") { try await model.calls.recentlyAdded() }
+        case .newReleases: AlbumGrid(title: "New Releases") { try await model.calls.doNewReleases() }  // "do": Kotlin's prefix for "new…"
+        case .favorites: FavoritesView()
+        case .playlists: PlaylistList()
+        case .podcasts: PodcastsView()
+        case .watch: WatchView()
+        case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
+        case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
+        case .downloads: DownloadsView()
+        }
+    }
+}
+
+/**
+ * Plays a movie or episode: the Mac opens its video window, iOS presents the player full
+ * screen. Each app's root view provides it.
+ */
+struct PlayVideoAction {
+    let run: (VideoPlayRequest) -> Void
+    func callAsFunction(_ request: VideoPlayRequest) { run(request) }
+}
+
+private struct PlayVideoKey: EnvironmentKey {
+    static let defaultValue = PlayVideoAction { _ in }
+}
+
+extension EnvironmentValues {
+    var playVideo: PlayVideoAction {
+        get { self[PlayVideoKey.self] }
+        set { self[PlayVideoKey.self] = newValue }
+    }
+}
+
 /** Where a page can link to; the main window's NavigationStack opens each. */
 enum Route: Hashable {
     case album(String)
@@ -13,6 +97,12 @@ enum Route: Hashable {
     case podcast(String)
     /** One of a podcast's episodes ("pe-"); its page loads the podcast for the neighbours. */
     case podcastEpisode(seriesId: String, episodeId: String)
+    /** A whole list page, for the iPhone's Library tab (the sidebar shows these directly). */
+    case list(LibraryList)
+}
+
+enum LibraryList: Hashable {
+    case recentlyAdded, newReleases, favorites, playlists, podcasts, watch, movies, shows, downloads
 }
 
 /**
@@ -101,7 +191,7 @@ struct Artwork: View {
     }
 }
 
-/** A track in a list; double-click (or Play in its menu) plays it. With an [etag], a ♥ button. */
+/** A track in a list; double-click (a tap on iOS), or Play in its menu, plays it. With an [etag], a ♥ button. */
 struct TrackRow: View {
     var number: String?
     let title: String
@@ -138,7 +228,11 @@ struct TrackRow: View {
         .padding(.vertical, 3)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        #if os(macOS)
         .onTapGesture(count: 2, perform: play)
+        #else
+        .onTapGesture(perform: play)
+        #endif
         .contextMenu {
             Button("Play", action: play)
             if let enqueue {

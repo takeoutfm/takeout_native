@@ -51,7 +51,7 @@ struct MainView: View {
     @State private var path: [Route] = []
     @State private var query = ""
     @State private var lastSearch = ""
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.playVideo) private var playVideo
 
     private var musicPages: [Page] {
         var pages: [Page] = [.recentlyPlayed, .recentlyAdded, .newReleases, .artists, .favorites]
@@ -106,7 +106,7 @@ struct MainView: View {
         } detail: {
             NavigationStack(path: $path) {
                 pageView(page ?? .recentlyPlayed)
-                    .navigationDestination(for: Route.self, destination: routeView)
+                    .navigationDestination(for: Route.self) { RouteView(route: $0) }
             }
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Artists, albums, tracks")
@@ -120,7 +120,7 @@ struct MainView: View {
         // For testing video without the UI: `TakeoutFM -playVideo e-123` (add `-noProgress YES`).
         .onAppear {
             if let id = UserDefaults.standard.string(forKey: "playVideo") {
-                openWindow(id: "video", value: VideoPlayRequest(id: id))
+                playVideo(VideoPlayRequest(id: id))
             }
         }
         #endif
@@ -170,19 +170,6 @@ struct MainView: View {
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
         case .downloads: DownloadsView()
         case .search(let query): SearchView(query: query)
-        }
-    }
-
-    @ViewBuilder
-    private func routeView(_ route: Route) -> some View {
-        switch route {
-        case .album(let id): AlbumView(albumId: id)
-        case .artist(let id): ArtistView(artistId: id)
-        case .playlist(let id, let name): PlaylistView(playlistId: id, name: name)
-        case .video(let id): VideoView(videoId: id)
-        case .person(let id): PersonView(personId: id)
-        case .podcast(let id): PodcastView(seriesId: id)
-        case .podcastEpisode(let seriesId, let episodeId): PodcastEpisodeView(seriesId: seriesId, episodeId: episodeId)
         }
     }
 }

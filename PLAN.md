@@ -500,7 +500,18 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          a track or episode played to its end is downloaded into the cache (fetched once
          more) and listed with its queue; skipped ones and streams aren't kept. Downloads
          group by the queue's server location (else its title), the same for manual ones.
-   - [ ] iOS later from the same Swift code (with CarPlay and Siri).
+11. **Apple — iOS** (started 2026-10-28; same `apple/` project, `TakeoutFM-iOS`,
+    `com.takeoutfm.ios`, iOS 17+):
+   - [x] `shared` adds `iosArm64` / `iosSimulatorArm64` (appleMain needed no changes).
+   - [x] Swift split into shared (`TakeoutFM/`), `macOS/` and `iOS/`; MobileVLCKit 3.7.3 via
+         `fetch-vlckit.sh`.
+   - [x] iPhone: tabs (Library · Recent · Artists · Radio · Search, decided 2026-10-28, like
+         the Android phone app), mini player, Now Playing full screen, Settings (with Sign
+         Out); iPad: the Mac's sidebar. Full-screen VLC video player. Background audio.
+   - [x] Checked in the iPhone 17 Pro simulator: device-code sign-in, Library, album pages,
+         playback, mini player, Now Playing, video (resume, track menus).
+   - [ ] iPad check; downloads, radio and podcasts on the phone; a real device (needs a team).
+   - [ ] Lock screen / Control Center check, picture in picture, CarPlay and Siri.
 
 ---
 

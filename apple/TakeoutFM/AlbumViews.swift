@@ -46,7 +46,7 @@ struct AlbumView: View {
     var body: some View {
         Loaded(load: { try await model.calls.albumDetails(albumId: albumId) }) { details in
             List {
-                HStack(alignment: .bottom, spacing: 20) {
+                HeaderStack(alignment: .bottom) {
                     Artwork(url: details.album.coverUri, symbol: "music.note").frame(width: 200, height: 200)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(details.album.name).font(.largeTitle.bold())

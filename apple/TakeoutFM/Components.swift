@@ -108,6 +108,8 @@ struct TrackRow: View {
     var detail = ""
     var imageUri: String?
     var etag = ""
+    /// Play Next (false) / Add to Queue (true), when the row can be queued.
+    var enqueue: ((Bool) -> Void)?
     let play: () -> Void
     @EnvironmentObject private var model: AppModel
     @State private var hovering = false
@@ -138,7 +140,12 @@ struct TrackRow: View {
         .onTapGesture(count: 2, perform: play)
         .contextMenu {
             Button("Play", action: play)
+            if let enqueue {
+                Button("Play Next") { enqueue(false) }
+                Button("Add to Queue") { enqueue(true) }
+            }
             if !etag.isEmpty {
+                Divider()
                 Button(model.isFavorite(etag) ? "Remove from Favorites" : "Add to Favorites") {
                     model.toggleFavorite(etag)
                 }

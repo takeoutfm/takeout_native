@@ -472,6 +472,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] Settings: Theme (the shared `PlaySettings.theme`, applied as the app's appearance),
          Show in Menu Bar, Track Activity, ListenBrainz (user token, checked by the shared
          `ListenBrainzAccount`; Submit Listens).
+   - [x] Now Playing screen (as the phone's: background, cover, seek, −10 / +30, repeat, ♥,
+         queue column), queue popover, Play Next / Add to Queue on tracks.
    - [x] Menu bar mini player (`MenuBarExtra`), app icon (`tools/render-icon.swift` from the
          Play Store artwork).
    - [x] Movies and TV: Watch (Continue Watching, Recently Added, New Releases, TV), Movies and

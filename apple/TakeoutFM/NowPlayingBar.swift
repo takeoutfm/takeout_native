@@ -6,18 +6,27 @@ import Shared
  * and its current song (from the stream's ICY title) instead of a seek bar.
  */
 struct NowPlayingBar: View {
+    @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: AudioPlayer
     @State private var showQueue = false
 
     var body: some View {
         if let item = player.current {
             HStack(spacing: 14) {
-                Artwork(url: item.imageUri, symbol: "music.note").frame(width: 44, height: 44)
-                VStack(alignment: .leading) {
-                    Text(player.displayTitle).font(.headline).lineLimit(1)
-                    Text(player.displaySubtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                // The cover and title open Now Playing.
+                Button { model.showNowPlaying = true } label: {
+                    HStack(spacing: 14) {
+                        Artwork(url: item.imageUri, symbol: "music.note").frame(width: 44, height: 44)
+                        VStack(alignment: .leading) {
+                            Text(player.displayTitle).font(.headline).lineLimit(1)
+                            Text(player.displaySubtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        .frame(width: 260, alignment: .leading)
+                    }
+                    .contentShape(Rectangle())
                 }
-                .frame(width: 260, alignment: .leading)
+                .buttonStyle(.plain)
+                .help("Now Playing (⌘L)")
                 // Podcast episodes' etag is their GUID, not a track's.
                 if !item.etag.isEmpty && !item.podcast {
                     FavoriteButton(etag: item.etag)
@@ -48,7 +57,7 @@ struct NowPlayingBar: View {
                 }
                 Button { showQueue.toggle() } label: { Image(systemName: "list.bullet") }
                     .help("Queue")
-                    .popover(isPresented: $showQueue, arrowEdge: .top) { QueueView() }
+                    .popover(isPresented: $showQueue, arrowEdge: .top) { QueueView().frame(width: 380, height: 480) }
             }
             .buttonStyle(.borderless)
             .padding(.horizontal, 16)
@@ -103,6 +112,5 @@ struct QueueView: View {
                 .onAppear { scroller.scrollTo(player.index, anchor: .center) }
             }
         }
-        .frame(width: 380, height: 480)
     }
 }

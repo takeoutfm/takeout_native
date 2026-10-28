@@ -160,6 +160,7 @@ private struct EpisodeRow: View {
                 Text(episode.title).font(.headline).lineLimit(1)
                 Spacer()
                 status
+                DownloadBadge(etag: episode.eid)
             }
             Text(date).font(.subheadline).foregroundStyle(.secondary)
             Text(ShowNotes.plain(episode.description_)).foregroundStyle(.secondary).lineLimit(2)
@@ -204,6 +205,7 @@ struct PodcastEpisodeView: View {
     let episodeId: String
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: AudioPlayer
+    @EnvironmentObject private var cache: MediaCache
     /// Bumped to reload after marking it, and when playback pauses (for current progress).
     @State private var version = 0
 
@@ -258,6 +260,15 @@ struct PodcastEpisodeView: View {
                             Button { mark(episode, played: !played) } label: {
                                 Label(played ? "Mark as Not Played" : "Mark as Played",
                                       systemImage: played ? "circle" : "checkmark.circle")
+                            }
+                            DownloadButton(etags: [episode.eid]) {
+                                Task {
+                                    guard let queue = try? await model.calls.episodesQueue(
+                                        title: series.title, imageUri: series.imageUri,
+                                        episodes: details.episodes, startIndex: Int32(index)
+                                    ) else { return }
+                                    cache.download([queue.items[index]], group: series.id, groupTitle: series.title)
+                                }
                             }
                         }
                         .controlSize(.large)

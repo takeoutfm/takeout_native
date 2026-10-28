@@ -7,7 +7,7 @@ struct MainView: View {
 
     enum Page: Hashable {
         case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio, podcasts
-        case watch, movies, shows
+        case watch, movies, shows, downloads
         case search(String)
 
         var title: String {
@@ -23,6 +23,7 @@ struct MainView: View {
             case .watch: return "Watch"
             case .movies: return "Movies"
             case .shows: return "TV Shows"
+            case .downloads: return "Downloads"
             case .search(let query): return query
             }
         }
@@ -40,6 +41,7 @@ struct MainView: View {
             case .watch: return "play.tv"
             case .movies: return "film"
             case .shows: return "tv"
+            case .downloads: return "arrow.down.circle"
             case .search: return "magnifyingglass"
             }
         }
@@ -81,6 +83,9 @@ struct MainView: View {
                             Label(p.title, systemImage: p.icon).tag(p)
                         }
                     }
+                }
+                Section("On This Mac") {
+                    Label(Page.downloads.title, systemImage: Page.downloads.icon).tag(Page.downloads)
                 }
                 if !lastSearch.isEmpty {
                     Section("Search") {
@@ -163,6 +168,7 @@ struct MainView: View {
         case .watch: WatchView()
         case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
+        case .downloads: DownloadsView()
         case .search(let query): SearchView(query: query)
         }
     }

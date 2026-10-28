@@ -17,6 +17,7 @@ struct TakeoutFMApp: App {
             }
             .environmentObject(model)
             .environmentObject(model.player)
+            .environmentObject(model.cache)
             .frame(minWidth: 900, minHeight: 600)
             // AppModel is made before NSApp exists, so apply the saved theme once it does.
             .onAppear { model.applyTheme() }
@@ -36,7 +37,7 @@ struct TakeoutFMApp: App {
         }
         WindowGroup("Video", id: "video", for: VideoPlayRequest.self) { $request in
             if let request {
-                VideoPlayerView(request: request, calls: model.calls)
+                VideoPlayerView(request: request, calls: model.calls, cache: model.cache)
                     .environmentObject(model)
                     .frame(minWidth: 640, minHeight: 360)
             }
@@ -60,6 +61,8 @@ final class AppModel: ObservableObject {
     let core: TakeoutCore
     let calls: SwiftCalls
     let player: AudioPlayer
+    /// Downloads (music, episodes, movies and episodes), which playback reads first.
+    let cache: MediaCache
     @Published private(set) var signedIn = false
     @Published private(set) var hasPlaylists = false
     @Published private(set) var hasMovies = false
@@ -112,7 +115,8 @@ final class AppModel: ObservableObject {
             dataDirectory: support.path
         )
         calls = SwiftCalls(core: core)
-        player = AudioPlayer(calls: calls)
+        cache = MediaCache(calls: calls, directory: support)
+        player = AudioPlayer(calls: calls, cache: cache)
         signedIn = calls.isSignedIn
         reportPlays = calls.reportPlays
         submitListens = calls.submitListens
@@ -147,6 +151,17 @@ final class AppModel: ObservableObject {
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.calls.retryListens() } }
         #if DEBUG
+        // For testing downloads without the UI: `TakeoutFM -downloadAlbum al-12276`, and
+        // playing an album: `-playAlbum al-12276`.
+        if let album = UserDefaults.standard.string(forKey: "downloadAlbum") {
+            Task { [calls, cache] in
+                guard let queue = try? await calls.albumQueue(albumId: album, startIndex: 0) else { return NSLog("No album \(album)") }
+                cache.download(queue.items, group: album, groupTitle: queue.title)
+            }
+        }
+        if let album = UserDefaults.standard.string(forKey: "playAlbum") {
+            play { [calls] in try await calls.albumQueue(albumId: album, startIndex: 0) }
+        }
         // For testing playback without the UI: `TakeoutFM -playStations st-144,st-143` plays
         // each for 6 seconds.
         if let stations = UserDefaults.standard.string(forKey: "playStations") {

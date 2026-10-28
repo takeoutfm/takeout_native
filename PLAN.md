@@ -491,7 +491,13 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          Played), episode pages (Resume / Start Over, show notes with links, older / newer), episodes in the music player resuming where they were left; `AudioPlayer`
          saves their position (by GUID, through `TakeoutProgress`) as Android's
          `PodcastProgress` does.
-   - [ ] Offline downloads; iOS later from the same Swift code (with CarPlay and Siri).
+   - [x] Downloads (`MediaCache`, Swift: Android keeps its index in Media3, so there's no shared
+         one): whole files by ETag in Application Support/TakeoutFM/Media with a JSON index,
+         grouped by album / playlist / podcast / title; no eviction; playback (AVPlayer and
+         VLC) reads them first, so they play offline. Albums, playlists, favorite tracks,
+         episodes, movies and TV episodes; a Downloads page.
+   - [ ] Playback Caching (keep what's streamed, as Android's setting).
+   - [ ] iOS later from the same Swift code (with CarPlay and Siri).
 
 ---
 

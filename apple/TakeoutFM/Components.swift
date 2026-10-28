@@ -130,6 +130,7 @@ struct TrackRow: View {
             }
             Spacer()
             if !etag.isEmpty {
+                DownloadBadge(etag: etag)
                 // Shown while it's a favorite, or under the pointer.
                 FavoriteButton(etag: etag).opacity(model.isFavorite(etag) || hovering ? 1 : 0)
             }

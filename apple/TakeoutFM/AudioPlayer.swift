@@ -35,6 +35,7 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var streamTitle: String?
 
     private let calls: SwiftCalls
+    private let cache: MediaCache
     private let player = AVQueuePlayer()
     private var timeObserver: Any?
     private var bag = Set<AnyCancellable>()
@@ -62,8 +63,9 @@ final class AudioPlayer: ObservableObject {
         return "\(artist) · \(item.title)"
     }
 
-    init(calls: SwiftCalls) {
+    init(calls: SwiftCalls, cache: MediaCache) {
         self.calls = calls
+        self.cache = cache
         listens = calls.listenSession()
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.tick(time) }
@@ -214,6 +216,13 @@ final class AudioPlayer: ObservableObject {
     }
 
     private func playerItem(_ item: QueueItem) -> AVPlayerItem? {
+        // Downloaded: play the file (offline too).
+        if let file = cache.localURL(item.etag) {
+            #if DEBUG
+            NSLog("Playing \(item.title) from its download")
+            #endif
+            return AVPlayerItem(url: file)
+        }
         guard let url = URL(string: item.uri) else { return nil }
         var headers: [String: String] = [:]
         if let auth = calls.mediaAuthorization(url: item.uri) { headers["Authorization"] = auth }

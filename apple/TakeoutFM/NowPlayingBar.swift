@@ -7,6 +7,7 @@ import Shared
  */
 struct NowPlayingBar: View {
     @EnvironmentObject private var player: AudioPlayer
+    @State private var showQueue = false
 
     var body: some View {
         if let item = player.current {
@@ -45,6 +46,9 @@ struct NowPlayingBar: View {
                     Text(format(player.position) + " / " + format(player.duration))
                         .monospacedDigit().foregroundStyle(.secondary)
                 }
+                Button { showQueue.toggle() } label: { Image(systemName: "list.bullet") }
+                    .help("Queue")
+                    .popover(isPresented: $showQueue, arrowEdge: .top) { QueueView() }
             }
             .buttonStyle(.borderless)
             .padding(.horizontal, 16)
@@ -56,5 +60,49 @@ struct NowPlayingBar: View {
     private func format(_ seconds: Double) -> String {
         let s = Int(seconds)
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+/** The play queue: what it's playing from, every item with the current one marked; clicking one jumps there. */
+struct QueueView: View {
+    @EnvironmentObject private var player: AudioPlayer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Playing from").font(.caption).foregroundStyle(.secondary)
+                Text(player.queueTitle).font(.headline).lineLimit(1)
+            }
+            .padding(12)
+            Divider()
+            ScrollViewReader { scroller in
+                List(Array(player.items.enumerated()), id: \.offset) { index, item in
+                    Button { player.skip(to: index) } label: {
+                        HStack(spacing: 10) {
+                            Group {
+                                if index == player.index {
+                                    Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "speaker.fill")
+                                        .foregroundStyle(.tint)
+                                } else {
+                                    Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(width: 28, alignment: .trailing)
+                            Artwork(url: item.imageUri, symbol: "music.note").frame(width: 32, height: 32)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(item.title).fontWeight(index == player.index ? .semibold : .regular).lineLimit(1)
+                                Text(item.artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .id(index)
+                }
+                .onAppear { scroller.scrollTo(player.index, anchor: .center) }
+            }
+        }
+        .frame(width: 380, height: 480)
     }
 }

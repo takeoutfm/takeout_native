@@ -145,6 +145,7 @@ struct VideoView: View {
 private struct VideoPage: View {
     let details: VideoDetails
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var cache: MediaCache
     @Environment(\.openWindow) private var openWindow
     @State private var resumeMs: Int64 = 0
     @State private var favorite: Bool
@@ -244,6 +245,9 @@ private struct VideoPage: View {
                     Button { play(startOver: false) } label: { Label("Play", systemImage: "play.fill") }
                         .buttonStyle(.borderedProminent)
                 }
+            }
+            if details.kind != .series && !details.etag.isEmpty && !details.videoUri.isEmpty {
+                DownloadButton(etags: [details.etag]) { cache.downloadVideo(details) }
             }
             if let path = details.favoritePath {
                 Button { toggleFavorite(path) } label: { Image(systemName: favorite ? "heart.fill" : "heart") }

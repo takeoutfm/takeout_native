@@ -31,6 +31,7 @@ struct PlaylistView: View {
     let name: String
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: AudioPlayer
+    @EnvironmentObject private var cache: MediaCache
 
     var body: some View {
         Loaded(load: { try await model.calls.playlistQueue(playlistId: playlistId) }) { queue in
@@ -39,6 +40,9 @@ struct PlaylistView: View {
                     Button { player.play(queue, from: 0) } label: { Label("Play", systemImage: "play.fill") }
                         .buttonStyle(.borderedProminent)
                     Button { player.play(queue, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
+                    DownloadButton(etags: queue.items.map(\.etag)) {
+                        cache.download(queue.items, group: playlistId, groupTitle: name)
+                    }
                 }
                 .disabled(queue.items.isEmpty)
                 .padding(.vertical, 8)
@@ -61,6 +65,7 @@ struct PlaylistView: View {
 /** Favorite artists and tracks. */
 struct FavoritesView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var cache: MediaCache
 
     var body: some View {
         Loaded(load: { try await model.calls.favorites() }) { favorites in
@@ -76,6 +81,12 @@ struct FavoritesView: View {
                                     SectionTitle("Tracks")
                                     Spacer()
                                     Button { play(0) } label: { Label("Play All", systemImage: "play.fill") }
+                                    DownloadButton(etags: favorites.tracks.map(\.etag)) {
+                                        Task {
+                                            guard let queue = try? await model.calls.favoritesQueue(startIndex: 0) else { return }
+                                            cache.download(queue.items, group: "favorites", groupTitle: "Favorite Tracks")
+                                        }
+                                    }
                                 }
                                 ForEach(Array(favorites.tracks.enumerated()), id: \.offset) { index, track in
                                     TrackRow(

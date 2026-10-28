@@ -12,7 +12,8 @@ were left, synced); search from the toolbar; album, artist and playlist pages wi
 ♥ for tracks; and an AVQueuePlayer queue with a Now Playing bar (a LIVE layout with the song
 playing for streams), the menu's Playback commands and the system's Now Playing (media keys,
 Control Center); Movies and TV pages, and a VLCKit video window (audio and subtitle tracks,
-resume, saved progress, next episode). A full Now Playing screen (⌘L) with the queue, Play Next / Add to Queue on tracks, repeat, a
+resume, saved progress, next episode). Downloads (albums, playlists, favorites, episodes, movies and TV episodes; they play
+offline) with a Downloads page. A full Now Playing screen (⌘L) with the queue, Play Next / Add to Queue on tracks, repeat, a
 menu bar player, and Settings for the theme (System / Light / Dark), the menu bar
 item, Track Activity and ListenBrainz. Plays are reported to the server's activity (Settings →
 Track Activity, on by default as in the other apps), so playing music here changes your real
@@ -79,6 +80,12 @@ a few minutes). Run `xcodegen` again after adding or removing Swift files.
   which then asks for the login password; and `TakeoutFM -playStations st-144,st-143` (the
   binary in `Contents/MacOS`) plays each station for 6 seconds, with the player's state in
   the log, to test playback without the UI.
+- Downloads: `MediaCache` keeps whole files by ETag (stream URLs redirect to expiring
+  presigned ones) in Application Support/TakeoutFM/Media, with `downloads.json` saying what
+  each is and what it came with. A download resolves the presigned URL with the token
+  (`StreamResolver`) and fetches it without, two at a time; interrupted ones restart at
+  launch. `AudioPlayer` and `VideoPlayerModel` play the file when there is one. Debug builds
+  take `-downloadAlbum al-…` and `-playAlbum al-…`.
 - Listens: `AudioPlayer` tells the shared `ListenSession` (`SwiftCalls.listenSession()`)
   when the item changes, playback starts or stops, every half second, and each ICY title
   (from an `AVPlayerItemMetadataOutput` on stream items); it decides and reports through

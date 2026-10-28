@@ -37,6 +37,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
 
     let videoView = VLCVideoView()
     private let calls: SwiftCalls
+    private let cache: MediaCache
     private let player = VLCMediaPlayer()
     private var hasPlayed = false
     private var savedAt = Date.distantPast
@@ -44,8 +45,9 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     /// This video's id with the stream proxy, while it's registered.
     private var proxied: String?
 
-    init(calls: SwiftCalls) {
+    init(calls: SwiftCalls, cache: MediaCache) {
         self.calls = calls
+        self.cache = cache
         super.init()
         videoView.backColor = .black
         player.drawable = videoView
@@ -76,7 +78,9 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
                 let resumeMs = request.startOver ? 0 : ((try? await calls.resumePositionMs(etag: d.etag))?.int64Value ?? 0)
                 // Takeout's own streams go through the proxy (VLC can't send the token).
                 var url = URL(string: d.videoUri)
-                if let authorization = calls.mediaAuthorization(url: d.videoUri) {
+                if let file = cache.localURL(d.etag) {
+                    url = file  // downloaded: from disk, offline too
+                } else if let authorization = calls.mediaAuthorization(url: d.videoUri) {
                     let stream = try await StreamProxy.shared.register(location: d.videoUri, authorization: authorization)
                     proxied = stream.id
                     url = stream.url
@@ -256,9 +260,9 @@ struct VideoPlayerView: View {
     @State private var hideTask: Task<Void, Never>?
     @State private var scrubMs: Double?
 
-    init(request: VideoPlayRequest, calls: SwiftCalls) {
+    init(request: VideoPlayRequest, calls: SwiftCalls, cache: MediaCache) {
         self.request = request
-        _video = StateObject(wrappedValue: VideoPlayerModel(calls: calls))
+        _video = StateObject(wrappedValue: VideoPlayerModel(calls: calls, cache: cache))
     }
 
     var body: some View {

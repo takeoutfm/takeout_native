@@ -41,6 +41,7 @@ struct AlbumCard: View {
 struct AlbumView: View {
     let albumId: String
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var cache: MediaCache
 
     var body: some View {
         Loaded(load: { try await model.calls.albumDetails(albumId: albumId) }) { details in
@@ -58,6 +59,13 @@ struct AlbumView: View {
                             Button { play(0) } label: { Label("Play", systemImage: "play.fill") }
                                 .buttonStyle(.borderedProminent)
                             Button { play(0, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
+                            DownloadButton(etags: details.tracks.map(\.etag)) {
+                                let name = details.album.name
+                                Task {
+                                    guard let queue = try? await model.calls.albumQueue(albumId: albumId, startIndex: 0) else { return }
+                                    cache.download(queue.items, group: albumId, groupTitle: name)
+                                }
+                            }
                         }
                     }
                 }

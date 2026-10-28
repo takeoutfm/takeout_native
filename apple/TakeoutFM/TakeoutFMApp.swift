@@ -28,6 +28,9 @@ struct TakeoutFMApp: App {
                     .keyboardShortcut(.leftArrow, modifiers: .command)
             }
         }
+        Settings {
+            SettingsView().environmentObject(model)
+        }
     }
 }
 
@@ -39,8 +42,16 @@ final class AppModel: ObservableObject {
     let player: AudioPlayer
     @Published private(set) var signedIn = false
     @Published private(set) var hasPlaylists = false
-    private var sessionWatch: Watching?
-    private var indexWatch: Watching?
+    /// Recently Played, newest first.
+    @Published private(set) var recentlyPlayed: [PlayedQueue] = []
+    /// ETags of the favorite tracks, for ♥ buttons.
+    @Published private(set) var favoriteTracks: Set<String> = []
+    /// Track Activity: report plays to the server.
+    @Published var reportPlays: Bool {
+        didSet { calls.reportPlays = reportPlays }
+    }
+    private var watches: [Watching] = []
+    private var activeObserver: NSObjectProtocol?
 
     init() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
@@ -62,13 +73,28 @@ final class AppModel: ObservableObject {
         calls = SwiftCalls(core: core)
         player = AudioPlayer(calls: calls)
         signedIn = calls.isSignedIn
-        sessionWatch = WatchKt.watch(flow: core.session.state) { [weak self] state in
-            self?.signedIn = (state as? SessionState)?.isLoggedIn ?? false
-        }
-        indexWatch = WatchKt.watch(flow: core.library.index) { [weak self] index in
-            self?.hasPlaylists = (index as? LibraryIndex)?.hasPlaylists ?? false
-        }
+        reportPlays = calls.reportPlays
+        watches = [
+            WatchKt.watch(flow: core.session.state) { [weak self] state in
+                self?.signedIn = (state as? SessionState)?.isLoggedIn ?? false
+            },
+            WatchKt.watch(flow: core.library.index) { [weak self] index in
+                self?.hasPlaylists = (index as? LibraryIndex)?.hasPlaylists ?? false
+            },
+            WatchKt.watch(flow: core.history.entries) { [weak self] entries in
+                self?.recentlyPlayed = entries as? [PlayedQueue] ?? []
+            },
+            WatchKt.watch(flow: core.music.favoriteTrackEtags) { [weak self] etags in
+                self?.favoriteTracks = etags as? Set<String> ?? []
+            },
+        ]
         Task { try? await calls.refreshLibrary() }
+        Task { try? await calls.loadFavoriteTracks() }
+        calls.retryListens()
+        // As the Android apps do on returning to the foreground.
+        activeObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.calls.retryListens() } }
         #if DEBUG
         // For testing playback without the UI: `TakeoutFM -playStations st-144,st-143` plays
         // each for 6 seconds.
@@ -90,6 +116,20 @@ final class AppModel: ObservableObject {
                 player.play(try await load(), shuffled: shuffled)
             } catch {
                 NSLog("Play failed: \(error)")
+            }
+        }
+    }
+
+    func isFavorite(_ etag: String) -> Bool { favoriteTracks.contains(etag) }
+
+    /** Adds or removes a favorite track (the shared set updates at once; reverted on failure). */
+    func toggleFavorite(_ etag: String) {
+        let wanted = !isFavorite(etag)
+        Task {
+            do {
+                try await calls.setTrackFavorite(etag: etag, favorite: wanted)
+            } catch {
+                NSLog("Favorite failed: \(error)")
             }
         }
     }

@@ -88,7 +88,7 @@ private struct ArtistPage: View {
                     VStack(alignment: .leading, spacing: 6) {
                         SectionTitle("Popular")
                         ForEach(Array(details.popular.prefix(10).enumerated()), id: \.offset) { index, track in
-                            TrackRow(title: track.title, detail: track.album, imageUri: track.coverUri) {
+                            TrackRow(title: track.title, detail: track.album, imageUri: track.coverUri, etag: track.etag) {
                                 model.play { model.calls.tracksQueue(title: "Popular", tracks: details.popular, startIndex: Int32(index)) }
                             }
                         }

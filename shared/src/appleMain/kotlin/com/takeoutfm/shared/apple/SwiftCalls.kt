@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.apple
 
+import com.takeoutfm.shared.listen.ListenSession
 import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.AlbumDetails
 import com.takeoutfm.shared.music.Artist
@@ -9,6 +10,7 @@ import com.takeoutfm.shared.music.MusicFavorites
 import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.MusicSearchResults
+import com.takeoutfm.shared.music.PlayedQueue
 import com.takeoutfm.shared.music.StationGroup
 import com.takeoutfm.shared.music.Track
 import kotlinx.coroutines.flow.first
@@ -81,8 +83,36 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun favoritesQueue(startIndex: Int): MusicQueue = core.music.favoritesQueue(startIndex)
 
+    /** Loads the favorite track ETags (core.music.favoriteTrackEtags) if they haven't been. */
+    @Throws(Throwable::class)
+    suspend fun loadFavoriteTracks() = core.music.loadFavoriteTracks()
+
+    @Throws(Throwable::class)
+    suspend fun setTrackFavorite(etag: String, favorite: Boolean) =
+        core.music.setTrackFavorite(etag, favorite)
+
     /** Starts [queue] in Recently Played; returns its entry id. */
     fun recordPlayed(queue: MusicQueue): String = core.history.record(queue)
+
+    /** Where Recently Played entry [id] got to, so replaying it resumes there. */
+    fun playedProgress(id: String, index: Int, positionMs: Long) =
+        core.history.progress(id, index, positionMs)
+
+    /** Recently Played, newest first. */
+    fun recentlyPlayed(): List<PlayedQueue> = core.history.entries.value
+
+    fun clearRecentlyPlayed() = core.history.clear()
+
+    /** Decides listens for the player, reporting them per the Music settings. */
+    fun listenSession(): ListenSession = ListenSession(core.listenReporter)
+
+    /** Resends listens kept from earlier failures (offline, server down). */
+    fun retryListens() = core.listenReporter.retry()
+
+    /** Track Activity: report plays to the Takeout server. */
+    var reportPlays: Boolean
+        get() = core.settings.reportPlays.value
+        set(value) = core.settings.setReportPlays(value)
 
     /** "Bearer <media token>" for a stream on the signed-in server, else null. */
     fun mediaAuthorization(url: String): String? = core.session.mediaAuthorization(url)

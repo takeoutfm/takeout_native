@@ -72,13 +72,16 @@ struct Artwork: View {
     }
 }
 
-/** A track in a list; double-click (or Play in its menu) plays it. */
+/** A track in a list; double-click (or Play in its menu) plays it. With an [etag], a ♥ button. */
 struct TrackRow: View {
     var number: String?
     let title: String
     var detail = ""
     var imageUri: String?
+    var etag = ""
     let play: () -> Void
+    @EnvironmentObject private var model: AppModel
+    @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -95,11 +98,38 @@ struct TrackRow: View {
                 }
             }
             Spacer()
+            if !etag.isEmpty {
+                // Shown while it's a favorite, or under the pointer.
+                FavoriteButton(etag: etag).opacity(model.isFavorite(etag) || hovering ? 1 : 0)
+            }
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())
+        .onHover { hovering = $0 }
         .onTapGesture(count: 2, perform: play)
-        .contextMenu { Button("Play", action: play) }
+        .contextMenu {
+            Button("Play", action: play)
+            if !etag.isEmpty {
+                Button(model.isFavorite(etag) ? "Remove from Favorites" : "Add to Favorites") {
+                    model.toggleFavorite(etag)
+                }
+            }
+        }
+    }
+}
+
+/** ♥ for a track (by ETag): filled when it's a favorite; clicking toggles it. */
+struct FavoriteButton: View {
+    let etag: String
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        let favorite = model.isFavorite(etag)
+        Button { model.toggleFavorite(etag) } label: {
+            Image(systemName: favorite ? "heart.fill" : "heart")
+        }
+        .buttonStyle(.borderless)
+        .help(favorite ? "Remove from Favorites" : "Add to Favorites")
     }
 }
 

@@ -6,10 +6,12 @@ the Authorization header). Video (MKV with embedded audio and subtitle tracks, w
 AVFoundation can't open) will play with VLCKit. Plan and status: `PLAN.md` → Apple.
 
 **Status:** builds and launches on the Mac (Xcode 27, first built 2026-10-27). It has:
-device-code sign-in; a sidebar with Recently Added, New Releases, Artists, Favorites,
-Playlists and Radio; search from the toolbar; album, artist and playlist pages; and an
-AVQueuePlayer queue with a Now Playing bar, the menu's Playback commands and the system's Now
-Playing (media keys, Control Center).
+device-code sign-in; a sidebar with Recently Added, New Releases, Recently Played, Artists,
+Favorites, Playlists and Radio; search from the toolbar; album, artist and playlist pages with
+♥ for tracks; and an AVQueuePlayer queue with a Now Playing bar (a LIVE layout with the song
+playing for streams), the menu's Playback commands and the system's Now Playing (media keys,
+Control Center). Plays are reported to the server's activity (Settings → Track Activity, on
+by default as in the other apps), so playing music here changes your real stats.
 
 ## Mac setup (once)
 
@@ -67,6 +69,10 @@ a few minutes). Run `xcodegen` again after adding or removing Swift files.
   which then asks for the login password; and `TakeoutFM -playStations st-144,st-143` (the
   binary in `Contents/MacOS`) plays each station for 6 seconds, with the player's state in
   the log, to test playback without the UI.
+- Listens: `AudioPlayer` tells the shared `ListenSession` (`SwiftCalls.listenSession()`)
+  when the item changes, playback starts or stops, every half second, and each ICY title
+  (from an `AVPlayerItemMetadataOutput` on stream items); it decides and reports through
+  `ListenReporter`, which keeps failures and is retried on launch and on activate.
 - `WatchKt.watch(flow:onEach:)` follows a Kotlin Flow on the main thread (e.g. the session
   state); `CodeSignIn` runs the device-code sign-in.
 - Shared logic is tested on the JVM on Linux (`./gradlew :shared:testDebugUnitTest`), and the

@@ -126,7 +126,9 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   - `music/`: `TakeoutMusicRepository` and the music entities.
   - `video/`: `TakeoutVideoRepository` (movies, TV, people, search, Continue Watching via a
     `ProgressSource`, which `TakeoutProgress` implements) and the video entities.
-  - `listen/`: `ListenBrainzAccount` (Ktor) and the listen rules; `progress/`, `util/`, `model/`.
+  - `listen/`: `ListenBrainzAccount` (Ktor), the listen rules, and `ListenSession` (the same
+    rules as `ListenTracker`, fed events by players that aren't Media3 — the Mac's);
+    `progress/`, `util/`, `model/`.
   - `store/KeyValueStore`: how shared classes save values; `AndroidStores` (androidMain) gives
     plain and EncryptedSharedPreferences-backed ones.
   - Shared classes have no Hilt annotations: `data/takeout/TakeoutModule.kt` provides them,

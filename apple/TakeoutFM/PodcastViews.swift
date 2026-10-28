@@ -247,7 +247,7 @@ struct PodcastEpisodeView: View {
                             Text(published(episode.date)).foregroundStyle(.secondary)
                             EpisodeStatus(progress: episode.progress)
                         }
-                        HStack {
+                        FlowRow {
                             Button { play(details, index, fromStart: false) } label: {
                                 Label(started != nil ? "Resume" : "Play", systemImage: "play.fill")
                             }

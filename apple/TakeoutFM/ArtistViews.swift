@@ -71,7 +71,7 @@ private struct ArtistPage: View {
                         if !details.artist.genre.isEmpty {
                             Text(details.artist.genre).foregroundStyle(.secondary)
                         }
-                        HStack {
+                        FlowRow {
                             Button { mix(.shuffle) } label: { Label("Shuffle", systemImage: "shuffle") }
                                 .buttonStyle(.borderedProminent)
                             Button { mix(.radio) } label: { Label("Radio", systemImage: "dot.radiowaves.left.and.right") }

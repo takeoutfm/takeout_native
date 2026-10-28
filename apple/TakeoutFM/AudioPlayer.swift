@@ -7,8 +7,8 @@ import Shared
  * Music playback: an AVQueuePlayer over the queue's streams (FLAC, MP3 and M4A play natively;
  * the media token goes in each request's Authorization header), published for the Now Playing
  * bar, and wired to the system's Now Playing (Control Center, media keys). It tells the shared
- * ListenSession what plays (which reports listens), follows live streams' ICY titles, and
- * keeps Recently Played's place.
+ * ListenSession what plays (which reports listens), follows live streams' ICY titles, keeps
+ * Recently Played's place, and saves podcast episodes' positions (synced, keyed by GUID).
  */
 @MainActor
 final class AudioPlayer: ObservableObject {
@@ -31,6 +31,7 @@ final class AudioPlayer: ObservableObject {
     /// This queue's Recently Played entry, and when its place was last saved.
     private var historyId: String?
     private var savedAt = Date.distantPast
+    private var episodeSavedAt = Date.distantPast
 
     var current: QueueItem? { items.indices.contains(index) ? items[index] : nil }
 
@@ -83,6 +84,7 @@ final class AudioPlayer: ObservableObject {
     /// Plays [queue] from its start track, or from [start] (at its beginning) when given.
     func play(_ queue: MusicQueue, shuffled: Bool = false, from start: Int? = nil) {
         saveProgress()
+        saveEpisode()
         historyId = calls.recordPlayed(queue: queue)
         var list = queue.items
         var index = start ?? Int(queue.startIndex)
@@ -104,6 +106,7 @@ final class AudioPlayer: ObservableObject {
 
     func next() {
         guard index + 1 < items.count else { return }
+        saveEpisode()
         load(from: index + 1, at: 0)
         player.play()
     }
@@ -112,6 +115,7 @@ final class AudioPlayer: ObservableObject {
         if position > 3 || index == 0 {
             player.seek(to: .zero)
         } else {
+            saveEpisode()
             load(from: index - 1, at: 0)
             player.play()
         }
@@ -123,6 +127,7 @@ final class AudioPlayer: ObservableObject {
 
     func stop() {
         saveProgress()
+        saveEpisode()
         player.removeAllItems()
         items = []
         index = 0
@@ -166,12 +171,17 @@ final class AudioPlayer: ObservableObject {
     }
 
     private func advanced() {
+        // An episode that played to its end is complete.
+        if let item = current, item.podcast, duration > 0 {
+            calls.reportProgress(etag: item.etag, positionMs: durationMs, durationMs: durationMs)
+        }
         guard index + 1 < items.count else { return }
         index += 1
         trackChanged()
     }
 
     private func trackChanged() {
+        episodeSavedAt = Date()  // an episode's first save comes 10 s in
         streamTitle = nil
         isLive = false
         listens.track(item: current)
@@ -181,7 +191,10 @@ final class AudioPlayer: ObservableObject {
     private func playingChanged(_ playing: Bool) {
         isPlaying = playing
         listens.playing(isPlaying: playing, durationMs: durationMs)
-        if !playing { saveProgress() }
+        if !playing {
+            saveProgress()
+            saveEpisode()
+        }
         updateNowPlaying()
     }
 
@@ -204,6 +217,14 @@ final class AudioPlayer: ObservableObject {
         duration = d.seconds.isFinite ? d.seconds : 0
         listens.tick(durationMs: durationMs)
         if Date().timeIntervalSince(savedAt) > 5 { saveProgress() }
+        if isPlaying && Date().timeIntervalSince(episodeSavedAt) > 10 { saveEpisode() }
+    }
+
+    /// Where a podcast episode got to (music tracks are left to the listen session).
+    private func saveEpisode() {
+        guard let item = current, item.podcast, !item.etag.isEmpty, position > 0 else { return }
+        episodeSavedAt = Date()
+        calls.reportProgress(etag: item.etag, positionMs: Int64(position * 1000), durationMs: durationMs)
     }
 
     /// Where Recently Played resumes this queue (a live stream starts afresh).

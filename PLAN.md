@@ -479,7 +479,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          token, and after a redirect it seeks against the presigned URL, which expires in
          15 minutes; so VLC plays from `StreamProxy` (loopback), which fetches every range from
          storage with a fresh-enough presigned URL (re-fetched on a 403). Best-audio-track ranking (Media3-only on Android) not ported yet.
-   - [ ] Podcasts with synced progress.
+   - [x] Podcasts: Subscribed / All, podcast pages (Subscribe, episodes with progress, Mark as
+         Played), episode pages (Resume / Start Over, show notes with links, older / newer), episodes in the music player resuming where they were left; `AudioPlayer`
+         saves their position (by GUID, through `TakeoutProgress`) as Android's
+         `PodcastProgress` does.
    - [ ] Menu bar mini player, app icon, offline downloads; iOS later from the same Swift code
          (with CarPlay and Siri).
 

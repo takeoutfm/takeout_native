@@ -13,6 +13,10 @@ import com.takeoutfm.shared.music.MusicSearchResults
 import com.takeoutfm.shared.music.PlayedQueue
 import com.takeoutfm.shared.music.StationGroup
 import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.podcast.PodcastDetails
+import com.takeoutfm.shared.podcast.PodcastEpisode
+import com.takeoutfm.shared.podcast.PodcastSeries
+import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.video.PersonInfo
 import com.takeoutfm.shared.video.VideoCard
@@ -95,6 +99,31 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun setTrackFavorite(etag: String, favorite: Boolean) =
         core.music.setTrackFavorite(etag, favorite)
+
+    // ---- Podcasts ----
+
+    /** Every podcast (A–Z), or only the subscribed ones. */
+    @Throws(Throwable::class)
+    suspend fun podcasts(subscribedOnly: Boolean): List<PodcastSeries> = core.podcasts.series(subscribedOnly)
+
+    @Throws(Throwable::class)
+    suspend fun podcastDetails(seriesId: String): PodcastDetails = core.podcasts.details(seriesId)
+
+    @Throws(Throwable::class)
+    suspend fun setSubscribed(seriesId: String, subscribed: Boolean) =
+        core.podcasts.setSubscribed(seriesId, subscribed)
+
+    /** [episodes] from [startIndex], resuming the first where it was left. */
+    @Throws(Throwable::class)
+    suspend fun episodesQueue(title: String, imageUri: String, episodes: List<PodcastEpisode>, startIndex: Int): MusicQueue =
+        core.podcasts.episodesQueue(title, imageUri, episodes, startIndex)
+
+    /** Marks the episode with GUID [eid] played (Complete) or not played. */
+    @Throws(Throwable::class)
+    suspend fun markPlayed(eid: String, played: Boolean) {
+        val (offset, duration) = TakeoutPodcastRepository.playedMark(core.podcasts.offset(eid), played)
+        core.progress.report(eid, offset * 1000L, duration * 1000L)
+    }
 
     // ---- Video ----
 

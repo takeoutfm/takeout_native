@@ -32,6 +32,34 @@ final class AudioPlayer: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] status in self?.isPlaying = status == .playing; self?.updateNowPlaying() }
             .store(in: &bag)
+        // AVFoundation fails quietly: log why an item couldn't be opened or stopped short.
+        player.publisher(for: \.currentItem)
+            .compactMap { $0 }
+            .flatMap { item in item.publisher(for: \.status).filter { $0 == .failed }.map { _ in item } }
+            .receive(on: RunLoop.main)
+            .sink { item in NSLog("Can't play \(Self.describe(item)): \(item.error.map { "\($0)" } ?? "unknown error")") }
+            .store(in: &bag)
+        NotificationCenter.default.publisher(for: AVPlayerItem.failedToPlayToEndTimeNotification)
+            .receive(on: RunLoop.main)
+            .sink { note in
+                let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey]
+                NSLog("Stopped short \((note.object as? AVPlayerItem).map(Self.describe) ?? ""): \(error.map { "\($0)" } ?? "")")
+            }
+            .store(in: &bag)
+        NotificationCenter.default.publisher(for: AVPlayerItem.newErrorLogEntryNotification)
+            .receive(on: RunLoop.main)
+            .sink { note in
+                guard let item = note.object as? AVPlayerItem, let event = item.errorLog()?.events.last else { return }
+                NSLog("Stream error \(Self.describe(item)): \(event.errorStatusCode) \(event.errorDomain) \(event.errorComment ?? "")")
+            }
+            .store(in: &bag)
+        #if DEBUG
+        player.publisher(for: \.timeControlStatus)
+            .sink { [weak self] status in
+                NSLog("Player \(["paused", "waiting", "playing"][status.rawValue]) \(self?.player.reasonForWaitingToPlay?.rawValue ?? "") item \(self?.player.currentItem?.status.rawValue ?? -1)")
+            }
+            .store(in: &bag)
+        #endif
         NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.advanced() }
@@ -39,13 +67,16 @@ final class AudioPlayer: ObservableObject {
         remoteCommands()
     }
 
-    func play(_ queue: MusicQueue, shuffled: Bool = false) {
+    /// Plays [queue] from its start track, or from [start] (at its beginning) when given.
+    func play(_ queue: MusicQueue, shuffled: Bool = false, from start: Int? = nil) {
         _ = calls.recordPlayed(queue: queue)
         var list = queue.items
-        var start = Int(queue.startIndex)
-        if shuffled { list.shuffle(); start = 0 }
+        var index = start ?? Int(queue.startIndex)
+        var seconds = start == nil ? Double(queue.startPositionMs) / 1000 : 0
+        if shuffled { list.shuffle(); index = 0; seconds = 0 }
+        guard list.indices.contains(index) else { return }
         items = list
-        load(from: start, at: shuffled ? 0 : Double(queue.startPositionMs) / 1000)
+        load(from: index, at: seconds)
         player.play()
     }
 
@@ -97,6 +128,10 @@ final class AudioPlayer: ObservableObject {
         if let auth = calls.mediaAuthorization(url: item.uri) { headers["Authorization"] = auth }
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
         return AVPlayerItem(asset: asset)
+    }
+
+    private static func describe(_ item: AVPlayerItem) -> String {
+        (item.asset as? AVURLAsset)?.url.absoluteString ?? "item"
     }
 
     private func advanced() {

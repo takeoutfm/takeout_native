@@ -55,7 +55,7 @@ struct AlbumView: View {
                         }
                         .buttonStyle(.plain)
                         Text(details.album.year).foregroundStyle(.secondary)
-                        HStack {
+                        FlowRow {
                             Button { play(0) } label: { Label("Play", systemImage: "play.fill") }
                                 .buttonStyle(.borderedProminent)
                             Button { play(0, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }

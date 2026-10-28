@@ -228,7 +228,7 @@ private struct VideoPage: View {
 
     @ViewBuilder
     private var buttons: some View {
-        HStack {
+        FlowRow {
             if !details.videoUri.isEmpty {
                 if details.kind == .series {
                     Button { play(startOver: false) } label: {

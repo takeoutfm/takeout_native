@@ -461,8 +461,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          AVQueuePlayer music with a Now Playing bar, Playback menu, media keys / Control Center.
    - [x] First build on the Mac and fixes (Homebrew JDK fallback, dead-code stripping for
          SQLiter's wrappers, `doNewReleases`). Sign-in and playback not yet tried.
-   - [ ] Music: artists, playlists, radio (live streams: AVPlayer handles Icecast/HLS), search,
-         Recently Played, favorites; listens (`ListenReporter`, with a ListenTracker port).
+   - [x] Music pages (built, not yet tried with the server): Artists A–Z and artist pages
+         (Shuffle / Radio mixes, popular tracks, releases by kind, similar, ♥), Favorites,
+         Playlists (when the index has them), Radio, Search (toolbar field, the server's syntax).
+   - [ ] Recently Played; listens (`ListenReporter`, with a ListenTracker port); track ♥.
    - [ ] Podcasts with synced progress; Movies and TV pages.
    - [ ] Video with **VLCKit** (the files are MKV with embedded audio/subtitle tracks, which
          AVFoundation can't open): a player window with track pickers, progress, next episode.

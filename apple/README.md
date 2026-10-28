@@ -5,9 +5,11 @@ A native SwiftUI app on top of the Kotlin shared core (`:shared`), linked as the
 the Authorization header). Video (MKV with embedded audio and subtitle tracks, which
 AVFoundation can't open) will play with VLCKit. Plan and status: `PLAN.md` → Apple.
 
-**Status:** builds and launches on the Mac (Xcode 27, first built 2026-10-27). It has: device-code sign-in, a sidebar with Recently Added and New
-Releases, album pages, and an AVQueuePlayer queue with a Now Playing bar, the menu's Playback
-commands and the system's Now Playing (media keys, Control Center).
+**Status:** builds and launches on the Mac (Xcode 27, first built 2026-10-27). It has:
+device-code sign-in; a sidebar with Recently Added, New Releases, Artists, Favorites,
+Playlists and Radio; search from the toolbar; album, artist and playlist pages; and an
+AVQueuePlayer queue with a Now Playing bar, the menu's Playback commands and the system's Now
+Playing (media keys, Control Center).
 
 ## Mac setup (once)
 
@@ -60,6 +62,11 @@ a few minutes). Run `xcodegen` again after adding or removing Swift files.
   exception (a network error) crashes the app instead of throwing in Swift. Add new calls
   there. Kotlin/Native prefixes names that start with `new`, `copy`, `alloc` or `init` with
   `do` (Objective-C ownership rules), so `newReleases()` is `doNewReleases()` in Swift.
+- Debug builds differ in two ways: tokens go in `debug-tokens.json` in Application Support
+  (`DebugTokenStore`), since each ad-hoc-signed rebuild counts as a new app to the Keychain,
+  which then asks for the login password; and `TakeoutFM -playStations st-144,st-143` (the
+  binary in `Contents/MacOS`) plays each station for 6 seconds, with the player's state in
+  the log, to test playback without the UI.
 - `WatchKt.watch(flow:onEach:)` follows a Kotlin Flow on the main thread (e.g. the session
   state); `CodeSignIn` runs the device-code sign-in.
 - Shared logic is tested on the JVM on Linux (`./gradlew :shared:testDebugUnitTest`), and the

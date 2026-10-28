@@ -22,8 +22,6 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: TakeoutFM
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
-        # Home servers are often plain http.
-        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: YES
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_IDENTITY: "-"
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
@@ -34,6 +32,15 @@ targets:
         SWIFT_VERSION: "5.10"
         # The Gradle step writes outside the project's own files.
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+    # Merged with the generated keys above. Radio streams and home servers are often plain
+    # http, which App Transport Security blocks (and INFOPLIST_KEY_ can't set it).
+    info:
+      path: TakeoutFM/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
     entitlements:
       path: TakeoutFM/TakeoutFM.entitlements
       properties:

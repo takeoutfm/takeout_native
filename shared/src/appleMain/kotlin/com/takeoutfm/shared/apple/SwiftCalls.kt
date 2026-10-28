@@ -2,7 +2,15 @@ package com.takeoutfm.shared.apple
 
 import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.AlbumDetails
+import com.takeoutfm.shared.music.Artist
+import com.takeoutfm.shared.music.ArtistDetails
+import com.takeoutfm.shared.music.ArtistMix
+import com.takeoutfm.shared.music.MusicFavorites
+import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
+import com.takeoutfm.shared.music.MusicSearchResults
+import com.takeoutfm.shared.music.StationGroup
+import com.takeoutfm.shared.music.Track
 import kotlinx.coroutines.flow.first
 
 /**
@@ -27,6 +35,51 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun albumQueue(albumId: String, startIndex: Int): MusicQueue =
         core.music.albumQueue(albumId, startIndex)
+
+    /** Every artist, A–Z. */
+    @Throws(Throwable::class)
+    suspend fun artists(): List<Artist> = core.music.artists().first()
+
+    @Throws(Throwable::class)
+    suspend fun artistDetails(artistId: String): ArtistDetails = core.music.artistDetails(artistId)
+
+    @Throws(Throwable::class)
+    suspend fun artistQueue(artistId: String, mix: ArtistMix): MusicQueue =
+        core.music.artistQueue(artistId, mix)
+
+    @Throws(Throwable::class)
+    suspend fun setArtistFavorite(arid: String, favorite: Boolean) =
+        core.music.setArtistFavorite(arid, favorite)
+
+    /** [query] in the server's search syntax ("artist:Beck", plain words). */
+    @Throws(Throwable::class)
+    suspend fun search(query: String): MusicSearchResults = core.music.search(query)
+
+    /** The track, followed by similar tracks. */
+    @Throws(Throwable::class)
+    suspend fun trackQueue(trackId: String): MusicQueue = core.music.trackQueue(trackId)
+
+    /** [tracks] as they're listed, starting at [startIndex]. */
+    fun tracksQueue(title: String, tracks: List<Track>, startIndex: Int): MusicQueue =
+        core.music.tracksQueue(title, tracks, startIndex)
+
+    @Throws(Throwable::class)
+    suspend fun radio(): List<StationGroup> = core.music.radio()
+
+    @Throws(Throwable::class)
+    suspend fun stationQueue(stationId: String): MusicQueue = core.music.stationQueue(stationId)
+
+    @Throws(Throwable::class)
+    suspend fun playlists(): List<MusicPlaylist> = core.music.playlists()
+
+    @Throws(Throwable::class)
+    suspend fun playlistQueue(playlistId: String): MusicQueue = core.music.playlistQueue(playlistId)
+
+    @Throws(Throwable::class)
+    suspend fun favorites(): MusicFavorites = core.music.favorites()
+
+    @Throws(Throwable::class)
+    suspend fun favoritesQueue(startIndex: Int): MusicQueue = core.music.favoritesQueue(startIndex)
 
     /** Starts [queue] in Recently Played; returns its entry id. */
     fun recordPlayed(queue: MusicQueue): String = core.history.record(queue)

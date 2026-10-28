@@ -4,35 +4,23 @@ import Shared
 /** A grid of album covers; selecting one opens its page. */
 struct AlbumGrid: View {
     let title: String
-    let load: () async throws -> [Album]
-    @State private var albums: [Album]?
-    @State private var failed = false
+    let load: @MainActor () async throws -> [Album]
 
     var body: some View {
-        Group {
-            if let albums {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 20)], spacing: 24) {
-                        ForEach(albums, id: \.id) { album in
-                            NavigationLink(value: album.id) {
-                                AlbumCard(album: album)
-                            }
-                            .buttonStyle(.plain)
+        Loaded(load: load) { albums in
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 20)], spacing: 24) {
+                    ForEach(albums, id: \.id) { album in
+                        NavigationLink(value: Route.album(album.id)) {
+                            AlbumCard(album: album)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(20)
                 }
-            } else if failed {
-                ContentUnavailableView("Couldn't load this", systemImage: "wifi.exclamationmark")
-            } else {
-                ProgressView()
+                .padding(20)
             }
         }
         .navigationTitle(title)
-        .navigationDestination(for: String.self) { AlbumView(albumId: $0) }
-        .task {
-            do { albums = try await load() } catch { NSLog("\(title) failed: \(error)"); failed = true }
-        }
     }
 }
 
@@ -41,7 +29,7 @@ struct AlbumCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Artwork(url: album.coverUri)
+            Artwork(url: album.coverUri, symbol: "music.note")
                 .aspectRatio(1, contentMode: .fit)
             Text(album.name).font(.headline).lineLimit(1)
             Text(album.artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
@@ -53,71 +41,42 @@ struct AlbumCard: View {
 struct AlbumView: View {
     let albumId: String
     @EnvironmentObject private var model: AppModel
-    @EnvironmentObject private var player: AudioPlayer
-    @State private var details: AlbumDetails?
-    @State private var failed = false
 
     var body: some View {
-        Group {
-            if let details {
-                List {
-                    HStack(alignment: .bottom, spacing: 20) {
-                        Artwork(url: details.album.coverUri).frame(width: 200, height: 200)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(details.album.name).font(.largeTitle.bold())
+        Loaded(load: { try await model.calls.albumDetails(albumId: albumId) }) { details in
+            List {
+                HStack(alignment: .bottom, spacing: 20) {
+                    Artwork(url: details.album.coverUri, symbol: "music.note").frame(width: 200, height: 200)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(details.album.name).font(.largeTitle.bold())
+                        NavigationLink(value: Route.artist(details.artistId)) {
                             Text(details.album.artist).font(.title2).foregroundStyle(.secondary)
-                            Text(details.album.year).foregroundStyle(.secondary)
-                            HStack {
-                                Button { play(0) } label: { Label("Play", systemImage: "play.fill") }
-                                    .buttonStyle(.borderedProminent)
-                                Button { play(0, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
-                            }
                         }
-                    }
-                    .padding(.vertical, 12)
-                    ForEach(Array(details.tracks.enumerated()), id: \.offset) { index, track in
+                        .buttonStyle(.plain)
+                        Text(details.album.year).foregroundStyle(.secondary)
                         HStack {
-                            Text("\(track.trackNum)").monospacedDigit().foregroundStyle(.secondary).frame(width: 32, alignment: .trailing)
-                            Text(track.title)
-                            Spacer()
-                            if track.artist != details.album.artist {
-                                Text(track.artist).foregroundStyle(.secondary)
-                            }
+                            Button { play(0) } label: { Label("Play", systemImage: "play.fill") }
+                                .buttonStyle(.borderedProminent)
+                            Button { play(0, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) { play(index) }
                     }
                 }
-            } else if failed {
-                ContentUnavailableView("Couldn't load this", systemImage: "wifi.exclamationmark")
-            } else {
-                ProgressView()
+                .padding(.vertical, 12)
+                ForEach(Array(details.tracks.enumerated()), id: \.offset) { index, track in
+                    TrackRow(
+                        number: "\(track.trackNum)",
+                        title: track.title,
+                        detail: track.artist != details.album.artist ? track.artist : ""
+                    ) { play(index) }
+                }
+                AlbumRow(title: "Similar Albums", albums: details.similar)
+                    .padding(.top, 16)
             }
-        }
-        .navigationTitle(details?.album.name ?? "")
-        .task {
-            do { details = try await model.calls.albumDetails(albumId: albumId) } catch { NSLog("Album \(albumId) failed: \(error)"); failed = true }
+            .navigationTitle(details.album.name)
         }
     }
 
     private func play(_ index: Int, shuffled: Bool = false) {
-        Task {
-            guard let queue = try? await model.calls.albumQueue(albumId: albumId, startIndex: Int32(index)) else { return }
-            player.play(queue, shuffled: shuffled)
-        }
-    }
-}
-
-/** Remote artwork with a plain placeholder. */
-struct Artwork: View {
-    let url: String
-
-    var body: some View {
-        AsyncImage(url: URL(string: url)) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            Rectangle().fill(.quaternary)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        model.play(shuffled: shuffled) { try await model.calls.albumQueue(albumId: albumId, startIndex: Int32(index)) }
     }
 }

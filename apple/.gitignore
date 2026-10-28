@@ -1,3 +1,5 @@
 TakeoutFM.xcodeproj/
+# Written by xcodegen from project.yml.
+TakeoutFM/Info.plist
 build/
 DerivedData/

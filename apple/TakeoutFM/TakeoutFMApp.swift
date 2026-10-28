@@ -28,6 +28,14 @@ struct TakeoutFMApp: App {
                     .keyboardShortcut(.leftArrow, modifiers: .command)
             }
         }
+        WindowGroup("Video", id: "video", for: VideoPlayRequest.self) { $request in
+            if let request {
+                VideoPlayerView(request: request, calls: model.calls)
+                    .environmentObject(model)
+                    .frame(minWidth: 640, minHeight: 360)
+            }
+        }
+        .defaultSize(width: 1280, height: 720)
         Settings {
             SettingsView().environmentObject(model)
         }
@@ -42,6 +50,8 @@ final class AppModel: ObservableObject {
     let player: AudioPlayer
     @Published private(set) var signedIn = false
     @Published private(set) var hasPlaylists = false
+    @Published private(set) var hasMovies = false
+    @Published private(set) var hasShows = false
     /// Recently Played, newest first.
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.
@@ -79,7 +89,10 @@ final class AppModel: ObservableObject {
                 self?.signedIn = (state as? SessionState)?.isLoggedIn ?? false
             },
             WatchKt.watch(flow: core.library.index) { [weak self] index in
-                self?.hasPlaylists = (index as? LibraryIndex)?.hasPlaylists ?? false
+                let index = index as? LibraryIndex
+                self?.hasPlaylists = index?.hasPlaylists ?? false
+                self?.hasMovies = index?.hasMovies ?? false
+                self?.hasShows = index?.hasShows ?? false
             },
             WatchKt.watch(flow: core.history.entries) { [weak self] entries in
                 self?.recentlyPlayed = entries as? [PlayedQueue] ?? []

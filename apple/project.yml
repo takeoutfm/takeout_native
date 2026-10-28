@@ -41,11 +41,19 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
+    # Video (MKV with embedded tracks, which AVFoundation can't open); ./fetch-vlckit.sh puts
+    # it in Vendor/.
+    dependencies:
+      - framework: Vendor/VLCKit.xcframework
+        embed: true
+        codeSign: true
     entitlements:
       path: TakeoutFM/TakeoutFM.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        # StreamProxy listens on 127.0.0.1 for VLC.
+        com.apple.security.network.server: true
     preBuildScripts:
       - name: Build the Kotlin shared framework
         basedOnDependencyAnalysis: false

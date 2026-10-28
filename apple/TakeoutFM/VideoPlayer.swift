@@ -320,6 +320,8 @@ struct VideoPlayerView: View {
                             ))
                         }
                     } label: { Image(systemName: "waveform") }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)  // so the icon takes the bar's white (a menu label is drawn by AppKit)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .help("Audio")
@@ -333,6 +335,8 @@ struct VideoPlayerView: View {
                             ))
                         }
                     } label: { Image(systemName: "captions.bubble") }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .help("Subtitles")
@@ -344,6 +348,8 @@ struct VideoPlayerView: View {
         }
         .buttonStyle(.borderless)
         .foregroundStyle(.white)
+        // The bar is always over dark video: AppKit-drawn parts (slider, menus) follow this.
+        .environment(\.colorScheme, .dark)
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
         .background(LinearGradient(colors: [.clear, .black.opacity(0.75)], startPoint: .top, endPoint: .bottom))

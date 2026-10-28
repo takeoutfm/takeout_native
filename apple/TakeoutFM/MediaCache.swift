@@ -85,6 +85,16 @@ final class MediaCache: NSObject, ObservableObject {
 
     // MARK: Downloading
 
+    /** The group a queue's downloads go in: its server location, else its title (a podcast). */
+    static func group(of queue: MusicQueue) -> String {
+        queue.location.isEmpty ? "title:\(queue.title)" : queue.location
+    }
+
+    /** Downloads [queue]'s items (all, or [only] those), grouped with the queue. */
+    func download(_ queue: MusicQueue, only: [QueueItem]? = nil) {
+        download(only ?? queue.items, group: Self.group(of: queue), groupTitle: queue.title)
+    }
+
     /** Downloads [items] (a queue's tracks or episodes) as part of [group]. */
     func download(_ items: [QueueItem], group: String, groupTitle: String) {
         for item in items where !item.etag.isEmpty {

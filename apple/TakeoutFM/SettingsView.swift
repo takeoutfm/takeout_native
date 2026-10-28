@@ -25,6 +25,10 @@ struct SettingsView: View {
                 Text("Tells your Takeout server what you listen to (half a track, or 4 minutes), for its Activity and stats.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                Toggle("Playback Caching", isOn: $model.playbackCaching)
+                Text("Keeps tracks and episodes you play to the end, so they play offline (they're listed in Downloads). Each is fetched once more to keep it; radio streams aren't kept.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
             Section("ListenBrainz") {
                 if let user = model.listenBrainzUser {

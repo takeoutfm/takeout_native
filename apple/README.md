@@ -84,8 +84,13 @@ a few minutes). Run `xcodegen` again after adding or removing Swift files.
   presigned ones) in Application Support/TakeoutFM/Media, with `downloads.json` saying what
   each is and what it came with. A download resolves the presigned URL with the token
   (`StreamResolver`) and fetches it without, two at a time; interrupted ones restart at
-  launch. `AudioPlayer` and `VideoPlayerModel` play the file when there is one. Debug builds
-  take `-downloadAlbum al-…` and `-playAlbum al-…`.
+  launch. `AudioPlayer` and `VideoPlayerModel` play the file when there is one. Playback
+  Caching (Settings) keeps a track or episode once it plays to its end, by downloading it.
+  Debug builds take `-downloadAlbum al-…`, `-playAlbum al-…` and `-seekNearEnd YES` (jump
+  near the first track's end; with `-play_settings.playbackCaching true
+  -play_settings.reportPlays false` it tests caching without changing settings or stats).
+- Audio assets ask for precise timing: without it AVFoundation seeks FLAC approximately and
+  the clock drifts from what's heard.
 - Listens: `AudioPlayer` tells the shared `ListenSession` (`SwiftCalls.listenSession()`)
   when the item changes, playback starts or stops, every half second, and each ICY title
   (from an `AVPlayerItemMetadataOutput` on stream items); it decides and reports through

@@ -194,6 +194,11 @@ class SwiftCalls(private val core: TakeoutCore) {
         get() = core.settings.reportPlays.value
         set(value) = core.settings.setReportPlays(value)
 
+    /** Playback Caching: keep what plays (the Mac keeps tracks played to their end). */
+    var playbackCaching: Boolean
+        get() = core.settings.playbackCaching.value
+        set(value) = core.settings.setPlaybackCaching(value)
+
     /** Submit listens to ListenBrainz (when an account is connected). */
     var submitListens: Boolean
         get() = core.settings.submitListens.value

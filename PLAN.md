@@ -496,7 +496,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          grouped by album / playlist / podcast / title; no eviction; playback (AVPlayer and
          VLC) reads them first, so they play offline. Albums, playlists, favorite tracks,
          episodes, movies and TV episodes; a Downloads page.
-   - [ ] Playback Caching (keep what's streamed, as Android's setting).
+   - [x] Playback Caching (the shared setting): AVPlayer can't hand over what it streamed, so
+         a track or episode played to its end is downloaded into the cache (fetched once
+         more) and listed with its queue; skipped ones and streams aren't kept. Downloads
+         group by the queue's server location (else its title), the same for manual ones.
    - [ ] iOS later from the same Swift code (with CarPlay and Siri).
 
 ---

@@ -15,6 +15,8 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var items: [QueueItem] = []
     /// What the queue is ("Ride Lonesome", "Beck Radio", a podcast), for the queue's header.
     @Published private(set) var queueTitle = ""
+    /// The queue as played, for Playback Caching's grouping.
+    private var queue: MusicQueue?
     /// Off, the whole queue, or the current item.
     @Published var repeatMode: RepeatMode = .off
 
@@ -45,6 +47,9 @@ final class AudioPlayer: ObservableObject {
     private var historyId: String?
     private var savedAt = Date.distantPast
     private var episodeSavedAt = Date.distantPast
+    #if DEBUG
+    private var seekedNearEnd = false
+    #endif
 
     var current: QueueItem? { items.indices.contains(index) ? items[index] : nil }
 
@@ -122,6 +127,7 @@ final class AudioPlayer: ObservableObject {
         guard list.indices.contains(index) else { return }
         items = list
         queueTitle = queue.title
+        self.queue = queue
         load(from: index, at: seconds)
         player.play()
     }
@@ -197,6 +203,7 @@ final class AudioPlayer: ObservableObject {
         player.removeAllItems()
         items = []
         queueTitle = ""
+        queue = nil
         index = 0
         historyId = nil
         trackChanged()
@@ -221,12 +228,17 @@ final class AudioPlayer: ObservableObject {
             #if DEBUG
             NSLog("Playing \(item.title) from its download")
             #endif
-            return AVPlayerItem(url: file)
+            return AVPlayerItem(asset: AVURLAsset(url: file, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true]))
         }
         guard let url = URL(string: item.uri) else { return nil }
         var headers: [String: String] = [:]
         if let auth = calls.mediaAuthorization(url: item.uri) { headers["Authorization"] = auth }
-        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+        // Precise timing: FLAC has no index AVFoundation trusts, so without it seeks land
+        // well short of where the clock says (a jump to 2:00 of a 2:03 track played on for 50 s).
+        let asset = AVURLAsset(url: url, options: [
+            "AVURLAssetHTTPHeaderFieldsKey": headers,
+            AVURLAssetPreferPreciseDurationAndTimingKey: true,
+        ])
         let playerItem = AVPlayerItem(asset: asset)
         // Live streams name the song playing in their ICY metadata.
         if item.etag.isEmpty {
@@ -249,6 +261,7 @@ final class AudioPlayer: ObservableObject {
         if let item = current, item.podcast, duration > 0 {
             calls.reportProgress(etag: item.etag, positionMs: durationMs, durationMs: durationMs)
         }
+        keepIfCaching()
         if repeatMode == .one, current != nil {
             load(from: index, at: 0)
             player.play()
@@ -263,6 +276,19 @@ final class AudioPlayer: ObservableObject {
         }
         index += 1
         trackChanged()
+    }
+
+    /// Playback Caching: a track or episode played to its end is kept (downloaded, so it's
+    /// fetched once more), listed with the queue it played in. Android keeps what it streamed
+    /// as it goes; AVPlayer can't hand its bytes over. Live streams are never kept.
+    private func keepIfCaching() {
+        guard calls.playbackCaching, let item = current, !item.etag.isEmpty, !isLive,
+              cache.localURL(item.etag) == nil, cache.status[item.etag] == nil else { return }
+        if let queue {
+            cache.download(queue, only: [item])
+        } else {
+            cache.download([item], group: "title:\(queueTitle)", groupTitle: queueTitle)
+        }
     }
 
     private func trackChanged() {
@@ -303,6 +329,13 @@ final class AudioPlayer: ObservableObject {
         isLive = player.currentItem?.status == .readyToPlay && d.isIndefinite
         duration = d.seconds.isFinite ? d.seconds : 0
         listens.tick(durationMs: durationMs)
+        #if DEBUG
+        // For testing what happens at a track's end without playing it all: `-seekNearEnd YES`.
+        if UserDefaults.standard.bool(forKey: "seekNearEnd"), !seekedNearEnd, duration > 10, position > 1 {
+            seekedNearEnd = true
+            seek(to: duration - 3)
+        }
+        #endif
         if Date().timeIntervalSince(savedAt) > 5 { saveProgress() }
         if isPlaying && Date().timeIntervalSince(episodeSavedAt) > 10 { saveEpisode() }
     }

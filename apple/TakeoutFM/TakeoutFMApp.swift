@@ -76,6 +76,10 @@ final class AppModel: ObservableObject {
     @Published var reportPlays: Bool {
         didSet { calls.reportPlays = reportPlays }
     }
+    /// Playback Caching: keep tracks and episodes played to their end.
+    @Published var playbackCaching: Bool {
+        didSet { calls.playbackCaching = playbackCaching }
+    }
     /// Submit listens to ListenBrainz, when connected.
     @Published var submitListens: Bool {
         didSet { calls.submitListens = submitListens }
@@ -120,6 +124,7 @@ final class AppModel: ObservableObject {
         signedIn = calls.isSignedIn
         reportPlays = calls.reportPlays
         submitListens = calls.submitListens
+        playbackCaching = calls.playbackCaching
         theme = calls.theme
         watches = [
             WatchKt.watch(flow: core.session.state) { [weak self] state in

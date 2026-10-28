@@ -267,7 +267,7 @@ struct PodcastEpisodeView: View {
                                         title: series.title, imageUri: series.imageUri,
                                         episodes: details.episodes, startIndex: Int32(index)
                                     ) else { return }
-                                    cache.download([queue.items[index]], group: series.id, groupTitle: series.title)
+                                    cache.download(queue, only: [queue.items[index]])
                                 }
                             }
                         }

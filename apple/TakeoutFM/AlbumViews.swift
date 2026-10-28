@@ -60,10 +60,9 @@ struct AlbumView: View {
                                 .buttonStyle(.borderedProminent)
                             Button { play(0, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
                             DownloadButton(etags: details.tracks.map(\.etag)) {
-                                let name = details.album.name
                                 Task {
                                     guard let queue = try? await model.calls.albumQueue(albumId: albumId, startIndex: 0) else { return }
-                                    cache.download(queue.items, group: albumId, groupTitle: name)
+                                    cache.download(queue)
                                 }
                             }
                         }

@@ -41,7 +41,7 @@ struct PlaylistView: View {
                         .buttonStyle(.borderedProminent)
                     Button { player.play(queue, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
                     DownloadButton(etags: queue.items.map(\.etag)) {
-                        cache.download(queue.items, group: playlistId, groupTitle: name)
+                        cache.download(queue)
                     }
                 }
                 .disabled(queue.items.isEmpty)
@@ -84,7 +84,7 @@ struct FavoritesView: View {
                                     DownloadButton(etags: favorites.tracks.map(\.etag)) {
                                         Task {
                                             guard let queue = try? await model.calls.favoritesQueue(startIndex: 0) else { return }
-                                            cache.download(queue.items, group: "favorites", groupTitle: "Favorite Tracks")
+                                            cache.download(queue)
                                         }
                                     }
                                 }

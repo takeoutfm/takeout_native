@@ -9,6 +9,10 @@ enum Route: Hashable {
     /** A movie, series or episode ("m-", "s-", "e-"). */
     case video(String)
     case person(String)
+    /** A podcast ("ps-"). */
+    case podcast(String)
+    /** One of a podcast's episodes ("pe-"); its page loads the podcast for the neighbours. */
+    case podcastEpisode(seriesId: String, episodeId: String)
 }
 
 /**
@@ -56,22 +60,44 @@ struct Loaded<Value, Content: View>: View {
     }
 }
 
-/** Remote artwork; a plain placeholder (with [symbol], if given) while loading or when there's none. */
+/**
+ * Remote artwork filling exactly the space it's given (cropped to it), or with [fit] the whole
+ * image at its own shape (as tall as it is for the width given; a square placeholder until it
+ * loads); a plain placeholder (with [symbol], if given) while loading or when there's none.
+ */
 struct Artwork: View {
     let url: String
     var symbol: String?
+    var fit = false
 
     var body: some View {
-        AsyncImage(url: URL(string: url)) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            Rectangle().fill(.quaternary).overlay {
-                if let symbol {
-                    Image(systemName: symbol).font(.title).foregroundStyle(.secondary)
+        if fit {
+            AsyncImage(url: URL(string: url)) { image in
+                image.resizable().scaledToFit()
+            } placeholder: {
+                placeholder.aspectRatio(1, contentMode: .fit)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else {
+            // The clear base takes the proposed size, so a wide or tall image can't spill out of it.
+            Color.clear
+                .overlay {
+                    AsyncImage(url: URL(string: url)) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        placeholder
+                    }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    private var placeholder: some View {
+        Rectangle().fill(.quaternary).overlay {
+            if let symbol {
+                Image(systemName: symbol).font(.title).foregroundStyle(.secondary)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 

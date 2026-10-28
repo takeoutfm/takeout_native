@@ -52,6 +52,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var hasPlaylists = false
     @Published private(set) var hasMovies = false
     @Published private(set) var hasShows = false
+    @Published private(set) var hasPodcasts = false
     /// Recently Played, newest first.
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.
@@ -93,6 +94,7 @@ final class AppModel: ObservableObject {
                 self?.hasPlaylists = index?.hasPlaylists ?? false
                 self?.hasMovies = index?.hasMovies ?? false
                 self?.hasShows = index?.hasShows ?? false
+                self?.hasPodcasts = index?.hasPodcasts ?? false
             },
             WatchKt.watch(flow: core.history.entries) { [weak self] entries in
                 self?.recentlyPlayed = entries as? [PlayedQueue] ?? []
@@ -122,11 +124,11 @@ final class AppModel: ObservableObject {
         #endif
     }
 
-    /** Plays what [load] returns (a queue from the server), logging a failure. */
-    func play(shuffled: Bool = false, _ load: @escaping @MainActor () async throws -> MusicQueue) {
+    /** Plays what [load] returns (a queue from the server), logging a failure; [from]: that item, from its start. */
+    func play(shuffled: Bool = false, from start: Int? = nil, _ load: @escaping @MainActor () async throws -> MusicQueue) {
         Task {
             do {
-                player.play(try await load(), shuffled: shuffled)
+                player.play(try await load(), shuffled: shuffled, from: start)
             } catch {
                 NSLog("Play failed: \(error)")
             }

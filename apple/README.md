@@ -7,7 +7,8 @@ AVFoundation can't open) will play with VLCKit. Plan and status: `PLAN.md` → A
 
 **Status:** builds and launches on the Mac (Xcode 27, first built 2026-10-27). It has:
 device-code sign-in; a sidebar with Recently Added, New Releases, Recently Played, Artists,
-Favorites, Playlists and Radio; search from the toolbar; album, artist and playlist pages with
+Favorites, Playlists, Radio and Podcasts (podcast and episode pages with show notes; episodes resume where they
+were left, synced); search from the toolbar; album, artist and playlist pages with
 ♥ for tracks; and an AVQueuePlayer queue with a Now Playing bar (a LIVE layout with the song
 playing for streams), the menu's Playback commands and the system's Now Playing (media keys,
 Control Center); Movies and TV pages, and a VLCKit video window (audio and subtitle tracks,

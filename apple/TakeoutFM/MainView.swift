@@ -6,7 +6,7 @@ struct MainView: View {
     @EnvironmentObject private var model: AppModel
 
     enum Page: Hashable {
-        case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio
+        case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio, podcasts
         case watch, movies, shows
         case search(String)
 
@@ -19,6 +19,7 @@ struct MainView: View {
             case .favorites: return "Favorites"
             case .playlists: return "Playlists"
             case .radio: return "Radio"
+            case .podcasts: return "Podcasts"
             case .watch: return "Watch"
             case .movies: return "Movies"
             case .shows: return "TV Shows"
@@ -35,6 +36,7 @@ struct MainView: View {
             case .favorites: return "heart"
             case .playlists: return "music.note.list"
             case .radio: return "dot.radiowaves.left.and.right"
+            case .podcasts: return "antenna.radiowaves.left.and.right"
             case .watch: return "play.tv"
             case .movies: return "film"
             case .shows: return "tv"
@@ -53,6 +55,7 @@ struct MainView: View {
         var pages: [Page] = [.recentlyAdded, .newReleases, .recentlyPlayed, .artists, .favorites]
         if model.hasPlaylists { pages.append(.playlists) }
         pages.append(.radio)
+        if model.hasPodcasts { pages.append(.podcasts) }
         return pages
     }
 
@@ -137,6 +140,7 @@ struct MainView: View {
         case .favorites: FavoritesView()
         case .playlists: PlaylistList()
         case .radio: RadioView()
+        case .podcasts: PodcastsView()
         case .watch: WatchView()
         case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
@@ -152,6 +156,8 @@ struct MainView: View {
         case .playlist(let id, let name): PlaylistView(playlistId: id, name: name)
         case .video(let id): VideoView(videoId: id)
         case .person(let id): PersonView(personId: id)
+        case .podcast(let id): PodcastView(seriesId: id)
+        case .podcastEpisode(let seriesId, let episodeId): PodcastEpisodeView(seriesId: seriesId, episodeId: episodeId)
         }
     }
 }

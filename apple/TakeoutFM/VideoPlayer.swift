@@ -111,6 +111,10 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     func selectAudio(_ index: Int32) {
         player.currentAudioTrackIndex = index
         audioTrack = index
+        // The language picked becomes the preference for the next title, as on the phone.
+        if let media = player.media {
+            AudioTrackRanking.remember(AudioTrackRanking.candidates(media).first { $0.id == index }?.language)
+        }
     }
 
     func selectSubtitle(_ index: Int32) {
@@ -148,8 +152,13 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
             NSLog("Tracks: audio \(audioTracks.map(\.name)) (\(audioTrack)), subtitles \(subtitleTracks.map(\.name)) (\(subtitleTrack))")
             #endif
         }
+        // Named from the track details ("English · 5.1 · AC-3"): files often name every track alike.
+        let details = player.media.map(AudioTrackRanking.candidates) ?? []
         audioTracks = Self.tracks(names: player.audioTrackNames, indexes: player.audioTrackIndexes)
             .filter { $0.index >= 0 }
+            .map { track in
+                details.first { $0.id == track.index }.map { MediaTrack(index: track.index, name: AudioTrackRanking.label($0)) } ?? track
+            }
         subtitleTracks = Self.tracks(names: player.videoSubTitlesNames, indexes: player.videoSubTitlesIndexes)
         audioTrack = player.currentAudioTrackIndex
         subtitleTrack = player.currentVideoSubTitleIndex
@@ -199,7 +208,20 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     private func started() {
         hasPlayed = true
         savedAt = Date()  // first save 10 s in, as on the phone
+        chooseAudio()
         refreshTracks()
+    }
+
+    /// Switches to the best audio track for this title (once; the viewer can change it).
+    private func chooseAudio() {
+        guard let media = player.media else { return }
+        let candidates = AudioTrackRanking.candidates(media)
+        let best = AudioTrackRanking.best(candidates, current: player.currentAudioTrackIndex)
+        #if DEBUG
+        NSLog("Audio: \(candidates.map { "\($0.id) \($0.language ?? "?") \($0.codec) \($0.channels)ch \($0.bitrate) \($0.description)" }), VLC chose \(player.currentAudioTrackIndex) → best \(best.map(String.init) ?? "-")")
+        #endif
+        guard candidates.count > 1, let best, best != player.currentAudioTrackIndex else { return }
+        player.currentAudioTrackIndex = best
     }
 
     private func timeChanged() {

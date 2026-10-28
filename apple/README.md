@@ -12,8 +12,10 @@ were left, synced); search from the toolbar; album, artist and playlist pages wi
 ♥ for tracks; and an AVQueuePlayer queue with a Now Playing bar (a LIVE layout with the song
 playing for streams), the menu's Playback commands and the system's Now Playing (media keys,
 Control Center); Movies and TV pages, and a VLCKit video window (audio and subtitle tracks,
-resume, saved progress, next episode). Plays are reported to the server's activity (Settings → Track Activity, on
-by default as in the other apps), so playing music here changes your real stats.
+resume, saved progress, next episode). A menu bar player, and Settings for the theme (System / Light / Dark), the menu bar
+item, Track Activity and ListenBrainz. Plays are reported to the server's activity (Settings →
+Track Activity, on by default as in the other apps), so playing music here changes your real
+stats. The app icon is rendered by `tools/render-icon.swift` (see its header).
 
 ## Mac setup (once)
 

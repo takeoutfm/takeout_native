@@ -124,7 +124,7 @@ struct DownloadsView: View {
             DownloadBadge(etag: entry.etag)
         }
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { play(entry, in: group) }
+        .onTapGesture { play(entry, in: group) }
         .contextMenu {
             Button("Play") { play(entry, in: group) }
             if cache.status[entry.etag] == .failed {

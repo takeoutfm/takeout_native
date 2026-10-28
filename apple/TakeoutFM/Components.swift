@@ -52,8 +52,11 @@ struct FlowRow: Layout {
     private func arrange(_ subviews: Subviews, width: CGFloat) -> [Row] {
         var rows: [Row] = []
         var row = Row()
+        // Measured against the row's width, not .unspecified: inside a List row, a prominent
+        // button asked for its "any size" answer comes back as a tall, label-less blob.
+        let proposal = ProposedViewSize(width: width.isFinite ? width : nil, height: nil)
         for (index, subview) in subviews.enumerated() {
-            let size = subview.sizeThatFits(.unspecified)
+            let size = subview.sizeThatFits(proposal)
             let needed = row.items.isEmpty ? size.width : row.width + spacing + size.width
             if !row.items.isEmpty && needed > width {
                 rows.append(row)
@@ -246,7 +249,7 @@ struct Artwork: View {
     }
 }
 
-/** A track in a list; double-click (a tap on iOS), or Play in its menu, plays it. With an [etag], a ♥ button. */
+/** A track in a list; a click or tap (or Play in its menu) plays from it. With an [etag], a ♥ button. */
 struct TrackRow: View {
     var number: String?
     let title: String
@@ -283,11 +286,7 @@ struct TrackRow: View {
         .padding(.vertical, 3)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        #if os(macOS)
-        .onTapGesture(count: 2, perform: play)
-        #else
         .onTapGesture(perform: play)
-        #endif
         .contextMenu {
             Button("Play", action: play)
             if let enqueue {

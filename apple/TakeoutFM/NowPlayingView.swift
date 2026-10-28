@@ -27,9 +27,11 @@ struct NowPlayingView: View {
                             .animation(.easeInOut, value: player.artwork?.url)
                     }
                     if let background = player.current?.backgroundUri, !background.isEmpty {
+                        // Faded and only lightly blurred: the photo keeps its detail (radius 12
+                        // left just a wash), while the text over it stays readable.
                         Artwork(url: background)
-                            .opacity(0.25)
-                            .blur(radius: 12)
+                            .opacity(0.35)
+                            .blur(radius: 3)
                     }
                 }
                 .ignoresSafeArea()

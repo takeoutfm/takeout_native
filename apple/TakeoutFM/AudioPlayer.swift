@@ -35,6 +35,21 @@ final class AudioPlayer: ObservableObject {
 
     var current: QueueItem? { items.indices.contains(index) ? items[index] : nil }
 
+    /// What's playing: a stream's current song when it names one ("Artist - Title"), else the item's title.
+    var displayTitle: String {
+        guard let item = current else { return "" }
+        guard let icy = streamTitle else { return item.title }
+        return Self.split(icy)?.title ?? icy
+    }
+
+    /// Who: the artist, or for a stream's song "Artist · Station".
+    var displaySubtitle: String {
+        guard let item = current else { return "" }
+        guard let icy = streamTitle else { return item.artist }
+        guard let artist = Self.split(icy)?.artist else { return item.title }
+        return "\(artist) · \(item.title)"
+    }
+
     init(calls: SwiftCalls) {
         self.calls = calls
         listens = calls.listenSession()

@@ -4,9 +4,10 @@ import Shared
 @main
 struct TakeoutFMApp: App {
     @StateObject private var model = AppModel()
+    @AppStorage("showMenuBarPlayer") private var showMenuBarPlayer = true
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             Group {
                 if model.signedIn {
                     MainView()
@@ -17,6 +18,8 @@ struct TakeoutFMApp: App {
             .environmentObject(model)
             .environmentObject(model.player)
             .frame(minWidth: 900, minHeight: 600)
+            // AppModel is made before NSApp exists, so apply the saved theme once it does.
+            .onAppear { model.applyTheme() }
         }
         .commands {
             CommandMenu("Playback") {
@@ -36,6 +39,12 @@ struct TakeoutFMApp: App {
             }
         }
         .defaultSize(width: 1280, height: 720)
+        MenuBarExtra("TakeoutFM", systemImage: "music.note", isInserted: $showMenuBarPlayer) {
+            MiniPlayerView()
+                .environmentObject(model)
+                .environmentObject(model.player)
+        }
+        .menuBarExtraStyle(.window)
         Settings {
             SettingsView().environmentObject(model)
         }
@@ -61,6 +70,19 @@ final class AppModel: ObservableObject {
     @Published var reportPlays: Bool {
         didSet { calls.reportPlays = reportPlays }
     }
+    /// Submit listens to ListenBrainz, when connected.
+    @Published var submitListens: Bool {
+        didSet { calls.submitListens = submitListens }
+    }
+    /// System, Light or Dark (the shared setting, as on the phone).
+    @Published var theme: ThemeMode {
+        didSet {
+            calls.theme = theme
+            Self.apply(theme)
+        }
+    }
+    /// The connected ListenBrainz account's user name, if any.
+    @Published private(set) var listenBrainzUser: String?
     private var watches: [Watching] = []
     private var activeObserver: NSObjectProtocol?
 
@@ -85,6 +107,8 @@ final class AppModel: ObservableObject {
         player = AudioPlayer(calls: calls)
         signedIn = calls.isSignedIn
         reportPlays = calls.reportPlays
+        submitListens = calls.submitListens
+        theme = calls.theme
         watches = [
             WatchKt.watch(flow: core.session.state) { [weak self] state in
                 self?.signedIn = (state as? SessionState)?.isLoggedIn ?? false
@@ -102,7 +126,11 @@ final class AppModel: ObservableObject {
             WatchKt.watch(flow: core.music.favoriteTrackEtags) { [weak self] etags in
                 self?.favoriteTracks = etags as? Set<String> ?? []
             },
+            WatchKt.watch(flow: core.listenBrainz.user) { [weak self] user in
+                self?.listenBrainzUser = (user as? ListenBrainzUser)?.name
+            },
         ]
+        Self.apply(theme)
         Task { try? await calls.refreshLibrary() }
         Task { try? await calls.loadFavoriteTracks() }
         calls.retryListens()
@@ -132,6 +160,16 @@ final class AppModel: ObservableObject {
             } catch {
                 NSLog("Play failed: \(error)")
             }
+        }
+    }
+
+    func applyTheme() { Self.apply(theme) }
+
+    private static func apply(_ theme: ThemeMode) {
+        switch theme {
+        case .light: NSApp?.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp?.appearance = NSAppearance(named: .darkAqua)
+        default: NSApp?.appearance = nil  // follow the system
         }
     }
 

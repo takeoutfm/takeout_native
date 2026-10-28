@@ -13,11 +13,12 @@ struct NowPlayingBar: View {
             HStack(spacing: 14) {
                 Artwork(url: item.imageUri, symbol: "music.note").frame(width: 44, height: 44)
                 VStack(alignment: .leading) {
-                    Text(title(item)).font(.headline).lineLimit(1)
-                    Text(subtitle(item)).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    Text(player.displayTitle).font(.headline).lineLimit(1)
+                    Text(player.displaySubtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
                 .frame(width: 260, alignment: .leading)
-                if !item.etag.isEmpty {
+                // Podcast episodes' etag is their GUID, not a track's.
+                if !item.etag.isEmpty && !item.podcast {
                     FavoriteButton(etag: item.etag)
                 }
                 if player.isLive {
@@ -50,18 +51,6 @@ struct NowPlayingBar: View {
             .padding(.vertical, 10)
             .background(.bar)
         }
-    }
-
-    /// A stream's current song when it names one ("Artist - Title"), else the item's title.
-    private func title(_ item: QueueItem) -> String {
-        guard let icy = player.streamTitle else { return item.title }
-        return AudioPlayer.split(icy)?.title ?? icy
-    }
-
-    private func subtitle(_ item: QueueItem) -> String {
-        guard let icy = player.streamTitle else { return item.artist }
-        guard let artist = AudioPlayer.split(icy)?.artist else { return item.title }
-        return "\(artist) · \(item.title)"
     }
 
     private func format(_ seconds: Double) -> String {

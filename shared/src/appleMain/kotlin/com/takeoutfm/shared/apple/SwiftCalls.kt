@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.apple
 
+import com.takeoutfm.shared.listen.ListenBrainzUser
 import com.takeoutfm.shared.listen.ListenSession
 import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.AlbumDetails
@@ -18,6 +19,7 @@ import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.PodcastSeries
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.settings.ThemeMode
 import com.takeoutfm.shared.video.PersonInfo
 import com.takeoutfm.shared.video.VideoCard
 import com.takeoutfm.shared.video.VideoDetails
@@ -191,6 +193,22 @@ class SwiftCalls(private val core: TakeoutCore) {
     var reportPlays: Boolean
         get() = core.settings.reportPlays.value
         set(value) = core.settings.setReportPlays(value)
+
+    /** Submit listens to ListenBrainz (when an account is connected). */
+    var submitListens: Boolean
+        get() = core.settings.submitListens.value
+        set(value) = core.settings.setSubmitListens(value)
+
+    /** System, Light or Dark. */
+    var theme: ThemeMode
+        get() = core.settings.theme.value
+        set(value) = core.settings.setTheme(value)
+
+    /** Checks [token] with ListenBrainz and keeps it (in the Keychain); null if it's refused. */
+    @Throws(Throwable::class)
+    suspend fun connectListenBrainz(token: String): ListenBrainzUser? = core.listenBrainz.connect(token)
+
+    fun disconnectListenBrainz() = core.listenBrainz.disconnect()
 
     /** "Bearer <media token>" for a stream on the signed-in server, else null. */
     fun mediaAuthorization(url: String): String? = core.session.mediaAuthorization(url)

@@ -469,7 +469,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          `listen/ListenSession` (ListenTracker's rules as an event-fed state machine, tested in
          commonTest) fed by `AudioPlayer`, reporting through `ListenReporter`. Android's
          `ListenTracker` could move onto `ListenSession` too.
-   - [ ] ListenBrainz sign-in on the Mac (stream songs only go there).
+   - [x] Settings: Theme (the shared `PlaySettings.theme`, applied as the app's appearance),
+         Show in Menu Bar, Track Activity, ListenBrainz (user token, checked by the shared
+         `ListenBrainzAccount`; Submit Listens).
+   - [x] Menu bar mini player (`MenuBarExtra`), app icon (`tools/render-icon.swift` from the
+         Play Store artwork).
    - [x] Movies and TV: Watch (Continue Watching, Recently Added, New Releases, TV), Movies and
          TV Shows grids, title pages (Resume / Start Over, seasons, cast, similar, ♥), person
          pages, video results in Search.
@@ -478,13 +482,14 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          and subtitle pickers, resume and saved progress, next episode. VLC can't send the media
          token, and after a redirect it seeks against the presigned URL, which expires in
          15 minutes; so VLC plays from `StreamProxy` (loopback), which fetches every range from
-         storage with a fresh-enough presigned URL (re-fetched on a 403). Best-audio-track ranking (Media3-only on Android) not ported yet.
+         storage with a fresh-enough presigned URL (re-fetched on a 403). The phone's best-audio-track ranking is ported to Swift
+         (`AudioTrackRanking`, on VLC's track information; no "default" flag there), with the
+         phone's track names ("English · 5.1 · AC-3").
    - [x] Podcasts: Subscribed / All, podcast pages (Subscribe, episodes with progress, Mark as
          Played), episode pages (Resume / Start Over, show notes with links, older / newer), episodes in the music player resuming where they were left; `AudioPlayer`
          saves their position (by GUID, through `TakeoutProgress`) as Android's
          `PodcastProgress` does.
-   - [ ] Menu bar mini player, app icon, offline downloads; iOS later from the same Swift code
-         (with CarPlay and Siri).
+   - [ ] Offline downloads; iOS later from the same Swift code (with CarPlay and Siri).
 
 ---
 

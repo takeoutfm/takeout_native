@@ -47,14 +47,14 @@ struct MainView: View {
         }
     }
 
-    @State private var page: Page? = .recentlyAdded
+    @State private var page: Page? = .recentlyPlayed
     @State private var path: [Route] = []
     @State private var query = ""
     @State private var lastSearch = ""
     @Environment(\.openWindow) private var openWindow
 
     private var musicPages: [Page] {
-        var pages: [Page] = [.recentlyAdded, .newReleases, .recentlyPlayed, .artists, .favorites]
+        var pages: [Page] = [.recentlyPlayed, .recentlyAdded, .newReleases, .artists, .favorites]
         if model.hasPlaylists { pages.append(.playlists) }
         pages.append(.radio)
         if model.hasPodcasts { pages.append(.podcasts) }
@@ -105,7 +105,7 @@ struct MainView: View {
             }
         } detail: {
             NavigationStack(path: $path) {
-                pageView(page ?? .recentlyAdded)
+                pageView(page ?? .recentlyPlayed)
                     .navigationDestination(for: Route.self, destination: routeView)
             }
         }

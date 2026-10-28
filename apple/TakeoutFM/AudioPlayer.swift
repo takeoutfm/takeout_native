@@ -13,12 +13,20 @@ import Shared
 @MainActor
 final class AudioPlayer: ObservableObject {
     @Published private(set) var items: [QueueItem] = []
+    /// What the queue is ("Ride Lonesome", "Beck Radio", a podcast), for the queue's header.
+    @Published private(set) var queueTitle = ""
     @Published private(set) var index = 0
     @Published private(set) var isPlaying = false
     @Published private(set) var position: Double = 0
     @Published private(set) var duration: Double = 0
     /// A live stream (no end): the bar shows its current song instead of a seek bar.
-    @Published private(set) var isLive = false
+    @Published private(set) var isLive = false {
+        didSet {
+            #if DEBUG
+            if isLive != oldValue { NSLog("Live: \(isLive) for \(current?.title ?? "-")") }
+            #endif
+        }
+    }
     /// The live stream's current ICY title ("Artist - Title"), when it sends one.
     @Published private(set) var streamTitle: String?
 
@@ -107,6 +115,7 @@ final class AudioPlayer: ObservableObject {
         if shuffled { list.shuffle(); index = 0; seconds = 0 }
         guard list.indices.contains(index) else { return }
         items = list
+        queueTitle = queue.title
         load(from: index, at: seconds)
         player.play()
     }
@@ -123,6 +132,14 @@ final class AudioPlayer: ObservableObject {
         guard index + 1 < items.count else { return }
         saveEpisode()
         load(from: index + 1, at: 0)
+        player.play()
+    }
+
+    /// Jumps to item [index] of the queue, from its start.
+    func skip(to index: Int) {
+        guard items.indices.contains(index), index != self.index else { return }
+        saveEpisode()
+        load(from: index, at: 0)
         player.play()
     }
 
@@ -145,6 +162,7 @@ final class AudioPlayer: ObservableObject {
         saveEpisode()
         player.removeAllItems()
         items = []
+        queueTitle = ""
         index = 0
         historyId = nil
         trackChanged()
@@ -228,7 +246,9 @@ final class AudioPlayer: ObservableObject {
     private func tick(_ time: CMTime) {
         position = time.seconds.isFinite ? time.seconds : 0
         let d = player.currentItem?.duration ?? .zero
-        isLive = d.isIndefinite
+        // Every item's duration is "indefinite" until it has loaded; only a ready one that still
+        // has none is a live stream.
+        isLive = player.currentItem?.status == .readyToPlay && d.isIndefinite
         duration = d.seconds.isFinite ? d.seconds : 0
         listens.tick(durationMs: durationMs)
         if Date().timeIntervalSince(savedAt) > 5 { saveProgress() }

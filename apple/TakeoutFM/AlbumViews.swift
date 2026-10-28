@@ -67,7 +67,8 @@ struct AlbumView: View {
                         number: "\(track.trackNum)",
                         title: track.title,
                         detail: track.artist != details.album.artist ? track.artist : "",
-                        etag: track.etag
+                        etag: track.etag,
+                        enqueue: { model.enqueueTrack(track.id, last: $0) }
                     ) { play(index) }
                 }
                 AlbumRow(title: "Similar Albums", albums: details.similar)

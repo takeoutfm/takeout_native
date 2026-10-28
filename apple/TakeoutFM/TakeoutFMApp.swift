@@ -23,6 +23,9 @@ struct TakeoutFMApp: App {
         }
         .commands {
             CommandMenu("Playback") {
+                Button("Now Playing") { model.showNowPlaying.toggle() }
+                    .keyboardShortcut("l", modifiers: .command)
+                Divider()
                 Button("Play/Pause") { model.player.togglePlay() }
                     .keyboardShortcut(.space, modifiers: [])
                 Button("Next") { model.player.next() }
@@ -83,6 +86,11 @@ final class AppModel: ObservableObject {
     }
     /// The connected ListenBrainz account's user name, if any.
     @Published private(set) var listenBrainzUser: String?
+    /// The full Now Playing screen is over the window.
+    @Published var showNowPlaying = false
+    /// A short message at the bottom of the window ("Playing Next"), cleared after a moment.
+    @Published private(set) var message: String?
+    private var messageTask: Task<Void, Never>?
     private var watches: [Watching] = []
     private var activeObserver: NSObjectProtocol?
 
@@ -174,6 +182,36 @@ final class AppModel: ObservableObject {
     }
 
     func isFavorite(_ etag: String) -> Bool { favoriteTracks.contains(etag) }
+
+    /** Play Next / Add to Queue for one track, as on the phone: just the track (its server queue goes on with similar ones). */
+    func enqueueTrack(_ trackId: String, last: Bool) {
+        Task {
+            do {
+                let queue = try await calls.trackQueue(trackId: trackId)
+                player.enqueue(Array(queue.items.prefix(1)), last: last)
+                show(last ? "Added to Queue" : "Playing Next")
+            } catch {
+                NSLog("Enqueue failed: \(error)")
+                show("Couldn't add that")
+            }
+        }
+    }
+
+    /** [items] next or last, with the same message. */
+    func enqueue(_ items: [QueueItem], last: Bool) {
+        player.enqueue(items, last: last)
+        show(last ? "Added to Queue" : "Playing Next")
+    }
+
+    func show(_ text: String) {
+        message = text
+        messageTask?.cancel()
+        messageTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            message = nil
+        }
+    }
 
     /** Adds or removes a favorite track (the shared set updates at once; reverted on failure). */
     func toggleFavorite(_ etag: String) {

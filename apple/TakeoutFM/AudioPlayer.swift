@@ -15,6 +15,10 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var items: [QueueItem] = []
     /// What the queue is ("Ride Lonesome", "Beck Radio", a podcast), for the queue's header.
     @Published private(set) var queueTitle = ""
+    /// Off, the whole queue, or the current item.
+    @Published var repeatMode: RepeatMode = .off
+
+    enum RepeatMode { case off, all, one }
     @Published private(set) var index = 0
     @Published private(set) var isPlaying = false
     @Published private(set) var position: Double = 0
@@ -135,6 +139,34 @@ final class AudioPlayer: ObservableObject {
         player.play()
     }
 
+    /// Adds [newItems] after the current item, or at the end ([last]); plays them if nothing is queued.
+    func enqueue(_ newItems: [QueueItem], last: Bool) {
+        guard !newItems.isEmpty else { return }
+        guard !items.isEmpty else {
+            items = newItems
+            queueTitle = newItems[0].title
+            load(from: 0, at: 0)
+            player.play()
+            return
+        }
+        items.insert(contentsOf: newItems, at: last ? items.count : index + 1)
+        // AVQueuePlayer holds the current item and those after it: insert to match.
+        var after: AVPlayerItem? = last ? nil : player.currentItem
+        for item in newItems {
+            guard let playerItem = playerItem(item) else { continue }
+            player.insert(playerItem, after: after)
+            if !last { after = playerItem }
+        }
+    }
+
+    func cycleRepeat() {
+        switch repeatMode {
+        case .off: repeatMode = .all
+        case .all: repeatMode = .one
+        case .one: repeatMode = .off
+        }
+    }
+
     /// Jumps to item [index] of the queue, from its start.
     func skip(to index: Int) {
         guard items.indices.contains(index), index != self.index else { return }
@@ -208,7 +240,18 @@ final class AudioPlayer: ObservableObject {
         if let item = current, item.podcast, duration > 0 {
             calls.reportProgress(etag: item.etag, positionMs: durationMs, durationMs: durationMs)
         }
-        guard index + 1 < items.count else { return }
+        if repeatMode == .one, current != nil {
+            load(from: index, at: 0)
+            player.play()
+            return
+        }
+        guard index + 1 < items.count else {
+            if repeatMode == .all, !items.isEmpty {
+                load(from: 0, at: 0)
+                player.play()
+            }
+            return
+        }
         index += 1
         trackChanged()
     }

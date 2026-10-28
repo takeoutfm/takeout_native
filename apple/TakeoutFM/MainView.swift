@@ -125,7 +125,26 @@ struct MainView: View {
             guard !path.isEmpty else { return }
             DispatchQueue.main.async { path = [] }
         }
-        .safeAreaInset(edge: .bottom) { NowPlayingBar() }
+        .safeAreaInset(edge: .bottom) {
+            if !model.showNowPlaying { NowPlayingBar() }
+        }
+        .overlay {
+            if model.showNowPlaying {
+                NowPlayingView().transition(.move(edge: .bottom))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: model.showNowPlaying)
+        .overlay(alignment: .bottom) {
+            if let message = model.message {
+                Text(message)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 84)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.default, value: model.message)
     }
 
     @ViewBuilder

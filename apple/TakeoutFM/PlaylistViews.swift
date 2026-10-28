@@ -48,7 +48,8 @@ struct PlaylistView: View {
                         title: item.title,
                         detail: "\(item.artist) · \(item.album)",
                         imageUri: item.imageUri,
-                        etag: item.etag
+                        etag: item.etag,
+                        enqueue: { model.enqueue([item], last: $0) }
                     ) { player.play(queue, from: index) }
                 }
             }
@@ -81,7 +82,8 @@ struct FavoritesView: View {
                                         title: track.title,
                                         detail: "\(track.artist) · \(track.album)",
                                         imageUri: track.coverUri,
-                                        etag: track.etag
+                                        etag: track.etag,
+                                        enqueue: { model.enqueueTrack(track.id, last: $0) }
                                     ) { play(index) }
                                 }
                             }

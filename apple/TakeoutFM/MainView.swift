@@ -6,13 +6,14 @@ struct MainView: View {
     @EnvironmentObject private var model: AppModel
 
     enum Page: Hashable {
-        case recentlyAdded, newReleases, artists, favorites, playlists, radio
+        case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio
         case search(String)
 
         var title: String {
             switch self {
             case .recentlyAdded: return "Recently Added"
             case .newReleases: return "New Releases"
+            case .recentlyPlayed: return "Recently Played"
             case .artists: return "Artists"
             case .favorites: return "Favorites"
             case .playlists: return "Playlists"
@@ -25,6 +26,7 @@ struct MainView: View {
             switch self {
             case .recentlyAdded: return "plus.square.on.square"
             case .newReleases: return "sparkles"
+            case .recentlyPlayed: return "clock.arrow.circlepath"
             case .artists: return "music.mic"
             case .favorites: return "heart"
             case .playlists: return "music.note.list"
@@ -40,7 +42,7 @@ struct MainView: View {
     @State private var lastSearch = ""
 
     private var musicPages: [Page] {
-        var pages: [Page] = [.recentlyAdded, .newReleases, .artists, .favorites]
+        var pages: [Page] = [.recentlyAdded, .newReleases, .recentlyPlayed, .artists, .favorites]
         if model.hasPlaylists { pages.append(.playlists) }
         pages.append(.radio)
         return pages
@@ -99,6 +101,7 @@ struct MainView: View {
             AlbumGrid(title: "Recently Added") { try await model.calls.recentlyAdded() }
         case .newReleases:
             AlbumGrid(title: "New Releases") { try await model.calls.doNewReleases() }  // Kotlin adds "do" to names starting with "new"
+        case .recentlyPlayed: RecentlyPlayedView()
         case .artists: ArtistList()
         case .favorites: FavoritesView()
         case .playlists: PlaylistList()

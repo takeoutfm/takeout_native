@@ -464,7 +464,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] Music pages (built, not yet tried with the server): Artists A–Z and artist pages
          (Shuffle / Radio mixes, popular tracks, releases by kind, similar, ♥), Favorites,
          Playlists (when the index has them), Radio, Search (toolbar field, the server's syntax).
-   - [ ] Recently Played; listens (`ListenReporter`, with a ListenTracker port); track ♥.
+   - [x] Recently Played (resumes where it was left), track ♥, a live layout for streams (LIVE,
+         the ICY song), Settings → Track Activity, and listens: the shared
+         `listen/ListenSession` (ListenTracker's rules as an event-fed state machine, tested in
+         commonTest) fed by `AudioPlayer`, reporting through `ListenReporter`. Android's
+         `ListenTracker` could move onto `ListenSession` too.
+   - [ ] ListenBrainz sign-in on the Mac (stream songs only go there).
    - [ ] Podcasts with synced progress; Movies and TV pages.
    - [ ] Video with **VLCKit** (the files are MKV with embedded audio/subtitle tracks, which
          AVFoundation can't open): a player window with track pickers, progress, next episode.

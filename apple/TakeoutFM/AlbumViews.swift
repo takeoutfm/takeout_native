@@ -66,7 +66,8 @@ struct AlbumView: View {
                     TrackRow(
                         number: "\(track.trackNum)",
                         title: track.title,
-                        detail: track.artist != details.album.artist ? track.artist : ""
+                        detail: track.artist != details.album.artist ? track.artist : "",
+                        etag: track.etag
                     ) { play(index) }
                 }
                 AlbumRow(title: "Similar Albums", albums: details.similar)

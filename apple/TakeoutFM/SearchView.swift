@@ -23,7 +23,8 @@ struct SearchView: View {
                                     TrackRow(
                                         title: track.title,
                                         detail: "\(track.artist) · \(track.album)",
-                                        imageUri: track.coverUri
+                                        imageUri: track.coverUri,
+                                        etag: track.etag
                                     ) {
                                         model.play { model.calls.tracksQueue(title: query, tracks: results.tracks, startIndex: Int32(index)) }
                                     }

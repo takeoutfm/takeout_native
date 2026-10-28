@@ -47,7 +47,8 @@ struct PlaylistView: View {
                         number: "\(index + 1)",
                         title: item.title,
                         detail: "\(item.artist) · \(item.album)",
-                        imageUri: item.imageUri
+                        imageUri: item.imageUri,
+                        etag: item.etag
                     ) { player.play(queue, from: index) }
                 }
             }
@@ -79,7 +80,8 @@ struct FavoritesView: View {
                                     TrackRow(
                                         title: track.title,
                                         detail: "\(track.artist) · \(track.album)",
-                                        imageUri: track.coverUri
+                                        imageUri: track.coverUri,
+                                        etag: track.etag
                                     ) { play(index) }
                                 }
                             }

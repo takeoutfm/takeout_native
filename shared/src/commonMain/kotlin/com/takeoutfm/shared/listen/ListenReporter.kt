@@ -37,14 +37,14 @@ class ListenReporter(
     private val db: TakeoutDb,
     private val reportPlays: () -> Boolean,
     private val submitListens: () -> Boolean,
-) {
+) : ListenSink {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Mutex()
 
     private val toListenBrainz get() = submitListens() && listenBrainz.user.value != null
 
     /** A track started playing: tells ListenBrainz (its "playing now"), if enabled. */
-    fun started(artist: String, title: String, album: String) {
+    override fun started(artist: String, title: String, album: String) {
         if (!toListenBrainz || artist.isEmpty() || title.isEmpty()) return
         scope.launch {
             runCatching {
@@ -54,7 +54,7 @@ class ListenReporter(
     }
 
     /** A track counted as listened; [etag] empty for streams (Takeout can't record those). */
-    fun listened(etag: String, artist: String, title: String, album: String, at: Instant) {
+    override fun listened(etag: String, artist: String, title: String, album: String, at: Instant) {
         val listen = PendingListen(
             etag = etag,
             artist = artist,

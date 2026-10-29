@@ -3,6 +3,7 @@ package com.takeoutfm.watch
 import android.app.Application
 import androidx.wear.tiles.TileService
 import com.takeoutfm.media.MusicPlayer
+import com.takeoutfm.watch.tile.NowPlayingComplicationService
 import com.takeoutfm.watch.tile.PlayerTileService
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -18,14 +19,17 @@ class WatchApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // The tile system shows its last layout until asked for a new one: ask whenever what's
-        // playing or play/pause changes.
+        // Tiles and complications show their last value until asked for a new one: ask whenever
+        // what's playing or play/pause changes.
         MainScope().launch {
             player.state
                 .map { Triple(it.current?.title, it.streamTitle, it.playWhenReady) }
                 .distinctUntilChanged()
                 .drop(1)
-                .collect { TileService.getUpdater(this@WatchApp).requestUpdate(PlayerTileService::class.java) }
+                .collect {
+                    TileService.getUpdater(this@WatchApp).requestUpdate(PlayerTileService::class.java)
+                    NowPlayingComplicationService.requestUpdate(this@WatchApp)
+                }
         }
     }
 }

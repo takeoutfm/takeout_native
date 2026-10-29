@@ -432,6 +432,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          `onPlayerCreated()` adds Media3's `WearUnsuitableOutputPlaybackSuppressionResolverListener`
          (`media3-ui`), which opens the output picker — suppression alone shows nothing.
    - [x] Tile (title + play/pause, refreshed when the player changes) and complication.
+   - [x] Now Playing complication (2026-10-28, `tile/NowPlayingComplicationService`): long text
+         (title, artist as its title line) and short text, with a play / pause icon; a stream's
+         song from its ICY title; "Not playing" ("Takeout" in short text). Pushed from
+         `WatchApp` when the song or play/pause changes (no polling). Checked on the emulator
+         on the Utility face.
    - [x] Checked on the `Wear_Round_API_36` emulator (2026-10-26): browse, album play, radio
          (LIVE), tile play/pause.
    - [x] Real watch (Galaxy Watch, 2026-10-26): release installed over the Flutter app;

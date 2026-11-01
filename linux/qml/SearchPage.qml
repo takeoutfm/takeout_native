@@ -4,12 +4,14 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM.Core
 
-/** Music search, in the server's syntax ("artist:Beck", plain words). */
+/** Search, in the server's syntax ("artist:Beck", plain words): music, then movies and TV. */
 Kirigami.ScrollablePage {
     id: page
 
     property string query
     property var results: null
+    /** Movies, shows and episodes, when the library has video. */
+    property var video: null
     property bool loading: false
     property var error: null
 
@@ -17,6 +19,7 @@ Kirigami.ScrollablePage {
 
     readonly property bool empty: !!results && results.artists.length === 0 && results.albums.length === 0
         && results.tracks.length === 0 && results.stations.length === 0
+        && (video?.movies.length ?? 0) === 0 && (video?.shows.length ?? 0) === 0 && (video?.episodes.length ?? 0) === 0
 
     function load() {
         if (query.length === 0) return
@@ -27,6 +30,9 @@ Kirigami.ScrollablePage {
             error = failure
             results = result
         })
+        video = null
+        if (Core.library.hasMovies || Core.library.hasShows)
+            Core.call("videoSearch", {query: query}, (result) => video = result)
     }
     onQueryChanged: load() // also for the query the page is opened with
 
@@ -34,7 +40,7 @@ Kirigami.ScrollablePage {
         padding: Kirigami.Units.smallSpacing
         contentItem: Kirigami.SearchField {
             text: page.query
-            placeholderText: qsTr("Search music")
+            placeholderText: qsTr("Search")
             onAccepted: page.query = text.trim()
             Component.onCompleted: forceActiveFocus()
         }
@@ -101,5 +107,9 @@ Kirigami.ScrollablePage {
                 }
             }
         }
+
+        VideoFlow { title: qsTr("Movies"); cards: page.video?.movies ?? [] }
+        VideoFlow { title: qsTr("TV"); cards: page.video?.shows ?? [] }
+        VideoFlow { title: qsTr("Episodes"); cards: page.video?.episodes ?? []; wide: true }
     }
 }

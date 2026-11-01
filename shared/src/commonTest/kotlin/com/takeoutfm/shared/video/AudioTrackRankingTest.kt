@@ -1,25 +1,25 @@
-package com.takeoutfm.media.video
+package com.takeoutfm.shared.video
 
-import androidx.media3.common.MimeTypes
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class AudioTrackRankingTest {
     private fun track(
         language: String? = "en",
-        mime: String = MimeTypes.AUDIO_AAC,
+        codec: AudioCodec = AudioCodec.Common,
         channels: Int = 2,
         bitrate: Int = 0,
         isDefault: Boolean = false,
         label: String? = null,
         isCommentary: Boolean = false,
-    ) = AudioCandidate(language, label, mime, channels, bitrate, isDefault, isCommentary)
+    ) = AudioCandidate(language, label, codec, channels, bitrate, isDefault, isCommentary)
 
     @Test
     fun moreChannelsBeatsTheDefaultFlag() {
         val tracks = listOf(
             track(channels = 2, isDefault = true),
-            track(mime = MimeTypes.AUDIO_AC3, channels = 6),
+            track(codec = AudioCodec.AC3, channels = 6),
         )
         assertEquals(1, bestAudioTrack(tracks, "en"))
     }
@@ -40,6 +40,12 @@ class AudioTrackRankingTest {
             track(language = "eng", channels = 2),
         )
         assertEquals(1, bestAudioTrack(tracks, "en-US"))
+        assertEquals("de", normalizeLanguage("ger"))
+        assertEquals("de", normalizeLanguage("deu"))
+        assertEquals("pt", normalizeLanguage("pt_BR"))
+        assertEquals("tlh", normalizeLanguage("tlh"))
+        assertNull(normalizeLanguage("und"))
+        assertNull(normalizeLanguage(" "))
     }
 
     @Test
@@ -64,14 +70,14 @@ class AudioTrackRankingTest {
     @Test
     fun betterCodecWinsAtEqualChannelsThenBitrate() {
         val tracks = listOf(
-            track(mime = MimeTypes.AUDIO_AC3, channels = 6, bitrate = 640_000),
-            track(mime = MimeTypes.AUDIO_E_AC3, channels = 6, bitrate = 384_000),
-            track(mime = MimeTypes.AUDIO_AAC, channels = 6, bitrate = 900_000),
+            track(codec = AudioCodec.AC3, channels = 6, bitrate = 640_000),
+            track(codec = AudioCodec.EAC3, channels = 6, bitrate = 384_000),
+            track(codec = AudioCodec.Common, channels = 6, bitrate = 900_000),
         )
         assertEquals(1, bestAudioTrack(tracks, "en"))
         val sameCodec = listOf(
-            track(mime = MimeTypes.AUDIO_AC3, channels = 6, bitrate = 384_000),
-            track(mime = MimeTypes.AUDIO_AC3, channels = 6, bitrate = 640_000),
+            track(codec = AudioCodec.AC3, channels = 6, bitrate = 384_000),
+            track(codec = AudioCodec.AC3, channels = 6, bitrate = 640_000),
         )
         assertEquals(1, bestAudioTrack(sameCodec, "en"))
     }

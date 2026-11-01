@@ -18,6 +18,21 @@ Kirigami.ApplicationWindow {
     readonly property var library: Core.library
     readonly property bool hasMusic: library.hasMusic ?? true
     readonly property bool hasPodcasts: library.hasPodcasts ?? false
+    readonly property bool hasMovies: library.hasMovies ?? false
+    readonly property bool hasShows: library.hasShows ?? false
+
+    /** The video player closed: resume points and Continue Watching may have moved. */
+    signal videoClosed()
+
+    /** Plays movie, series or episode [id] over the whole window; from its start when [startOver]. */
+    function playVideo(id, startOver) {
+        videoPlayer.play(id, startOver ?? false)
+    }
+
+    VideoPlayer {
+        id: videoPlayer
+        onClosedVideo: root.videoClosed()
+    }
     property string section: ""
 
     /** Shows top-level page [name] (e.g. "HomePage"), dropping whatever was open. */
@@ -89,7 +104,7 @@ Kirigami.ApplicationWindow {
         collapsible: false
         header: Kirigami.SearchField {
             id: search
-            placeholderText: qsTr("Search music")
+            placeholderText: qsTr("Search")
             onAccepted: if (text.trim().length > 0) root.show("SearchPage", {query: text.trim()})
         }
         actions: [
@@ -126,6 +141,18 @@ Kirigami.ApplicationWindow {
                 visible: root.hasMusic
                 checked: root.section === "PlaylistsPage"
                 onTriggered: root.show("PlaylistsPage")
+            },
+            Kirigami.Action {
+                text: qsTr("Movies"); icon.name: "video-x-generic"
+                visible: root.hasMovies
+                checked: root.section === "MoviesPage"
+                onTriggered: root.show("MoviesPage")
+            },
+            Kirigami.Action {
+                text: qsTr("TV"); icon.name: "video-television"
+                visible: root.hasShows
+                checked: root.section === "ShowsPage"
+                onTriggered: root.show("ShowsPage")
             },
             Kirigami.Action {
                 text: qsTr("Podcasts"); icon.name: "podcast-symbolic"

@@ -2,6 +2,7 @@
 #include "ImageCache.h"
 #include "Mpris.h"
 #include "Player.h"
+#include "VideoView.h"
 
 #include <QApplication>
 #include <QDir>
@@ -9,6 +10,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QStandardPaths>
 #include <clocale>
 
@@ -23,6 +25,8 @@ int main(int argc, char *argv[])
     app.setWindowIcon(QIcon::fromTheme("audio-headphones"));
     // libmpv needs C number formatting, which QApplication replaced with the user's locale.
     std::setlocale(LC_NUMERIC, "C");
+    // mpv draws video through OpenGL, so Qt Quick must use it too.
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
     // Plasma's look; Kirigami follows its colours elsewhere too.
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) QQuickStyle::setStyle("org.kde.desktop");
 
@@ -41,6 +45,7 @@ int main(int argc, char *argv[])
     engine.setNetworkAccessManagerFactory(&images);
     qmlRegisterSingletonInstance("TakeoutFM.Core", 1, 0, "Core", &core);
     qmlRegisterSingletonInstance("TakeoutFM.Core", 1, 0, "Player", &player);
+    qmlRegisterType<VideoView>("TakeoutFM.Core", 1, 0, "VideoView");
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
                      Qt::QueuedConnection);
     engine.loadFromModule("TakeoutFM", "Main");

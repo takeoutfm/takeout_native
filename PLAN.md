@@ -641,12 +641,24 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            (`Mpris`: `org.mpris.MediaPlayer2.takeoutfm`, Raise, play/pause/next/previous,
            Seek / SetPosition, LoopStatus) checked with `qdbus6`. libmpv needs
            `LC_NUMERIC=C`. Not checked here: playing an episode (it changes real progress).
-     - [ ] **L5 — video**: movie / series / episode pages (as the phone after #2–#4: facts end
-           with the rating, size after the rating, Resume / Start over, seasons, cast, related),
-           Continue Watching with bars, person and genre pages; a full-window player page with
-           `MpvItem`, audio and subtitle menus (the phone's best-audio ranking from
-           `:android-media` `video/Tracks.kt` moved to `commonMain` so it isn't ported a third
-           time), resume and `TakeoutProgress` reports, next episode, VAAPI (`hwdec=auto-safe`).
+     - [x] **L5 — video** (done 2026-11-01): the best-audio ranking moved to `:shared`
+           `video/AudioTrackRanking.kt` (`AudioCodec` instead of Media3 mime types; a table of
+           ISO 639-2 codes instead of `java.util.Locale`), its test to `commonTest`;
+           `:android-media` keeps `Format.toAudioCandidate()`. New bridge calls
+           `bestAudioTrack` and `resumeOffset`. `VideoView` (C++, the spike's `MpvItem`): its
+           own mpv (`hwdec=auto-safe`) rendering into a `QQuickFramebufferObject` (so Qt Quick
+           runs on OpenGL), listing audio / subtitle tracks with the phone's labels and each
+           audio track's ranking candidate. `VideoPlayer.qml`: a popup over the whole window
+           (and full screen): resume or start over, best audio (or the language last picked,
+           kept in `Settings`), progress every 10 s and on pause, next episode at the end,
+           audio / subtitle / speed menus, keys (space, ←/→ 10 s, F, Esc), controls that
+           hide. Pages: Movies (Continue Watching with bars, Recently Added, New Releases,
+           recommendations, genres; All / Favorites grids), TV, title pages as the phone's
+           (facts, Resume · N min left / Start over, cast, crew, seasons or the episode's
+           season, More Like This, trailer, favorite), person pages, and video results in
+           search. `Core.call` now reports a callback that throws (Qt's JS has no
+           `Array.flatMap`). Checked with Godzilla (1954) and Breaking Bad S1E3, each played
+           under 10 s from its resume point so nothing was saved.
      - [ ] **L6 — downloads and offline**: `linuxMain` `MediaDownloads` (whole files by ETag in
            `$XDG_DATA_HOME/takeoutfm/media`, JSON index like the Mac's `MediaCache`; Ktor
            streaming to disk, two at a time), Downloads page, playback prefers the local file;

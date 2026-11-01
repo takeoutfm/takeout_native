@@ -6,6 +6,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
+import com.takeoutfm.shared.video.bestAudioTrack
 import java.util.Locale
 
 // Video track choices for the apps' pickers: embedded audio and subtitle tracks (no
@@ -151,7 +152,7 @@ private fun codecName(mimeType: String?): String? = when (mimeType) {
 }
 
 /**
- * Selects the best playable audio track for this title (see [bestAudioTrack]). Returns false
+ * Selects the best playable audio track for this title (the shared [bestAudioTrack]). Returns false
  * while there are no audio tracks yet, so the caller can try again on the next tracks change.
  */
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -161,7 +162,7 @@ fun selectBestAudioTrack(player: Player, preferredLanguage: String?): Boolean {
         .flatMap { group -> (0 until group.length).filter { group.isTrackSupported(it) }.map { group to it } }
     if (playable.isEmpty()) return false
     val best = bestAudioTrack(
-        playable.map { (group, i) -> AudioCandidate.from(group.getTrackFormat(i)) },
+        playable.map { (group, i) -> group.getTrackFormat(i).toAudioCandidate() },
         preferredLanguage ?: java.util.Locale.getDefault().toLanguageTag()
     )
     val (group, index) = playable[best]

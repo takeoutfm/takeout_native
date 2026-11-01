@@ -12,6 +12,8 @@ import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.settings.ThemeMode
+import com.takeoutfm.shared.video.AudioCandidate
+import com.takeoutfm.shared.video.bestAudioTrack
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -212,6 +214,13 @@ class LinuxCalls(private val core: LinuxCore) {
 
         // ---- Progress, Recently Played and listens ----
         call("resumePositionMs") { a -> core.progress.resumePositionMs(a.get("etag")) }
+        /** Where [etag] was left, when it's worth resuming (else null): for "N min left". */
+        call("resumeOffset") { a ->
+            core.progress.latest()[a.get<String>("etag")]?.takeIf { ProgressRules.shouldResume(it.offset, it.duration) }
+        }
+        call("bestAudioTrack") { a ->
+            bestAudioTrack(a.get<List<AudioCandidate>>("candidates"), a.get<String?>("preferredLanguage", null))
+        }
         action("reportProgress") { a ->
             core.progress.report(a.get("etag"), a.get("positionMs"), a.get("durationMs"))
         }

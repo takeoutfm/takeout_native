@@ -65,7 +65,7 @@ import androidx.tv.material3.Text
 import com.takeoutfm.media.video.TrackPicker
 import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.audioTrackOptions
-import com.takeoutfm.media.video.normalizeLanguage
+import com.takeoutfm.shared.video.normalizeLanguage
 import com.takeoutfm.media.video.selectBestAudioTrack
 import com.takeoutfm.media.video.speedOptions
 import com.takeoutfm.media.video.subtitleTrackOptions

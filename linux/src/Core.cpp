@@ -112,8 +112,14 @@ void Core::run(const QString &name, const QVariantMap &args, const QJSValue &scr
             if (p->core) {
                 if (p->native) p->native(value, failure);
                 QJSEngine *engine = qjsEngine(p->core.data());
-                if (engine && p->script.isCallable())
-                    p->script.call({engine->toScriptValue(value), engine->toScriptValue(failure)});
+                if (engine && p->script.isCallable()) {
+                    // A callback that throws would otherwise fail without a word.
+                    const QJSValue thrown = p->script.call({engine->toScriptValue(value), engine->toScriptValue(failure)});
+                    if (thrown.isError())
+                        qWarning().noquote() << QStringLiteral("%1:%2: %3 (in the callback of %4)")
+                            .arg(thrown.property("fileName").toString(), thrown.property("lineNumber").toString(),
+                                 thrown.toString(), p->name);
+                }
                 if (failure.isValid()) Q_EMIT p->core->failed(p->name, failure.toMap());
             }
             delete p;

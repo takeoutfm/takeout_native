@@ -19,6 +19,7 @@
     <string name="downloads">Downloads</string>
     <string name="settings">Settings</string>
     <string name="now_playing">Now Playing</string>
+    <string name="not_playing">Not playing</string>
     <string name="nothing_here">Nothing here yet</string>
     <string name="cant_load">Couldn\'t load this</string>
     <string name="cant_play">Couldn\'t play that</string>

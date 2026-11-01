@@ -20,8 +20,6 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -197,25 +195,6 @@ fun PodcastEpisodeScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastE
                     showNotes(episode.description),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-            }
-            // Episodes are listed newest first: the previous one is older.
-            val older = details.episodes.getOrNull(index + 1)
-            val newer = details.episodes.getOrNull(index - 1)
-            if (older != null || newer != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (older != null) {
-                        OutlinedButton(onClick = { nav.openEpisode(series.id, older.id) }) {
-                            Icon(Icons.Filled.SkipPrevious, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text(stringResource(R.string.previous_episode), modifier = Modifier.padding(start = 6.dp))
-                        }
-                    }
-                    if (newer != null) {
-                        OutlinedButton(onClick = { nav.openEpisode(series.id, newer.id) }) {
-                            Text(stringResource(R.string.next_episode), modifier = Modifier.padding(end = 6.dp))
-                            Icon(Icons.Filled.SkipNext, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
             }
             Spacer(Modifier.height(96.dp)) // clear of the play button
         }

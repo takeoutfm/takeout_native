@@ -100,6 +100,8 @@ data class VideoDetails(
     val voteCount: Int = 0,
     /** Media ETag, the key for progress. */
     val etag: String = "",
+    /** A movie's file size in bytes; 0 when unknown. */
+    val size: Long = 0,
     val isFavorite: Boolean = false,
     /** For [TakeoutVideoRepository.setFavorite]; null when it can't be a favorite. */
     val favoritePath: String? = null,

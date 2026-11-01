@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerView
 import com.takeoutfm.media.TakeoutPlayerFactory
+import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.media.video.selectBestAudioTrack
 import com.takeoutfm.mobile.R
 import com.takeoutfm.shared.progress.TakeoutProgress
@@ -54,6 +55,7 @@ class VideoPlayerActivity : ComponentActivity() {
     @Inject lateinit var video: TakeoutVideoRepository
     @Inject lateinit var progress: TakeoutProgress
     @Inject lateinit var playerFactory: TakeoutPlayerFactory
+    @Inject lateinit var mediaCache: TakeoutMediaCache
 
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
@@ -70,7 +72,8 @@ class VideoPlayerActivity : ComponentActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        player = playerFactory.builder()
+        // Downloaded videos play from the device (offline too); others stream.
+        player = playerFactory.builder(mediaCache, video = true)
             // Takes audio focus, so a video pauses the music (and calls pause the video).
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
@@ -120,6 +123,8 @@ class VideoPlayerActivity : ComponentActivity() {
                 MediaItem.Builder()
                     .setUri(d.videoUri)
                     .setMediaId(d.etag)
+                    // Where a download of it is kept.
+                    .setCustomCacheKey(d.etag.ifEmpty { null })
                     .setMediaMetadata(MediaMetadata.Builder().setTitle(d.title).setArtworkUri(android.net.Uri.parse(d.backdropUri)).build())
                     .build(),
                 resumeMs,

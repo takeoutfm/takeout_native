@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.mobile.R
 import com.takeoutfm.mobile.ui.common.Tile
+import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.library.LibraryIndex
 import com.takeoutfm.shared.library.TakeoutLibrary
@@ -72,6 +73,7 @@ class HomeViewModel @Inject constructor(
     private val video: TakeoutVideoRepository,
     private val podcasts: TakeoutPodcastRepository,
     private val session: TakeoutSession,
+    private val api: TakeoutApi,
 ) : ViewModel() {
     /** The media types this server's library has (all, until the index is known). */
     val types: StateFlow<List<MediaType>> = library.index
@@ -132,10 +134,11 @@ class HomeViewModel @Inject constructor(
         chosen.value = shown(next)
     }
 
-    /** Pull to refresh / Reload: a fresh library index, then the current list again. */
+    /** Pull to refresh / Reload: a fresh library index, then the current list from the server. */
     fun reload() {
         viewModelScope.launch {
             _refreshing.value = true
+            api.forgetKept()
             library.refresh()
             reloads.update { it + 1 }
             _refreshing.value = false
@@ -161,7 +164,7 @@ class HomeViewModel @Inject constructor(
 
     private fun Album.toTile() = Tile(id, name, artist, coverUri)
 
-    private fun VideoCard.toTile() = Tile(id, title, "", posterUri, poster = true)
+    private fun VideoCard.toTile() = Tile(id, title, "", posterUri, poster = true, progress = progress)
 
     private fun available(index: LibraryIndex?): List<MediaType> = if (index == null) {
         MediaType.entries

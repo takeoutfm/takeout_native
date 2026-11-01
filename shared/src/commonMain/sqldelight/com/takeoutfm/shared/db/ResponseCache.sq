@@ -1,4 +1,5 @@
--- The last server response for each GET (endpoint + path), for browsing offline.
+-- The last server response for each GET (endpoint + path): reused while fresh, and for
+-- browsing offline.
 CREATE TABLE http_cache (
     key TEXT NOT NULL PRIMARY KEY,
     body TEXT NOT NULL,
@@ -8,6 +9,9 @@ CREATE TABLE http_cache (
 
 get:
 SELECT body FROM http_cache WHERE key = ?;
+
+getKept:
+SELECT body, saved_at FROM http_cache WHERE key = ?;
 
 put:
 INSERT OR REPLACE INTO http_cache(key, body, saved_at) VALUES (?, ?, ?);

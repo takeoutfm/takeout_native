@@ -1,16 +1,20 @@
 import SwiftUI
 import Shared
 
-/** The user's playlists, A–Z. */
+/** [PlaylistView]'s id for the favorite tracks. */
+let favoriteTracksId = "favorites"
+
+/** Favorite Tracks (as on the watch), then the user's playlists, A–Z. */
 struct PlaylistList: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
         Loaded(load: { try await model.calls.playlists() }) { playlists in
-            if playlists.isEmpty {
-                ContentUnavailableView("No Playlists", systemImage: "music.note.list")
-            } else {
-                List(playlists, id: \.id) { playlist in
+            List {
+                NavigationLink(value: Route.playlist(id: favoriteTracksId, name: "Favorite Tracks")) {
+                    Label("Favorite Tracks", systemImage: "heart.fill")
+                }
+                ForEach(playlists, id: \.id) { playlist in
                     NavigationLink(value: Route.playlist(id: playlist.id, name: playlist.name)) {
                         HStack {
                             Text(playlist.name)
@@ -25,7 +29,7 @@ struct PlaylistList: View {
     }
 }
 
-/** A playlist's tracks, from its play queue; double-click plays from there. */
+/** A playlist's (or the favorite tracks') tracks, from its play queue; double-click plays from there. */
 struct PlaylistView: View {
     let playlistId: String
     let name: String
@@ -34,7 +38,10 @@ struct PlaylistView: View {
     @EnvironmentObject private var cache: MediaCache
 
     var body: some View {
-        Loaded(load: { try await model.calls.playlistQueue(playlistId: playlistId) }) { queue in
+        Loaded(load: {
+            if playlistId == favoriteTracksId { return try await model.calls.favoritesQueue(startIndex: 0) }
+            return try await model.calls.playlistQueue(playlistId: playlistId)
+        }) { queue in
             List {
                 HStack {
                     Button { player.play(queue, from: 0) } label: { Label("Play", systemImage: "play.fill") }

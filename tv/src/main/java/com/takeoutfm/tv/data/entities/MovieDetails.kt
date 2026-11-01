@@ -24,6 +24,8 @@ data class MovieDetails(
     val name: String,
     val description: String,
     val pgRating: String,
+    /** A movie's file size, e.g. "4.3 GB"; "" when unknown. */
+    val size: String = "",
     val releaseDate: String,
     val categories: List<String>,
     val duration: String,

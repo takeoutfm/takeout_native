@@ -52,7 +52,7 @@ class BrowseTreeTest {
     fun theTreeHasTheTakeoutFolders() {
         val root = onMain { browser.getLibraryRoot(null) }.get(10, TimeUnit.SECONDS).value!!
         val folders = children(root.mediaId)
-        assertEquals(listOf("recent", "new", "added", "radio", "playlists", "podcasts", "artists"), folders.map { it.mediaId })
+        assertEquals(listOf("recent", "added", "podcasts", "new", "radio", "playlists", "artists"), folders.map { it.mediaId })
         assertTrue(folders.all { it.mediaMetadata.isBrowsable == true })
         val radio = children("radio")
         assertTrue("stations", radio.isNotEmpty())

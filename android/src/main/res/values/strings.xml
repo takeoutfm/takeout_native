@@ -152,7 +152,8 @@
 
     <!-- Video -->
     <string name="resume">Resume</string>
-    <string name="play_from_start">Play from start</string>
+    <string name="episode_number">Episode %1$d</string>
+    <string name="play_from_start">Start over</string>
     <string name="minutes_left">%1$d min left</string>
     <string name="cast_crew">Cast &amp; Crew</string>
     <string name="related">Related</string>
@@ -172,12 +173,10 @@
     <string name="writing_shows">Writing Shows</string>
     <string name="rating_tmdb">★ %1$.1f/10</string>
     <string name="no_playable_file">The server has no playable file for this title.</string>
-    <string name="next_episode">Next episode</string>
     <string name="trailers">Trailers</string>
     <string name="no_app_for_trailer">No app can play YouTube trailers</string>
     <string name="mark_played">Mark as played</string>
     <string name="mark_unplayed">Mark as unplayed</string>
-    <string name="previous_episode">Previous episode</string>
     <string name="guest_stars_crew">Guest Stars &amp; Crew</string>
     <string name="more_from_season">More from Season %1$d</string>
 
@@ -196,6 +195,7 @@
     <string name="downloading">Downloading…</string>
     <string name="downloaded">Downloaded</string>
     <string name="download_started">Downloading for offline listening</string>
+    <string name="download_started_video">Downloading for offline watching</string>
     <string name="delete_download">Delete download</string>
     <string name="delete_all_downloads">Delete all</string>
     <string name="delete_all_question">Delete every download? This frees %1$s.</string>

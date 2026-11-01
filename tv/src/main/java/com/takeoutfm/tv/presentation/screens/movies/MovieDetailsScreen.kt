@@ -162,7 +162,6 @@ private fun Details(
                     goToMoviePlayer(startOver)
                 },
                 openSeries = openSeries,
-                openEpisode = openEpisode,
             )
         }
 

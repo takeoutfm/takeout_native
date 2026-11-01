@@ -125,11 +125,11 @@ class TakeoutApiTest {
             if (!online) throw kotlinx.io.IOException("offline")
             if (status != HttpStatusCode.OK) respondError(status) else respond("""{"Offsets":[{"ETag":"e1"}]}""", headers = jsonHeaders)
         }
-        val kept = HashMap<String, String>()
+        val kept = HashMap<String, ResponseCache.Kept>()
         val api = TakeoutApi(session(), "test", engine).apply {
             responseCache = object : ResponseCache {
                 override fun get(key: String) = kept[key]
-                override fun put(key: String, body: String) { kept[key] = body }
+                override fun put(key: String, body: String) { kept[key] = ResponseCache.Kept(body, 0) }
             }
         }
         assertEquals("e1", api.progress().offsets.single().etag)
@@ -139,6 +139,45 @@ class TakeoutApiTest {
         online = true
         status = HttpStatusCode.NotFound
         assertFailsWith<HttpException> { api.progress() } // the server said no: not hidden
+    }
+
+    @Test
+    fun recentLibraryResponsesAreReusedUntilForgottenOrAnEdit() = runTest {
+        var gets = 0
+        val engine = MockEngine { request ->
+            if (request.method == HttpMethod.Get) gets++
+            when {
+                request.method != HttpMethod.Get -> respond("", HttpStatusCode.NoContent)
+                request.url.encodedPath == "/api/radio" -> respond("{}", headers = jsonHeaders)
+                else -> respond("""{"Offsets":[]}""", headers = jsonHeaders)
+            }
+        }
+        val kept = HashMap<String, ResponseCache.Kept>()
+        var clock = 1_000L
+        val api = TakeoutApi(session(), "test", engine).apply {
+            now = { clock++ } // every reading a millisecond later
+            responseCache = object : ResponseCache {
+                override fun get(key: String) = kept[key]
+                override fun put(key: String, body: String) { kept[key] = ResponseCache.Kept(body, clock++) }
+            }
+        }
+        api.radio()
+        api.radio()
+        assertEquals(1, gets) // library data: reused
+        api.progress()
+        api.progress()
+        assertEquals(3, gets) // progress: always asked for
+        api.setFavorite("artists/a1", true)
+        api.radio()
+        assertEquals(4, gets) // after an edit: asked again
+        api.radio()
+        assertEquals(4, gets)
+        api.forgetKept()
+        api.radio()
+        assertEquals(5, gets) // Reload
+        clock += TakeoutApi.KeepLibraryMs
+        api.radio()
+        assertEquals(6, gets) // an hour later
     }
 
     @Test

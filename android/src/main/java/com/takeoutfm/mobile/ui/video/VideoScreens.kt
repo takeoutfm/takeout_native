@@ -1,9 +1,6 @@
 package com.takeoutfm.mobile.ui.video
 
 import androidx.compose.foundation.background
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,6 +74,7 @@ import com.takeoutfm.mobile.ui.music.SectionTitle
 import com.takeoutfm.shared.model.ApiOffset
 import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.progress.TakeoutProgress
+import com.takeoutfm.shared.util.formatBytes
 import com.takeoutfm.shared.video.CreditKind
 import com.takeoutfm.shared.video.GenreMovies
 import com.takeoutfm.shared.video.PersonInfo
@@ -92,6 +90,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.takeoutfm.mobile.ui.music.DownloadBadge
+import com.takeoutfm.mobile.ui.main.MainViewModel
+import com.takeoutfm.media.offline.CacheStatus
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.OutlinedButton
 
 /** Where the video pages can go. */
 class VideoNav(
@@ -153,14 +157,15 @@ class VideoViewModel @Inject constructor(
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 /**
- * A movie, series or episode: backdrop, facts, Resume / Play from start, genres, cast & crew
- * (directors first), seasons with their episodes (▶ plays one; the row opens its page), related
- * titles. An episode's page leads with its name, links back to its series, and adds previous /
- * next and the rest of its season.
+ * A movie, series or episode: backdrop, facts, Resume / Start over, a movie's genres, cast & crew
+ * (directors first), seasons with their episodes (a row opens its page), related
+ * titles. An episode's page leads with its name, links back to its series, and adds the rest
+ * of its season.
  */
 @Composable
-fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
+fun VideoScreen(main: MainViewModel, nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val offset by viewModel.offset.collectAsStateWithLifecycle()
     val details = (state as? Load.Loaded)?.value
     val context = LocalContext.current
@@ -207,10 +212,9 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                     if (details.tagline.isNotEmpty() && details.kind != VideoKind.Episode) {
                         Text(details.tagline, style = MaterialTheme.typography.bodyMedium, fontStyleItalic = true)
                     }
-                    PlayButtons(details, offset, play)
+                    PlayButtons(details, offset, play, downloads[details.etag]?.status) { main.downloadVideo(details) }
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
-                    if (details.episode != null) EpisodeSteps(details, nav)
-                    if (details.genres.isNotEmpty()) {
+                    if (details.genres.isNotEmpty() && details.kind == VideoKind.Movie) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             details.genres.forEach { g ->
                                 AssistChip(onClick = { nav.openGenre(TakeoutVideoRepository.slug(g)) }, label = { Text(g) })
@@ -242,13 +246,15 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                 items(season.episodes, key = { it.id }) { e ->
                     ListItem(
                         leadingContent = { Art(e.stillUri, e.name, Modifier.width(112.dp).aspectRatio(16f / 9f), RoundedCornerShape(6.dp)) },
-                        headlineContent = { Text("${e.episode}. ${e.name}", maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { if (e.runtimeMinutes > 0) Text(stringResource(R.string.runtime_minutes, e.runtimeMinutes)) },
-                        // Plays it (resuming if started); the row opens its page.
-                        trailingContent = {
-                            IconButton(onClick = { VideoPlayerActivity.start(context, e.id, startOver = false) }) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.play))
-                            }
+                        // The number goes under the name, leaving the name the row's width.
+                        headlineContent = { Text(e.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                        supportingContent = {
+                            Text(
+                                listOfNotNull(
+                                    stringResource(R.string.episode_number, e.episode),
+                                    e.runtimeMinutes.takeIf { it > 0 }?.let { stringResource(R.string.runtime_minutes, it) },
+                                ).joinToString(" · ")
+                            )
                         },
                         modifier = Modifier.clickable { nav.openVideo(e.id) },
                     )
@@ -279,14 +285,15 @@ private fun facts(d: VideoDetails): String = listOfNotNull(
     // An episode shows when it aired rather than its year.
     d.episode?.airDate?.let(::airDate) ?: d.year.takeIf { it.isNotEmpty() && it != "0001" },
     d.rating.takeIf { it.isNotEmpty() },
+    d.size.takeIf { it > 0 }?.let(::formatBytes),
     when {
         d.kind == VideoKind.Series -> stringResource(R.string.seasons_episodes, d.seasonCount, d.episodeCount)
         d.runtimeMinutes in 1..59 -> stringResource(R.string.runtime_minutes, d.runtimeMinutes)
         d.runtimeMinutes > 0 -> stringResource(R.string.runtime, d.runtimeMinutes / 60, d.runtimeMinutes % 60)
         else -> null
     },
+    // Last: directors are in Cast & Crew below.
     d.voteAverage?.let { stringResource(R.string.rating_tmdb, it) },
-    d.directors.takeIf { it.isNotEmpty() }?.joinToString(", "),
 ).joinToString(" · ")
 
 /** Opens [trailer] in the YouTube app (it handles YouTube links), else the browser. */
@@ -325,28 +332,6 @@ private fun airDate(iso: String): String? = runCatching {
     java.time.LocalDate.parse(iso)
         .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
 }.getOrNull()
-
-/** An episode's previous / next episode buttons (in play order, across seasons). */
-@Composable
-private fun EpisodeSteps(details: VideoDetails, nav: VideoNav) {
-    val previous = details.previousEpisodeId
-    val next = details.nextEpisodeId
-    if (previous == null && next == null) return
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (previous != null) {
-            OutlinedButton(onClick = { nav.openVideo(previous) }) {
-                Icon(Icons.Filled.SkipPrevious, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.previous_episode), modifier = Modifier.padding(start = 6.dp))
-            }
-        }
-        if (next != null) {
-            OutlinedButton(onClick = { nav.openVideo(next) }) {
-                Text(stringResource(R.string.next_episode), modifier = Modifier.padding(end = 6.dp))
-                Icon(Icons.Filled.SkipNext, contentDescription = null, modifier = Modifier.size(18.dp))
-            }
-        }
-    }
-}
 
 /** The rest of an episode's season as stills; [current] is outlined. */
 @Composable
@@ -400,28 +385,53 @@ private fun Backdrop(details: VideoDetails) {
     }
 }
 
-/** Resume ("N min left") and Play from start, or just Play. */
+/** Resume ("N min left") and Start over, or just Play; and a movie's or episode's Download. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun PlayButtons(details: VideoDetails, offset: ApiOffset?, play: (startOver: Boolean) -> Unit) {
+private fun PlayButtons(
+    details: VideoDetails,
+    offset: ApiOffset?,
+    play: (startOver: Boolean) -> Unit,
+    download: CacheStatus?,
+    onDownload: () -> Unit,
+) {
     if (details.videoUri.isEmpty()) {
         Text(stringResource(R.string.no_playable_file), color = MaterialTheme.colorScheme.error)
         return
     }
     val episode = details.playTarget?.let { " $it" }.orEmpty()
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    // A button that doesn't fit moves to the next line rather than wrapping its label.
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (offset != null) {
             Button(onClick = { play(false) }) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.resume) + episode, modifier = Modifier.padding(start = 6.dp))
+                Text(stringResource(R.string.resume) + episode, maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             }
             FilledTonalButton(onClick = { play(true) }) {
                 Icon(Icons.Filled.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.play_from_start), modifier = Modifier.padding(start = 6.dp))
+                Text(stringResource(R.string.play_from_start), maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             }
         } else {
             Button(onClick = { play(true) }) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.play) + episode, modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+        // A series downloads by episode.
+        if (details.kind != VideoKind.Series && details.etag.isNotEmpty()) {
+            when (download) {
+                null -> OutlinedButton(onClick = onDownload) {
+                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(stringResource(R.string.download), maxLines = 1, modifier = Modifier.padding(start = 6.dp))
+                }
+                else -> OutlinedButton(onClick = {}, enabled = false) {
+                    if (download == CacheStatus.Cached) {
+                        Icon(Icons.Filled.DownloadDone, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.downloaded), maxLines = 1, modifier = Modifier.padding(start = 6.dp))
+                    } else {
+                        DownloadBadge(download)
+                    }
+                }
             }
         }
     }

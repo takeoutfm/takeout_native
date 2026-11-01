@@ -423,6 +423,7 @@ private fun Body(
         composable(Screens.Playlists()) {
             PlaylistsScreen(
                 onPlaylistClick = { playMusic(QueueRef.Playlist(it.id)) },
+                onFavoritesClick = { playMusic(QueueRef.Favorites()) },
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible,
             )

@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -257,10 +258,19 @@ fun PlaylistsScreen(main: MainViewModel, nav: MusicNav, viewModel: PlaylistsView
         },
     ) { padding ->
         val list = playlists
-        if (list.isNullOrEmpty()) {
-            LoadingOrEmpty(list == null, stringResource(R.string.nothing_here), Modifier.padding(padding))
+        if (list == null) {
+            LoadingOrEmpty(true, stringResource(R.string.nothing_here), Modifier.padding(padding))
         } else {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+                // Favorite tracks come first, as a playlist of their own (as on the watch).
+                item(key = "favorites") {
+                    val title = stringResource(R.string.favorite_tracks)
+                    ListItem(
+                        leadingContent = { Icon(Icons.Filled.Favorite, contentDescription = null) },
+                        headlineContent = { Text(title) },
+                        modifier = Modifier.clickable { nav.openQueue(QueueKind.Favorites, "", title) },
+                    )
+                }
                 items(list, key = { it.id }) { p ->
                     ListItem(
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },

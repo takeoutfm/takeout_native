@@ -22,15 +22,20 @@ import com.takeoutfm.tv.presentation.screens.music.common.MusicMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** The user's playlists A–Z, as name tiles (playlists have no artwork); selecting one plays it. */
+/**
+ * The user's playlists A–Z, as name tiles (playlists have no artwork), after a Favorite Tracks
+ * tile (as on the watch); selecting one plays it.
+ */
 @Composable
 fun PlaylistsScreen(
     onPlaylistClick: (MusicPlaylist) -> Unit,
+    onFavoritesClick: () -> Unit,
     onScroll: (isTopBarVisible: Boolean) -> Unit,
     isTopBarVisible: Boolean,
     viewModel: PlaylistsViewModel = hiltViewModel(),
@@ -42,13 +47,17 @@ fun PlaylistsScreen(
         is PlaylistsState.Ready -> if (s.playlists.isEmpty()) {
             MusicMessage(stringResource(R.string.music_no_playlists))
         } else {
-            val trackCounts = s.playlists.associate { playlist ->
-                playlist.id to pluralStringResource(
-                    R.plurals.music_track_count, playlist.trackCount, playlist.trackCount
-                )
+            val favoritesName = stringResource(R.string.music_favorite_tracks_playlist)
+            val items = s.playlists.map { if (it.id == FavoritesId) it.copy(name = favoritesName) else it }
+            val trackCounts = items.associate { playlist ->
+                playlist.id to if (playlist.trackCount == 0 && playlist.id == FavoritesId) {
+                    ""
+                } else {
+                    pluralStringResource(R.plurals.music_track_count, playlist.trackCount, playlist.trackCount)
+                }
             }
             TileGrid(
-                items = s.playlists,
+                items = items,
                 key = { it.id },
                 itemTitle = { trackCounts[it.id].orEmpty() },
                 itemImage = { playlist, imageModifier ->
@@ -60,7 +69,7 @@ fun PlaylistsScreen(
                         fallbackText = playlist.name,
                     )
                 },
-                onItemClick = onPlaylistClick,
+                onItemClick = { if (it.id == FavoritesId) onFavoritesClick() else onPlaylistClick(it) },
                 aspectRatio = ItemDirection.Square.aspectRatio,
                 onScroll = onScroll,
                 isTopBarVisible = isTopBarVisible,
@@ -69,6 +78,9 @@ fun PlaylistsScreen(
         }
     }
 }
+
+/** The Favorite Tracks tile's id; its name comes from resources. */
+private const val FavoritesId = "favorites"
 
 sealed interface PlaylistsState {
     data object Loading : PlaylistsState
@@ -91,7 +103,12 @@ class PlaylistsViewModel @Inject constructor(
         _state.value = PlaylistsState.Loading
         viewModelScope.launch {
             _state.value = try {
-                PlaylistsState.Ready(repository.playlists())
+                val favorites = async { runCatching { repository.favorites().tracks.size }.getOrNull() }
+                val playlists = repository.playlists()
+                // No tile for no favorites; one without a count if they couldn't be loaded.
+                val count = favorites.await()
+                val first = if (count == 0) emptyList() else listOf(MusicPlaylist(FavoritesId, "", count ?: 0))
+                PlaylistsState.Ready(first + playlists)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

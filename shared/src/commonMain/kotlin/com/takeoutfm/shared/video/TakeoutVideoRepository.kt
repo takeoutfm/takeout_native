@@ -165,6 +165,7 @@ class TakeoutVideoRepository(
             voteAverage = m.voteAverage?.takeIf { it > 0f },
             voteCount = m.voteCount ?: 0,
             etag = m.etag,
+            size = m.size,
             isFavorite = view.isFavorite,
             favoritePath = m.imid.ifEmpty { null }?.let { "movies/$it" },
             trailers = trailers(view.trailers.orEmpty()),

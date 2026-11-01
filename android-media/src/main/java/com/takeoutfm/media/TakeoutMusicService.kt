@@ -28,6 +28,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import com.google.common.util.concurrent.Futures
@@ -36,6 +37,7 @@ import com.takeoutfm.media.offline.PlayedDownloads
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.progress.TakeoutProgress
 
@@ -74,6 +76,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     /** What Android Auto and other media browsers can browse; null for none (the TV). */
     protected open val browseTree: TakeoutBrowseTree? = null
 
+    /** Favorite tracks for the system controls' ♥ button; null for no button. */
+    protected open val music: TakeoutMusicRepository? = null
+
     /** App-specific player options (e.g. Wear OS's output checks), applied last. */
     protected open fun configure(builder: ExoPlayer.Builder): ExoPlayer.Builder = builder
 
@@ -88,6 +93,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private var podcastProgress: PodcastProgress? = null
     private var historyProgress: HistoryProgress? = null
     private var playedDownloads: PlayedDownloads? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -133,7 +139,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             .setId("music")
             .setSessionActivity(openApp)
             .build()
-            .also { player.addListener(PodcastButtons(it)) }
+            .also { player.addListener(SessionButtons(it)) }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -159,6 +165,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             release()
         }
         session = null
+        scope.cancel()
         super.onDestroy()
     }
 
@@ -207,25 +214,68 @@ abstract class TakeoutMusicService : MediaLibraryService() {
 
     private val seekBack = SessionCommand(SeekBackAction, Bundle.EMPTY)
     private val seekForward = SessionCommand(SeekForwardAction, Bundle.EMPTY)
+    private val toggleFavorite = SessionCommand(FavoriteAction, Bundle.EMPTY)
+    private val cycleRepeat = SessionCommand(RepeatAction, Bundle.EMPTY)
 
-    /** Back 10 s and forward 30 s in place of previous / next, for podcast episodes. */
-    private fun mediaButtons(podcast: Boolean): List<CommandButton> = if (!podcast) emptyList() else listOf(
-        CommandButton.Builder(CommandButton.ICON_SKIP_BACK_10)
-            .setSessionCommand(seekBack)
-            .setDisplayName(getString(R.string.seek_back))
-            .setSlots(CommandButton.SLOT_BACK)
-            .build(),
-        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
-            .setSessionCommand(seekForward)
-            .setDisplayName(getString(R.string.seek_forward))
-            .setSlots(CommandButton.SLOT_FORWARD)
-            .build(),
-    )
+    /**
+     * The system controls' extra buttons (the notification, Android Auto): back 10 s and
+     * forward 30 s in place of previous / next for podcast episodes; ♥ (with [music]) and repeat
+     * for tracks; none for live streams.
+     */
+    private fun mediaButtons(player: Player): List<CommandButton> {
+        val item = player.currentMediaItem ?: return emptyList()
+        return when {
+            item.isPodcast -> listOf(
+                CommandButton.Builder(CommandButton.ICON_SKIP_BACK_10)
+                    .setSessionCommand(seekBack)
+                    .setDisplayName(getString(R.string.seek_back))
+                    .setSlots(CommandButton.SLOT_BACK)
+                    .build(),
+                CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
+                    .setSessionCommand(seekForward)
+                    .setDisplayName(getString(R.string.seek_forward))
+                    .setSlots(CommandButton.SLOT_FORWARD)
+                    .build(),
+            )
+            item.mediaId.isEmpty() -> emptyList()
+            else -> listOfNotNull(
+                music?.let {
+                    val favorite = item.mediaId in it.favoriteTrackEtags.value
+                    CommandButton.Builder(if (favorite) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+                        .setSessionCommand(toggleFavorite)
+                        .setDisplayName(getString(if (favorite) R.string.unfavorite else R.string.favorite))
+                        .setSlots(CommandButton.SLOT_OVERFLOW)
+                        .build()
+                },
+                CommandButton.Builder(
+                    when (player.repeatMode) {
+                        Player.REPEAT_MODE_ONE -> CommandButton.ICON_REPEAT_ONE
+                        Player.REPEAT_MODE_ALL -> CommandButton.ICON_REPEAT_ALL
+                        else -> CommandButton.ICON_REPEAT_OFF
+                    }
+                )
+                    .setSessionCommand(cycleRepeat)
+                    .setDisplayName(
+                        getString(
+                            when (player.repeatMode) {
+                                Player.REPEAT_MODE_ONE -> R.string.repeat_one
+                                Player.REPEAT_MODE_ALL -> R.string.repeat_all
+                                else -> R.string.repeat_off
+                            }
+                        )
+                    )
+                    .setSlots(CommandButton.SLOT_OVERFLOW)
+                    .build(),
+            )
+        }
+    }
 
     private val sessionCommands: SessionCommands =
         MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             .add(seekBack)
             .add(seekForward)
+            .add(toggleFavorite)
+            .add(cycleRepeat)
             .build()
 
     /** Without previous / next for a podcast episode, so its seek buttons take their places. */
@@ -253,20 +303,38 @@ abstract class TakeoutMusicService : MediaLibraryService() {
 
     private val Player.playingPodcast: Boolean get() = currentMediaItem?.isPodcast == true
 
-    /** Switches the seek buttons on and off as the playing item becomes, or stops being, a podcast. */
-    private inner class PodcastButtons(private val session: MediaSession) : Player.Listener {
+    /**
+     * Keeps [mediaButtons] current as the playing item, the repeat mode or the favorites change,
+     * and switches previous / next off for the system controls while a podcast plays.
+     */
+    private inner class SessionButtons(private val session: MediaSession) : Player.Listener {
         private var podcast = false
 
-        override fun onEvents(player: Player, events: Player.Events) {
-            if (!events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED)) return
-            val now = player.playingPodcast
-            if (now == podcast) return
-            podcast = now
-            session.connectedControllers.filter { session.followsPodcastButtons(it) }.forEach {
-                session.setAvailableCommands(it, sessionCommands, playerCommands(now))
+        init {
+            music?.let { music ->
+                scope.launch { music.loadFavoriteTracks() }
+                scope.launch { music.favoriteTrackEtags.collect { update() } }
             }
-            session.setMediaButtonPreferences(mediaButtons(now))
         }
+
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (!events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                )
+            ) return
+            val now = player.playingPodcast
+            if (now != podcast) {
+                podcast = now
+                session.connectedControllers.filter { session.followsPodcastButtons(it) }.forEach {
+                    session.setAvailableCommands(it, sessionCommands, playerCommands(now))
+                }
+            }
+            update()
+        }
+
+        private fun update() = session.setMediaButtonPreferences(mediaButtons(session.player))
     }
 
     /**
@@ -287,7 +355,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(sessionCommands)
                 .apply { if (session.followsPodcastButtons(controller)) setAvailablePlayerCommands(playerCommands(podcast)) }
-                .setMediaButtonPreferences(mediaButtons(podcast))
+                .setMediaButtonPreferences(mediaButtons(session.player))
                 .build()
         }
 
@@ -300,6 +368,18 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             when (customCommand.customAction) {
                 SeekBackAction -> session.player.seekBack()
                 SeekForwardAction -> session.player.seekForward()
+                FavoriteAction -> {
+                    val etag = session.player.currentMediaItem?.mediaId.orEmpty()
+                    val music = music
+                    if (etag.isEmpty() || music == null) return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    // The button follows favoriteTrackEtags, which changes right away.
+                    scope.launch { runCatching { music.setTrackFavorite(etag, etag !in music.favoriteTrackEtags.value) } }
+                }
+                RepeatAction -> session.player.repeatMode = when (session.player.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -410,3 +490,5 @@ private const val SeekBackMs = 10_000L
 private const val SeekForwardMs = 30_000L
 private const val SeekBackAction = "takeout.SEEK_BACK"
 private const val SeekForwardAction = "takeout.SEEK_FORWARD"
+private const val FavoriteAction = "takeout.FAVORITE"
+private const val RepeatAction = "takeout.REPEAT"

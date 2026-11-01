@@ -20,8 +20,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,13 +72,12 @@ import kotlinx.coroutines.launch
 
 /**
  * A podcast episode: art, title, podcast, date and progress; Play / Resume, Start over, Mark as
- * played, Previous (older) / Next (newer); then the show notes, one focusable paragraph at a
+ * played; then the show notes, one focusable paragraph at a
  * time so the remote scrolls through them.
  */
 @Composable
 fun PodcastEpisodeScreen(
     onPlay: (QueueRef) -> Unit,
-    onOpenEpisode: (seriesId: String, episodeId: String) -> Unit,
     onBackPressed: () -> Unit,
     viewModel: PodcastEpisodeViewModel = hiltViewModel(),
 ) {
@@ -101,7 +98,6 @@ fun PodcastEpisodeScreen(
                     index = index,
                     focusedKey = viewModel.focusedKey,
                     onPlay = onPlay,
-                    onOpenEpisode = onOpenEpisode,
                     onSetPlayed = viewModel::setPlayed,
                 )
             }
@@ -116,7 +112,6 @@ private fun EpisodeContent(
     index: Int,
     focusedKey: androidx.compose.runtime.MutableState<String?>,
     onPlay: (QueueRef) -> Unit,
-    onOpenEpisode: (seriesId: String, episodeId: String) -> Unit,
     onSetPlayed: (Boolean) -> Unit,
 ) {
     val childPadding = rememberChildPadding()
@@ -208,32 +203,6 @@ private fun EpisodeContent(
                             icon = if (played) Icons.Default.RadioButtonUnchecked else Icons.Default.CheckCircle,
                             onClick = { onSetPlayed(!played) },
                         )
-                    }
-                    // A row of their own: beside Resume, Start over and Mark as played they
-                    // didn't fit, and Previous wrapped a letter pair per line.
-                    val older = details.episodes.getOrNull(index + 1)
-                    val newer = details.episodes.getOrNull(index - 1)
-                    if (older != null || newer != null) Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(top = 16.dp),
-                    ) {
-                        // Episodes are listed newest first: the previous one is older.
-                        older?.let {
-                            MusicButton(
-                                modifier = bringHeaderIntoView,
-                                text = stringResource(R.string.previous_episode),
-                                icon = Icons.Outlined.SkipPrevious,
-                                onClick = { onOpenEpisode(series.id, it.id) },
-                            )
-                        }
-                        newer?.let {
-                            MusicButton(
-                                modifier = bringHeaderIntoView,
-                                text = stringResource(R.string.next_episode),
-                                icon = Icons.Outlined.SkipNext,
-                                onClick = { onOpenEpisode(series.id, it.id) },
-                            )
-                        }
                     }
                 }
             }

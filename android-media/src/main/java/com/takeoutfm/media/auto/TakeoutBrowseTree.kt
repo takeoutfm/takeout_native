@@ -18,8 +18,8 @@ import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import kotlinx.coroutines.flow.first
 
 /**
- * What Android Auto (and any media browser) can browse and play: Recently Played, new and
- * recently added releases, radio (live streams first), playlists, subscribed podcasts and
+ * What Android Auto (and any media browser) can browse and play: Recently Played, recently
+ * added releases, subscribed podcasts, new releases, radio (live streams first), playlists and
  * artists (recently played, favorites, all; each with its mixes and releases), plus search. Folders are browsable items; playable items have ids [PlayPrefix]…, which
  * [queue] expands into the whole queue they stand for (an album, a station, an episode list…).
  */
@@ -49,13 +49,15 @@ class TakeoutBrowseTree(
     fun root(): MediaItem = folder(Root, "TakeoutFM", grid = false)
 
     suspend fun children(parentId: String): List<MediaItem> = when {
+        // Android Auto shows the first few as tabs (Recent · Added · Podcasts) and the rest under
+        // More.
         parentId == Root -> listOf(
             folder(Recent, titles.recent, grid = true),
-            folder(New, titles.newReleases, grid = true),
             folder(Added, titles.recentlyAdded, grid = true),
+            folder(Podcasts, titles.podcasts, grid = true),
+            folder(New, titles.newReleases, grid = true),
             folder(Radio, titles.radio, grid = true),
             folder(Playlists, titles.playlists, grid = false),
-            folder(Podcasts, titles.podcasts, grid = true),
             folder(Artists, titles.artists, grid = false),
         )
         parentId == Recent -> history.entries.value.map {

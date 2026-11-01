@@ -36,8 +36,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -82,9 +80,8 @@ fun MovieDetails(
     isFavorite: Boolean,
     onToggleFavorite: (favoritePath: String) -> Unit,
     goToMoviePlayer: (startOver: Boolean) -> Unit,
-    /** An episode's Series / Previous / Next buttons. */
+    /** An episode's Series button. */
     openSeries: (seriesId: String) -> Unit = {},
-    openEpisode: (episodeId: String) -> Unit = {},
 ) {
     val childPadding = rememberChildPadding()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -116,6 +113,7 @@ fun MovieDetails(
                         modifier = Modifier.padding(top = 20.dp),
                         texts = listOf(
                             movieDetails.pgRating,
+                            movieDetails.size,
                             movieDetails.releaseDate,
                             movieDetails.categories.joinToString(", "),
                             movieDetails.duration
@@ -161,16 +159,6 @@ fun MovieDetails(
                     movieDetails.seriesId?.let { seriesId ->
                         DetailsButton(Icons.Outlined.Tv, stringResource(R.string.series), bringIntoViewOnFocus) {
                             openSeries(seriesId)
-                        }
-                    }
-                    movieDetails.previousEpisodeId?.let { id ->
-                        DetailsButton(Icons.Outlined.SkipPrevious, stringResource(R.string.previous_episode), bringIntoViewOnFocus) {
-                            openEpisode(id)
-                        }
-                    }
-                    movieDetails.nextEpisodeId?.let { id ->
-                        DetailsButton(Icons.Outlined.SkipNext, stringResource(R.string.next_episode), bringIntoViewOnFocus) {
-                            openEpisode(id)
                         }
                     }
                 }

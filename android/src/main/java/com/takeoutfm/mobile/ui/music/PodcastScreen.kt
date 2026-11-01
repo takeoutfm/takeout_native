@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -136,29 +135,28 @@ fun PodcastScreen(main: MainViewModel, nav: MusicNav, viewModel: PodcastViewMode
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             val summary = plain(e.description)
                             if (summary.isNotEmpty()) Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(
-                                listOfNotNull(published(e.date), progressLabel(e.progress)).joinToString(" · "),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                if (e.progress == EpisodeProgress.Complete) {
+                                    Icon(
+                                        Icons.Filled.CheckCircle,
+                                        contentDescription = null, // the text says Complete
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(end = 4.dp).size(16.dp),
+                                    )
+                                }
+                                Text(
+                                    listOfNotNull(published(e.date), progressLabel(e.progress)).joinToString(" · "),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             (e.progress as? EpisodeProgress.Started)?.takeIf { it.fraction > 0f }?.let {
                                 LinearProgressIndicator(progress = { it.fraction }, modifier = Modifier.fillMaxWidth())
                             }
                         }
                     },
-                    trailingContent = {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            if (e.progress == EpisodeProgress.Complete) {
-                                Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.complete), tint = MaterialTheme.colorScheme.primary)
-                            }
-                            downloads[e.eid]?.status?.let { DownloadBadge(it, Modifier.padding(start = 8.dp)) }
-                            // Plays from here (resuming it if started); the row opens its page,
-                            // where Download is.
-                            androidx.compose.material3.IconButton(onClick = { main.playEpisodes(series.title, series.imageUri, details.episodes, index) }) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.play))
-                            }
-                        }
-                    },
+                    // The row opens the episode's page, where Play and Download are.
+                    trailingContent = downloads[e.eid]?.status?.let { status -> { DownloadBadge(status) } },
                     leadingContent = if (e.imageUri.isNotEmpty() && e.imageUri != series.imageUri) {
                         { Art(e.imageUri, e.title, Modifier.size(56.dp), RoundedCornerShape(6.dp)) }
                     } else {

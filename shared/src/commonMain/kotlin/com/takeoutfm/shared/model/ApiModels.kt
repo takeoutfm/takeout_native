@@ -111,6 +111,8 @@ data class ApiMovie(
     @SerialName("BackdropPath") val backdropPath: String = "",
     @SerialName("PosterPath") val posterPath: String = "",
     @SerialName("ETag") val etag: String = "",
+    /** File size in bytes; 0 when unknown. */
+    @SerialName("Size") val size: Long = 0,
     /** IMDB id; favorites are keyed by it. */
     @SerialName("IMID") val imid: String = "",
 )

@@ -432,6 +432,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          `onPlayerCreated()` adds Media3's `WearUnsuitableOutputPlaybackSuppressionResolverListener`
          (`media3-ui`), which opens the output picker — suppression alone shows nothing.
    - [x] Tile (title + play/pause, refreshed when the player changes) and complication.
+   - [x] Now Playing complication (2026-10-28, `tile/NowPlayingComplicationService`): long text
+         (title, artist as its title line) and short text, with a play / pause icon; a stream's
+         song from its ICY title; "Not playing" ("Takeout" in short text). Pushed from
+         `WatchApp` when the song or play/pause changes (no polling). Checked on the emulator
+         on the Utility face.
    - [x] Checked on the `Wear_Round_API_36` emulator (2026-10-26): browse, album play, radio
          (LIVE), tile play/pause.
    - [x] Real watch (Galaxy Watch, 2026-10-26): release installed over the Flutter app;
@@ -518,6 +523,35 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          swipe actions (Play Next / Add to Queue) and haptics.
    - [ ] iPad check; downloads, radio and podcasts on the phone; a real device (needs a team).
    - [ ] Lock screen / Control Center check, picture in picture, CarPlay and Siri.
+12. **Linux — KDE/Qt** (planned 2026-10-28; `linux/`). No JVM (decided). A Qt 6 / QML app with
+    Kirigami (fits Plasma, runs on GNOME too), the shared core as a Kotlin/Native library, and
+    libmpv for all playback. Linux is a native Kotlin target, so all of it builds, runs and is
+    tested on the dev machine (KDE, Ubuntu 26.04; libmpv 2.5 installed; needs `qt6-base-dev`,
+    `qt6-declarative-dev`, `libkirigami-dev`, `cmake`, `libcurl4-openssl-dev`).
+   - Why not the others: Compose Desktop needs a JVM; Rust (CXX-Qt / gtk-rs) would reach the
+     Kotlin core through the same C library, adding a language for nothing; there are no Qt
+     bindings for Kotlin/Native; rewriting the shared logic in C++ means maintaining it twice.
+   - Why mpv over VLC: its render API draws into the Qt Quick scene graph (Wayland-native,
+     smooth), the best ASS rendering (libass), and it's what KDE's own player (Haruna) uses;
+     VLC 3's Qt embedding is awkward under Wayland and VLC-Qt is unmaintained. Embedded MKV
+     tracks all work: SRT, ASS/SSA, PGS, VobSub; AC-3/E-AC-3/DTS/TrueHD; 10-bit HEVC; VAAPI.
+   - [ ] `shared` adds `linuxX64` with a `sharedLib` binary (`libtakeout.so` + C header) and
+         a `linuxMain`: Ktor Curl engine, NFD, SQLDelight native driver (in
+         `$XDG_DATA_HOME/takeoutfm`), a file-backed `KeyValueStore` for plain values and the
+         login via Secret Service (KWallet). Run `commonTest` natively too.
+   - [ ] A small C bridge instead of the generated C API (clumsy: struct-of-function-pointers,
+         manual references, no coroutines): `takeout_call(name, jsonArgs, callback)` with JSON
+         results, and `takeout_watch(flow, callback)` for live state (session, now playing);
+         like the Mac's `SwiftCalls`. C++ parses with `QJsonDocument` and posts results to the
+         Qt main thread (`QMetaObject::invokeMethod`).
+   - [ ] App shell (C++ / CMake, building the Kotlin library through Gradle): device-code
+         sign-in, Kirigami global drawer (Home, Artists, Recent, Radio, Podcasts, Movies, TV,
+         Search), album / artist pages.
+   - [ ] Playback with libmpv (one player for music, radio and video; mpv's render API in a
+         `QQuickFramebufferObject`), audio and subtitle track menus, progress and listens
+         (`ListenSession`, as the Mac), MPRIS through QtDBus (Plasma media widget, lock screen,
+         media keys).
+   - [ ] Podcasts, video pages, downloads; packaging (Flatpak or `.deb`) and a desktop file.
 
 ---
 

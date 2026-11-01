@@ -166,8 +166,8 @@ private fun AppContent(
                         openPerson = { personId ->
                             navController.navigate(Screens.Person.withArgs(personId))
                         },
-                        // From a series, push the episode's page; from an episode (previous, next,
-                        // its season), replace it, so Back still returns to the series.
+                        // From a series, push the episode's page; from an episode (its season),
+                        // replace it, so Back still returns to the series.
                         openEpisode = { episodeId ->
                             if (movieId?.startsWith("e-") == true) navController.popBackStack()
                             navController.navigate(Screens.MovieDetails.withArgs(episodeId))
@@ -349,11 +349,6 @@ private fun AppContent(
                     PodcastEpisodeScreen(
                         onPlay = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
-                        },
-                        // Previous / Next replace this page, so Back returns to the podcast.
-                        onOpenEpisode = { seriesId, episodeId ->
-                            navController.popBackStack()
-                            navController.navigate(Screens.PodcastEpisode.withArgs(seriesId, episodeId))
                         },
                         onBackPressed = {
                             if (navController.navigateUp()) {

@@ -210,9 +210,9 @@ library), A–Z.
   open YouTube links (a `<queries>` entry lets the app check).
   The TV emulator's YouTube opens but says the device isn't supported.
 - Episode details: "Series · S1E2 Name", the episode's own cast and crew and rating, Resume /
-  Start over, **Series** (back to the series: pops if that's where it was opened from), and
-  **Previous / Next** episode; a row of its season. Previous, Next and the season row replace
-  the page, so Back still returns to the series.
+  Start over, **Series** (back to the series: pops if that's where it was opened from); a row
+  of its season, which replaces the page, so Back still returns to the series. No Previous /
+  Next buttons (#10); the player's controls still skip episodes.
 - Cast & Crew cards show TMDB profile photos (coloured block if none) and open the person page.
   The directors come first, subtitled "Director"; a director who also acts gets one card,
   "Director · as <role>". Writers aren't shown (the server sends `Writing`; they'd push the
@@ -548,8 +548,8 @@ Each step is its own commit(s), checked on the emulator and TV.
 - **Episode page** (`PodcastEpisodeScreen.kt`, route `PodcastEpisode/{seriesId}/{episodeId}`;
   selecting an episode on the podcast page opens it): art, title, podcast, date · progress
   and bar; Play / Resume (focused on open), Start over (`QueueRef.Episodes(…, fromStart =
-  true)`, "episodes:ps-4:2:start"), Mark as played / unplayed (as the phone), Previous (older)
-  / Next (newer), which replace the page. Show notes are plain text paragraphs (HTML via
+  true)`, "episodes:ps-4:2:start"), Mark as played / unplayed (as the phone); no Previous /
+  Next (#9). Show notes are plain text paragraphs (HTML via
   `HtmlCompat`), each focusable with a faint highlight so the D-pad scrolls through them.
 - Not done: a Continue Listening row on Music Home, podcasts in Search (the TV always streams,
   so no downloads).

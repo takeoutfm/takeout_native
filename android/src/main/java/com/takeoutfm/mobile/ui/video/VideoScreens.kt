@@ -1,9 +1,6 @@
 package com.takeoutfm.mobile.ui.video
 
 import androidx.compose.foundation.background
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -156,8 +153,8 @@ class VideoViewModel @Inject constructor(
 /**
  * A movie, series or episode: backdrop, facts, Resume / Play from start, genres, cast & crew
  * (directors first), seasons with their episodes (▶ plays one; the row opens its page), related
- * titles. An episode's page leads with its name, links back to its series, and adds previous /
- * next and the rest of its season.
+ * titles. An episode's page leads with its name, links back to its series, and adds the rest
+ * of its season.
  */
 @Composable
 fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
@@ -210,7 +207,6 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                     }
                     PlayButtons(details, offset, play)
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
-                    if (details.episode != null) EpisodeSteps(details, nav)
                     if (details.genres.isNotEmpty()) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             details.genres.forEach { g ->
@@ -327,28 +323,6 @@ private fun airDate(iso: String): String? = runCatching {
     java.time.LocalDate.parse(iso)
         .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
 }.getOrNull()
-
-/** An episode's previous / next episode buttons (in play order, across seasons). */
-@Composable
-private fun EpisodeSteps(details: VideoDetails, nav: VideoNav) {
-    val previous = details.previousEpisodeId
-    val next = details.nextEpisodeId
-    if (previous == null && next == null) return
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (previous != null) {
-            OutlinedButton(onClick = { nav.openVideo(previous) }) {
-                Icon(Icons.Filled.SkipPrevious, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.previous_episode), modifier = Modifier.padding(start = 6.dp))
-            }
-        }
-        if (next != null) {
-            OutlinedButton(onClick = { nav.openVideo(next) }) {
-                Text(stringResource(R.string.next_episode), modifier = Modifier.padding(end = 6.dp))
-                Icon(Icons.Filled.SkipNext, contentDescription = null, modifier = Modifier.size(18.dp))
-            }
-        }
-    }
-}
 
 /** The rest of an episode's season as stills; [current] is outlined. */
 @Composable

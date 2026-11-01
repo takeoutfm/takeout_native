@@ -3,4 +3,9 @@
     <string name="downloads_channel">Downloads</string>
     <string name="seek_back">Back 10 seconds</string>
     <string name="seek_forward">Forward 30 seconds</string>
+    <string name="favorite">Add to favorites</string>
+    <string name="unfavorite">Remove from favorites</string>
+    <string name="repeat_off">Repeat off</string>
+    <string name="repeat_all">Repeat all</string>
+    <string name="repeat_one">Repeat one</string>
 </resources>

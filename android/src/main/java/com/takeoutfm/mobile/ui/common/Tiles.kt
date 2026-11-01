@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +36,8 @@ data class Tile(
     val subtitle: String,
     val imageUri: String,
     val poster: Boolean = false,
+    /** Watched fraction 0–1, shown as a bar under the art (Continue Watching); null for none. */
+    val progress: Float? = null,
 )
 
 /**
@@ -69,6 +72,9 @@ fun TileItem(tile: Tile, onClick: (Tile) -> Unit) {
             .clickable { onClick(tile) }
     ) {
         Art(tile.imageUri, tile.title, Modifier.fillMaxWidth().aspectRatio(if (tile.poster) 2f / 3f else 1f))
+        tile.progress?.let { fraction ->
+            LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+        }
         Text(
             tile.title,
             style = MaterialTheme.typography.bodyMedium,

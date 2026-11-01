@@ -161,7 +161,7 @@ class HomeViewModel @Inject constructor(
 
     private fun Album.toTile() = Tile(id, name, artist, coverUri)
 
-    private fun VideoCard.toTile() = Tile(id, title, "", posterUri, poster = true)
+    private fun VideoCard.toTile() = Tile(id, title, "", posterUri, poster = true, progress = progress)
 
     private fun available(index: LibraryIndex?): List<MediaType> = if (index == null) {
         MediaType.entries

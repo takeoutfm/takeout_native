@@ -4,10 +4,11 @@ project(takeoutfm VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Network Qml Quick QuickControls2)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Network DBus Qml Quick QuickControls2)
 find_package(KF6Kirigami REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SECRET REQUIRED IMPORTED_TARGET libsecret-1)
+pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
 qt_standard_project_setup(REQUIRES 6.6)
 
 # ---- The shared Kotlin core, libtakeout.so, built by Gradle ----
@@ -40,7 +41,9 @@ qt_add_executable(takeoutfm
     src/main.cpp
     src/Core.cpp src/Core.h
     src/SecretStore.cpp src/SecretStore.h
-    src/ImageCache.cpp src/ImageCache.h)
+    src/ImageCache.cpp src/ImageCache.h
+    src/Player.cpp src/Player.h
+    src/Mpris.cpp src/Mpris.h)
 qt_add_qml_module(takeoutfm
     URI TakeoutFM
     QML_FILES
@@ -61,11 +64,16 @@ qt_add_qml_module(takeoutfm
         qml/TrackRow.qml
         qml/ArtistRow.qml
         qml/LoadState.qml
-        qml/SectionHeading.qml)
+        qml/SectionHeading.qml
+        qml/MiniPlayer.qml
+        qml/NowPlayingPage.qml
+        qml/RecentPage.qml
+        qml/PodcastsPage.qml
+        qml/PodcastPage.qml)
 target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(takeoutfm PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Qml Qt6::Quick Qt6::QuickControls2
-    KF6::Kirigami PkgConfig::SECRET takeout)
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    KF6::Kirigami PkgConfig::SECRET PkgConfig::MPV takeout)
 # libtakeout.so sits beside the binary.
 set_target_properties(takeoutfm PROPERTIES BUILD_RPATH "\$ORIGIN" INSTALL_RPATH "\$ORIGIN")
 

@@ -17,6 +17,7 @@ import kotlinx.cinterop.toKString
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
@@ -49,6 +50,9 @@ data class CallError(val kind: String, val message: String = "", val status: Int
 internal object Bridge {
     var calls: LinuxCalls? = null
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /** One at a time, in the order they were made: the player's reports (see [LinuxCalls.isOrdered]). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val inOrder = Dispatchers.Default.limitedParallelism(1)
 }
 
 /**
@@ -82,7 +86,8 @@ fun takeoutInit(
 /**
  * Runs call [name] with [argsJson] (an object; null for none) on a background thread, then
  * calls [callback] once, on that thread, with the result's JSON or a [CallError]'s. [ctx] must
- * stay valid until then.
+ * stay valid until then. Calls made from one thread that [LinuxCalls.isOrdered] names run in
+ * the order they were made.
  */
 @CName("takeout_call")
 fun takeoutCall(
@@ -93,7 +98,8 @@ fun takeoutCall(
 ) {
     val call = name?.toKString().orEmpty()
     val args = argsJson?.toKString()
-    Bridge.scope.launch {
+    val context = if (LinuxCalls.isOrdered(call)) Bridge.inOrder else Dispatchers.Default
+    Bridge.scope.launch(context) {
         val (result, error) = try {
             val calls = Bridge.calls ?: throw IllegalStateException("takeout_init wasn't called")
             val parsed = args?.let { bridgeJson.parseToJsonElement(it).jsonObject } ?: JsonObject(emptyMap())

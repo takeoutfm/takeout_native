@@ -79,6 +79,7 @@ Kirigami.ScrollablePage {
             model: page.results?.tracks ?? []
             TrackRow {
                 required property var modelData
+                onClicked: applicationWindow().playCall("trackQueue", {trackId: modelData.id})
                 title: modelData.title
                 subtitle: [modelData.artist, modelData.album].join(" · ")
                 imageUri: modelData.coverUri

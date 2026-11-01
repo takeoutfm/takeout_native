@@ -20,7 +20,8 @@ QVariant parse(const char *json)
 struct PendingCall {
     QPointer<Core> core;
     QString name;
-    QJSValue callback;
+    QJSValue script;
+    Core::Callback native;
 };
 
 struct Watcher {
@@ -90,7 +91,17 @@ void Core::updated(const QByteArray &name, const QVariant &value)
 
 void Core::call(const QString &name, const QVariantMap &args, const QJSValue &callback)
 {
-    auto *pending = new PendingCall{this, name, callback};
+    run(name, args, callback, {});
+}
+
+void Core::call(const QString &name, const QVariantMap &args, Callback callback)
+{
+    run(name, args, {}, std::move(callback));
+}
+
+void Core::run(const QString &name, const QVariantMap &args, const QJSValue &script, Callback native)
+{
+    auto *pending = new PendingCall{this, name, script, std::move(native)};
     const QByteArray json = QJsonDocument::fromVariant(args).toJson(QJsonDocument::Compact);
     takeout_call(name.toUtf8().constData(), json.constData(), [](void *ctx, const char *result, const char *error) {
         auto *p = static_cast<PendingCall *>(ctx);
@@ -99,9 +110,10 @@ void Core::call(const QString &name, const QVariantMap &args, const QJSValue &ca
         QObject *receiver = p->core ? static_cast<QObject *>(p->core.data()) : QCoreApplication::instance();
         QMetaObject::invokeMethod(receiver, [p, value, failure] {
             if (p->core) {
+                if (p->native) p->native(value, failure);
                 QJSEngine *engine = qjsEngine(p->core.data());
-                if (engine && p->callback.isCallable())
-                    p->callback.call({engine->toScriptValue(value), engine->toScriptValue(failure)});
+                if (engine && p->script.isCallable())
+                    p->script.call({engine->toScriptValue(value), engine->toScriptValue(failure)});
                 if (failure.isValid()) Q_EMIT p->core->failed(p->name, failure.toMap());
             }
             delete p;

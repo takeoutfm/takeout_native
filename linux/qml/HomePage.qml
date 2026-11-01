@@ -60,10 +60,17 @@ Kirigami.ScrollablePage {
         cellWidth: width / columns
         cellHeight: cellWidth + Kirigami.Units.gridUnit * 3
         model: page.albums
-        delegate: AlbumTile {
+        // The grid focuses its current item; a wrapper takes that, so no tile looks selected.
+        delegate: Item {
+            id: cell
             required property var modelData
-            album: modelData
             width: grid.cellWidth
+            height: grid.cellHeight
+            AlbumTile {
+                readonly property var modelData: cell.modelData
+                width: parent.width
+                album: modelData
+            }
         }
 
         LoadState {

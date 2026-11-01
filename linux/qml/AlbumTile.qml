@@ -12,7 +12,9 @@ QQC2.ItemDelegate {
     property string subtitle: album.artist
 
     padding: Kirigami.Units.smallSpacing
-    onClicked: applicationWindow().open("AlbumPage", {albumId: album.id, album: album})
+    /** Off for tiles that aren't albums (podcasts), which handle clicked themselves. */
+    property bool opensAlbum: true
+    onClicked: if (opensAlbum) applicationWindow().open("AlbumPage", {albumId: album.id, album: album})
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing

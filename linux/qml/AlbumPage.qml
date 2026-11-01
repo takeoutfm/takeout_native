@@ -29,6 +29,19 @@ Kirigami.ScrollablePage {
     }
     Component.onCompleted: load()
 
+    actions: [
+        Kirigami.Action {
+            text: qsTr("Play")
+            icon.name: "media-playback-start"
+            onTriggered: applicationWindow().playCall("albumQueue", {albumId: page.albumId})
+        },
+        Kirigami.Action {
+            text: qsTr("Shuffle")
+            icon.name: "media-playlist-shuffle"
+            onTriggered: applicationWindow().playCall("albumQueue", {albumId: page.albumId}, true)
+        }
+    ]
+
     ColumnLayout {
         spacing: Kirigami.Units.largeSpacing
 
@@ -90,6 +103,7 @@ Kirigami.ScrollablePage {
                     text: qsTr("Disc %1").arg(modelData.discNum)
                 }
                 TrackRow {
+                    onClicked: applicationWindow().playCall("albumQueue", {albumId: page.albumId, startIndex: index})
                     number: String(modelData.trackNum)
                     title: modelData.title
                     subtitle: modelData.artist !== page.shown?.artist ? modelData.artist : ""

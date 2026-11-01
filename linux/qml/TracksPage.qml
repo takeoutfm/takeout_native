@@ -8,34 +8,46 @@ Kirigami.ScrollablePage {
     id: page
 
     required property string playlistId
-    property var tracks: []
+    /** The tracks as a play queue (a MusicQueue). */
+    property var queue: null
+    readonly property var tracks: queue?.items ?? []
     property bool loading: false
     property var error: null
 
     function load() {
         loading = true
         error = null
-        if (playlistId === "") {
-            Core.call("favorites", {}, (result, failure) => {
-                loading = false
-                error = failure
-                tracks = (result?.tracks ?? []).map(t => ({title: t.title, artist: t.artist, album: t.album, imageUri: t.coverUri, etag: t.etag}))
-            })
-        } else {
-            Core.call("playlistQueue", {playlistId: playlistId}, (result, failure) => {
-                loading = false
-                error = failure
-                tracks = result?.items ?? []
-            })
-        }
+        const [name, args] = playlistId === "" ? ["favoritesQueue", {}] : ["playlistQueue", {playlistId: playlistId}]
+        Core.call(name, args, (result, failure) => {
+            loading = false
+            error = failure
+            if (result) queue = result
+        })
     }
     Component.onCompleted: load()
+
+    actions: [
+        Kirigami.Action {
+            text: qsTr("Play")
+            icon.name: "media-playback-start"
+            enabled: page.tracks.length > 0
+            onTriggered: Player.play(page.queue, false, 0)
+        },
+        Kirigami.Action {
+            text: qsTr("Shuffle")
+            icon.name: "media-playlist-shuffle"
+            enabled: page.tracks.length > 0
+            onTriggered: Player.play(page.queue, true)
+        }
+    ]
 
     ListView {
         model: page.tracks
         reuseItems: true
         delegate: TrackRow {
             required property var modelData
+            required property int index
+            onClicked: Player.play(page.queue, false, index)
             title: modelData.title
             subtitle: [modelData.artist, modelData.album].filter(s => s.length > 0).join(" · ")
             imageUri: modelData.imageUri
@@ -44,8 +56,8 @@ Kirigami.ScrollablePage {
 
         LoadState {
             anchors.centerIn: parent
-            loading: page.loading
-            error: page.error
+            loading: page.loading && !page.queue
+            error: page.queue ? null : page.error
             onRetry: page.load()
         }
         Kirigami.PlaceholderMessage {

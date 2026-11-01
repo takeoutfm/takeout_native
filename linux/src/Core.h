@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QJSValue>
+#include <functional>
 #include <QObject>
 #include <QVariant>
 #include <qqmlintegration.h>
@@ -32,6 +33,10 @@ public:
      */
     Q_INVOKABLE void call(const QString &name, const QVariantMap &args = {}, const QJSValue &callback = {});
 
+    using Callback = std::function<void(const QVariant &result, const QVariant &error)>;
+    /** [call] for C++: [callback] gets the same (result, error), on the main thread. */
+    void call(const QString &name, const QVariantMap &args, Callback callback);
+
     bool ready() const { return m_ready; }
     bool signedIn() const { return m_signedIn; }
     QString endpoint() const { return m_endpoint; }
@@ -51,6 +56,7 @@ Q_SIGNALS:
 private:
     void watch(const char *name);
     void updated(const QByteArray &name, const QVariant &value);
+    void run(const QString &name, const QVariantMap &args, const QJSValue &script, Callback native);
 
     QList<void *> m_watches;
     bool m_ready = false;

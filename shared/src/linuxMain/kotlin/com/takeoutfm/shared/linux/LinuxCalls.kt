@@ -243,5 +243,13 @@ class LinuxCalls(private val core: LinuxCore) {
     companion object {
         /** Bumped when a call changes in a way the app must follow. */
         const val BridgeVersion = 1
+
+        /**
+         * The player's reports, which must arrive in the order it sent them (a track before its
+         * play state, a position after the one before it); they don't suspend for long.
+         */
+        fun isOrdered(name: String): Boolean =
+            name.startsWith("listen") || name == "playedProgress" || name == "reportProgress" ||
+                name == "streamSongHeard"
     }
 }

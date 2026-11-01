@@ -10,6 +10,7 @@ QQC2.ItemDelegate {
     required property var station
 
     padding: Kirigami.Units.smallSpacing
+    onClicked: applicationWindow().playCall("stationQueue", {stationId: station.id})
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing

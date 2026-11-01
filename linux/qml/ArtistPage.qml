@@ -30,6 +30,21 @@ Kirigami.ScrollablePage {
 
     actions: [
         Kirigami.Action {
+            text: qsTr("Play")
+            icon.name: "media-playback-start"
+            onTriggered: applicationWindow().playCall("artistQueue", {artistId: page.artistId, mix: "Popular"})
+        },
+        Kirigami.Action {
+            text: qsTr("Shuffle")
+            icon.name: "media-playlist-shuffle"
+            onTriggered: applicationWindow().playCall("artistQueue", {artistId: page.artistId, mix: "Shuffle"})
+        },
+        Kirigami.Action {
+            text: qsTr("Radio")
+            icon.name: "radio"
+            onTriggered: applicationWindow().playCall("artistQueue", {artistId: page.artistId, mix: "Radio"})
+        },
+        Kirigami.Action {
             visible: !!page.details && page.details.artist.arid.length > 0
             text: page.details?.isFavorite ? qsTr("Unfavorite") : qsTr("Favorite")
             icon.name: page.details?.isFavorite ? "starred-symbolic" : "non-starred-symbolic"
@@ -69,6 +84,9 @@ Kirigami.ScrollablePage {
             model: page.details?.popular.slice(0, 5) ?? []
             TrackRow {
                 required property var modelData
+                required property int index
+                onClicked: applicationWindow().playCall("tracksQueue", {
+                    title: page.details.artist.name, tracks: page.details.popular.slice(0, 5), startIndex: index})
                 title: modelData.title
                 subtitle: modelData.album
                 imageUri: modelData.coverUri

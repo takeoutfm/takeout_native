@@ -17,6 +17,7 @@ Kirigami.ApplicationWindow {
 
     readonly property var library: Core.library
     readonly property bool hasMusic: library.hasMusic ?? true
+    readonly property bool hasPodcasts: library.hasPodcasts ?? false
     property string section: ""
 
     /** Shows top-level page [name] (e.g. "HomePage"), dropping whatever was open. */
@@ -29,6 +30,31 @@ Kirigami.ApplicationWindow {
     /** Opens [name] on top of the current page. */
     function open(name, properties) {
         pageStack.push(Qt.resolvedUrl(name + ".qml"), properties ?? {})
+    }
+
+    /** Plays the queue that shared call [name] returns (albumQueue, stationQueue…). */
+    function playCall(name, args, shuffled) {
+        Core.call(name, args, (queue, error) => {
+            if (queue) Player.play(queue, shuffled ?? false)
+            else if (error && error.kind !== "network") showPassiveNotification(qsTr("Can't play that"))
+        })
+    }
+
+    /** Now Playing, on top unless it already is. */
+    function showNowPlaying() {
+        if (pageStack.currentItem?.objectName !== "nowPlaying") open("NowPlayingPage")
+    }
+
+    // Under the pages, beside the drawer (Kirigami lays a window footer out under the drawer, offset).
+    pageStack.anchors.bottomMargin: miniPlayer.height
+    MiniPlayer {
+        id: miniPlayer
+        parent: root.contentItem
+        anchors.left: root.pageStack.left
+        anchors.right: root.pageStack.right
+        anchors.bottom: parent.bottom
+        visible: Core.signedIn && Player.hasQueue && root.pageStack.currentItem?.objectName !== "nowPlaying"
+        onOpen: root.showNowPlaying()
     }
 
     // Sign-in or Home, once the session is known and whenever signing in or out changes it
@@ -73,6 +99,17 @@ Kirigami.ApplicationWindow {
                 onTriggered: root.show("HomePage")
             },
             Kirigami.Action {
+                text: qsTr("Now Playing"); icon.name: "media-playback-playing"
+                visible: Player.hasQueue
+                onTriggered: root.showNowPlaying()
+            },
+            Kirigami.Action {
+                text: qsTr("Recent"); icon.name: "document-open-recent"
+                visible: root.hasMusic
+                checked: root.section === "RecentPage"
+                onTriggered: root.show("RecentPage")
+            },
+            Kirigami.Action {
                 text: qsTr("Artists"); icon.name: "view-media-artist"
                 visible: root.hasMusic
                 checked: root.section === "ArtistsPage"
@@ -89,6 +126,12 @@ Kirigami.ApplicationWindow {
                 visible: root.hasMusic
                 checked: root.section === "PlaylistsPage"
                 onTriggered: root.show("PlaylistsPage")
+            },
+            Kirigami.Action {
+                text: qsTr("Podcasts"); icon.name: "podcast-symbolic"
+                visible: root.hasPodcasts
+                checked: root.section === "PodcastsPage"
+                onTriggered: root.show("PodcastsPage")
             },
             Kirigami.Action {
                 text: qsTr("Settings"); icon.name: "settings-configure"

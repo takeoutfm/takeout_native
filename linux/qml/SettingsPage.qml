@@ -41,6 +41,9 @@ Kirigami.ScrollablePage {
         title: qsTr("Sign out?")
         subtitle: qsTr("Recently Played on this computer is cleared too.")
         standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
-        onAccepted: Core.call("signOut")
+        onAccepted: {
+            Player.stop()
+            Core.call("signOut")
+        }
     }
 }

@@ -623,13 +623,24 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            width, since a `GridLayout` whose columns follow its own width collapses; pages
            opened with properties see them before `Component.onCompleted`, but their
            `on…Changed` handlers fire too, so load from one or the other. Nothing plays yet.
-     - [ ] **L4 — music playback**: `Player` on libmpv (`--no-video` for audio, gapless
-           `prefetch-playlist`), queue, Now Playing page and a footer mini player, repeat / ♥,
-           live streams (ICY title from `metadata/by-key/icy-title`), Recently Played
-           (`MusicHistory`), listens through the shared `ListenSession` (as the Mac's
-           `AudioPlayer` feeds it), podcast episodes with saved positions. MPRIS (Plasma's
-           media widget, lock screen, media keys, KDE Connect); ♥ stays in the app, since
-           MPRIS has no favorite action.
+     - [x] **L4 — music playback** (done 2026-11-01): `Player` (C++, QML singleton
+           `TakeoutFM.Core/Player`) keeps the queue as mpv's playlist (`prefetch-playlist`,
+           gapless; repeat is `loop-file` / `loop-playlist`); each item is a `loadfile` with
+           per-file options (a node map), so the `Authorization` header goes only to streams on
+           the signed-in server. Radio streams are the items without an ETag: live, no seek
+           bar, no duration (mpv calls the buffered part one); their ICY title
+           (`metadata/by-key/icy-title`) shows as "song · artist · station" and feeds
+           `ListenSession` and `StreamHistory`. As the Mac's `AudioPlayer`: `listen*` calls,
+           Recently Played (`recordPlayed` / `playedProgress` every 5 s and on pause), podcast
+           positions (`reportProgress` 10 s in, on pause, complete at the end). The bridge runs
+           those reports in the order they were sent (`LinuxCalls.isOrdered`, one-thread
+           dispatcher). UI: a mini player under the pages (not Kirigami's window footer, which
+           it offsets under the drawer), Now Playing (cover, seek bar, controls, ♥, repeat,
+           queue), play / shuffle / radio actions on album, artist, playlist and search
+           pages, Recently Played, and Podcasts (series grid, a series' episodes). MPRIS
+           (`Mpris`: `org.mpris.MediaPlayer2.takeoutfm`, Raise, play/pause/next/previous,
+           Seek / SetPosition, LoopStatus) checked with `qdbus6`. libmpv needs
+           `LC_NUMERIC=C`. Not checked here: playing an episode (it changes real progress).
      - [ ] **L5 — video**: movie / series / episode pages (as the phone after #2–#4: facts end
            with the rating, size after the rating, Resume / Start over, seasons, cast, related),
            Continue Watching with bars, person and genre pages; a full-window player page with

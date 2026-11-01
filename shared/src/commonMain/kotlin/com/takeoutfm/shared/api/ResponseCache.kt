@@ -8,10 +8,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
-/** Server responses kept for browsing offline (see [TakeoutApi.responseCache]). */
+/** Server responses kept for reuse and for browsing offline (see [TakeoutApi.responseCache]). */
 interface ResponseCache {
-    fun get(key: String): String?
+    /** The last response kept for [key], or null. */
+    fun get(key: String): Kept?
     fun put(key: String, body: String)
+
+    data class Kept(val body: String, /** Epoch ms. */ val savedAt: Long)
 }
 
 /**
@@ -27,8 +30,9 @@ class DbResponseCache(private val db: TakeoutDb, session: TakeoutSession) : Resp
         }
     }
 
-    override fun get(key: String): String? =
-        runCatching { db.responseCacheQueries.get(key).executeAsOneOrNull() }.getOrNull()
+    override fun get(key: String): ResponseCache.Kept? = runCatching {
+        db.responseCacheQueries.getKept(key).executeAsOneOrNull()?.let { ResponseCache.Kept(it.body, it.saved_at) }
+    }.getOrNull()
 
     override fun put(key: String, body: String) {
         if (body.length > MaxBodyChars) return

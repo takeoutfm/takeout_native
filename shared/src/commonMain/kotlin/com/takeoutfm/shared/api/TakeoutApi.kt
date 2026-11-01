@@ -49,6 +49,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
 import kotlinx.io.IOException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -203,7 +204,7 @@ class TakeoutApi internal constructor(
     ): String {
         val state = session.state.value
         val token = state.tokens?.accessToken ?: throw IllegalStateException("Not signed in")
-        return try {
+        val text = try {
             execute(state.endpoint + path, method, token, body)
         } catch (e: HttpException) {
             if (e.code == 401 && refreshTokens(token)) {
@@ -214,18 +215,58 @@ class TakeoutApi internal constructor(
                 throw e
             }
         }
+        // Kept pages may show what changed (a movie's ♥, a playlist's tracks).
+        if (method != HttpMethod.Get && EditPrefixes.any { path.startsWith(it) }) forgetKept()
+        return text
     }
 
     /**
-     * Where GET responses are kept for offline browsing: a request that can't reach the server
-     * (not one it refuses) answers with the last response kept for it. Null keeps nothing.
+     * Where GET responses are kept: a recent one answers without asking the server (see
+     * [keepFor]; the library rarely changes), and a request that can't reach the server (not one
+     * it refuses) answers with the last one kept. Null keeps nothing.
      */
     var responseCache: ResponseCache? = null
 
+    /** Kept responses saved at or before this (epoch ms) are only used offline; see [forgetKept]. */
+    private var keptAfter = 0L
+
+    /** Epoch ms, as [ResponseCache] stamps responses; tests replace it. */
+    internal var now: () -> Long = { Clock.System.now().toEpochMilliseconds() }
+
+    /**
+     * Asks the server again for everything (a manual Reload), as after the user changes a
+     * favorite, playlist or subscription, which kept pages may show. Kept responses still answer
+     * offline.
+     */
+    fun forgetKept() {
+        keptAfter = now()
+    }
+
+    /**
+     * How long a kept response for [path] answers without asking the server: 0 for what changes
+     * as the user plays and edits (progress, activity, favorites, playlists and mixes,
+     * subscriptions, search, the library index), less for podcast episode lists (new episodes),
+     * else [KeepLibraryMs].
+     */
+    private fun keepFor(path: String): Long = when {
+        path == "/api/index" ||
+            path == "/api/podcasts/subscribed" ||
+            path.endsWith("/playlist") ||
+            VolatilePrefixes.any { path.startsWith(it) } -> 0
+        path.startsWith("/api/series/") -> KeepPodcastMs
+        else -> KeepLibraryMs
+    }
+
     private suspend fun getText(path: String): String {
         val key = session.endpoint + path
+        val cache = responseCache
+        val keep = keepFor(path)
+        if (cache != null && keep > 0) {
+            val kept = withContext(Dispatchers.Default) { cache.get(key) }
+            if (kept != null && kept.savedAt > keptAfter && now() - kept.savedAt < keep) return kept.body
+        }
         return try {
-            authed(path).also { responseCache?.put(key, it) }
+            authed(path).also { cache?.put(key, it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: HttpException) {
@@ -233,7 +274,7 @@ class TakeoutApi internal constructor(
         } catch (e: IllegalStateException) {
             throw e // not signed in
         } catch (e: Exception) {
-            responseCache?.get(key) ?: throw e
+            cache?.let { withContext(Dispatchers.Default) { it.get(key) } }?.body ?: throw e
         }
     }
 
@@ -415,6 +456,20 @@ class TakeoutApi internal constructor(
     }
 
     companion object {
+        /** How long kept library responses are reused without asking the server. */
+        const val KeepLibraryMs = 60 * 60_000L
+
+        /** The same for a podcast's episode list, which gains episodes. */
+        const val KeepPodcastMs = 15 * 60_000L
+
+        /** Always asked for: they change as the user plays and edits. */
+        private val VolatilePrefixes = listOf(
+            "/api/progress", "/api/activity", "/api/favorite", "/api/playlists", "/api/search",
+        )
+
+        /** Writes after which kept responses are asked for again ([forgetKept]). */
+        private val EditPrefixes = listOf("/api/favorite", "/api/playlists", "/api/series")
+
         /** "takeout.fm/" -> "https://takeout.fm" */
         fun normalizeEndpoint(raw: String): String {
             var e = raw.trim().trimEnd('/')

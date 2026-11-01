@@ -98,7 +98,9 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   writes only with Playback Caching on; Media3 downloads into the same cache) and
   `TakeoutDownloadService` (the app's `playback/DownloadService`). Offline browsing: the shared
   `api/DbResponseCache` (set as `TakeoutApi.responseCache` in `AppModule`) answers GETs that
-  can't reach the server with the last response. The phone emulator goes offline with
+  can't reach the server with the last response, and reuses recent library responses (an hour;
+  podcast episode lists 15 min; never progress, activity, favorites, playlists, search) until
+  Reload or an edit (`TakeoutApi.forgetKept`). The phone emulator goes offline with
   `adb shell svc wifi disable; adb shell svc data disable`. `MainViewModel` adds/removes
   downloads; `DownloadsScreen` lists them; `DownloadBadge` shows ✓ / progress. The TV doesn't
   pass a cache, so it always streams.

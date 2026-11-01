@@ -151,8 +151,8 @@ class VideoViewModel @Inject constructor(
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 /**
- * A movie, series or episode: backdrop, facts, Resume / Play from start, genres, cast & crew
- * (directors first), seasons with their episodes (▶ plays one; the row opens its page), related
+ * A movie, series or episode: backdrop, facts, Resume / Start over, a movie's genres, cast & crew
+ * (directors first), seasons with their episodes (a row opens its page), related
  * titles. An episode's page leads with its name, links back to its series, and adds the rest
  * of its season.
  */
@@ -207,7 +207,7 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                     }
                     PlayButtons(details, offset, play)
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
-                    if (details.genres.isNotEmpty()) {
+                    if (details.genres.isNotEmpty() && details.kind == VideoKind.Movie) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             details.genres.forEach { g ->
                                 AssistChip(onClick = { nav.openGenre(TakeoutVideoRepository.slug(g)) }, label = { Text(g) })
@@ -239,13 +239,15 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                 items(season.episodes, key = { it.id }) { e ->
                     ListItem(
                         leadingContent = { Art(e.stillUri, e.name, Modifier.width(112.dp).aspectRatio(16f / 9f), RoundedCornerShape(6.dp)) },
-                        headlineContent = { Text("${e.episode}. ${e.name}", maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { if (e.runtimeMinutes > 0) Text(stringResource(R.string.runtime_minutes, e.runtimeMinutes)) },
-                        // Plays it (resuming if started); the row opens its page.
-                        trailingContent = {
-                            IconButton(onClick = { VideoPlayerActivity.start(context, e.id, startOver = false) }) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.play))
-                            }
+                        // The number goes under the name, leaving the name the row's width.
+                        headlineContent = { Text(e.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                        supportingContent = {
+                            Text(
+                                listOfNotNull(
+                                    stringResource(R.string.episode_number, e.episode),
+                                    e.runtimeMinutes.takeIf { it > 0 }?.let { stringResource(R.string.runtime_minutes, it) },
+                                ).joinToString(" · ")
+                            )
                         },
                         modifier = Modifier.clickable { nav.openVideo(e.id) },
                     )
@@ -376,7 +378,8 @@ private fun Backdrop(details: VideoDetails) {
     }
 }
 
-/** Resume ("N min left") and Play from start, or just Play. */
+/** Resume ("N min left") and Start over, or just Play. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun PlayButtons(details: VideoDetails, offset: ApiOffset?, play: (startOver: Boolean) -> Unit) {
     if (details.videoUri.isEmpty()) {
@@ -384,15 +387,16 @@ private fun PlayButtons(details: VideoDetails, offset: ApiOffset?, play: (startO
         return
     }
     val episode = details.playTarget?.let { " $it" }.orEmpty()
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    // A button that doesn't fit moves to the next line rather than wrapping its label.
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (offset != null) {
             Button(onClick = { play(false) }) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.resume) + episode, modifier = Modifier.padding(start = 6.dp))
+                Text(stringResource(R.string.resume) + episode, maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             }
             FilledTonalButton(onClick = { play(true) }) {
                 Icon(Icons.Filled.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.play_from_start), modifier = Modifier.padding(start = 6.dp))
+                Text(stringResource(R.string.play_from_start), maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             }
         } else {
             Button(onClick = { play(true) }) {

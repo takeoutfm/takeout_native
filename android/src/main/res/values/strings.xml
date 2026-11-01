@@ -152,7 +152,8 @@
 
     <!-- Video -->
     <string name="resume">Resume</string>
-    <string name="play_from_start">Play from start</string>
+    <string name="episode_number">Episode %1$d</string>
+    <string name="play_from_start">Start over</string>
     <string name="minutes_left">%1$d min left</string>
     <string name="cast_crew">Cast &amp; Crew</string>
     <string name="related">Related</string>

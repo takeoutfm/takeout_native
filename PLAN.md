@@ -535,23 +535,85 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
      smooth), the best ASS rendering (libass), and it's what KDE's own player (Haruna) uses;
      VLC 3's Qt embedding is awkward under Wayland and VLC-Qt is unmaintained. Embedded MKV
      tracks all work: SRT, ASS/SSA, PGS, VobSub; AC-3/E-AC-3/DTS/TrueHD; 10-bit HEVC; VAAPI.
-   - [ ] `shared` adds `linuxX64` with a `sharedLib` binary (`libtakeout.so` + C header) and
-         a `linuxMain`: Ktor Curl engine, NFD, SQLDelight native driver (in
-         `$XDG_DATA_HOME/takeoutfm`), a file-backed `KeyValueStore` for plain values and the
-         login via Secret Service (KWallet). Run `commonTest` natively too.
-   - [ ] A small C bridge instead of the generated C API (clumsy: struct-of-function-pointers,
-         manual references, no coroutines): `takeout_call(name, jsonArgs, callback)` with JSON
-         results, and `takeout_watch(flow, callback)` for live state (session, now playing);
-         like the Mac's `SwiftCalls`. C++ parses with `QJsonDocument` and posts results to the
-         Qt main thread (`QMetaObject::invokeMethod`).
-   - [ ] App shell (C++ / CMake, building the Kotlin library through Gradle): device-code
-         sign-in, Kirigami global drawer (Home, Artists, Recent, Radio, Podcasts, Movies, TV,
-         Search), album / artist pages.
-   - [ ] Playback with libmpv (one player for music, radio and video; mpv's render API in a
-         `QQuickFramebufferObject`), audio and subtitle track menus, progress and listens
-         (`ListenSession`, as the Mac), MPRIS through QtDBus (Plasma media widget, lock screen,
-         media keys).
-   - [ ] Podcasts, video pages, downloads; packaging (Flatpak or `.deb`) and a desktop file.
+   - **Shape** (GitLab #14; build plan written 2026-11-01):
+     ```
+     linux/                       C++ / QML app (CMake + Ninja), app id com.takeoutfm.linux
+       src/   Core.{h,cpp}        loads libtakeout.so; call/watch → Qt signals on the main thread
+              Player.{h,cpp}      libmpv (one player: music, radio, podcasts, video)
+              MpvItem.{h,cpp}     mpv render API in a QQuickFramebufferObject
+              Mpris.{h,cpp}       org.mpris.MediaPlayer2 over QtDBus
+              StreamProxy.{h,cpp} loopback proxy for video ranges (only if the spike needs it)
+       qml/   Main.qml, pages (Kirigami), components
+     shared/src/linuxMain/        actuals, LinuxCore (the shared graph), the C bridge, downloads
+     ```
+     The Kotlin library is the Mac's `TakeoutCore` + `SwiftCalls` again, exported as C:
+     `takeout_init(dataDir, userAgent)`, `takeout_call(name, argsJson, cb, ctx)` (runs on a
+     Kotlin coroutine; `cb(ctx, resultJson, errorJson)` on a worker thread),
+     `takeout_watch(name, cb, ctx) → id` / `takeout_unwatch(id)` for flows (session state,
+     favorites, downloads), `takeout_free(str)`. Written with `@CName`, so the header is
+     four functions, not Kotlin/Native's generated struct API. Results are JSON of the
+     shared domain types, which need `@Serializable` (about 30 data classes in `music/`,
+     `video/`, `podcast/`; no logic changes). `Core` turns each call into a `QFuture` /
+     QML promise-style callback and re-posts with `QMetaObject::invokeMethod`.
+   - **Phases** (each its own commits, checked on this machine against the real server; the
+     usual rules about real progress, listens and favorites apply):
+     - [ ] **L0 — spikes** (half a day each, throwaway branches): (a) `linuxX64` +
+           `ktor-client-curl` links and fetches `/api/index` from a native test; (b) a
+           20-line `sharedLib` with one `@CName` function called from a C++ `main`; (c) mpv in
+           a `QQuickFramebufferObject` plays a Takeout video with
+           `http-header-fields=Authorization: Bearer <media token>` and seeks after 20 min (the
+           presigned redirect expires in 15 — if ffmpeg seeks against the stale redirect, as
+           VLC did, the Mac's `StreamProxy` comes over as `QTcpServer`). Install first:
+           `qt6-base-dev qt6-declarative-dev libkirigami-dev extra-cmake-modules
+           libcurl4-openssl-dev libsecret-1-dev` (libmpv-dev, cmake, ninja and the Kirigami
+           QML module are already here).
+     - [ ] **L1 — core on Linux**: `linuxX64()` in `shared/build.gradle.kts` with
+           `binaries.sharedLib("takeout")`; `linuxMain`: `httpEngine()` = Curl, `decompose()`
+           (NFD; no ICU in K/N — a small table for Latin, as sort keys only need accents
+           folded), `LinuxDatabase` (SQLDelight native driver, `$XDG_DATA_HOME/takeoutfm/
+           takeout.db`), `FileStore` (JSON per store in `$XDG_CONFIG_HOME/takeoutfm`),
+           `SecretStore` (libsecret cinterop; KWallet answers Secret Service on Plasma 6) for
+           the session and ListenBrainz tokens. `./gradlew :shared:linuxX64Test` runs all of
+           `commonTest` natively — done when it passes here.
+     - [ ] **L2 — bridge**: `@Serializable` domain types, `LinuxCore`, the four C functions
+           and a call table (the Mac's `SwiftCalls` list: library, home, artists, album,
+           search, radio, playlists, favorites, podcasts, video, progress, listens, settings,
+           device-code sign-in). The bridge is tested in Kotlin (`linuxX64Test` calls the
+           `@CName` functions with `MockEngine`); one C++ smoke test (`ctest`) loads the
+           library and calls `version`.
+     - [ ] **L3 — shell and music browsing**: CMake builds the Gradle library first
+           (`add_custom_command` → `:shared:linkReleaseSharedLinuxX64`), installs it beside the
+           binary (`RPATH $ORIGIN`). Kirigami `ApplicationWindow` with a global drawer (Home,
+           Artists, Recent, Radio, Playlists, Podcasts, Movies, TV, Downloads, Settings) and a
+           search field; device-code sign-in (the user approves at `<server>/link`); Home (the
+           phone's media bar: Recently Added / New Releases per type), artist and album pages,
+           playlists with Favorite Tracks first, radio. Theme follows Plasma (Kirigami does).
+     - [ ] **L4 — music playback**: `Player` on libmpv (`--no-video` for audio, gapless
+           `prefetch-playlist`), queue, Now Playing page and a footer mini player, repeat / ♥,
+           live streams (ICY title from `metadata/by-key/icy-title`), Recently Played
+           (`MusicHistory`), listens through the shared `ListenSession` (as the Mac's
+           `AudioPlayer` feeds it), podcast episodes with saved positions. MPRIS (Plasma's
+           media widget, lock screen, media keys, KDE Connect); ♥ stays in the app, since
+           MPRIS has no favorite action.
+     - [ ] **L5 — video**: movie / series / episode pages (as the phone after #2–#4: facts end
+           with the rating, size after the rating, Resume / Start over, seasons, cast, related),
+           Continue Watching with bars, person and genre pages; a full-window player page with
+           `MpvItem`, audio and subtitle menus (the phone's best-audio ranking from
+           `:android-media` `video/Tracks.kt` moved to `commonMain` so it isn't ported a third
+           time), resume and `TakeoutProgress` reports, next episode, VAAPI (`hwdec=auto-safe`).
+     - [ ] **L6 — downloads and offline**: `linuxMain` `MediaDownloads` (whole files by ETag in
+           `$XDG_DATA_HOME/takeoutfm/media`, JSON index like the Mac's `MediaCache`; Ktor
+           streaming to disk, two at a time), Downloads page, playback prefers the local file;
+           the response cache already covers offline browsing.
+     - [ ] **L7 — packaging**: `.desktop` file, icon (from the Play Store artwork), AppStream
+           metainfo; a `.deb` via CPack first (fastest to try here), Flatpak (KDE runtime 6.x,
+           mpv module) once the app is worth sharing.
+   - **Done for #14** when L1–L5 work on this machine (sign in, browse, play music and video,
+     listens and progress reported, MPRIS); L6–L7 can follow as their own issues.
+   - **Risks**: Ktor Curl on K/N's old sysroot against the system libcurl (L0a); seeking past
+     the 15-minute presigned URL (L0c); K/N has no ICU (sort keys only need accent folding);
+     the bridge's JSON cost is fine for pages but not for per-frame state — player position
+     stays in C++ (mpv property observers), never crosses the bridge.
 
 ---
 

@@ -49,6 +49,7 @@ private data class TokenCheck(
 )
 
 /** The connected ListenBrainz user, or null. */
+@Serializable
 data class ListenBrainzUser(val name: String)
 
 /**

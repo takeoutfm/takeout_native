@@ -4,8 +4,10 @@ import com.takeoutfm.shared.store.KeyValueStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
 
 /** The app's colour theme. */
+@Serializable
 enum class ThemeMode { System, Light, Dark }
 
 /**

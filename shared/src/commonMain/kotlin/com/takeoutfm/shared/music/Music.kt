@@ -1,9 +1,12 @@
 package com.takeoutfm.shared.music
 
+import kotlinx.serialization.Serializable
+
 // Music entities for the screens. Ids are prefixed by kind, like video's "m-"/"s-"/"e-":
 // artists "ar-<id>", albums (releases) "al-<id>", tracks "t-<id>". Image URIs are full URLs,
 // or "" when the server has none.
 
+@Serializable
 data class Artist(
     val id: String,
     val name: String,
@@ -16,12 +19,14 @@ data class Artist(
 )
 
 /** A Music Home banner slide: a new album over its artist's background. */
+@Serializable
 data class FeaturedAlbum(
     val album: Album,
     /** The artist's background, or "" (the banner then uses the cover). */
     val backgroundUri: String,
 )
 
+@Serializable
 data class Album(
     val id: String,
     val name: String,
@@ -33,6 +38,7 @@ data class Album(
     val type: String = "",
 )
 
+@Serializable
 data class Track(
     val id: String,
     val title: String,
@@ -48,12 +54,15 @@ data class Track(
 )
 
 /** A play count, from the user's Takeout activity. */
+@Serializable
 data class Counted<T>(val item: T, val count: Int)
 
 /** Which period Activity covers (the server's interval names). */
+@Serializable
 enum class ActivityInterval(val api: String) { Recent("recent"), LastWeek("lastweek"), LastMonth("lastmonth"), ThisMonth("month") }
 
 /** What was played in an [ActivityInterval], most played first. */
+@Serializable
 data class ActivityStats(
     val artists: List<Counted<Artist>> = emptyList(),
     val albums: List<Counted<Album>> = emptyList(),
@@ -61,6 +70,7 @@ data class ActivityStats(
 )
 
 /** A radio station ("st-<id>"): a server-made mix (genre, decade, artist…) or a live stream. */
+@Serializable
 data class Station(
     val id: String,
     val name: String,
@@ -69,25 +79,30 @@ data class Station(
 )
 
 /** Stations of one kind, as a titled row on the Radio tab. */
+@Serializable
 data class StationGroup(
     val kind: StationKind,
     val stations: List<Station>,
 )
 
+@Serializable
 enum class StationKind { Stream, Genre, Period, Artist, Similar, Series, Other }
 
 /** One of the user's playlists ("pl-<id>"). */
+@Serializable
 data class MusicPlaylist(
     val id: String,
     val name: String,
     val trackCount: Int,
 )
 
+@Serializable
 data class MusicFavorites(
     val artists: List<Artist>,
     val tracks: List<Track>,
 )
 
+@Serializable
 data class ArtistDetails(
     val artist: Artist,
     val backgroundUri: String,
@@ -102,6 +117,7 @@ data class ArtistDetails(
     val isFavorite: Boolean,
 )
 
+@Serializable
 data class AlbumDetails(
     val album: Album,
     val artistId: String,
@@ -113,6 +129,7 @@ data class AlbumDetails(
 )
 
 /** Music matches for a search (the server's query syntax, e.g. "artist:Beck" or "guitar:…"). */
+@Serializable
 data class MusicSearchResults(
     val artists: List<Artist> = emptyList(),
     val albums: List<Album> = emptyList(),
@@ -124,6 +141,7 @@ data class MusicSearchResults(
 }
 
 /** One playable entry of a queue, from a spiff playlist. */
+@Serializable
 data class QueueItem(
     val title: String,
     val artist: String,
@@ -140,6 +158,7 @@ data class QueueItem(
 )
 
 /** What a "play this" request returns: a titled list of tracks and where to start. */
+@Serializable
 data class MusicQueue(
     val title: String,
     val creator: String,

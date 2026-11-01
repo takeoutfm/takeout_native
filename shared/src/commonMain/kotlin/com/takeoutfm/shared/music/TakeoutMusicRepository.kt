@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.serialization.Serializable
 
 /**
  * The server's music library for the music screens. Ids are "ar-<id>" (artists), "al-<id>"
@@ -378,6 +379,7 @@ class TakeoutMusicRepository(
 }
 
 /** The server's per-artist playlists (`/api/artists/{id}/{resource}/playlist`). */
+@Serializable
 enum class ArtistMix(val resource: String) {
     /** All of the artist's tracks, shuffled. */
     Shuffle("shuffle"),

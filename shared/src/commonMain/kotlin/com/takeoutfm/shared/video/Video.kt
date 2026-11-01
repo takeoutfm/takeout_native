@@ -1,12 +1,14 @@
 package com.takeoutfm.shared.video
 
 import com.takeoutfm.shared.model.ApiOffset
+import kotlinx.serialization.Serializable
 
 // Video entities for every app's screens. Ids are prefixed by kind so one id space covers
 // everything: movies "m-<id>", TV series "s-<id>", episodes "e-<id>". Image URIs are full URLs,
 // or "" when the server has none.
 
 /** A movie, series or episode in a list. */
+@Serializable
 data class VideoCard(
     val id: String,
     val title: String,
@@ -19,11 +21,14 @@ data class VideoCard(
     val progress: Float? = null,
 )
 
+@Serializable
 data class Genre(val id: String, val name: String)
 
+@Serializable
 data class GenreMovies(val genre: Genre, val movies: List<VideoCard>)
 
 /** A person in Cast & Crew; [role] is the character, or "Director" (see [withDirectorsFirst]). */
+@Serializable
 data class CastCredit(
     val personId: String,
     val name: String,
@@ -31,6 +36,7 @@ data class CastCredit(
     val avatarUri: String,
 )
 
+@Serializable
 data class EpisodeInfo(
     val id: String,
     val season: Int,
@@ -41,9 +47,11 @@ data class EpisodeInfo(
     val runtimeMinutes: Int,
 )
 
+@Serializable
 data class SeasonInfo(val number: Int, val episodes: List<EpisodeInfo>)
 
 /** A movie trailer on YouTube; [uri] opens it (in the YouTube app when there is one). */
+@Serializable
 data class Trailer(
     val name: String,
     val key: String,
@@ -53,6 +61,7 @@ data class Trailer(
 )
 
 /** Where an episode sits: its series (for "go to series"), number, air date and season. */
+@Serializable
 data class EpisodeContext(
     val seriesId: String,
     val seriesTitle: String,
@@ -68,9 +77,11 @@ data class EpisodeContext(
     val label: String get() = "S${season}E$episode"
 }
 
+@Serializable
 enum class VideoKind { Movie, Series, Episode }
 
 /** Details for a movie, a series (Play starts [playTarget]) or an episode. */
+@Serializable
 data class VideoDetails(
     val id: String,
     val kind: VideoKind,
@@ -116,12 +127,15 @@ data class VideoDetails(
     val episode: EpisodeContext? = null,
 )
 
+@Serializable
 enum class CreditKind {
     MoviesActing, MoviesDirecting, MoviesWriting, ShowsActing, ShowsDirecting, ShowsWriting
 }
 
+@Serializable
 data class CreditGroup(val kind: CreditKind, val titles: List<VideoCard>)
 
+@Serializable
 data class PersonInfo(
     val id: String,
     val name: String,
@@ -133,8 +147,10 @@ data class PersonInfo(
     val credits: List<CreditGroup>,
 )
 
+@Serializable
 data class RecommendationSet(val name: String, val titles: List<VideoCard>)
 
+@Serializable
 data class VideoSearchResults(
     val movies: List<VideoCard> = emptyList(),
     val shows: List<VideoCard> = emptyList(),

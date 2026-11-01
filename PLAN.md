@@ -545,15 +545,16 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
        qml/   Main.qml, pages (Kirigami), components
      shared/src/linuxMain/        actuals, LinuxCore (the shared graph), the C bridge, downloads
      ```
-     The Kotlin library is the Mac's `TakeoutCore` + `SwiftCalls` again, exported as C:
-     `takeout_init(dataDir, userAgent)`, `takeout_call(name, argsJson, cb, ctx)` (runs on a
-     Kotlin coroutine; `cb(ctx, resultJson, errorJson)` on a worker thread),
-     `takeout_watch(name, cb, ctx) → id` / `takeout_unwatch(id)` for flows (session state,
-     favorites, downloads), `takeout_free(str)`. Written with `@CName`, so the header is
-     four functions, not Kotlin/Native's generated struct API. Results are JSON of the
-     shared domain types, which need `@Serializable` (about 30 data classes in `music/`,
-     `video/`, `podcast/`; no logic changes). `Core` turns each call into a `QFuture` /
-     QML promise-style callback and re-posts with `QMetaObject::invokeMethod`.
+     The Kotlin library is the Mac's `TakeoutCore` + `SwiftCalls` again, exported as C
+     (`linux/src/takeout.h`): `takeout_init(dataDir, userAgent, secrets, saveSecrets, ctx)`,
+     `takeout_call(name, argsJson, cb, ctx)` (runs on a Kotlin coroutine; `cb(ctx, resultJson,
+     errorJson)` once, on a worker thread), `takeout_watch(name, cb, ctx) → handle` /
+     `takeout_unwatch(handle)` for flows (session, library, favorite tracks, Recently Played,
+     ListenBrainz, settings). Strings given to callbacks live only for the call, so there's
+     no `takeout_free`. Written with `@CName`, so the header is four functions, not
+     Kotlin/Native's generated struct API. Results are JSON of the shared domain types
+     (`@Serializable`). `Core` turns each call into a `QFuture` / QML promise-style callback
+     and re-posts with `QMetaObject::invokeMethod`.
    - **Phases** (each its own commits, checked on this machine against the real server; the
      usual rules about real progress, listens and favorites apply):
      - [x] **L0 — spikes** (done 2026-11-01, branch `spike/linux-l0`; all three pass):
@@ -588,13 +589,19 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            as the Mac's Keychain store is Swift — calling glib from K/N's old sysroot is the
            riskier way. K/N also generates a C API for every public class (35k lines of
            `api.cpp`, a slower link); the app ignores it and declares its four functions.
-     - [ ] **L2 — bridge**: `@Serializable` domain types, `LinuxCore` (given a secure
-           `KeyValueStore` backed by C callbacks into the app's libsecret store), the four C
-           functions and a call table (the Mac's `SwiftCalls` list: library, home, artists, album,
-           search, radio, playlists, favorites, podcasts, video, progress, listens, settings,
-           device-code sign-in). The bridge is tested in Kotlin (`linuxX64Test` calls the
-           `@CName` functions with `MockEngine`); one C++ smoke test (`ctest`) loads the
-           library and calls `version`.
+     - [x] **L2 — bridge** (done 2026-11-01): the domain types (`music/`, `video/`,
+           `podcast/`, their enums — K/N needs `@Serializable` on enums too) serialize;
+           `linuxMain` `linux/`: `LinuxCore`, `LinuxCalls` (70 named calls: the Mac's
+           `SwiftCalls` plus device-code sign-in as `requestCode` / `awaitCode` / `cancelCode`,
+           playlist edits, activity, and `listen*` calls feeding one `ListenSession` from the C++
+           player) and its watchable flows, and `Bridge.kt` (the four `@CName` functions;
+           errors are `{"kind": http|network|argument|unknown|cancelled|failed, "message",
+           "status"}`). The secrets are one JSON object the app keeps in the Secret Service:
+           `SecretStore` starts from it and hands back the whole object on every change, giving
+           the session and ListenBrainz their own key prefixes. `BridgeTest` drives the C
+           functions with C callbacks and `MockEngine` (calls, errors, code sign-in saving the
+           session, watches); `linux/CMakeLists.txt` has the `bridge_smoke` ctest (init, call
+           `version`, watch / unwatch) against the Gradle-built library.
      - [ ] **L3 — shell and music browsing**: CMake builds the Gradle library first
            (`add_custom_command` → `:shared:linkReleaseSharedLinuxX64`), installs it beside the
            binary (`RPATH $ORIGIN`). Kirigami `ApplicationWindow` with a global drawer (Home,

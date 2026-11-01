@@ -2,9 +2,6 @@
 
 package com.takeoutfm.shared.store
 
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.nativeHeap
-import kotlinx.cinterop.ptr
 import kotlinx.cinterop.refTo
 import kotlinx.cinterop.toKString
 import kotlinx.serialization.builtins.MapSerializer
@@ -16,10 +13,6 @@ import platform.posix.fclose
 import platform.posix.fgets
 import platform.posix.fopen
 import platform.posix.fputs
-import platform.posix.pthread_mutex_init
-import platform.posix.pthread_mutex_lock
-import platform.posix.pthread_mutex_t
-import platform.posix.pthread_mutex_unlock
 import platform.posix.rename
 
 /**
@@ -30,15 +23,15 @@ import platform.posix.rename
  */
 class FileStore(directory: String, name: String) : KeyValueStore {
     private val path = "$directory/$name.json"
-    private val lock = nativeHeap.alloc<pthread_mutex_t>().also { pthread_mutex_init(it.ptr, null) }
+    private val lock = PosixLock()
     private val serializer = MapSerializer(String.serializer(), String.serializer())
     private var values: Map<String, String> = read()
 
-    override fun getString(key: String): String? = locked { values[key] }
+    override fun getString(key: String): String? = lock.locked { values[key] }
 
-    override fun putStrings(values: Map<String, String>) = locked { save(this.values + values) }
+    override fun putStrings(values: Map<String, String>) = lock.locked { save(this.values + values) }
 
-    override fun remove(vararg keys: String) = locked { save(values - keys.toSet()) }
+    override fun remove(vararg keys: String) = lock.locked { save(values - keys.toSet()) }
 
     private fun save(updated: Map<String, String>) {
         if (updated == values) return
@@ -68,14 +61,5 @@ class FileStore(directory: String, name: String) : KeyValueStore {
             fclose(file)
         }
         return runCatching { Json.decodeFromString(serializer, text) }.getOrDefault(emptyMap())
-    }
-
-    private inline fun <T> locked(block: () -> T): T {
-        pthread_mutex_lock(lock.ptr)
-        try {
-            return block()
-        } finally {
-            pthread_mutex_unlock(lock.ptr)
-        }
     }
 }

@@ -11,8 +11,11 @@ import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.util.sortedByTitle
 import com.takeoutfm.shared.video.ProgressSource
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /** A podcast ("ps-<id>"). */
+@Serializable
 data class PodcastSeries(
     val id: String,
     val title: String,
@@ -22,14 +25,19 @@ data class PodcastSeries(
 )
 
 /** Where a podcast episode stands for this user. */
+@Serializable
 sealed interface EpisodeProgress {
+    @Serializable @SerialName("NotStarted")
     data object NotStarted : EpisodeProgress
     /** [fraction] 0–1 and minutes left. */
+    @Serializable @SerialName("Started")
     data class Started(val fraction: Float, val minutesLeft: Int) : EpisodeProgress
+    @Serializable @SerialName("Complete")
     data object Complete : EpisodeProgress
 }
 
 /** A podcast episode ("pe-<id>"); [eid] (its GUID) keys progress. */
+@Serializable
 data class PodcastEpisode(
     val id: String,
     val eid: String,
@@ -43,6 +51,7 @@ data class PodcastEpisode(
     val progress: EpisodeProgress = EpisodeProgress.NotStarted,
 )
 
+@Serializable
 data class PodcastDetails(
     val series: PodcastSeries,
     val subscribed: Boolean,

@@ -19,6 +19,7 @@ import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.music.Track
 import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
+import com.takeoutfm.shared.video.VideoDetails
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -228,6 +229,25 @@ class MainViewModel @Inject constructor(
     fun downloadEpisode(title: String, imageUri: String, episodes: List<PodcastEpisode>, index: Int) = download {
         val queue = podcasts.episodesQueue(title, imageUri, episodes, index)
         queue.copy(items = listOfNotNull(queue.items.getOrNull(index)))
+    }
+
+    /** Downloads a movie's or episode's file, to play offline in the video player. */
+    fun downloadVideo(details: VideoDetails) {
+        if (details.etag.isEmpty() || details.videoUri.isEmpty() || details.etag in mediaCache.items.value) return
+        val episode = details.episode
+        val request = mediaCache.videoRequest(
+            etag = details.etag,
+            uri = details.videoUri,
+            videoId = details.id,
+            title = if (episode != null) "${episode.label} ${episode.name}".trim() else details.title,
+            subtitle = episode?.seriesTitle ?: details.year,
+            imageUri = details.backdropUri,
+            // A series' episodes are listed together; each movie on its own.
+            group = episode?.seriesId ?: details.id,
+            groupTitle = episode?.seriesTitle ?: details.title,
+        )
+        DownloadService.sendAddDownload(context, com.takeoutfm.mobile.playback.DownloadService::class.java, request, false)
+        _messages.tryEmit(R.string.download_started_video)
     }
 
     /** Plays downloaded [items] from [index] (works offline). */

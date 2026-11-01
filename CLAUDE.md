@@ -102,7 +102,10 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
   podcast episode lists 15 min; never progress, activity, favorites, playlists, search) until
   Reload or an edit (`TakeoutApi.forgetKept`). The phone emulator goes offline with
   `adb shell svc wifi disable; adb shell svc data disable`. `MainViewModel` adds/removes
-  downloads; `DownloadsScreen` lists them; `DownloadBadge` shows ✓ / progress. The TV doesn't
+  downloads (`downloadVideo` for a movie or episode: `DownloadInfo.videoId`); `DownloadsScreen`
+  lists them (a video opens `VideoPlayerActivity`, which reads downloads from the cache but never
+  writes to it); `DownloadBadge` shows ✓ / progress. The emulator has well under 1 GB free:
+  test video downloads with a small title (The Chronicles of Riddick: Dark Fury, 284 MB). The TV doesn't
   pass a cache, so it always streams.
 
 ## TV architecture

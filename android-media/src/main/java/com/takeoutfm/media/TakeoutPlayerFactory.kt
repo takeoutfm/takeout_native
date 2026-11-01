@@ -42,12 +42,13 @@ class TakeoutPlayerFactory(
     }
 
     /**
-     * A player for Takeout streams; [cache] (music and podcasts) reads tracks kept on the
-     * device by their ETag (the media items' custom cache key) and keeps them as they play.
+     * A player for Takeout streams; [cache] reads files kept on the device by their ETag (the
+     * media items' custom cache key) and, for music and podcasts, keeps them as they play
+     * ([video] only reads: downloaded videos play from it, others stream).
      */
     @OptIn(UnstableApi::class)
-    fun builder(cache: TakeoutMediaCache? = null): ExoPlayer.Builder {
-        val dataSourceFactory = cache?.playbackDataSourceFactory ?: upstream
+    fun builder(cache: TakeoutMediaCache? = null, video: Boolean = false): ExoPlayer.Builder {
+        val dataSourceFactory = (if (video) cache?.videoDataSourceFactory else cache?.playbackDataSourceFactory) ?: upstream
         // Try another decoder before failing, e.g. when the hardware one can't init this stream.
         val renderersFactory = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
         return ExoPlayer.Builder(context, renderersFactory)

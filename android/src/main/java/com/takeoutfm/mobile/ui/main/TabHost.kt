@@ -106,7 +106,7 @@ fun TabHost(
         composable<SettingsRoute> { SettingsScreen(onBack = nav.back) }
         composable<LinkRoute> { LinkScreen(onBack = nav.back) }
         musicPages(mainViewModel, nav, videoNav)
-        composable<VideoRoute> { VideoScreen(videoNav) }
+        composable<VideoRoute> { VideoScreen(mainViewModel, videoNav) }
         composable<PersonRoute> { PersonScreen(videoNav) }
         composable<GenreRoute> { GenreScreen(videoNav) }
     }

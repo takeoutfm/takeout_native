@@ -90,6 +90,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.takeoutfm.mobile.ui.music.DownloadBadge
+import com.takeoutfm.mobile.ui.main.MainViewModel
+import com.takeoutfm.media.offline.CacheStatus
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.OutlinedButton
 
 /** Where the video pages can go. */
 class VideoNav(
@@ -157,8 +163,9 @@ class VideoViewModel @Inject constructor(
  * of its season.
  */
 @Composable
-fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
+fun VideoScreen(main: MainViewModel, nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val downloads by main.downloads.collectAsStateWithLifecycle()
     val offset by viewModel.offset.collectAsStateWithLifecycle()
     val details = (state as? Load.Loaded)?.value
     val context = LocalContext.current
@@ -205,7 +212,7 @@ fun VideoScreen(nav: VideoNav, viewModel: VideoViewModel = hiltViewModel()) {
                     if (details.tagline.isNotEmpty() && details.kind != VideoKind.Episode) {
                         Text(details.tagline, style = MaterialTheme.typography.bodyMedium, fontStyleItalic = true)
                     }
-                    PlayButtons(details, offset, play)
+                    PlayButtons(details, offset, play, downloads[details.etag]?.status) { main.downloadVideo(details) }
                     if (details.description.isNotEmpty()) Text(details.description, style = MaterialTheme.typography.bodyMedium)
                     if (details.genres.isNotEmpty() && details.kind == VideoKind.Movie) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -378,10 +385,16 @@ private fun Backdrop(details: VideoDetails) {
     }
 }
 
-/** Resume ("N min left") and Start over, or just Play. */
+/** Resume ("N min left") and Start over, or just Play; and a movie's or episode's Download. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun PlayButtons(details: VideoDetails, offset: ApiOffset?, play: (startOver: Boolean) -> Unit) {
+private fun PlayButtons(
+    details: VideoDetails,
+    offset: ApiOffset?,
+    play: (startOver: Boolean) -> Unit,
+    download: CacheStatus?,
+    onDownload: () -> Unit,
+) {
     if (details.videoUri.isEmpty()) {
         Text(stringResource(R.string.no_playable_file), color = MaterialTheme.colorScheme.error)
         return
@@ -402,6 +415,23 @@ private fun PlayButtons(details: VideoDetails, offset: ApiOffset?, play: (startO
             Button(onClick = { play(true) }) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.play) + episode, modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+        // A series downloads by episode.
+        if (details.kind != VideoKind.Series && details.etag.isNotEmpty()) {
+            when (download) {
+                null -> OutlinedButton(onClick = onDownload) {
+                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(stringResource(R.string.download), maxLines = 1, modifier = Modifier.padding(start = 6.dp))
+                }
+                else -> OutlinedButton(onClick = {}, enabled = false) {
+                    if (download == CacheStatus.Cached) {
+                        Icon(Icons.Filled.DownloadDone, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.downloaded), maxLines = 1, modifier = Modifier.padding(start = 6.dp))
+                    } else {
+                        DownloadBadge(download)
+                    }
+                }
             }
         }
     }

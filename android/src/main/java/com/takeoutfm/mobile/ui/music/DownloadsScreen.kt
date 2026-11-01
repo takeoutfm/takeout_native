@@ -40,6 +40,8 @@ import com.takeoutfm.mobile.ui.common.Art
 import com.takeoutfm.mobile.ui.common.LoadingOrEmpty
 import com.takeoutfm.mobile.ui.main.MainViewModel
 import com.takeoutfm.shared.util.formatBytes
+import com.takeoutfm.mobile.ui.video.VideoPlayerActivity
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Downloads: what's on the device, by the album, playlist or podcast it came with; each group
@@ -48,6 +50,7 @@ import com.takeoutfm.shared.util.formatBytes
 @Composable
 fun DownloadsScreen(main: MainViewModel, nav: MusicNav) {
     val downloads by main.downloads.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var confirmAll by remember { mutableStateOf(false) }
     val groups = downloads.values
         .groupBy { it.info.group.ifEmpty { it.item.album } }
@@ -77,7 +80,7 @@ fun DownloadsScreen(main: MainViewModel, nav: MusicNav) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            groups.forEach { group -> groupItems(group, main) }
+            groups.forEach { group -> groupItems(group, main, context) }
             item { Spacer(Modifier.height(96.dp)) }
         }
     }
@@ -93,15 +96,21 @@ fun DownloadsScreen(main: MainViewModel, nav: MusicNav) {
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.groupItems(group: List<DownloadedItem>, main: MainViewModel) {
+private fun androidx.compose.foundation.lazy.LazyListScope.groupItems(
+    group: List<DownloadedItem>,
+    main: MainViewModel,
+    context: android.content.Context,
+) {
     val first = group.first()
     val title = first.info.groupTitle.ifEmpty { first.item.album }
     val items = group.map { it.item }
+    // Movies and episodes open the video player one at a time.
+    val video = first.info.videoId.isNotEmpty()
     item(key = "g-${first.info.group}-$title") {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 4.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(formatBytes(group.sumOf { it.bytes }), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            IconButton(onClick = { main.playDownloads(title, items, 0) }) { Icon(Icons.Filled.PlayArrow, stringResource(R.string.play_all)) }
+            if (!video) IconButton(onClick = { main.playDownloads(title, items, 0) }) { Icon(Icons.Filled.PlayArrow, stringResource(R.string.play_all)) }
             IconButton(onClick = { main.removeDownloads(group.map { it.item.etag }) }) { Icon(Icons.Filled.Delete, stringResource(R.string.delete_download)) }
         }
     }
@@ -120,7 +129,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.groupItems(group: Lis
                 )
             },
             trailingContent = { DownloadBadge(d.status) },
-            modifier = Modifier.clickable { main.playDownloads(title, items, group.indexOf(d)) },
+            modifier = Modifier.clickable {
+                if (d.info.videoId.isNotEmpty()) {
+                    VideoPlayerActivity.start(context, d.info.videoId, startOver = false)
+                } else {
+                    main.playDownloads(title, items, group.indexOf(d))
+                }
+            },
         )
     }
 }

@@ -43,6 +43,8 @@ data class DownloadInfo(
     /** The album, playlist or podcast it was downloaded with, and that group's name. */
     val group: String = "",
     val groupTitle: String = "",
+    /** For a movie or TV episode: its id ("m-…", "e-…"), which the video player opens. */
+    val videoId: String = "",
 )
 
 /** A download as the app shows it. */
@@ -54,11 +56,12 @@ data class DownloadedItem(
 )
 
 /**
- * Music and podcast audio on the device: one Media3 [SimpleCache] keyed by the track's ETag
- * (stream URLs redirect to expiring signed URLs, so URLs can't be keys), filled by playback
- * while [cachingEnabled] says so ("Playback Caching"; off, nothing is written but cached
- * tracks still play from here) and by [download]. Nothing is evicted; [remove] frees space.
- * Live streams are never cached (they have no length).
+ * Music, podcast audio and downloaded videos on the device: one Media3 [SimpleCache] keyed by
+ * the file's ETag (stream URLs redirect to expiring signed URLs, so URLs can't be keys), filled
+ * by music playback while [cachingEnabled] says so ("Playback Caching"; off, nothing is written
+ * but cached tracks still play from here) and by downloads. Nothing is evicted; removing
+ * downloads frees space. Live streams are never cached (they have no length), and video
+ * playback only reads ([videoDataSourceFactory]).
  */
 @OptIn(UnstableApi::class)
 class TakeoutMediaCache(
@@ -87,6 +90,9 @@ class TakeoutMediaCache(
     /** For the music player: reads the cache, and writes to it while caching is on. */
     val playbackDataSourceFactory: DataSource.Factory =
         DataSource.Factory { Switching(readOnly.createDataSource(), readWrite.createDataSource(), cachingEnabled) }
+
+    /** For the video player: plays a downloaded video from the cache, else streams it (never kept). */
+    val videoDataSourceFactory: DataSource.Factory = readOnly
 
     val downloads: DownloadManager = DownloadManager(
         context, database, cache, upstream, Executors.newFixedThreadPool(2),
@@ -122,6 +128,24 @@ class TakeoutMediaCache(
                 .setData(json.encodeToString(DownloadInfo.serializer(), info).toByteArray())
                 .build()
         }
+
+    /** The request to download a movie or episode ([videoId]) whose file is [uri] / [etag]. */
+    fun videoRequest(
+        etag: String,
+        uri: String,
+        videoId: String,
+        title: String,
+        subtitle: String,
+        imageUri: String,
+        group: String,
+        groupTitle: String,
+    ): DownloadRequest {
+        val info = DownloadInfo(title, subtitle, "", imageUri, group = group, groupTitle = groupTitle, videoId = videoId)
+        return DownloadRequest.Builder(etag, Uri.parse(uri))
+            .setCustomCacheKey(etag)
+            .setData(json.encodeToString(DownloadInfo.serializer(), info).toByteArray())
+            .build()
+    }
 
     /** Whether [etag] is wholly on the device (downloaded, or streamed through while caching). */
     fun isCached(etag: String): Boolean {

@@ -195,6 +195,7 @@
     <string name="downloading">Downloading…</string>
     <string name="downloaded">Downloaded</string>
     <string name="download_started">Downloading for offline listening</string>
+    <string name="download_started_video">Downloading for offline watching</string>
     <string name="delete_download">Delete download</string>
     <string name="delete_all_downloads">Delete all</string>
     <string name="delete_all_question">Delete every download? This frees %1$s.</string>

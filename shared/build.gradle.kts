@@ -29,7 +29,9 @@ kotlin {
     // library path, and the system library's own glibc symbols are newer than the sysroot's
     // (they're there at run time), so the linker doesn't check them.
     linuxX64 {
-        binaries.sharedLib("takeout")
+        binaries.sharedLib("takeout") {
+            linkerOpts("--version-script=${projectDir}/src/linuxMain/takeout.map")
+        }
         binaries.all {
             linkerOpts("-L/usr/lib/x86_64-linux-gnu", "-lsqlite3", "--allow-shlib-undefined")
         }

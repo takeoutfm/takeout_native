@@ -602,13 +602,27 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            functions with C callbacks and `MockEngine` (calls, errors, code sign-in saving the
            session, watches); `linux/CMakeLists.txt` has the `bridge_smoke` ctest (init, call
            `version`, watch / unwatch) against the Gradle-built library.
-     - [ ] **L3 — shell and music browsing**: CMake builds the Gradle library first
-           (`add_custom_command` → `:shared:linkReleaseSharedLinuxX64`), installs it beside the
-           binary (`RPATH $ORIGIN`). Kirigami `ApplicationWindow` with a global drawer (Home,
-           Artists, Recent, Radio, Playlists, Podcasts, Movies, TV, Downloads, Settings) and a
-           search field; device-code sign-in (the user approves at `<server>/link`); Home (the
-           phone's media bar: Recently Added / New Releases per type), artist and album pages,
-           playlists with Favorite Tracks first, radio. Theme follows Plasma (Kirigami does).
+     - [x] **L3 — shell and music browsing** (done 2026-11-01): `linux/CMakeLists.txt` runs
+           `:shared:linkReleaseSharedLinuxX64` when shared sources change and copies
+           `libtakeout.so` beside the binary (`RPATH $ORIGIN`). The library exports only the
+           four `takeout_*` functions (`shared/src/linuxMain/takeout.map`): it links its own
+           OpenSSL and curl statically, and with them exported Qt's TLS plugin (loading cover
+           images) called into our copy instead of the system `libssl` and crashed. C++:
+           `Core` (QML singleton `TakeoutFM.Core`: `call(name, args, (result, error) => …)`
+           answered on the main thread, a `failed` signal, and the watched states as
+           properties), `SecretStore` (libsecret, one item: schema `com.takeoutfm.linux`), and
+           `ImageCache` (a 500 MB `QNetworkDiskCache`; images need no token). QML (Kirigami,
+           `org.kde.desktop` style, so the theme follows Plasma): device-code sign-in; a
+           global drawer (search field, Home, Artists, Radio, Playlists, Settings — Recent,
+           Podcasts, Movies, TV and Downloads come with their phases); Home (Recently Added /
+           New Releases), Artists (filter), artist page (Popular, releases by type, similar),
+           album page (tracks by disc, similar), Playlists (Favorite Tracks first), Radio by
+           kind, search (artists, albums, tracks, stations) and Settings (server, sign out,
+           Track Activity). Notes: Kirigami Addons isn't a dependency (so no `Avatar`; round
+           photos use `ShadowedTexture`); grids of tiles are `Flow`s sized from an outer
+           width, since a `GridLayout` whose columns follow its own width collapses; pages
+           opened with properties see them before `Component.onCompleted`, but their
+           `on…Changed` handlers fire too, so load from one or the other. Nothing plays yet.
      - [ ] **L4 — music playback**: `Player` on libmpv (`--no-video` for audio, gapless
            `prefetch-playlist`), queue, Now Playing page and a footer mini player, repeat / ♥,
            live streams (ICY title from `metadata/by-key/icy-title`), Recently Played

@@ -1,0 +1,7 @@
+/* libtakeout.so exports only the C API (linux/src/takeout.h). Everything else stays local:
+   the core statically links its own OpenSSL and curl, which must not stand in for the system
+   libssl that Qt loads (Qt's TLS then calls into our copy and crashes). */
+{
+  global: takeout_init; takeout_call; takeout_watch; takeout_unwatch;
+  local: *;
+};

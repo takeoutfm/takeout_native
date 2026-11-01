@@ -6,8 +6,9 @@ plugins {
 }
 
 // The Takeout core shared by every app: API models and the rules that must behave the same on
-// all platforms. Android, and macOS and iOS for the SwiftUI apps in apple/ (PLAN.md phase 10).
-// commonMain must not import Android or java.* APIs; Apple pieces go in appleMain.
+// all platforms. Android, macOS and iOS for the SwiftUI apps in apple/ (PLAN.md phase 10), and
+// Linux for the Qt app in linux/ (phase 12). commonMain must not import Android or java.* APIs;
+// Apple pieces go in appleMain, Linux ones in linuxMain, both native ones in nativeMain.
 kotlin {
     jvmToolchain(17)
 
@@ -20,6 +21,17 @@ kotlin {
         it.binaries.framework {
             baseName = "Shared"
             isStatic = true
+        }
+    }
+
+    // The Linux app's core: libtakeout.so, called from C++ through linuxMain's C functions.
+    // SQLite is the system's: Kotlin/Native's sysroot (glibc 2.19) doesn't search the system
+    // library path, and the system library's own glibc symbols are newer than the sysroot's
+    // (they're there at run time), so the linker doesn't check them.
+    linuxX64 {
+        binaries.sharedLib("takeout")
+        binaries.all {
+            linkerOpts("-L/usr/lib/x86_64-linux-gnu", "-lsqlite3", "--allow-shlib-undefined")
         }
     }
 
@@ -36,9 +48,14 @@ kotlin {
             implementation(libs.androidx.security.crypto)
             implementation(libs.sqldelight.android.driver)
         }
+        nativeMain.dependencies {
+            implementation(libs.sqldelight.native.driver)
+        }
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
-            implementation(libs.sqldelight.native.driver)
+        }
+        linuxMain.dependencies {
+            implementation(libs.ktor.client.curl)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

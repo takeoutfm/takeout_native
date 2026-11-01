@@ -573,16 +573,24 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
              **No `StreamProxy` on Linux.**
            - Needed packages: `qt6-base-dev qt6-declarative-dev libkirigami-dev
              extra-cmake-modules libsecret-1-dev`, plus libmpv-dev, cmake and ninja.
-     - [ ] **L1 — core on Linux**: `linuxX64()` in `shared/build.gradle.kts` with
-           `binaries.sharedLib("takeout")`; `linuxMain`: `httpEngine()` = Curl, `decompose()`
-           (NFD; no ICU in K/N — a small table for Latin, as sort keys only need accents
-           folded), `LinuxDatabase` (SQLDelight native driver, `$XDG_DATA_HOME/takeoutfm/
-           takeout.db`), `FileStore` (JSON per store in `$XDG_CONFIG_HOME/takeoutfm`),
-           `SecretStore` (libsecret cinterop; KWallet answers Secret Service on Plasma 6) for
-           the session and ListenBrainz tokens. `./gradlew :shared:linuxX64Test` runs all of
-           `commonTest` natively — done when it passes here.
-     - [ ] **L2 — bridge**: `@Serializable` domain types, `LinuxCore`, the four C functions
-           and a call table (the Mac's `SwiftCalls` list: library, home, artists, album,
+     - [x] **L1 — core on Linux** (done 2026-11-01): `linuxX64()` with
+           `binaries.sharedLib("takeout")` (19 MB `libtakeout.so`); the SQLite driver and the
+           test database moved to `nativeMain` / `nativeTest` (Apple and Linux). `linuxMain`:
+           `httpEngine()` = Curl; `decompose()` from a generated table of the 790 precomposed
+           Latin, Greek and Cyrillic letters (K/N has no ICU); `LinuxDatabase`; `FileStore`
+           (a JSON file per store, written atomically). SQLite is the system's: linked with
+           `-L/usr/lib/x86_64-linux-gnu --allow-shlib-undefined`, since K/N's sysroot is glibc
+           2.19 and the system library needs newer symbols (present at run time).
+           `./gradlew :shared:linuxX64Test` runs `commonTest` natively: 64 tests pass (one
+           progress test asserted a single post where Kotlin/Native's slower thread start let
+           a second, harmless one through; relaxed). The secret store moved to L2: it's C++
+           (libsecret; KWallet answers Secret Service on Plasma 6) reached through the bridge,
+           as the Mac's Keychain store is Swift — calling glib from K/N's old sysroot is the
+           riskier way. K/N also generates a C API for every public class (35k lines of
+           `api.cpp`, a slower link); the app ignores it and declares its four functions.
+     - [ ] **L2 — bridge**: `@Serializable` domain types, `LinuxCore` (given a secure
+           `KeyValueStore` backed by C callbacks into the app's libsecret store), the four C
+           functions and a call table (the Mac's `SwiftCalls` list: library, home, artists, album,
            search, radio, playlists, favorites, podcasts, video, progress, listens, settings,
            device-code sign-in). The bridge is tested in Kotlin (`linuxX64Test` calls the
            `@CName` functions with `MockEngine`); one C++ smoke test (`ctest`) loads the

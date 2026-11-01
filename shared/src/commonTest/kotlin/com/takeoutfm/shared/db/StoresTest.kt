@@ -54,7 +54,9 @@ class StoresTest {
 
         online = true
         again.sync()
-        assertEquals(listOf("/api/progress"), posted)
+        // The first instance's own background sync may also land now that it's online (seen on
+        // Kotlin/Native, whose threads start later); the server keeps the newest either way.
+        assertTrue(posted.isNotEmpty() && posted.all { it == "/api/progress" }, posted.toString())
         eventually { pendingProgress(db).isEmpty() }
         assertEquals(1, db.progressQueries.all().executeAsList().size)
     }

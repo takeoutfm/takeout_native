@@ -296,8 +296,9 @@ the rest of this section is the plan for what's next.
   - Favorites (`/api/favorite`'s `Artists`/`Tracks`, reloaded on each visit): Play all
     (`/api/favorite/tracks/playlist`), a row of favorite artists, then the favorite tracks as a
     list (selecting one plays the favorites from it). A message when there are none.
-  - Playlists (`/api/playlists`): name tiles (playlists have no art) with track counts; selecting
-    one plays it (`/api/playlists/{id}/playlist`).
+  - Playlists (`/api/playlists`): name tiles (playlists have no art) with track counts, after a
+    Favorite Tracks tile (as on the watch; left out when there are none); selecting one plays it
+    (`/api/playlists/{id}/playlist`, `/api/favorite/tracks/playlist`).
   - Radio (`/api/radio`): one row per kind — Live Radio, Genres, Decades, Artists, Similar,
     Series, More Stations — of name tiles (or the station image); selecting plays the station
     (`/api/radio/{id}/playlist`, a fresh mix each time).

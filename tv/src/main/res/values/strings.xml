@@ -124,6 +124,7 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music_play_all">Play all</string>
     <string name="music_favorite_artists">Artists</string>
     <string name="music_favorite_tracks">Tracks</string>
+    <string name="music_favorite_tracks_playlist">Favorite Tracks</string>
     <string name="music_no_favorites">No favorites yet. Add artists from their page and tracks from Now Playing.</string>
     <string name="music_no_playlists">No playlists yet.</string>
     <string name="music_no_stations">No radio stations.</string>

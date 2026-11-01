@@ -217,6 +217,7 @@ private struct VideoPage: View {
         var parts: [String] = []
         if !details.year.isEmpty { parts.append(details.year) }
         if !details.rating.isEmpty { parts.append(details.rating) }
+        if details.size > 0 { parts.append(formatBytes(details.size)) }
         if details.runtimeMinutes > 0 {
             let h = details.runtimeMinutes / 60, m = details.runtimeMinutes % 60
             parts.append(h > 0 ? "\(h)h \(m)m" : "\(m)m")

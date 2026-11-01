@@ -113,6 +113,7 @@ fun MovieDetails(
                         modifier = Modifier.padding(top = 20.dp),
                         texts = listOf(
                             movieDetails.pgRating,
+                            movieDetails.size,
                             movieDetails.releaseDate,
                             movieDetails.categories.joinToString(", "),
                             movieDetails.duration

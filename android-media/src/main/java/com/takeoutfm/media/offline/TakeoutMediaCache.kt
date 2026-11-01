@@ -199,10 +199,3 @@ class TakeoutMediaCache(
         override fun close() = current.close()
     }
 }
-
-/** Bytes as "12 MB" / "1.4 GB". */
-fun formatBytes(bytes: Long): String = when {
-    bytes >= 1L shl 30 -> "%.1f GB".format(bytes / (1L shl 30).toDouble())
-    bytes >= 1L shl 20 -> "%d MB".format(bytes / (1L shl 20))
-    else -> "%d KB".format((bytes / 1024).coerceAtLeast(1))
-}

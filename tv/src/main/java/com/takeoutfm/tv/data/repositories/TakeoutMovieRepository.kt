@@ -1,5 +1,6 @@
 package com.takeoutfm.tv.data.repositories
 
+import com.takeoutfm.shared.util.formatBytes
 import com.takeoutfm.shared.video.CastCredit
 import com.takeoutfm.shared.video.EpisodeInfo
 import com.takeoutfm.shared.video.TakeoutVideoRepository
@@ -174,6 +175,7 @@ class TakeoutMovieRepository @Inject constructor(
         name = title,
         description = description,
         pgRating = rating.ifEmpty { "NR" },
+        size = if (size > 0) formatBytes(size) else "",
         releaseDate = year,
         categories = genres,
         duration = if (kind == VideoKind.Series) {

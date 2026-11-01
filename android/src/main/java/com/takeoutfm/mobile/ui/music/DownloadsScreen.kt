@@ -35,11 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.takeoutfm.media.offline.CacheStatus
 import com.takeoutfm.media.offline.DownloadedItem
-import com.takeoutfm.media.offline.formatBytes
 import com.takeoutfm.mobile.R
 import com.takeoutfm.mobile.ui.common.Art
 import com.takeoutfm.mobile.ui.common.LoadingOrEmpty
 import com.takeoutfm.mobile.ui.main.MainViewModel
+import com.takeoutfm.shared.util.formatBytes
 
 /**
  * Downloads: what's on the device, by the album, playlist or podcast it came with; each group

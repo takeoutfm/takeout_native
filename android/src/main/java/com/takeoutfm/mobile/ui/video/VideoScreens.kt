@@ -77,6 +77,7 @@ import com.takeoutfm.mobile.ui.music.SectionTitle
 import com.takeoutfm.shared.model.ApiOffset
 import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.progress.TakeoutProgress
+import com.takeoutfm.shared.util.formatBytes
 import com.takeoutfm.shared.video.CreditKind
 import com.takeoutfm.shared.video.GenreMovies
 import com.takeoutfm.shared.video.PersonInfo
@@ -279,6 +280,7 @@ private fun facts(d: VideoDetails): String = listOfNotNull(
     // An episode shows when it aired rather than its year.
     d.episode?.airDate?.let(::airDate) ?: d.year.takeIf { it.isNotEmpty() && it != "0001" },
     d.rating.takeIf { it.isNotEmpty() },
+    d.size.takeIf { it > 0 }?.let(::formatBytes),
     when {
         d.kind == VideoKind.Series -> stringResource(R.string.seasons_episodes, d.seasonCount, d.episodeCount)
         d.runtimeMinutes in 1..59 -> stringResource(R.string.runtime_minutes, d.runtimeMinutes)

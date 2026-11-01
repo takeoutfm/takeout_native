@@ -287,8 +287,8 @@ private fun facts(d: VideoDetails): String = listOfNotNull(
         d.runtimeMinutes > 0 -> stringResource(R.string.runtime, d.runtimeMinutes / 60, d.runtimeMinutes % 60)
         else -> null
     },
+    // Last: directors are in Cast & Crew below.
     d.voteAverage?.let { stringResource(R.string.rating_tmdb, it) },
-    d.directors.takeIf { it.isNotEmpty() }?.joinToString(", "),
 ).joinToString(" · ")
 
 /** Opens [trailer] in the YouTube app (it handles YouTube links), else the browser. */

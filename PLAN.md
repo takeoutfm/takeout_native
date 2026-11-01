@@ -542,7 +542,6 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
               Player.{h,cpp}      libmpv (one player: music, radio, podcasts, video)
               MpvItem.{h,cpp}     mpv render API in a QQuickFramebufferObject
               Mpris.{h,cpp}       org.mpris.MediaPlayer2 over QtDBus
-              StreamProxy.{h,cpp} loopback proxy for video ranges (only if the spike needs it)
        qml/   Main.qml, pages (Kirigami), components
      shared/src/linuxMain/        actuals, LinuxCore (the shared graph), the C bridge, downloads
      ```
@@ -557,16 +556,23 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
      QML promise-style callback and re-posts with `QMetaObject::invokeMethod`.
    - **Phases** (each its own commits, checked on this machine against the real server; the
      usual rules about real progress, listens and favorites apply):
-     - [ ] **L0 — spikes** (half a day each, throwaway branches): (a) `linuxX64` +
-           `ktor-client-curl` links and fetches `/api/index` from a native test; (b) a
-           20-line `sharedLib` with one `@CName` function called from a C++ `main`; (c) mpv in
-           a `QQuickFramebufferObject` plays a Takeout video with
-           `http-header-fields=Authorization: Bearer <media token>` and seeks after 20 min (the
-           presigned redirect expires in 15 — if ffmpeg seeks against the stale redirect, as
-           VLC did, the Mac's `StreamProxy` comes over as `QTcpServer`). Install first:
-           `qt6-base-dev qt6-declarative-dev libkirigami-dev extra-cmake-modules
-           libcurl4-openssl-dev libsecret-1-dev` (libmpv-dev, cmake, ninja and the Kirigami
-           QML module are already here).
+     - [x] **L0 — spikes** (done 2026-11-01, branch `spike/linux-l0`; all three pass):
+           - (a) `linuxX64` + `ktor-client-curl` 3.1.1: a native test fetches over HTTPS from
+             takeout.fm. Ktor 3 links curl and OpenSSL **statically**, so the app needs no
+             system libcurl (`libcurl4-openssl-dev` isn't needed). The K/N toolchain is a
+             one-time ~300 MB download.
+           - (b) A `sharedLib` (13 MB release) with `@CName` functions, called from C++: a plain
+             call, a blocking network call, and an async one answering through a C callback
+             from a Kotlin thread. The generated header types every pointer `void*`, so the
+             app keeps its own small typed header for the four bridge functions.
+           - (c) libmpv 0.41 drawing into a `QQuickFramebufferObject` (OpenGL scene graph,
+             Wayland, VAAPI on the Radeon 780M) plays a Takeout movie (MKV, H.264) with
+             `http-header-fields=Authorization: Bearer <media token>`. Paused 16 min — past the
+             15-minute presigned redirect — then seeking to 25:00 **worked**: on a seek ffmpeg
+             reopens the original `/location` URL and follows a fresh redirect, unlike VLC.
+             **No `StreamProxy` on Linux.**
+           - Needed packages: `qt6-base-dev qt6-declarative-dev libkirigami-dev
+             extra-cmake-modules libsecret-1-dev`, plus libmpv-dev, cmake and ninja.
      - [ ] **L1 — core on Linux**: `linuxX64()` in `shared/build.gradle.kts` with
            `binaries.sharedLib("takeout")`; `linuxMain`: `httpEngine()` = Curl, `decompose()`
            (NFD; no ICU in K/N — a small table for Latin, as sort keys only need accents
@@ -610,8 +616,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            mpv module) once the app is worth sharing.
    - **Done for #14** when L1–L5 work on this machine (sign in, browse, play music and video,
      listens and progress reported, MPRIS); L6–L7 can follow as their own issues.
-   - **Risks**: Ktor Curl on K/N's old sysroot against the system libcurl (L0a); seeking past
-     the 15-minute presigned URL (L0c); K/N has no ICU (sort keys only need accent folding);
+   - **Risks**: (L0 settled the libcurl and presigned-URL ones.) K/N has no ICU (sort keys only
+     need accent folding); libsecret from K/N cinterop (L1);
      the bridge's JSON cost is fine for pages but not for per-frame state — player position
      stays in C++ (mpv property observers), never crosses the bridge.
 

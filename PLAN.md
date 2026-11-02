@@ -677,9 +677,18 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            cache, downloads play (music and video), but playing an album from its page needs
            the server (its playlist response isn't cached) — as on the phone and the Mac,
            offline playback starts from Downloads. Not ported: Playback Caching.
-     - [ ] **L7 — packaging**: `.desktop` file, icon (from the Play Store artwork), AppStream
-           metainfo; a `.deb` via CPack first (fastest to try here), Flatpak (KDE runtime 6.x,
-           mpv module) once the app is worth sharing.
+     - [x] **L7 — packaging** (`.deb` done 2026-11-01): `linux/data/` has
+           `com.takeoutfm.linux.desktop` and `.metainfo.xml` (both validate:
+           `desktop-file-validate`, `appstreamcli validate`) and the hicolor icons, 16–512 px,
+           made by `linux/tools/make-icons.py` from the Mac's source artwork (the exit sign, as
+           a rounded square); the 256 px one is also built in as the window icon's fallback.
+           `cmake --install` puts `takeoutfm` in `bin`, `libtakeout.so` in `lib/takeoutfm`
+           (RUNPATH `$ORIGIN/../lib/takeoutfm`), and the data files in `share`; `cpack` in
+           the build directory makes `takeoutfm_0.1_amd64.deb` (13 MB), with shared-library
+           dependencies from `dpkg-shlibdeps` plus the QML modules and the Plasma style
+           (`qml6-module-org-kde-desktop`) listed by hand. Checked by running the unpacked
+           package. Open: the project's licence for the metainfo (`project_license`) and the
+           package; Flatpak (KDE runtime 6.x, mpv module) once the app is worth sharing.
    - **Done for #14** when L1–L5 work on this machine (sign in, browse, play music and video,
      listens and progress reported, MPRIS); L6–L7 can follow as their own issues.
    - **Risks**: (L0 settled the libcurl and presigned-URL ones.) K/N has no ICU (sort keys only

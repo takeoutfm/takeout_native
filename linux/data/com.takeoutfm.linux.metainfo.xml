@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.takeoutfm.linux</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>TakeoutFM</name>
+  <summary>Music, radio, podcasts, movies and TV from your Takeout server</summary>
+  <description>
+    <p>
+      TakeoutFM plays the music, radio, podcasts, movies and TV on your own Takeout media
+      server.
+    </p>
+    <ul>
+      <li>Browse artists, albums, playlists, radio stations, podcasts, movies and TV</li>
+      <li>Gapless music playback, with Plasma's media controls and keys</li>
+      <li>Movies and episodes resume where you left them, on any of your devices</li>
+      <li>Download music, podcasts and video to play offline</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.takeoutfm.linux.desktop</launchable>
+  <url type="homepage">https://takeout.fm</url>
+  <developer id="fm.takeout">
+    <name>TakeoutFM</name>
+  </developer>
+  <provides>
+    <binary>takeoutfm</binary>
+  </provides>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Player</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1" date="2026-11-01"/>
+  </releases>
+</component>

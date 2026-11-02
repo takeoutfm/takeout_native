@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=TakeoutFM
+GenericName=Media Player
+Comment=Music, radio, podcasts, movies and TV from your Takeout server
+Exec=takeoutfm
+Icon=com.takeoutfm.linux
+Terminal=false
+Categories=AudioVideo;Audio;Video;Player;Qt;KDE;
+Keywords=music;radio;podcast;movies;tv;takeout;
+StartupNotify=true
+SingleMainWindow=true

@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("takeoutfm.com");
     app.setApplicationVersion(PROJECT_VERSION);
     app.setDesktopFileName("com.takeoutfm.linux");
-    app.setWindowIcon(QIcon::fromTheme("audio-headphones"));
+    app.setWindowIcon(QIcon::fromTheme("com.takeoutfm.linux", QIcon(":/icons/hicolor/256x256/apps/com.takeoutfm.linux.png")));
     // libmpv needs C number formatting, which QApplication replaced with the user's locale.
     std::setlocale(LC_NUMERIC, "C");
     // mpv draws video through OpenGL, so Qt Quick must use it too.

@@ -10,6 +10,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(SECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
 qt_standard_project_setup(REQUIRES 6.6)
+include(GNUInstallDirs)
 
 # ---- The shared Kotlin core, libtakeout.so, built by Gradle ----
 
@@ -86,8 +87,39 @@ target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}
 target_link_libraries(takeoutfm PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::OpenGL Qt6::Qml Qt6::Quick Qt6::QuickControls2
     KF6::Kirigami PkgConfig::SECRET PkgConfig::MPV takeout)
-# libtakeout.so sits beside the binary.
-set_target_properties(takeoutfm PROPERTIES BUILD_RPATH "\$ORIGIN" INSTALL_RPATH "\$ORIGIN")
+# The window icon when the installed one isn't there (running from the build directory).
+qt_add_resources(takeoutfm "icon" PREFIX "/" BASE data
+    FILES data/icons/hicolor/256x256/apps/com.takeoutfm.linux.png)
+# libtakeout.so sits beside the binary in the build, and in lib/takeoutfm when installed.
+set_target_properties(takeoutfm PROPERTIES
+    BUILD_RPATH "\$ORIGIN"
+    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")
+
+# ---- Installing and packaging ----
+
+install(TARGETS takeoutfm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/takeoutfm)
+install(FILES data/com.takeoutfm.linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES data/com.takeoutfm.linux.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+install(DIRECTORY data/icons/ DESTINATION ${CMAKE_INSTALL_DATADIR}/icons)
+
+# cpack -G DEB in the build directory makes takeoutfm_<version>_amd64.deb.
+set(CPACK_PACKAGE_NAME takeoutfm)
+set(CPACK_PACKAGE_VENDOR TakeoutFM)
+set(CPACK_PACKAGE_CONTACT "TakeoutFM <defsub@defsub.com>")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Music, radio, podcasts, movies and TV from your Takeout server")
+set(CPACK_PACKAGE_HOMEPAGE_URL https://takeout.fm)
+set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
+set(CPACK_GENERATOR DEB)
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_PACKAGE_SECTION sound)
+# Libraries from what the binary links; libtakeout.so is the package's own.
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "${CMAKE_CURRENT_BINARY_DIR}")
+# QML modules and the style, which nothing links.
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "qml6-module-org-kde-kirigami, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
+include(CPack)
 
 # ---- Tests ----
 

@@ -2,6 +2,7 @@
 <component type="desktop-application">
   <id>com.takeoutfm.linux</id>
   <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
   <name>TakeoutFM</name>
   <summary>Music, radio, podcasts, movies and TV from your Takeout server</summary>
   <description>

@@ -6,6 +6,9 @@ Native clients for the Takeout media server (a separate Go project), in one Grad
 **`PLAN.md`** is the roadmap (modules, phases, decisions) for the shared core, the phone/tablet
 app and later Wear OS / Apple apps; keep it updated as phases land.
 
+Licensed GPL-3.0-or-later (`COPYING`; notices in `LICENSES.md`); the Takeout server is
+AGPL-3.0. Files from Google's JetStream sample (mostly `tv/`) keep their Apache-2.0 headers.
+
 | Module | What |
 |---|---|
 | `:android` | TakeoutFM for phones and tablets (Compose Material 3, Hilt), replacing the Flutter app: `applicationId` `com.takeoutfm.mobile` (debug builds `.debug`), package `com.takeoutfm.mobile`. Phases 1–6 of `PLAN.md` (skeleton, music, history/activity, video, podcasts, downloads). |

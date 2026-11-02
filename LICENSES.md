@@ -1,5 +1,17 @@
 # Open source licenses and copyright notices
 
+TakeoutFM's native apps (this repository) are Copyright 2026 defsub, free software under the
+GNU General Public License, version 3 or (at your option) any later version
+(`GPL-3.0-or-later`; the text is in [COPYING](COPYING)). They're distributed in the hope that
+they'll be useful, but WITHOUT ANY WARRANTY; see the license for details.
+
+Some parts are others' work under their own licenses, which still apply to them:
+
+- The TV app (`tv/`, `tv-benchmark/`) is built on Google's
+  [JetStream](https://github.com/android/tv-samples/tree/main/JetStreamCompose) sample,
+  Copyright Google LLC, under the Apache License 2.0; the files with Google's Apache header keep it.
+- The libraries and media below.
+
 ## [Coil](https://coil-kt.github.io/coil/#license)
 
 Copyright 2022 Coil Contributors

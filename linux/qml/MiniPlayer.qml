@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /**
  * The bar along the bottom while something is queued, as the Mac's: cover and title (opening
@@ -99,12 +99,12 @@ QQC2.ToolBar {
         QQC2.Label {
             visible: Player.live
             text: qsTr("LIVE")
-            color: "white"
+            color: Kirigami.Theme.negativeTextColor
             font.weight: Font.Bold
             font.pointSize: Kirigami.Theme.smallFont.pointSize
             leftPadding: Kirigami.Units.smallSpacing
             rightPadding: Kirigami.Units.smallSpacing
-            background: Rectangle { color: Kirigami.Theme.negativeTextColor; radius: height / 2 }
+            background: Rectangle { color: Kirigami.Theme.negativeBackgroundColor; radius: height / 2 }
         }
         Item { visible: Player.live; Layout.fillWidth: true }
 

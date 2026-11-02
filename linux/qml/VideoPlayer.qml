@@ -4,7 +4,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Window
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /**
  * The video player, over the whole window: resumes where the title was left (or starts over),
@@ -36,7 +36,6 @@ QQC2.Popup {
     background: Rectangle { color: "black" }
 
     component PlayerButton: QQC2.ToolButton {
-        icon.color: "white"
         display: QQC2.AbstractButton.IconOnly
         QQC2.ToolTip.text: text
         QQC2.ToolTip.visible: hovered
@@ -200,6 +199,9 @@ QQC2.Popup {
 
         Item {
             id: controls
+            // Kirigami's colours for controls over images and video (light on dark).
+            Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
+            Kirigami.Theme.inherit: false
             property bool shown: true
             anchors.fill: parent
             opacity: shown ? 1 : 0
@@ -219,14 +221,12 @@ QQC2.Popup {
                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Kirigami.Units.largeSpacing }
                     QQC2.ToolButton {
                         icon.name: "go-previous"
-                        icon.color: "white"
                         text: qsTr("Back")
                         display: QQC2.AbstractButton.IconOnly
                         onClicked: player.finish()
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
-                        color: "white"
                         elide: Text.ElideRight
                         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.3
                         // An episode's already reads "Breaking Bad · S1E3 …".
@@ -248,7 +248,7 @@ QQC2.Popup {
                     anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: Kirigami.Units.largeSpacing }
 
                     RowLayout {
-                        QQC2.Label { text: player.time(seek.pressed ? seek.value : video.position); color: "white" }
+                        QQC2.Label { text: player.time(seek.pressed ? seek.value : video.position) }
                         QQC2.Slider {
                             id: seek
                             Layout.fillWidth: true
@@ -258,7 +258,7 @@ QQC2.Popup {
                             onPressedChanged: if (!pressed) video.seek(value)
                             onMoved: player.showControls()
                         }
-                        QQC2.Label { text: player.time(video.duration); color: "white" }
+                        QQC2.Label { text: player.time(video.duration) }
                     }
                     RowLayout {
                         PlayerButton { icon.name: "media-seek-backward"; text: qsTr("Back 10 seconds"); onClicked: video.skip(-10) }

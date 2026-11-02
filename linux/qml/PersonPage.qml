@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Someone in the library: photo, life and biography, then their films and shows by role. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     required property string personId

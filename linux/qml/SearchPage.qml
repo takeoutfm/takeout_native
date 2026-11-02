@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Search, in the server's syntax ("artist:Beck", plain words): music, then movies and TV. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     property string query

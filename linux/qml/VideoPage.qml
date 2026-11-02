@@ -2,13 +2,13 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /**
  * A movie, series or episode, as the phone shows it: backdrop, facts, Resume / Start over,
  * description, cast and crew, a series' seasons or an episode's season, and similar titles.
  */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     required property string videoId

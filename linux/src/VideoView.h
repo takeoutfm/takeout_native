@@ -2,6 +2,7 @@
 
 #include <QQuickFramebufferObject>
 #include <QVariant>
+#include <qqmlintegration.h>
 
 struct mpv_handle;
 struct mpv_render_context;
@@ -13,6 +14,7 @@ struct mpv_render_context;
 class VideoView : public QQuickFramebufferObject
 {
     Q_OBJECT
+    QML_ELEMENT
     Q_PROPERTY(double position READ position NOTIFY positionChanged)
     Q_PROPERTY(double duration READ duration NOTIFY durationChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)

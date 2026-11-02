@@ -3,6 +3,7 @@
 #include <QJSValue>
 #include <functional>
 #include <QObject>
+#include <QQmlEngine>
 #include <QVariant>
 #include <qqmlintegration.h>
 
@@ -11,6 +12,8 @@
 class Core : public QObject
 {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
     Q_PROPERTY(bool ready READ ready NOTIFY sessionChanged)
     Q_PROPERTY(bool signedIn READ signedIn NOTIFY sessionChanged)
     Q_PROPERTY(QString endpoint READ endpoint NOTIFY sessionChanged)
@@ -23,8 +26,11 @@ class Core : public QObject
     Q_PROPERTY(QVariantMap downloadsByEtag READ downloadsByEtag NOTIFY downloadsChanged)
 
 public:
-    explicit Core(QObject *parent = nullptr);
+    explicit Core(QObject *parent);
     ~Core() override;
+
+    /** QML's Core: the one main() made (the app has one core, created before QML loads). */
+    static Core *create(QQmlEngine *, QJSEngine *);
 
     /** Creates the core in [dataDir]; false if it couldn't be. */
     bool start(const QString &dataDir, const QString &userAgent);

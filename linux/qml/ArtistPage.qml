@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** An artist: popular tracks, albums, singles, other releases and similar artists. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     required property string artistId

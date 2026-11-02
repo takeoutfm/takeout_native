@@ -80,10 +80,21 @@ void setFlag(mpv_handle *mpv, const char *name, bool value)
 QString text(const QVariantMap &map, const char *key) { return map.value(key).toString(); }
 }
 
+namespace {
+Player *instance = nullptr;
+}
+
+Player *Player::create(QQmlEngine *, QJSEngine *)
+{
+    QJSEngine::setObjectOwnership(instance, QJSEngine::CppOwnership);
+    return instance;
+}
+
 Player::Player(Core *core, QObject *parent)
     : QObject(parent)
     , m_core(core)
 {
+    instance = this;
     m_mpv = mpv_create();
     // Music only (L5's video gets its own); cover art embedded in files isn't shown as video.
     for (auto [name, value] : std::initializer_list<std::pair<const char *, const char *>>{

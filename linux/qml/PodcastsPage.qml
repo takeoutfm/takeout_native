@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Podcast series: the subscribed ones, or all the server has. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Podcasts")
@@ -43,24 +43,23 @@ Kirigami.ScrollablePage {
 
     GridView {
         id: grid
+        // No tile is current (or looks selected) until the arrow keys pick one; the grid is
+        // given focus when the page opens, and a new model would make the first tile current.
         currentIndex: -1
+        onCountChanged: currentIndex = -1
+        keyNavigationEnabled: true
         readonly property int columns: Math.max(1, Math.floor(width / (Kirigami.Units.gridUnit * 10)))
         cellWidth: width / columns
         cellHeight: cellWidth + Kirigami.Units.gridUnit * 3
         model: page.series
-        // The grid focuses its current item; a wrapper takes that, so no tile looks selected.
-        delegate: Item {
-            id: cell
+        delegate: AlbumTile {
             required property var modelData
             width: grid.cellWidth
-            height: grid.cellHeight
-            AlbumTile {
-                readonly property var modelData: cell.modelData
-                width: parent.width
-                album: ({name: modelData.title, artist: modelData.author, coverUri: modelData.imageUri})
-                opensAlbum: false
-                onClicked: applicationWindow().open("PodcastPage", {seriesId: modelData.id, series: modelData})
-            }
+            album: ({name: modelData.title, artist: modelData.author, coverUri: modelData.imageUri})
+            opensAlbum: false
+            onClicked: applicationWindow().open("PodcastPage", {seriesId: modelData.id, series: modelData})
+            // Only the current tile holds the grid's focus (a reset leaves it on the first).
+            focus: GridView.isCurrentItem
         }
 
         LoadState {

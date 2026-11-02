@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** An album: cover, artist and year, its tracks by disc, and similar albums. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     required property string albumId

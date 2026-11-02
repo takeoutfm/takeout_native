@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Everything downloaded, by the album, playlist, podcast or title it came with. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Downloads")

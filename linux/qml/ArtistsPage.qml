@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Every artist, A–Z, with a filter. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Artists")
@@ -40,9 +40,16 @@ Kirigami.ScrollablePage {
     ListView {
         model: page.shown
         reuseItems: true
+        // No row is current (or looks selected) until the arrow keys pick one; the list is
+        // given focus when the page opens, and a new model would make the first row current.
+        currentIndex: -1
+        onCountChanged: currentIndex = -1
+        keyNavigationEnabled: true
         delegate: ArtistRow {
             required property var modelData
             artist: modelData
+            // Only the current row holds the list's focus (a reset leaves it on the first).
+            focus: ListView.isCurrentItem
         }
 
         LoadState {

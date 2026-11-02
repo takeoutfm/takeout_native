@@ -3,10 +3,10 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Recently Played on this computer: queues, newest first, resumed where they were left. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Recently Played")
@@ -55,16 +55,17 @@ Kirigami.ScrollablePage {
 
     ListView {
         model: Core.recentlyPlayed
-        // The list focuses its current item; a wrapper takes that, so no row looks selected.
-        delegate: Item {
-            id: cell
+        // No row is current (or looks selected) until the arrow keys pick one; the list is
+        // given focus when the page opens, and a new model would make the first row current.
+        currentIndex: -1
+        onCountChanged: currentIndex = -1
+        keyNavigationEnabled: true
+        delegate: KD.SubtitleDelegate {
+            id: row
             required property var modelData
             width: ListView.view.width
-            height: row.implicitHeight
-        KD.SubtitleDelegate {
-            id: row
-            readonly property var modelData: cell.modelData
-            width: parent.width
+            // Only the current row holds the list's focus (a reset leaves it on the first).
+            focus: ListView.isCurrentItem
             text: modelData.title
             subtitle: page.detail(modelData)
             onClicked: Player.play(page.toQueue(modelData))
@@ -90,7 +91,6 @@ Kirigami.ScrollablePage {
                     opacity: 0.7
                 }
             }
-        }
         }
 
         Kirigami.PlaceholderMessage {

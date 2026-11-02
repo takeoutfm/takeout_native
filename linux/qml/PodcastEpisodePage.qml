@@ -2,14 +2,14 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /**
  * A podcast episode, as the Mac's and the phone's: its art, title, show and date, Resume or
  * Play, Start Over, Mark as Played, Download; the show notes (links open in the browser); then
  * the older and newer episode.
  */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     required property string seriesId

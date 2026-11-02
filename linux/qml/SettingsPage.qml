@@ -2,37 +2,49 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import org.kde.kirigamiaddons.formcard as FormCard
+import TakeoutFM
 
-/** The server, what's reported, and signing out. */
-Kirigami.ScrollablePage {
+/** The server and signing out, what's reported, and About — as KDE apps' settings (FormCard). */
+AppPage {
     id: page
 
     title: qsTr("Settings")
 
-    Kirigami.FormLayout {
-        QQC2.Label {
-            Kirigami.FormData.label: qsTr("Server:")
-            text: Core.endpoint
-        }
-        QQC2.Button {
-            text: qsTr("Sign out…")
-            icon.name: "system-log-out"
-            onClicked: signOut.open()
+    ColumnLayout {
+        spacing: 0
+
+        FormCard.FormHeader { title: qsTr("Account") }
+        FormCard.FormCard {
+            FormCard.FormTextDelegate {
+                text: qsTr("Server")
+                description: Core.endpoint
+            }
+            FormCard.FormDelegateSeparator {}
+            FormCard.FormButtonDelegate {
+                text: qsTr("Sign Out…")
+                icon.name: "system-log-out"
+                onClicked: signOut.open()
+            }
         }
 
-        Kirigami.Separator { Kirigami.FormData.isSection: true; Kirigami.FormData.label: qsTr("Music") }
-        QQC2.Switch {
-            Kirigami.FormData.label: qsTr("Track activity:")
-            text: qsTr("Report plays to the Takeout server")
-            checked: Core.settings.reportPlays ?? true
-            onToggled: Core.call("setSettings", {reportPlays: checked})
+        FormCard.FormHeader { title: qsTr("Music") }
+        FormCard.FormCard {
+            FormCard.FormSwitchDelegate {
+                text: qsTr("Track activity")
+                description: qsTr("Report plays to the Takeout server")
+                checked: Core.settings.reportPlays ?? true
+                onToggled: Core.call("setSettings", {reportPlays: checked})
+            }
         }
 
-        Kirigami.Separator { Kirigami.FormData.isSection: true; Kirigami.FormData.label: qsTr("About") }
-        QQC2.Label {
-            Kirigami.FormData.label: qsTr("Version:")
-            text: Qt.application.version
+        FormCard.FormCard {
+            Layout.topMargin: Kirigami.Units.largeSpacing * 2
+            FormCard.FormButtonDelegate {
+                text: qsTr("About TakeoutFM")
+                icon.name: "help-about"
+                onClicked: applicationWindow().pageStack.push(Qt.createComponent("org.kde.kirigamiaddons.formcard", "AboutPage"))
+            }
         }
     }
 

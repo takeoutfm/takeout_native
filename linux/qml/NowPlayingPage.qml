@@ -3,7 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
-import TakeoutFM.Core
+import TakeoutFM
 
 /** What's playing: cover, title, seek bar and controls, beside (or over) the queue. */
 Kirigami.Page {

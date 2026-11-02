@@ -2,7 +2,6 @@
 #include "ImageCache.h"
 #include "Mpris.h"
 #include "Player.h"
-#include "VideoView.h"
 
 #include <QApplication>
 #include <QDir>
@@ -30,7 +29,7 @@ int main(int argc, char *argv[])
     // Plasma's look; Kirigami follows its colours elsewhere too.
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) QQuickStyle::setStyle("org.kde.desktop");
 
-    Core core;
+    Core core(nullptr);
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (!core.start(dataDir, "TakeoutFM-Linux/" PROJECT_VERSION)) {
         qCritical("TakeoutFM: can't open the data in %s", qPrintable(dataDir));
@@ -43,9 +42,6 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     ImageCache images;
     engine.setNetworkAccessManagerFactory(&images);
-    qmlRegisterSingletonInstance("TakeoutFM.Core", 1, 0, "Core", &core);
-    qmlRegisterSingletonInstance("TakeoutFM.Core", 1, 0, "Player", &player);
-    qmlRegisterType<VideoView>("TakeoutFM.Core", 1, 0, "VideoView");
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
                      Qt::QueuedConnection);
     engine.loadFromModule("TakeoutFM", "Main");

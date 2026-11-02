@@ -3,6 +3,7 @@
 #include <QElapsedTimer>
 #include <optional>
 #include <QObject>
+#include <QQmlEngine>
 #include <QTimer>
 #include <QVariant>
 
@@ -16,6 +17,8 @@ class Core;
 class Player : public QObject
 {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
     Q_PROPERTY(QVariantList items READ items NOTIFY itemsChanged)
     Q_PROPERTY(QString queueTitle READ queueTitle NOTIFY itemsChanged)
     Q_PROPERTY(bool hasQueue READ hasQueue NOTIFY itemsChanged)
@@ -36,6 +39,9 @@ public:
 
     explicit Player(Core *core, QObject *parent = nullptr);
     ~Player() override;
+
+    /** QML's Player: the one main() made. */
+    static Player *create(QQmlEngine *, QJSEngine *);
 
     /** Plays [queue] (a MusicQueue) from its start track, or from [start] when it's ≥ 0. */
     Q_INVOKABLE void play(const QVariantMap &queue, bool shuffled = false, int start = -1);

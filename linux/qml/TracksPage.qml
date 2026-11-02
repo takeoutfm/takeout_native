@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** A playlist's tracks, or Favorite Tracks when [playlistId] is empty. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     required property string playlistId
@@ -53,9 +53,16 @@ Kirigami.ScrollablePage {
     ListView {
         model: page.tracks
         reuseItems: true
+        // No row is current (or looks selected) until the arrow keys pick one; the list is
+        // given focus when the page opens, and a new model would make the first row current.
+        currentIndex: -1
+        onCountChanged: currentIndex = -1
+        keyNavigationEnabled: true
         delegate: TrackRow {
             required property var modelData
             required property int index
+            // Only the current row holds the list's focus (a reset leaves it on the first).
+            focus: ListView.isCurrentItem
             onClicked: Player.play(page.queue, false, index)
             etag: modelData.etag
             title: modelData.title

@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Video's front page, as the Mac's Watch: Continue Watching, Recently Added, New Releases, TV. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Watch")

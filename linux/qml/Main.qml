@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 Kirigami.ApplicationWindow {
     id: root
@@ -81,17 +81,7 @@ Kirigami.ApplicationWindow {
         if (pageStack.currentItem?.objectName !== "nowPlaying") open("NowPlayingPage")
     }
 
-    // Under the pages, beside the drawer (Kirigami lays a window footer out under the drawer, offset).
-    pageStack.anchors.bottomMargin: miniPlayer.height
-    MiniPlayer {
-        id: miniPlayer
-        parent: root.contentItem
-        anchors.left: root.pageStack.left
-        anchors.right: root.pageStack.right
-        anchors.bottom: parent.bottom
-        visible: Core.signedIn && Player.hasQueue && root.pageStack.currentItem?.objectName !== "nowPlaying"
-        onOpen: root.showNowPlaying()
-    }
+    // The Now Playing bar is each page's footer (AppPage).
 
     // Sign-in or Recently Played (the Mac's first page), once the session is known and whenever signing in or out changes it
     // (the session also changes when tokens are refreshed).

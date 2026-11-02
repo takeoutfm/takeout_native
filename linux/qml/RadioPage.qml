@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Radio: live streams and the server's mixes (genres, decades, artists…), by kind. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Radio")

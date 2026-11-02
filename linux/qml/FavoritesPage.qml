@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import TakeoutFM.Core
+import TakeoutFM
 
 /** Favorite artists (a row) and tracks, as the Mac's Favorites. */
-Kirigami.ScrollablePage {
+AppPage {
     id: page
 
     title: qsTr("Favorites")

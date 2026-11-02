@@ -30,9 +30,20 @@ struct Watcher {
 };
 }
 
+namespace {
+Core *instance = nullptr;
+}
+
 Core::Core(QObject *parent)
     : QObject(parent)
 {
+    instance = this;
+}
+
+Core *Core::create(QQmlEngine *, QJSEngine *)
+{
+    QJSEngine::setObjectOwnership(instance, QJSEngine::CppOwnership);
+    return instance;
 }
 
 Core::~Core()

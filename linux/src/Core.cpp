@@ -59,7 +59,7 @@ bool Core::start(const QString &dataDir, const QString &userAgent)
         secrets.empty() ? nullptr : secrets.c_str(),
         [](void *, const char *json) { SecretStore::save(json); }, nullptr);
     if (status != 0) return false;
-    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads"}) watch(name);
+    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads", "listenBrainz"}) watch(name);
     return true;
 }
 
@@ -97,6 +97,9 @@ void Core::updated(const QByteArray &name, const QVariant &value)
     } else if (name == "recentlyPlayed") {
         m_recentlyPlayed = value.toList();
         Q_EMIT recentlyPlayedChanged();
+    } else if (name == "listenBrainz") {
+        m_listenBrainzUser = value.toMap().value("name").toString();
+        Q_EMIT listenBrainzChanged();
     } else if (name == "downloads") {
         m_downloads = value.toList();
         m_downloadsByEtag.clear();

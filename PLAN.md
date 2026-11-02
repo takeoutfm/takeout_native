@@ -647,7 +647,9 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            `KI18n.i18n()` / `i18np()` from `import org.kde.ki18n`; `Messages.sh` extracts them),
            KCoreAddons (`KAboutData`: GPL-3.0-or-later, homepage, bugs to the GitLab issues),
            KDBusAddons (`KDBusService::Unique`: a second launch raises the first window),
-           KCrash; Kirigami Addons' FormCard for Settings and About. `Core`, `Player` and
+           KCrash; Kirigami Addons' FormCard for Settings and About. Settings has ListenBrainz as
+           the Mac's (user token → Connected as, Submit listens, Disconnect; `Core.listenBrainzUser`
+           follows the bridge's `listenBrainz` watch; the token is kept in the Secret Service). `Core`, `Player` and
            `VideoView` register declaratively (`QML_SINGLETON` with `create()` returning
            main()'s instances; `Core` has no default constructor, or QML builds its own) in the
            `TakeoutFM` module, imported by the pages (`import TakeoutFM`: they sit in `qml/`).

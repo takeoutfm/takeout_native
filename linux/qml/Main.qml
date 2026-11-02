@@ -128,6 +128,8 @@ Kirigami.ApplicationWindow {
         collapsible: false
         header: Kirigami.SearchField {
             id: search
+            // Searches the server on Enter, not as each letter is typed (Kirigami's default).
+            autoAccept: false
             placeholderText: KI18n.i18n("Artists, albums, tracks")
             onAccepted: {
                 const query = text.trim()

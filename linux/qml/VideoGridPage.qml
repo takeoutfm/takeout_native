@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /**
  * A grid of posters from shared call [call] with [args]: all movies, favorites, a genre. The
@@ -60,7 +61,7 @@ AppPage {
             width: parent.width - Kirigami.Units.gridUnit * 4
             visible: !page.loading && !page.error && page.cards.length === 0
             icon.name: "video-x-generic"
-            text: qsTr("Nothing here")
+            text: KI18n.i18n("Nothing here")
         }
     }
 }

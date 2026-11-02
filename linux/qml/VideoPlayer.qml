@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /**
  * The video player, over the whole window: resumes where the title was left (or starts over),
@@ -68,7 +69,7 @@ QQC2.Popup {
             if (id !== videoId) return
             if (!d || d.videoUri === "") {
                 applicationWindow().showPassiveNotification(
-                    d ? qsTr("The server has no playable file for this title.") : qsTr("Can't load this title"))
+                    d ? KI18n.i18n("The server has no playable file for this title.") : KI18n.i18n("Can't load this title"))
                 finish()
                 return
             }
@@ -179,7 +180,7 @@ QQC2.Popup {
                 if (player.details?.nextEpisodeId) player.start(player.details.nextEpisodeId, true)
                 else player.finish()
             }
-            onFailed: (message) => applicationWindow().showPassiveNotification(qsTr("Can't play this: %1").arg(message))
+            onFailed: (message) => applicationWindow().showPassiveNotification(KI18n.i18n("Can't play this: %1", message))
         }
 
         QQC2.BusyIndicator {
@@ -221,7 +222,7 @@ QQC2.Popup {
                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Kirigami.Units.largeSpacing }
                     QQC2.ToolButton {
                         icon.name: "go-previous"
-                        text: qsTr("Back")
+                        text: KI18n.i18n("Back")
                         display: QQC2.AbstractButton.IconOnly
                         onClicked: player.finish()
                     }
@@ -261,25 +262,25 @@ QQC2.Popup {
                         QQC2.Label { text: player.time(video.duration) }
                     }
                     RowLayout {
-                        PlayerButton { icon.name: "media-seek-backward"; text: qsTr("Back 10 seconds"); onClicked: video.skip(-10) }
+                        PlayerButton { icon.name: "media-seek-backward"; text: KI18n.i18n("Back 10 seconds"); onClicked: video.skip(-10) }
                         PlayerButton {
                             icon.name: video.playing ? "media-playback-pause" : "media-playback-start"
                             icon.width: Kirigami.Units.iconSizes.medium
                             icon.height: Kirigami.Units.iconSizes.medium
-                            text: video.playing ? qsTr("Pause") : qsTr("Play")
+                            text: video.playing ? KI18n.i18n("Pause") : KI18n.i18n("Play")
                             onClicked: video.togglePlay()
                         }
-                        PlayerButton { icon.name: "media-seek-forward"; text: qsTr("Forward 10 seconds"); onClicked: video.skip(10) }
+                        PlayerButton { icon.name: "media-seek-forward"; text: KI18n.i18n("Forward 10 seconds"); onClicked: video.skip(10) }
                         PlayerButton {
                             visible: !!player.details?.nextEpisodeId
                             icon.name: "media-skip-forward"
-                            text: qsTr("Next episode")
+                            text: KI18n.i18n("Next episode")
                             onClicked: { player.save(); player.start(player.details.nextEpisodeId, true) }
                         }
                         Item { Layout.fillWidth: true }
                         PlayerButton {
                             icon.name: "audio-volume-high"
-                            text: qsTr("Audio")
+                            text: KI18n.i18n("Audio")
                             enabled: video.audioTracks.length > 1
                             onClicked: audioMenu.popup()
                             QQC2.Menu {
@@ -301,13 +302,13 @@ QQC2.Popup {
                         }
                         PlayerButton {
                             icon.name: "media-view-subtitles-symbolic"
-                            text: qsTr("Subtitles")
+                            text: KI18n.i18n("Subtitles")
                             enabled: video.subtitleTracks.length > 0
                             onClicked: subtitleMenu.popup()
                             QQC2.Menu {
                                 id: subtitleMenu
                                 QQC2.MenuItem {
-                                    text: qsTr("Off")
+                                    text: KI18n.i18n("Off")
                                     checkable: true
                                     checked: !video.subtitleTracks.some(t => t.selected)
                                     onTriggered: video.setSubtitle(0)
@@ -326,7 +327,7 @@ QQC2.Popup {
                         }
                         PlayerButton {
                             icon.name: "speedometer"
-                            text: qsTr("Speed")
+                            text: KI18n.i18n("Speed")
                             onClicked: speedMenu.popup()
                             QQC2.Menu {
                                 id: speedMenu
@@ -334,7 +335,7 @@ QQC2.Popup {
                                     model: [0.5, 0.75, 1, 1.25, 1.5, 2]
                                     QQC2.MenuItem {
                                         required property real modelData
-                                        text: modelData === 1 ? qsTr("Normal") : `${modelData}×`
+                                        text: modelData === 1 ? KI18n.i18n("Normal") : `${modelData}×`
                                         checkable: true
                                         checked: Math.abs(video.speed - modelData) < 0.01
                                         onTriggered: video.speed = modelData
@@ -344,7 +345,7 @@ QQC2.Popup {
                         }
                         PlayerButton {
                             icon.name: applicationWindow().visibility === Window.FullScreen ? "view-restore" : "view-fullscreen"
-                            text: qsTr("Full screen")
+                            text: KI18n.i18n("Full screen")
                             onClicked: player.toggleFullScreen()
                         }
                     }

@@ -2,12 +2,13 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Podcast series: the subscribed ones, or all the server has. */
 AppPage {
     id: page
 
-    title: qsTr("Podcasts")
+    title: KI18n.i18n("Podcasts")
 
     property bool subscribedOnly: true
     property var series: []
@@ -28,13 +29,13 @@ AppPage {
 
     actions: [
         Kirigami.Action {
-            text: qsTr("Subscribed")
+            text: KI18n.i18n("Subscribed")
             checkable: true
             checked: page.subscribedOnly
             onTriggered: page.subscribedOnly = true
         },
         Kirigami.Action {
-            text: qsTr("All")
+            text: KI18n.i18n("All")
             checkable: true
             checked: !page.subscribedOnly
             onTriggered: page.subscribedOnly = false
@@ -73,7 +74,7 @@ AppPage {
             width: parent.width - Kirigami.Units.gridUnit * 4
             visible: !page.loading && !page.error && page.series.length === 0
             icon.name: "podcast-symbolic"
-            text: page.subscribedOnly ? qsTr("No subscriptions") : qsTr("No podcasts")
+            text: page.subscribedOnly ? KI18n.i18n("No subscriptions") : KI18n.i18n("No podcasts")
         }
     }
 }

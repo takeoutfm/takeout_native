@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Someone in the library: photo, life and biography, then their films and shows by role. */
 AppPage {
@@ -17,12 +18,12 @@ AppPage {
     title: person?.name ?? name
 
     readonly property var kindNames: ({
-        MoviesActing: qsTr("Movies"),
-        MoviesDirecting: qsTr("Directed"),
-        MoviesWriting: qsTr("Written"),
-        ShowsActing: qsTr("TV"),
-        ShowsDirecting: qsTr("TV, directed"),
-        ShowsWriting: qsTr("TV, written"),
+        MoviesActing: KI18n.i18n("Movies"),
+        MoviesDirecting: KI18n.i18n("Directed"),
+        MoviesWriting: KI18n.i18n("Written"),
+        ShowsActing: KI18n.i18n("TV"),
+        ShowsDirecting: KI18n.i18n("TV, directed"),
+        ShowsWriting: KI18n.i18n("TV, written"),
     })
 
     function load() {

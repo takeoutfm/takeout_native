@@ -3,20 +3,21 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Radio: live streams and the server's mixes (genres, decades, artists…), by kind. */
 AppPage {
     id: page
 
-    title: qsTr("Radio")
+    title: KI18n.i18n("Radio")
 
     property var groups: []
     property bool loading: false
     property var error: null
 
     readonly property var kindNames: ({
-        Stream: qsTr("Streams"), Genre: qsTr("Genres"), Period: qsTr("Decades"),
-        Artist: qsTr("Artists"), Similar: qsTr("Similar"), Series: qsTr("Series"), Other: qsTr("Other"),
+        Stream: KI18n.i18n("Streams"), Genre: KI18n.i18n("Genres"), Period: KI18n.i18n("Decades"),
+        Artist: KI18n.i18n("Artists"), Similar: KI18n.i18n("Similar"), Series: KI18n.i18n("Series"), Other: KI18n.i18n("Other"),
     })
 
     function load() {

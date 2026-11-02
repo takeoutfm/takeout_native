@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /**
  * A movie, series or episode, as the phone shows it: backdrop, facts, Resume / Start over,
@@ -58,9 +59,9 @@ AppPage {
 
     /** "S2E5 · Mar 3, 2014 · TV-14 · 47 min · ★ 8.1/10", as the phone. */
     function facts(d) {
-        const runtime = d.kind === "Series" ? qsTr("%1 seasons · %2 episodes").arg(d.seasonCount).arg(d.episodeCount)
-            : d.runtimeMinutes > 59 ? qsTr("%1h %2m").arg(Math.floor(d.runtimeMinutes / 60)).arg(String(d.runtimeMinutes % 60).padStart(2, "0"))
-            : d.runtimeMinutes > 0 ? qsTr("%1 min").arg(d.runtimeMinutes) : ""
+        const runtime = d.kind === "Series" ? KI18n.i18np("1 season", "%1 seasons", d.seasonCount) + " · " + KI18n.i18np("1 episode", "%1 episodes", d.episodeCount)
+            : d.runtimeMinutes > 59 ? KI18n.i18n("%1h %2m", Math.floor(d.runtimeMinutes / 60), String(d.runtimeMinutes % 60).padStart(2, "0"))
+            : d.runtimeMinutes > 0 ? KI18n.i18n("%1 min", d.runtimeMinutes) : ""
         const aired = d.episode?.airDate ? new Date(d.episode.airDate + "T00:00:00").toLocaleDateString(Qt.locale(), Locale.ShortFormat) : ""
         return [
             d.episode ? `S${d.episode.season}E${d.episode.episode}` : "",
@@ -68,7 +69,7 @@ AppPage {
             d.rating,
             d.size > 0 ? applicationWindow().formatBytes(d.size) : "",
             runtime,
-            d.voteAverage !== null && d.voteAverage !== undefined ? qsTr("★ %1/10").arg(d.voteAverage.toFixed(1)) : "",
+            d.voteAverage !== null && d.voteAverage !== undefined ? KI18n.i18n("★ %1/10", d.voteAverage.toFixed(1)) : "",
         ].filter(s => s && s.length > 0).join(" · ")
     }
 
@@ -82,14 +83,14 @@ AppPage {
     actions: [
         Kirigami.Action {
             visible: !!page.details?.favoritePath
-            text: page.details?.isFavorite ? qsTr("Unfavorite") : qsTr("Favorite")
+            text: page.details?.isFavorite ? KI18n.i18n("Unfavorite") : KI18n.i18n("Favorite")
             icon.name: page.details?.isFavorite ? "starred-symbolic" : "non-starred-symbolic"
             onTriggered: Core.call("setVideoFavorite", {path: page.details.favoritePath, favorite: !page.details.isFavorite},
                                    (r, error) => { if (!error) page.load() })
         },
         Kirigami.Action {
             visible: (page.details?.trailers.length ?? 0) > 0
-            text: qsTr("Trailer")
+            text: KI18n.i18n("Trailer")
             icon.name: "media-playback-start"
             onTriggered: Qt.openUrlExternally(page.details.trailers[0].uri)
         }
@@ -153,26 +154,26 @@ AppPage {
 
             QQC2.Label {
                 visible: page.details?.videoUri === ""
-                text: qsTr("The server has no playable file for this title.")
+                text: KI18n.i18n("The server has no playable file for this title.")
                 color: Kirigami.Theme.negativeTextColor
             }
             QQC2.Button {
                 visible: page.details?.videoUri !== "" && !!page.offset
                 icon.name: "media-playback-start"
-                text: qsTr("Resume") + parent.target + (page.offset
-                    ? " · " + qsTr("%1 min left").arg(Math.max(1, Math.floor((page.offset.Duration - page.offset.Offset) / 60))) : "")
+                text: KI18n.i18n("Resume") + parent.target + (page.offset
+                    ? " · " + KI18n.i18n("%1 min left", Math.max(1, Math.floor((page.offset.Duration - page.offset.Offset) / 60))) : "")
                 onClicked: applicationWindow().playVideo(page.videoId, false)
             }
             QQC2.Button {
                 visible: page.details?.videoUri !== "" && !!page.offset
                 icon.name: "media-seek-backward"
-                text: qsTr("Start over")
+                text: KI18n.i18n("Start over")
                 onClicked: applicationWindow().playVideo(page.videoId, true)
             }
             QQC2.Button {
                 visible: page.details?.videoUri !== "" && !page.offset
                 icon.name: "media-playback-start"
-                text: qsTr("Play") + parent.target
+                text: KI18n.i18n("Play") + parent.target
                 onClicked: applicationWindow().playVideo(page.videoId, false)
             }
             // A movie or episode can be downloaded to watch offline.
@@ -181,11 +182,11 @@ AppPage {
                 visible: page.details?.videoUri !== "" && page.details?.kind !== "Series" && (page.details?.etag ?? "") !== ""
                 enabled: download?.state !== "Queued" && download?.state !== "Downloading"
                 icon.name: download?.state === "Done" ? "edit-delete-remove" : "download"
-                text: download?.state === "Done" ? qsTr("Remove Download")
-                    : download?.state === "Downloading" ? qsTr("Downloading %1%").arg(Math.round(download.fraction * 100))
-                    : download?.state === "Queued" ? qsTr("Waiting to download")
-                    : download?.state === "Failed" ? qsTr("Download again")
-                    : qsTr("Download") + (page.details?.size > 0 ? ` (${applicationWindow().formatBytes(page.details.size)})` : "")
+                text: download?.state === "Done" ? KI18n.i18n("Remove Download")
+                    : download?.state === "Downloading" ? KI18n.i18n("Downloading %1%", Math.round(download.fraction * 100))
+                    : download?.state === "Queued" ? KI18n.i18n("Waiting to download")
+                    : download?.state === "Failed" ? KI18n.i18n("Download again")
+                    : KI18n.i18n("Download") + (page.details?.size > 0 ? ` (${applicationWindow().formatBytes(page.details.size)})` : "")
                 onClicked: {
                     if (download?.state === "Done") Core.call("removeDownloads", {etags: [page.details.etag]})
                     else if (download?.state === "Failed") Core.call("retryDownload", {etag: page.details.etag})
@@ -220,11 +221,11 @@ AppPage {
         // A series' seasons.
         RowLayout {
             visible: page.isSeries && (page.details?.seasons.length ?? 0) > 0
-            SectionHeading { text: qsTr("Episodes") }
+            SectionHeading { text: KI18n.i18n("Episodes") }
             Item { Layout.fillWidth: true }
             QQC2.ComboBox {
                 visible: (page.details?.seasons.length ?? 0) > 1
-                model: (page.details?.seasons ?? []).map(s => qsTr("Season %1").arg(s.number))
+                model: (page.details?.seasons ?? []).map(s => KI18n.i18n("Season %1", s.number))
                 currentIndex: (page.details?.seasons ?? []).findIndex(s => s.number === page.shownSeason?.number)
                 onActivated: (index) => page.season = page.details.seasons[index].number
             }
@@ -237,7 +238,7 @@ AppPage {
         // The rest of an episode's season.
         SectionHeading {
             visible: (page.details?.episode?.seasonEpisodes.length ?? 0) > 1
-            text: qsTr("Season %1").arg(page.details?.episode?.season ?? 0)
+            text: KI18n.i18n("Season %1", page.details?.episode?.season ?? 0)
         }
         Repeater {
             model: (page.details?.episode?.seasonEpisodes.length ?? 0) > 1 ? page.details.episode.seasonEpisodes : []
@@ -249,7 +250,7 @@ AppPage {
         }
 
         // Cast and crew.
-        SectionHeading { text: qsTr("Cast & Crew"); visible: (page.details?.cast.length ?? 0) > 0 }
+        SectionHeading { text: KI18n.i18n("Cast & Crew"); visible: (page.details?.cast.length ?? 0) > 0 }
         Flow {
             Layout.fillWidth: true
             visible: (page.details?.cast.length ?? 0) > 0
@@ -261,9 +262,9 @@ AppPage {
         }
         Repeater {
             model: page.details ? [
-                [qsTr("Directed by"), page.details.directors],
-                [qsTr("Written by"), page.details.writers],
-                [qsTr("Music by"), page.details.composers],
+                [KI18n.i18n("Directed by"), page.details.directors],
+                [KI18n.i18n("Written by"), page.details.writers],
+                [KI18n.i18n("Music by"), page.details.composers],
             ].filter(r => r[1].length > 0) : []
             QQC2.Label {
                 required property var modelData
@@ -274,6 +275,6 @@ AppPage {
             }
         }
 
-        VideoFlow { title: qsTr("More Like This"); cards: page.details?.similar ?? []; limit: 12 }
+        VideoFlow { title: KI18n.i18n("More Like This"); cards: page.details?.similar ?? []; limit: 12 }
     }
 }

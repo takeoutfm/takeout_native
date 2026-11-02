@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Albums from shared call [call] as a grid: Recently Added, New Releases (the Mac's pages). */
 AppPage {
@@ -26,7 +27,7 @@ AppPage {
 
     actions: [
         Kirigami.Action {
-            text: qsTr("Reload")
+            text: KI18n.i18n("Reload")
             icon.name: "view-refresh"
             displayHint: Kirigami.DisplayHint.AlwaysHide
             onTriggered: {

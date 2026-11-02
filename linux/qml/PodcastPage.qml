@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** A podcast: its cover and description, subscribe, and episodes that resume where they were left. */
 AppPage {
@@ -47,15 +48,15 @@ AppPage {
     /** "12 min left", "Played", or the date. */
     function status(episode) {
         const progress = episode.progress
-        if (progress?.type === "Complete") return qsTr("Played")
-        if (progress?.type === "Started") return qsTr("%1 min left").arg(progress.minutesLeft)
+        if (progress?.type === "Complete") return KI18n.i18n("Played")
+        if (progress?.type === "Started") return KI18n.i18n("%1 min left", progress.minutesLeft)
         return ""
     }
 
     actions: [
         Kirigami.Action {
             visible: !!page.details
-            text: page.details?.subscribed ? qsTr("Unsubscribe") : qsTr("Subscribe")
+            text: page.details?.subscribed ? KI18n.i18n("Unsubscribe") : KI18n.i18n("Subscribe")
             icon.name: page.details?.subscribed ? "list-remove" : "list-add"
             onTriggered: Core.call("setSubscribed", {seriesId: page.seriesId, subscribed: !page.details.subscribed},
                                    (r, error) => { if (!error) page.load() })
@@ -127,7 +128,7 @@ AppPage {
                     QQC2.ToolButton {
                         visible: !download
                         icon.name: "download"
-                        text: qsTr("Download")
+                        text: KI18n.i18n("Download")
                         display: QQC2.AbstractButton.IconOnly
                         QQC2.ToolTip.text: text
                         QQC2.ToolTip.visible: hovered
@@ -135,7 +136,7 @@ AppPage {
                     }
                     QQC2.ToolButton {
                         icon.name: "media-playback-start"
-                        text: qsTr("Play")
+                        text: KI18n.i18n("Play")
                         display: QQC2.AbstractButton.IconOnly
                         QQC2.ToolTip.text: text
                         QQC2.ToolTip.visible: hovered

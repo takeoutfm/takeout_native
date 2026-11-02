@@ -3,12 +3,13 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Everything downloaded, by the album, playlist, podcast or title it came with. */
 AppPage {
     id: page
 
-    title: qsTr("Downloads")
+    title: KI18n.i18n("Downloads")
 
     readonly property real usedBytes: Core.downloads.reduce((sum, d) => sum + (d.state === "Done" ? d.entry.bytes : 0), 0)
 
@@ -44,13 +45,13 @@ AppPage {
     actions: [
         Kirigami.Action {
             displayComponent: QQC2.Label {
-                text: qsTr("Uses %1").arg(applicationWindow().formatBytes(page.usedBytes))
+                text: KI18n.i18n("Uses %1", applicationWindow().formatBytes(page.usedBytes))
                 opacity: 0.7
                 visible: page.usedBytes > 0
             }
         },
         Kirigami.Action {
-            text: qsTr("Remove All")
+            text: KI18n.i18n("Remove All")
             icon.name: "edit-delete-remove"
             enabled: Core.downloads.length > 0
             onTriggered: removeAll.open()
@@ -65,8 +66,8 @@ AppPage {
             Layout.topMargin: Kirigami.Units.gridUnit * 4
             visible: Core.downloads.length === 0
             icon.name: "download"
-            text: qsTr("No downloads")
-            explanation: qsTr("Download albums, playlists, episodes and videos to play them offline.")
+            text: KI18n.i18n("No downloads")
+            explanation: KI18n.i18n("Download albums, playlists, episodes and videos to play them offline.")
         }
 
         Repeater {
@@ -83,12 +84,12 @@ AppPage {
                     QQC2.Label {
                         readonly property real bytes: group.modelData.downloads.reduce((s, d) => s + d.entry.bytes, 0)
                         opacity: 0.7
-                        text: bytes > 0 ? qsTr("%1 · %2").arg(group.modelData.downloads.length).arg(applicationWindow().formatBytes(bytes))
+                        text: bytes > 0 ? KI18n.i18n("%1 · %2", group.modelData.downloads.length, applicationWindow().formatBytes(bytes))
                                         : String(group.modelData.downloads.length)
                     }
                     Item { Layout.fillWidth: true }
                     QQC2.Button {
-                        text: qsTr("Remove")
+                        text: KI18n.i18n("Remove")
                         flat: true
                         onClicked: Core.call("removeDownloads", {etags: group.modelData.downloads.map(d => d.entry.etag)})
                     }
@@ -119,12 +120,12 @@ AppPage {
                             QQC2.ToolButton {
                                 visible: row.modelData.state === "Failed"
                                 icon.name: "view-refresh"
-                                text: qsTr("Try again")
+                                text: KI18n.i18n("Try again")
                                 onClicked: Core.call("retryDownload", {etag: row.modelData.entry.etag})
                             }
                             QQC2.ToolButton {
                                 icon.name: "edit-delete-remove"
-                                text: qsTr("Remove download")
+                                text: KI18n.i18n("Remove download")
                                 display: QQC2.AbstractButton.IconOnly
                                 QQC2.ToolTip.text: text
                                 QQC2.ToolTip.visible: hovered
@@ -139,8 +140,8 @@ AppPage {
 
     Kirigami.PromptDialog {
         id: removeAll
-        title: qsTr("Remove all downloads?")
-        subtitle: qsTr("This frees %1.").arg(applicationWindow().formatBytes(page.usedBytes))
+        title: KI18n.i18n("Remove all downloads?")
+        subtitle: KI18n.i18n("This frees %1.", applicationWindow().formatBytes(page.usedBytes))
         standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
         onAccepted: Core.call("removeAllDownloads")
     }

@@ -2,12 +2,13 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Every artist, A–Z, with a filter. */
 AppPage {
     id: page
 
-    title: qsTr("Artists")
+    title: KI18n.i18n("Artists")
 
     property var artists: []
     property bool loading: false
@@ -33,7 +34,7 @@ AppPage {
         padding: Kirigami.Units.smallSpacing
         contentItem: Kirigami.SearchField {
             id: filter
-            placeholderText: qsTr("Filter artists")
+            placeholderText: KI18n.i18n("Filter artists")
         }
     }
 

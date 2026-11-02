@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import org.kde.ki18n
 
 /** An episode in a season: its still, number and name, and description; opens it. */
 QQC2.ItemDelegate {
@@ -46,7 +47,7 @@ QQC2.ItemDelegate {
             }
             QQC2.Label {
                 visible: row.episode.runtimeMinutes > 0
-                text: qsTr("%1 min").arg(row.episode.runtimeMinutes)
+                text: KI18n.i18n("%1 min", row.episode.runtimeMinutes)
                 opacity: 0.6
                 font: Kirigami.Theme.smallFont
             }

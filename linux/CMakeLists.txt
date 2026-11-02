@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Network DBus OpenGL Qml Quick QuickControls2)
 find_package(KF6Kirigami REQUIRED)
+find_package(KF6I18n 6.8 REQUIRED)
+find_package(KF6CoreAddons REQUIRED)
+find_package(KF6DBusAddons REQUIRED)
+find_package(KF6Crash REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
@@ -90,7 +94,7 @@ qt_add_qml_module(takeoutfm
 target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(takeoutfm PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::OpenGL Qt6::Qml Qt6::Quick Qt6::QuickControls2
-    KF6::Kirigami PkgConfig::SECRET PkgConfig::MPV takeout)
+    KF6::Kirigami KF6::I18n KF6::I18nQml KF6::CoreAddons KF6::DBusAddons KF6::Crash PkgConfig::SECRET PkgConfig::MPV takeout)
 # The window icon when the installed one isn't there (running from the build directory).
 qt_add_resources(takeoutfm "icon" PREFIX "/" BASE data
     FILES data/icons/hicolor/256x256/apps/com.takeoutfm.linux.png)
@@ -124,7 +128,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "${CMAKE_CURRENT_BINARY_DIR}")
 # QML modules and the style, which nothing links.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "qml6-module-org-kde-kirigami, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
+    "qml6-module-org-kde-kirigami, qml6-module-org-kde-ki18n, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
 include(CPack)
 
 # ---- Tests ----

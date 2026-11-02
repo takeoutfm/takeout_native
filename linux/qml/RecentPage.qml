@@ -4,12 +4,13 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
 import TakeoutFM
+import org.kde.ki18n
 
 /** Recently Played on this computer: queues, newest first, resumed where they were left. */
 AppPage {
     id: page
 
-    title: qsTr("Recently Played")
+    title: KI18n.i18n("Recently Played")
 
     /** A PlayedQueue as the MusicQueue that plays it again (as the shared toQueue). */
     function toQueue(entry) {
@@ -27,26 +28,26 @@ AppPage {
     /** "Beck · 13 tracks", or just the count when the creator is the title. */
     function detail(entry) {
         const n = entry.items.length
-        const tracks = n === 1 ? qsTr("1 track") : qsTr("%1 tracks").arg(n)
+        const tracks = KI18n.i18np("1 track", "%1 tracks", n)
         return entry.creator && entry.creator !== entry.title ? `${entry.creator} · ${tracks}` : tracks
     }
 
     /** When, relative to now: "5 minutes ago", "yesterday", "3 days ago", else the date. */
     function played(ms) {
         const minutes = Math.floor((Date.now() - ms) / 60000)
-        if (minutes < 1) return qsTr("just now")
-        if (minutes < 60) return minutes === 1 ? qsTr("1 minute ago") : qsTr("%1 minutes ago").arg(minutes)
+        if (minutes < 1) return KI18n.i18n("just now")
+        if (minutes < 60) return KI18n.i18np("1 minute ago", "%1 minutes ago", minutes)
         const hours = Math.floor(minutes / 60)
-        if (hours < 24) return hours === 1 ? qsTr("1 hour ago") : qsTr("%1 hours ago").arg(hours)
+        if (hours < 24) return KI18n.i18np("1 hour ago", "%1 hours ago", hours)
         const days = Math.floor(hours / 24)
-        if (days === 1) return qsTr("yesterday")
-        if (days < 7) return qsTr("%1 days ago").arg(days)
+        if (days === 1) return KI18n.i18n("yesterday")
+        if (days < 7) return KI18n.i18np("1 day ago", "%1 days ago", days)
         return new Date(ms).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
     }
 
     actions: [
         Kirigami.Action {
-            text: qsTr("Clear")
+            text: KI18n.i18n("Clear")
             icon.name: "edit-clear-history"
             enabled: Core.recentlyPlayed.length > 0
             onTriggered: clear.open()
@@ -98,13 +99,13 @@ AppPage {
             width: parent.width - Kirigami.Units.gridUnit * 4
             visible: Core.recentlyPlayed.length === 0
             icon.name: "document-open-recent"
-            text: qsTr("Nothing played yet")
+            text: KI18n.i18n("Nothing played yet")
         }
     }
 
     Kirigami.PromptDialog {
         id: clear
-        title: qsTr("Clear Recently Played?")
+        title: KI18n.i18n("Clear Recently Played?")
         standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
         onAccepted: Core.call("clearRecentlyPlayed")
     }

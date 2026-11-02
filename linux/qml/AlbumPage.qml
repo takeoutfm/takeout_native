@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** An album: cover, artist and year, its tracks by disc, and similar albums. */
 AppPage {
@@ -31,19 +32,19 @@ AppPage {
 
     actions: [
         Kirigami.Action {
-            text: qsTr("Play")
+            text: KI18n.i18n("Play")
             icon.name: "media-playback-start"
             onTriggered: applicationWindow().playCall("albumQueue", {albumId: page.albumId})
         },
         Kirigami.Action {
-            text: qsTr("Shuffle")
+            text: KI18n.i18n("Shuffle")
             icon.name: "media-playlist-shuffle"
             onTriggered: applicationWindow().playCall("albumQueue", {albumId: page.albumId}, true)
         },
         Kirigami.Action {
             readonly property var etags: (page.details?.tracks ?? []).map(t => t.etag).filter(e => e)
             readonly property bool all: etags.length > 0 && etags.every(e => Core.downloadsByEtag[e]?.state === "Done")
-            text: all ? qsTr("Remove Download") : qsTr("Download")
+            text: all ? KI18n.i18n("Remove Download") : KI18n.i18n("Download")
             icon.name: all ? "edit-delete-remove" : "download"
             displayHint: Kirigami.DisplayHint.AlwaysHide
             enabled: etags.length > 0
@@ -109,7 +110,7 @@ AppPage {
                 SectionHeading {
                     visible: parent.newDisc
                     level: 4
-                    text: qsTr("Disc %1").arg(modelData.discNum)
+                    text: KI18n.i18n("Disc %1", modelData.discNum)
                 }
                 TrackRow {
                     onClicked: applicationWindow().playCall("albumQueue", {albumId: page.albumId, startIndex: index})
@@ -122,6 +123,6 @@ AppPage {
             }
         }
 
-        AlbumFlow { title: qsTr("Similar albums"); albums: page.details?.similar ?? [] }
+        AlbumFlow { title: KI18n.i18n("Similar albums"); albums: page.details?.similar ?? [] }
     }
 }

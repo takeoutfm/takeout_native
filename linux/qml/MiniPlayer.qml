@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /**
  * The bar along the bottom while something is queued, as the Mac's: cover and title (opening
@@ -83,7 +84,7 @@ QQC2.ToolBar {
         BarButton {
             visible: bar.isTrack
             icon.name: bar.favorite ? "emblem-favorite" : "emblem-favorite-symbolic"
-            text: bar.favorite ? qsTr("Unfavorite") : qsTr("Favorite")
+            text: bar.favorite ? KI18n.i18n("Unfavorite") : KI18n.i18n("Favorite")
             onClicked: Core.call("setTrackFavorite", {etag: bar.item.etag, favorite: !bar.favorite})
         }
 
@@ -93,12 +94,12 @@ QQC2.ToolBar {
             icon.name: Player.playing ? "media-playback-stop" : "media-playback-start"
             icon.width: Kirigami.Units.iconSizes.medium
             icon.height: Kirigami.Units.iconSizes.medium
-            text: Player.playing ? qsTr("Stop") : qsTr("Play")
+            text: Player.playing ? KI18n.i18n("Stop") : KI18n.i18n("Play")
             onClicked: Player.togglePlay()
         }
         QQC2.Label {
             visible: Player.live
-            text: qsTr("LIVE")
+            text: KI18n.i18n("LIVE")
             color: Kirigami.Theme.negativeTextColor
             font.weight: Font.Bold
             font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -112,7 +113,7 @@ QQC2.ToolBar {
         BarButton {
             visible: !Player.live
             icon.name: "media-skip-backward"
-            text: qsTr("Previous")
+            text: KI18n.i18n("Previous")
             onClicked: Player.previous()
         }
         BarButton {
@@ -120,13 +121,13 @@ QQC2.ToolBar {
             icon.name: Player.playing ? "media-playback-pause" : "media-playback-start"
             icon.width: Kirigami.Units.iconSizes.medium
             icon.height: Kirigami.Units.iconSizes.medium
-            text: Player.playing ? qsTr("Pause") : qsTr("Play")
+            text: Player.playing ? KI18n.i18n("Pause") : KI18n.i18n("Play")
             onClicked: Player.togglePlay()
         }
         BarButton {
             visible: !Player.live
             icon.name: "media-skip-forward"
-            text: qsTr("Next")
+            text: KI18n.i18n("Next")
             enabled: Player.index + 1 < Player.items.length
             onClicked: Player.next()
         }
@@ -149,7 +150,7 @@ QQC2.ToolBar {
 
         BarButton {
             icon.name: "view-media-playlist"
-            text: qsTr("Queue")
+            text: KI18n.i18n("Queue")
             onClicked: bar.open()
         }
     }

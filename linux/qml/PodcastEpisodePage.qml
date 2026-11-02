@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /**
  * A podcast episode, as the Mac's and the phone's: its art, title, show and date, Resume or
@@ -82,7 +83,7 @@ AppPage {
             Layout.fillWidth: true
             visible: !!page.details && !page.episode
             icon.name: "podcast-symbolic"
-            text: qsTr("Episode not found")
+            text: KI18n.i18n("Episode not found")
         }
 
         GridLayout {
@@ -126,8 +127,8 @@ AppPage {
                 QQC2.Label {
                     opacity: 0.7
                     text: [page.episode ? page.published(page.episode.date) : "",
-                           page.played ? qsTr("Played")
-                           : page.started ? qsTr("%1 min left").arg(page.episode.progress.minutesLeft) : ""]
+                           page.played ? KI18n.i18n("Played")
+                           : page.started ? KI18n.i18n("%1 min left", page.episode.progress.minutesLeft) : ""]
                         .filter(s => s.length > 0).join(" · ")
                 }
                 // Partly heard: how far.
@@ -144,32 +145,32 @@ AppPage {
 
                     QQC2.Button {
                         icon.name: "media-playback-start"
-                        text: page.started ? qsTr("Resume") : qsTr("Play")
+                        text: page.started ? KI18n.i18n("Resume") : KI18n.i18n("Play")
                         highlighted: true
                         onClicked: applicationWindow().playCall("episodesQueue", page.queueArgs)
                     }
                     QQC2.Button {
                         visible: page.started
                         icon.name: "media-seek-backward"
-                        text: qsTr("Start Over")
+                        text: KI18n.i18n("Start Over")
                         onClicked: Core.call("episodesQueue", page.queueArgs, (queue) => {
                             if (queue) Player.play(queue, false, page.index)
                         })
                     }
                     QQC2.Button {
                         icon.name: page.played ? "edit-undo" : "checkmark"
-                        text: page.played ? qsTr("Mark as Not Played") : qsTr("Mark as Played")
+                        text: page.played ? KI18n.i18n("Mark as Not Played") : KI18n.i18n("Mark as Played")
                         onClicked: Core.call("markPlayed", {eid: page.episode.eid, played: !page.played},
                                              (r, error) => { if (!error) page.load() })
                     }
                     QQC2.Button {
                         enabled: page.download?.state !== "Queued" && page.download?.state !== "Downloading"
                         icon.name: page.download?.state === "Done" ? "edit-delete-remove" : "download"
-                        text: page.download?.state === "Done" ? qsTr("Remove Download")
-                            : page.download?.state === "Downloading" ? qsTr("Downloading %1%").arg(Math.round(page.download.fraction * 100))
-                            : page.download?.state === "Queued" ? qsTr("Waiting to download")
-                            : page.download?.state === "Failed" ? qsTr("Download again")
-                            : qsTr("Download")
+                        text: page.download?.state === "Done" ? KI18n.i18n("Remove Download")
+                            : page.download?.state === "Downloading" ? KI18n.i18n("Downloading %1%", Math.round(page.download.fraction * 100))
+                            : page.download?.state === "Queued" ? KI18n.i18n("Waiting to download")
+                            : page.download?.state === "Failed" ? KI18n.i18n("Download again")
+                            : KI18n.i18n("Download")
                         onClicked: {
                             if (page.download?.state === "Done") Core.call("removeDownloads", {etags: [page.episode.eid]})
                             else if (page.download?.state === "Failed") Core.call("retryDownload", {etag: page.episode.eid})
@@ -197,7 +198,7 @@ AppPage {
             QQC2.Button {
                 visible: !!page.older
                 icon.name: "go-previous"
-                text: qsTr("Previous Episode")
+                text: KI18n.i18n("Previous Episode")
                 flat: true
                 onClicked: page.goTo(page.older)
             }
@@ -205,7 +206,7 @@ AppPage {
             QQC2.Button {
                 visible: !!page.newer
                 icon.name: "go-next"
-                text: qsTr("Next Episode")
+                text: KI18n.i18n("Next Episode")
                 flat: true
                 onClicked: page.goTo(page.newer)
             }

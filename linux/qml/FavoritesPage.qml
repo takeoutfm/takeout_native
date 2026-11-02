@@ -3,12 +3,13 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Favorite artists (a row) and tracks, as the Mac's Favorites. */
 AppPage {
     id: page
 
-    title: qsTr("Favorites")
+    title: KI18n.i18n("Favorites")
 
     property var favorites: null
     property bool loading: false
@@ -49,11 +50,11 @@ AppPage {
             Layout.topMargin: Kirigami.Units.gridUnit * 4
             visible: !!page.favorites && page.favorites.artists.length === 0 && page.tracks.length === 0
             icon.name: "emblem-favorite"
-            text: qsTr("No favorites")
+            text: KI18n.i18n("No favorites")
         }
 
         CardRow {
-            title: qsTr("Artists")
+            title: KI18n.i18n("Artists")
             model: page.favorites?.artists ?? []
             delegate: ArtistCard {
                 required property var modelData
@@ -67,16 +68,16 @@ AppPage {
 
             RowLayout {
                 Layout.fillWidth: true
-                SectionHeading { text: qsTr("Tracks") }
+                SectionHeading { text: KI18n.i18n("Tracks") }
                 Item { Layout.fillWidth: true }
                 QQC2.Button {
                     icon.name: "media-playback-start"
-                    text: qsTr("Play All")
+                    text: KI18n.i18n("Play All")
                     onClicked: applicationWindow().playCall("favoritesQueue", {startIndex: 0})
                 }
                 QQC2.Button {
                     icon.name: page.allDownloaded ? "edit-delete-remove" : "download"
-                    text: page.allDownloaded ? qsTr("Remove Download") : qsTr("Download")
+                    text: page.allDownloaded ? KI18n.i18n("Remove Download") : KI18n.i18n("Download")
                     onClicked: page.allDownloaded ? Core.call("removeDownloads", {etags: page.etags})
                                                   : applicationWindow().downloadCall("favoritesQueue", {startIndex: 0})
                 }

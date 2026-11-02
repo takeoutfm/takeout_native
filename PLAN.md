@@ -643,6 +643,18 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            (`Mpris`: `org.mpris.MediaPlayer2.takeoutfm`, Raise, play/pause/next/previous,
            Seek / SetPosition, LoopStatus) checked with `qdbus6`. libmpv needs
            `LC_NUMERIC=C`. Not checked here: playing an episode (it changes real progress).
+     - **Standard Qt / KDE** (2026-11-01): KDE Frameworks KI18n (QML strings are
+           `KI18n.i18n()` / `i18np()` from `import org.kde.ki18n`; `Messages.sh` extracts them),
+           KCoreAddons (`KAboutData`: GPL-3.0-or-later, homepage, bugs to the GitLab issues),
+           KDBusAddons (`KDBusService::Unique`: a second launch raises the first window),
+           KCrash; Kirigami Addons' FormCard for Settings and About. `Core`, `Player` and
+           `VideoView` register declaratively (`QML_SINGLETON` with `create()` returning
+           main()'s instances; `Core` has no default constructor, or QML builds its own) in the
+           `TakeoutFM` module, imported by the pages (`import TakeoutFM`: they sit in `qml/`).
+           The Now Playing bar is each page's footer (`AppPage`): Kirigami moves the window
+           footer left by the sidebar's width. Grids and lists keep no current item until the
+           arrow keys pick one (`currentIndex: -1` again on each new model, and the delegate's
+           `focus` bound to being current). Colours over video use Kirigami's Complementary set.
      - **Layout as the Mac's** (2026-11-01): the sidebar has the Mac's groups, as
            Kirigami's own drawer actions with separators between them (no group titles, which
            plain actions can't show): Recently Played (the first page), Recently Added, New

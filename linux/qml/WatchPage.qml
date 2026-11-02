@@ -3,12 +3,13 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Video's front page, as the Mac's Watch: Continue Watching, Recently Added, New Releases, TV. */
 AppPage {
     id: page
 
-    title: qsTr("Watch")
+    title: KI18n.i18n("Watch")
 
     property var continueWatching: []
     property var recentlyAdded: []
@@ -53,7 +54,7 @@ AppPage {
         }
 
         CardRow {
-            title: qsTr("Continue Watching")
+            title: KI18n.i18n("Continue Watching")
             model: page.continueWatching
             delegate: VideoTile {
                 required property var modelData
@@ -62,8 +63,8 @@ AppPage {
                 width: Kirigami.Units.gridUnit * 14
             }
         }
-        CardRow { title: qsTr("Recently Added"); model: page.recentlyAdded; delegate: Poster {} }
-        CardRow { title: qsTr("New Releases"); model: page.newReleases; delegate: Poster {} }
-        CardRow { title: qsTr("TV"); model: page.recentShows; delegate: Poster {} }
+        CardRow { title: KI18n.i18n("Recently Added"); model: page.recentlyAdded; delegate: Poster {} }
+        CardRow { title: KI18n.i18n("New Releases"); model: page.newReleases; delegate: Poster {} }
+        CardRow { title: KI18n.i18n("TV"); model: page.recentShows; delegate: Poster {} }
     }
 }

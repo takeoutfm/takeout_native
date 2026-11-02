@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** Search, in the server's syntax ("artist:Beck", plain words): music, then movies and TV. */
 AppPage {
@@ -57,16 +58,16 @@ AppPage {
             Layout.topMargin: Kirigami.Units.gridUnit * 4
             visible: page.empty && !page.loading
             icon.name: "edit-find"
-            text: qsTr("Nothing found for “%1”").arg(page.query)
+            text: KI18n.i18n("Nothing found for “%1”", page.query)
         }
 
         CardRow {
-            title: qsTr("Artists")
+            title: KI18n.i18n("Artists")
             model: page.results?.artists ?? []
             delegate: ArtistCard { required property var modelData; artist: modelData }
         }
         CardRow {
-            title: qsTr("Albums")
+            title: KI18n.i18n("Albums")
             model: page.results?.albums ?? []
             delegate: AlbumTile {
                 required property var modelData
@@ -75,7 +76,7 @@ AppPage {
             }
         }
         CardRow {
-            title: qsTr("Radio")
+            title: KI18n.i18n("Radio")
             model: page.results?.stations ?? []
             delegate: StationTile {
                 required property var modelData
@@ -83,10 +84,10 @@ AppPage {
                 width: Kirigami.Units.gridUnit * 8
             }
         }
-        CardRow { title: qsTr("Movies"); model: page.video?.movies ?? []; delegate: Poster {} }
-        CardRow { title: qsTr("TV Shows"); model: page.video?.shows ?? []; delegate: Poster {} }
+        CardRow { title: KI18n.i18n("Movies"); model: page.video?.movies ?? []; delegate: Poster {} }
+        CardRow { title: KI18n.i18n("TV Shows"); model: page.video?.shows ?? []; delegate: Poster {} }
         CardRow {
-            title: qsTr("Episodes")
+            title: KI18n.i18n("Episodes")
             model: page.video?.episodes ?? []
             delegate: VideoTile {
                 required property var modelData
@@ -99,7 +100,7 @@ AppPage {
         ColumnLayout {
             visible: (page.results?.tracks.length ?? 0) > 0
             spacing: 0
-            SectionHeading { text: qsTr("Tracks") }
+            SectionHeading { text: KI18n.i18n("Tracks") }
             Repeater {
                 model: page.results?.tracks ?? []
                 TrackRow {

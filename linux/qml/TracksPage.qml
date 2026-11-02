@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /** A playlist's tracks, or Favorite Tracks when [playlistId] is empty. */
 AppPage {
@@ -28,13 +29,13 @@ AppPage {
 
     actions: [
         Kirigami.Action {
-            text: qsTr("Play")
+            text: KI18n.i18n("Play")
             icon.name: "media-playback-start"
             enabled: page.tracks.length > 0
             onTriggered: Player.play(page.queue, false, 0)
         },
         Kirigami.Action {
-            text: qsTr("Shuffle")
+            text: KI18n.i18n("Shuffle")
             icon.name: "media-playlist-shuffle"
             enabled: page.tracks.length > 0
             onTriggered: Player.play(page.queue, true)
@@ -42,7 +43,7 @@ AppPage {
         Kirigami.Action {
             readonly property var etags: page.tracks.map(t => t.etag).filter(e => e)
             readonly property bool all: etags.length > 0 && etags.every(e => Core.downloadsByEtag[e]?.state === "Done")
-            text: all ? qsTr("Remove Download") : qsTr("Download")
+            text: all ? KI18n.i18n("Remove Download") : KI18n.i18n("Download")
             icon.name: all ? "edit-delete-remove" : "download"
             displayHint: Kirigami.DisplayHint.AlwaysHide
             enabled: etags.length > 0
@@ -81,7 +82,7 @@ AppPage {
             anchors.centerIn: parent
             width: parent.width - Kirigami.Units.gridUnit * 4
             visible: !page.loading && !page.error && page.tracks.length === 0
-            text: qsTr("No tracks")
+            text: KI18n.i18n("No tracks")
         }
     }
 }

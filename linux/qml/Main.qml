@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 Kirigami.ApplicationWindow {
     id: root
@@ -64,7 +65,7 @@ Kirigami.ApplicationWindow {
         Core.call(name, args, (queue) => {
             if (!queue) return
             Core.call("downloadQueue", only === undefined ? {queue: queue} : {queue: queue, only: [queue.items[only]]})
-            showPassiveNotification(qsTr("Downloading %1").arg(only === undefined ? queue.title : queue.items[only].title))
+            showPassiveNotification(KI18n.i18n("Downloading %1", only === undefined ? queue.title : queue.items[only].title))
         })
     }
 
@@ -72,7 +73,7 @@ Kirigami.ApplicationWindow {
     function playCall(name, args, shuffled) {
         Core.call(name, args, (queue, error) => {
             if (queue) Player.play(queue, shuffled ?? false)
-            else if (error && error.kind !== "network") showPassiveNotification(qsTr("Can't play that"))
+            else if (error && error.kind !== "network") showPassiveNotification(KI18n.i18n("Can't play that"))
         })
     }
 
@@ -102,7 +103,7 @@ Kirigami.ApplicationWindow {
         target: Core
         function onSessionChanged() { root.route() }
         function onFailed(name, error) {
-            if (error.kind === "network") root.showPassiveNotification(qsTr("Can't reach the server"))
+            if (error.kind === "network") root.showPassiveNotification(KI18n.i18n("Can't reach the server"))
         }
     }
 
@@ -127,7 +128,7 @@ Kirigami.ApplicationWindow {
         collapsible: false
         header: Kirigami.SearchField {
             id: search
-            placeholderText: qsTr("Artists, albums, tracks")
+            placeholderText: KI18n.i18n("Artists, albums, tracks")
             onAccepted: {
                 const query = text.trim()
                 if (query.length === 0) return
@@ -141,67 +142,67 @@ Kirigami.ApplicationWindow {
         actions: [
             PageAction {
                 visible: root.hasMusic
-                text: qsTr("Recently Played"); icon.name: "document-open-recent"
+                text: KI18n.i18n("Recently Played"); icon.name: "document-open-recent"
                 page: "RecentPage"
             },
             PageAction {
                 visible: root.hasMusic
-                text: qsTr("Recently Added"); icon.name: "list-add"
+                text: KI18n.i18n("Recently Added"); icon.name: "list-add"
                 page: "AlbumGridPage"; key: "recentlyAdded"
-                properties: ({title: qsTr("Recently Added"), call: "recentlyAdded"})
+                properties: ({title: KI18n.i18n("Recently Added"), call: "recentlyAdded"})
             },
             PageAction {
                 visible: root.hasMusic
-                text: qsTr("New Releases"); icon.name: "media-album-cover"
+                text: KI18n.i18n("New Releases"); icon.name: "media-album-cover"
                 page: "AlbumGridPage"; key: "newReleases"
-                properties: ({title: qsTr("New Releases"), call: "newReleases"})
+                properties: ({title: KI18n.i18n("New Releases"), call: "newReleases"})
             },
             PageAction {
                 visible: root.hasMusic
-                text: qsTr("Artists"); icon.name: "view-media-artist"
+                text: KI18n.i18n("Artists"); icon.name: "view-media-artist"
                 page: "ArtistsPage"
             },
             PageAction {
                 visible: root.hasMusic
-                text: qsTr("Favorites"); icon.name: "emblem-favorite"
+                text: KI18n.i18n("Favorites"); icon.name: "emblem-favorite"
                 page: "FavoritesPage"
             },
             PageAction {
                 visible: root.hasMusic && (root.library.hasPlaylists ?? true)
-                text: qsTr("Playlists"); icon.name: "view-media-playlist"
+                text: KI18n.i18n("Playlists"); icon.name: "view-media-playlist"
                 page: "PlaylistsPage"
             },
             PageAction {
                 visible: root.hasMusic
-                text: qsTr("Radio"); icon.name: "radio"
+                text: KI18n.i18n("Radio"); icon.name: "radio"
                 page: "RadioPage"
             },
             PageAction {
                 visible: root.hasPodcasts
-                text: qsTr("Podcasts"); icon.name: "podcast-symbolic"
+                text: KI18n.i18n("Podcasts"); icon.name: "podcast-symbolic"
                 page: "PodcastsPage"
             },
             Kirigami.Action { separator: true; visible: root.hasMovies || root.hasShows },
             PageAction {
                 visible: root.hasMovies || root.hasShows
-                text: qsTr("Watch"); icon.name: "video-display"
+                text: KI18n.i18n("Watch"); icon.name: "video-display"
                 page: "WatchPage"
             },
             PageAction {
                 visible: root.hasMovies
-                text: qsTr("Movies"); icon.name: "video-x-generic"
+                text: KI18n.i18n("Movies"); icon.name: "video-x-generic"
                 page: "VideoGridPage"; key: "movies"
-                properties: ({title: qsTr("Movies"), call: "movies"})
+                properties: ({title: KI18n.i18n("Movies"), call: "movies"})
             },
             PageAction {
                 visible: root.hasShows
-                text: qsTr("TV Shows"); icon.name: "video-television"
+                text: KI18n.i18n("TV Shows"); icon.name: "video-television"
                 page: "VideoGridPage"; key: "shows"
-                properties: ({title: qsTr("TV Shows"), call: "shows"})
+                properties: ({title: KI18n.i18n("TV Shows"), call: "shows"})
             },
             Kirigami.Action { separator: true },
             PageAction {
-                text: qsTr("Downloads"); icon.name: "download"
+                text: KI18n.i18n("Downloads"); icon.name: "download"
                 page: "DownloadsPage"
             },
             Kirigami.Action { separator: true; visible: root.lastSearch.length > 0 },
@@ -213,7 +214,7 @@ Kirigami.ApplicationWindow {
             },
             Kirigami.Action { separator: true },
             PageAction {
-                text: qsTr("Settings"); icon.name: "settings-configure"
+                text: KI18n.i18n("Settings"); icon.name: "settings-configure"
                 page: "SettingsPage"
             }
         ]

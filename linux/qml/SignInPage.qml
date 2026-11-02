@@ -3,6 +3,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
+import org.kde.ki18n
 
 /**
  * Device-code sign-in: the server gives a code, the user approves it at <server>/link (signed
@@ -11,7 +12,7 @@ import TakeoutFM
 Kirigami.Page {
     id: page
 
-    title: qsTr("Sign in")
+    title: KI18n.i18n("Sign in")
 
     property string code: ""
     property string link: ""
@@ -25,7 +26,7 @@ Kirigami.Page {
         Core.call("requestCode", {host: server.text}, (result, error) => {
             if (error) {
                 waiting = false
-                problem = error.kind === "network" ? qsTr("Can't reach %1").arg(server.text) : qsTr("That server didn't give a code")
+                problem = error.kind === "network" ? KI18n.i18n("Can't reach %1", server.text) : KI18n.i18n("That server didn't give a code")
                 return
             }
             code = result.code
@@ -34,7 +35,7 @@ Kirigami.Page {
                 waiting = false
                 code = ""
                 if (error?.kind === "cancelled") return
-                if (!signedIn || error) problem = qsTr("The code expired. Try again.")
+                if (!signedIn || error) problem = KI18n.i18n("The code expired. Try again.")
                 // Signed in: Main shows Home.
             })
         })
@@ -67,7 +68,7 @@ Kirigami.Page {
             visible: page.code.length === 0
             QQC2.TextField {
                 id: server
-                Kirigami.FormData.label: qsTr("Server:")
+                Kirigami.FormData.label: KI18n.i18n("Server:")
                 text: Core.endpoint.length > 0 ? Core.endpoint : "https://takeout.fm"
                 enabled: !page.waiting
                 inputMethodHints: Qt.ImhUrlCharactersOnly | Qt.ImhNoAutoUppercase
@@ -78,7 +79,7 @@ Kirigami.Page {
             Layout.alignment: Qt.AlignHCenter
             visible: page.code.length === 0
             enabled: !page.waiting && server.text.trim().length > 0
-            text: qsTr("Get a code")
+            text: KI18n.i18n("Get a code")
             icon.name: "dialog-password"
             onClicked: page.start()
         }
@@ -93,7 +94,7 @@ Kirigami.Page {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
                 textFormat: Text.StyledText
-                text: qsTr("Go to <a href=\"%1\">%1</a>, sign in and enter this code:").arg(page.link)
+                text: KI18n.i18n("Go to <a href=\"%1\">%1</a>, sign in and enter this code:", page.link)
                 onLinkActivated: link => Qt.openUrlExternally(link)
             }
             Kirigami.SelectableLabel {
@@ -106,11 +107,11 @@ Kirigami.Page {
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
                 QQC2.BusyIndicator { running: page.waiting }
-                QQC2.Label { text: qsTr("Waiting for approval…") }
+                QQC2.Label { text: KI18n.i18n("Waiting for approval…") }
             }
             QQC2.Button {
                 Layout.alignment: Qt.AlignHCenter
-                text: qsTr("Cancel")
+                text: KI18n.i18n("Cancel")
                 onClicked: page.cancel()
             }
         }

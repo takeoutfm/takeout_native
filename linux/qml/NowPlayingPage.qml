@@ -4,13 +4,14 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
 import TakeoutFM
+import org.kde.ki18n
 
 /** What's playing: cover, title, seek bar and controls, beside (or over) the queue. */
 Kirigami.Page {
     id: page
 
     objectName: "nowPlaying"
-    title: qsTr("Now Playing")
+    title: KI18n.i18n("Now Playing")
 
     readonly property var item: Player.current
     readonly property string etag: item.etag ?? ""
@@ -30,12 +31,12 @@ Kirigami.Page {
     actions: [
         Kirigami.Action {
             visible: page.isTrack
-            text: page.favorite ? qsTr("Unfavorite") : qsTr("Favorite")
+            text: page.favorite ? KI18n.i18n("Unfavorite") : KI18n.i18n("Favorite")
             icon.name: page.favorite ? "emblem-favorite" : "emblem-favorite-symbolic"
             onTriggered: Core.call("setTrackFavorite", {etag: page.etag, favorite: !page.favorite})
         },
         Kirigami.Action {
-            text: [qsTr("Repeat: off"), qsTr("Repeat: all"), qsTr("Repeat: one")][Player.repeatMode]
+            text: [KI18n.i18n("Repeat: off"), KI18n.i18n("Repeat: all"), KI18n.i18n("Repeat: one")][Player.repeatMode]
             icon.name: Player.repeatMode === Player.RepeatOne ? "media-repeat-single" : "media-repeat-all"
             checkable: true
             checked: Player.repeatMode !== Player.RepeatOff
@@ -43,7 +44,7 @@ Kirigami.Page {
             onTriggered: Player.cycleRepeat()
         },
         Kirigami.Action {
-            text: qsTr("Clear queue")
+            text: KI18n.i18n("Clear queue")
             icon.name: "edit-clear-all"
             displayHint: Kirigami.DisplayHint.AlwaysHide
             onTriggered: {
@@ -125,7 +126,7 @@ Kirigami.Page {
             QQC2.Label {
                 Layout.alignment: Qt.AlignHCenter
                 visible: Player.live
-                text: qsTr("Live")
+                text: KI18n.i18n("Live")
                 color: Kirigami.Theme.negativeTextColor
                 font.weight: Font.DemiBold
             }
@@ -138,7 +139,7 @@ Kirigami.Page {
                     icon.width: Kirigami.Units.iconSizes.medium
                     icon.height: Kirigami.Units.iconSizes.medium
                     display: QQC2.AbstractButton.IconOnly
-                    text: qsTr("Previous")
+                    text: KI18n.i18n("Previous")
                     onClicked: Player.previous()
                 }
                 QQC2.RoundButton {
@@ -147,7 +148,7 @@ Kirigami.Page {
                     icon.height: Kirigami.Units.iconSizes.large
                     padding: Kirigami.Units.largeSpacing
                     display: QQC2.AbstractButton.IconOnly
-                    text: Player.playing ? qsTr("Pause") : qsTr("Play")
+                    text: Player.playing ? KI18n.i18n("Pause") : KI18n.i18n("Play")
                     onClicked: Player.togglePlay()
                 }
                 QQC2.ToolButton {
@@ -155,7 +156,7 @@ Kirigami.Page {
                     icon.width: Kirigami.Units.iconSizes.medium
                     icon.height: Kirigami.Units.iconSizes.medium
                     display: QQC2.AbstractButton.IconOnly
-                    text: qsTr("Next")
+                    text: KI18n.i18n("Next")
                     enabled: Player.index + 1 < Player.items.length
                     onClicked: Player.next()
                 }

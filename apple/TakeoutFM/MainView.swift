@@ -50,7 +50,6 @@ struct MainView: View {
     @State private var page: Page? = .recentlyPlayed
     @State private var path: [Route] = []
     @State private var query = ""
-    @State private var lastSearch = ""
     @Environment(\.playVideo) private var playVideo
 
     private var musicPages: [Page] {
@@ -87,11 +86,6 @@ struct MainView: View {
                 Section("On This Mac") {
                     Label(Page.downloads.title, systemImage: Page.downloads.icon).tag(Page.downloads)
                 }
-                if !lastSearch.isEmpty {
-                    Section("Search") {
-                        Label(lastSearch, systemImage: Page.search(lastSearch).icon).tag(Page.search(lastSearch))
-                    }
-                }
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
             .toolbar {
@@ -113,7 +107,6 @@ struct MainView: View {
         .onSubmit(of: .search) {
             let q = query.trimmingCharacters(in: .whitespaces)
             guard !q.isEmpty else { return }
-            lastSearch = q
             page = .search(q)
         }
         #if DEBUG

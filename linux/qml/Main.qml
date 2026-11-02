@@ -107,9 +107,6 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    /** The last search, kept in the sidebar as on the Mac. */
-    property string lastSearch: ""
-
     /** A page in the sidebar: [page] (a QML file) with [properties], selected while [key] is shown. */
     component PageAction: Kirigami.Action {
         property string page
@@ -134,7 +131,6 @@ Kirigami.ApplicationWindow {
             onAccepted: {
                 const query = text.trim()
                 if (query.length === 0) return
-                root.lastSearch = query
                 root.show("SearchPage", {query: query}, "search")
             }
         }
@@ -206,13 +202,6 @@ Kirigami.ApplicationWindow {
             PageAction {
                 text: KI18n.i18n("Downloads"); icon.name: "download"
                 page: "DownloadsPage"
-            },
-            Kirigami.Action { separator: true; visible: root.lastSearch.length > 0 },
-            PageAction {
-                visible: root.lastSearch.length > 0
-                text: root.lastSearch; icon.name: "search"
-                page: "SearchPage"; key: "search"
-                properties: ({query: root.lastSearch})
             },
             Kirigami.Action { separator: true },
             PageAction {

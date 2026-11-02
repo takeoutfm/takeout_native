@@ -661,8 +661,9 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            Kirigami's own drawer actions with separators between them (no group titles, which
            plain actions can't show): Recently Played (the first page), Recently Added, New
            Releases, Artists, Favorites, Playlists, Radio, Podcasts | Watch, Movies, TV Shows |
-           Downloads | the last search | Settings (which the Mac keeps in its menu); the search
-           field is the drawer's header. Recently Added and New Releases are album grids
+           Downloads | Settings (which the Mac keeps in its menu); the search field is the
+           drawer's header and searches on Enter (`autoAccept: false`). Neither app keeps the
+           last search in its sidebar any more (removed 2026-11-01). Recently Added and New Releases are album grids
            (`AlbumGridPage`); Favorites (artists row, tracks with Play All / Download) and
            Watch (Continue Watching, Recently Added, New Releases, TV) are new; Movies and
            TV Shows are poster grids; search lists rows (`CardRow`, horizontal) of artists,

@@ -619,7 +619,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            album page (tracks by disc, similar), Playlists (Favorite Tracks first), Radio by
            kind, search (artists, albums, tracks, stations) and Settings (server, sign out,
            Track Activity). Notes: Kirigami Addons isn't a dependency (so no `Avatar`; round
-           photos use `ShadowedTexture`); grids of tiles are `Flow`s sized from an outer
+           photos are `Kirigami.ShadowedImage`, cropped — a hidden `Image` handed to
+           `ShadowedTexture` gets squeezed into the circle); grids of tiles are `Flow`s sized from an outer
            width, since a `GridLayout` whose columns follow its own width collapses; pages
            opened with properties see them before `Component.onCompleted`, but their
            `on…Changed` handlers fire too, so load from one or the other. Nothing plays yet.

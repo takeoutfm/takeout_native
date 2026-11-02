@@ -16,24 +16,19 @@ QQC2.ItemDelegate {
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
 
-        Kirigami.ShadowedTexture {
+        // Kirigami's rounded image: the photo cropped to fill the circle, not squeezed into it.
+        Kirigami.ShadowedImage {
+            id: photo
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: card.availableWidth
             Layout.preferredHeight: card.availableWidth
             radius: width / 2
             color: Kirigami.Theme.alternateBackgroundColor
-            source: photo.status === Image.Ready ? photo : null
-
-            Image {
-                id: photo
-                anchors.fill: parent
-                visible: false
-                source: card.artist.imageUri
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
-                sourceSize.height: height * Screen.devicePixelRatio
-            }
+            source: card.artist.imageUri
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            sourceSize.width: width * Screen.devicePixelRatio
+            sourceSize.height: height * Screen.devicePixelRatio
             Kirigami.Icon {
                 anchors.centerIn: parent
                 width: parent.width / 2

@@ -18,23 +18,18 @@ KD.SubtitleDelegate {
 
     contentItem: RowLayout {
         spacing: Kirigami.Units.largeSpacing
-        Kirigami.ShadowedTexture {
+        // Kirigami's rounded image: the photo cropped to fill the circle, not squeezed into it.
+        Kirigami.ShadowedImage {
+            id: photo
             Layout.preferredWidth: Kirigami.Units.iconSizes.large
             Layout.preferredHeight: Kirigami.Units.iconSizes.large
             radius: width / 2
             color: Kirigami.Theme.alternateBackgroundColor
-            source: photo.status === Image.Ready ? photo : null
-
-            Image {
-                id: photo
-                anchors.fill: parent
-                visible: false
-                source: row.artist.imageUri
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
-                sourceSize.height: height * Screen.devicePixelRatio
-            }
+            source: row.artist.imageUri
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            sourceSize.width: width * Screen.devicePixelRatio
+            sourceSize.height: height * Screen.devicePixelRatio
             Kirigami.Icon {
                 anchors.centerIn: parent
                 width: parent.width / 2

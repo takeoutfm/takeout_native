@@ -69,6 +69,29 @@ Kirigami.ApplicationWindow {
         })
     }
 
+    /**
+     * Plays track [trackId] next, or adds it at the end ([last]): [queueItem] as it is when the
+     * row has one, else the track alone from its play queue (which goes on with similar tracks).
+     */
+    function enqueueTrack(trackId, queueItem, last) {
+        const done = (item) => {
+            Player.enqueue([item], last)
+            showPassiveNotification(last ? KI18n.i18n("Added to Queue") : KI18n.i18n("Playing Next"))
+        }
+        if (queueItem) return done(queueItem)
+        Core.call("trackQueue", {trackId: trackId}, (queue) => {
+            if (queue?.items.length) done(queue.items[0])
+            else showPassiveNotification(KI18n.i18n("Couldn't add that"))
+        })
+    }
+
+    /** Asks which playlist to add track [trackId] ([title]) to. */
+    function addToPlaylist(trackId, title) {
+        playlistPicker.pick(trackId, title)
+    }
+
+    AddToPlaylistDialog { id: playlistPicker }
+
     /** Plays the queue that shared call [name] returns (albumQueue, stationQueue…). */
     function playCall(name, args, shuffled) {
         Core.call(name, args, (queue, error) => {

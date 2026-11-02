@@ -112,7 +112,7 @@ AppPage {
                     subtitle: [modelData.artist, modelData.album].join(" · ")
                     imageUri: modelData.coverUri
                     etag: modelData.etag
-                    favorite: Core.favoriteTracks.includes(modelData.etag)
+                    trackId: modelData.id
                 }
             }
         }

@@ -7,8 +7,7 @@ import org.kde.ki18n
 
 /**
  * A podcast episode, as the Mac's and the phone's: its art, title, show and date, Resume or
- * Play, Start Over, Mark as Played, Download; the show notes (links open in the browser); then
- * the older and newer episode.
+ * Play, Start Over, Mark as Played, Download; then the show notes (links open in the browser).
  */
 AppPage {
     id: page
@@ -25,9 +24,6 @@ AppPage {
     readonly property bool started: episode?.progress?.type === "Started"
     readonly property bool played: episode?.progress?.type === "Complete"
     readonly property var download: episode ? Core.downloadsByEtag[episode.eid] : undefined
-    // Listed newest first: the previous episode is the older one.
-    readonly property var older: index >= 0 ? (details.episodes[index + 1] ?? null) : null
-    readonly property var newer: index > 0 ? details.episodes[index - 1] : null
 
     title: series?.title ?? ""
 
@@ -63,11 +59,6 @@ AppPage {
     function published(iso) {
         const date = new Date(iso)
         return isNaN(date) ? iso.slice(0, 10) : date.toLocaleDateString(Qt.locale(), Locale.LongFormat)
-    }
-
-    function goTo(other) {
-        applicationWindow().pageStack.replace(Qt.resolvedUrl("PodcastEpisodePage.qml"),
-                                              {seriesId: seriesId, episodeId: other.id, details: details})
     }
 
     ColumnLayout {
@@ -191,25 +182,6 @@ AppPage {
             wrapMode: Text.Wrap
             onLinkActivated: (link) => Qt.openUrlExternally(link)
             HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-        }
-
-        RowLayout {
-            visible: !!page.episode
-            QQC2.Button {
-                visible: !!page.older
-                icon.name: "go-previous"
-                text: KI18n.i18n("Previous Episode")
-                flat: true
-                onClicked: page.goTo(page.older)
-            }
-            Item { Layout.fillWidth: true }
-            QQC2.Button {
-                visible: !!page.newer
-                icon.name: "go-next"
-                text: KI18n.i18n("Next Episode")
-                flat: true
-                onClicked: page.goTo(page.newer)
-            }
         }
     }
 }

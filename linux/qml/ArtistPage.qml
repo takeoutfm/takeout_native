@@ -91,7 +91,8 @@ AppPage {
                 title: modelData.title
                 subtitle: modelData.album
                 imageUri: modelData.coverUri
-                favorite: Core.favoriteTracks.includes(modelData.etag)
+                etag: modelData.etag
+                trackId: modelData.id
             }
         }
 

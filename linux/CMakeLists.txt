@@ -90,7 +90,8 @@ qt_add_qml_module(takeoutfm
         qml/WatchPage.qml
         qml/CardRow.qml
         qml/ArtistCard.qml
-        qml/AppPage.qml)
+        qml/AppPage.qml
+        qml/AddToPlaylistDialog.qml)
 target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(takeoutfm PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::OpenGL Qt6::Qml Qt6::Quick Qt6::QuickControls2

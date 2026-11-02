@@ -91,6 +91,7 @@ AppPage {
                     subtitle: [modelData.artist, modelData.album].join(" · ")
                     imageUri: modelData.coverUri
                     etag: modelData.etag
+                    trackId: modelData.id
                     onClicked: applicationWindow().playCall("favoritesQueue", {startIndex: index})
                 }
             }

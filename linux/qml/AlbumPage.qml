@@ -115,10 +115,10 @@ AppPage {
                 TrackRow {
                     onClicked: applicationWindow().playCall("albumQueue", {albumId: page.albumId, startIndex: index})
                     etag: modelData.etag
+                    trackId: modelData.id
                     number: String(modelData.trackNum)
                     title: modelData.title
                     subtitle: modelData.artist !== page.shown?.artist ? modelData.artist : ""
-                    favorite: Core.favoriteTracks.includes(modelData.etag)
                 }
             }
         }

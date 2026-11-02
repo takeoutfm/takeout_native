@@ -66,10 +66,11 @@ AppPage {
             focus: ListView.isCurrentItem
             onClicked: Player.play(page.queue, false, index)
             etag: modelData.etag
+            // Playlist entries come without a track id: queued as they are (no Add to Playlist).
+            queueItem: modelData
             title: modelData.title
             subtitle: [modelData.artist, modelData.album].filter(s => s.length > 0).join(" · ")
             imageUri: modelData.imageUri
-            favorite: Core.favoriteTracks.includes(modelData.etag)
         }
 
         LoadState {

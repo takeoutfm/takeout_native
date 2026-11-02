@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Effects
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
@@ -19,6 +20,31 @@ Kirigami.Page {
     readonly property bool isTrack: etag.length > 0 && !(item.podcast ?? false)
     readonly property bool favorite: Core.favoriteTracks.includes(etag)
     readonly property bool wide: width > Kirigami.Units.gridUnit * 40
+
+    // The artist's background photo behind it all, as the Mac's and the phone's: faded and
+    // only lightly blurred, so it keeps its detail and the text over it stays readable.
+    background: Rectangle {
+        color: Kirigami.Theme.backgroundColor
+
+        Image {
+            id: backdrop
+            anchors.fill: parent
+            source: page.item.backgroundUri ?? ""
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            visible: false
+        }
+        MultiEffect {
+            anchors.fill: parent
+            source: backdrop
+            visible: backdrop.status === Image.Ready
+            opacity: 0.35
+            blurEnabled: true
+            blur: 0.15
+            blurMax: 32
+            Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
+        }
+    }
 
     function time(seconds) {
         const s = Math.max(0, Math.floor(seconds))

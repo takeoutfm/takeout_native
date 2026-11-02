@@ -128,7 +128,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "${CMAKE_CURRENT_BINARY_DIR}")
 # QML modules and the style, which nothing links.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "qml6-module-org-kde-kirigami, qml6-module-org-kde-ki18n, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
+    "qml6-module-org-kde-kirigami, qml6-module-qtquick-effects, qml6-module-org-kde-ki18n, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
 include(CPack)
 
 # ---- Tests ----

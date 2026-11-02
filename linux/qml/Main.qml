@@ -119,25 +119,13 @@ Kirigami.ApplicationWindow {
     /** The last search, kept in the sidebar as on the Mac. */
     property string lastSearch: ""
 
-    component SidebarHeading: Kirigami.Heading {
-        Layout.fillWidth: true
-        Layout.topMargin: Kirigami.Units.largeSpacing
-        leftPadding: Kirigami.Units.largeSpacing
-        level: 5
-        opacity: 0.7
-    }
-
     /** A page in the sidebar: [page] (a QML file) with [properties], selected while [key] is shown. */
-    component SidebarItem: QQC2.ItemDelegate {
+    component PageAction: Kirigami.Action {
         property string page
         property var properties: ({})
         property string key: page
-        Layout.fillWidth: true
-        highlighted: root.section === key
-        onClicked: {
-            root.show(page, properties, key)
-            if (root.globalDrawer.modal) root.globalDrawer.close()
-        }
+        checked: root.section === key
+        onTriggered: root.show(page, properties, key)
     }
 
     globalDrawer: Kirigami.GlobalDrawer {
@@ -158,95 +146,86 @@ Kirigami.ApplicationWindow {
             }
         }
 
-        // As the Mac's sidebar: Music, Video, this computer, and the last search.
-        topContent: ColumnLayout {
-            Layout.fillWidth: true
-            // The drawer gives its top content all the height, centring what can't grow: fill it,
-            // with the space after the last entry.
-            Layout.fillHeight: true
-            spacing: 0
-
-            SidebarHeading { text: qsTr("Music"); visible: root.hasMusic }
-            SidebarItem {
+        // The Mac's sidebar in Kirigami's own: music, video, this computer and the last search,
+        // the groups set apart by separators.
+        actions: [
+            PageAction {
                 visible: root.hasMusic
                 text: qsTr("Recently Played"); icon.name: "document-open-recent"
                 page: "RecentPage"
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMusic
                 text: qsTr("Recently Added"); icon.name: "list-add"
                 page: "AlbumGridPage"; key: "recentlyAdded"
                 properties: ({title: qsTr("Recently Added"), call: "recentlyAdded"})
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMusic
                 text: qsTr("New Releases"); icon.name: "media-album-cover"
                 page: "AlbumGridPage"; key: "newReleases"
                 properties: ({title: qsTr("New Releases"), call: "newReleases"})
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMusic
                 text: qsTr("Artists"); icon.name: "view-media-artist"
                 page: "ArtistsPage"
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMusic
                 text: qsTr("Favorites"); icon.name: "emblem-favorite"
                 page: "FavoritesPage"
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMusic && (root.library.hasPlaylists ?? true)
                 text: qsTr("Playlists"); icon.name: "view-media-playlist"
                 page: "PlaylistsPage"
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMusic
                 text: qsTr("Radio"); icon.name: "radio"
                 page: "RadioPage"
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasPodcasts
                 text: qsTr("Podcasts"); icon.name: "podcast-symbolic"
                 page: "PodcastsPage"
-            }
-
-            SidebarHeading { text: qsTr("Video"); visible: root.hasMovies || root.hasShows }
-            SidebarItem {
+            },
+            Kirigami.Action { separator: true; visible: root.hasMovies || root.hasShows },
+            PageAction {
                 visible: root.hasMovies || root.hasShows
                 text: qsTr("Watch"); icon.name: "video-display"
                 page: "WatchPage"
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasMovies
                 text: qsTr("Movies"); icon.name: "video-x-generic"
                 page: "VideoGridPage"; key: "movies"
                 properties: ({title: qsTr("Movies"), call: "movies"})
-            }
-            SidebarItem {
+            },
+            PageAction {
                 visible: root.hasShows
                 text: qsTr("TV Shows"); icon.name: "video-television"
                 page: "VideoGridPage"; key: "shows"
                 properties: ({title: qsTr("TV Shows"), call: "shows"})
-            }
-
-            SidebarHeading { text: qsTr("On This Computer") }
-            SidebarItem {
+            },
+            Kirigami.Action { separator: true },
+            PageAction {
                 text: qsTr("Downloads"); icon.name: "download"
                 page: "DownloadsPage"
-            }
-            SidebarItem {
-                text: qsTr("Settings"); icon.name: "settings-configure"
-                page: "SettingsPage"
-            }
-
-            SidebarHeading { text: qsTr("Search"); visible: root.lastSearch.length > 0 }
-            SidebarItem {
+            },
+            Kirigami.Action { separator: true; visible: root.lastSearch.length > 0 },
+            PageAction {
                 visible: root.lastSearch.length > 0
                 text: root.lastSearch; icon.name: "search"
                 page: "SearchPage"; key: "search"
                 properties: ({query: root.lastSearch})
+            },
+            Kirigami.Action { separator: true },
+            PageAction {
+                text: qsTr("Settings"); icon.name: "settings-configure"
+                page: "SettingsPage"
             }
-            Item { Layout.fillHeight: true }
-        }
+        ]
     }
 }

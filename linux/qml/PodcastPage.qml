@@ -29,6 +29,13 @@ Kirigami.ScrollablePage {
     }
     Component.onCompleted: load()
 
+    // Paused or stopped: an episode's progress has moved.
+    Connections {
+        target: Player
+        function onPlayingChanged() { if (!Player.playing) reload.restart() }
+    }
+    Timer { id: reload; interval: 1000; onTriggered: page.load() }
+
     /** A feed's HTML description as plain text (rendering it would also fetch its images). */
     function plain(html) {
         const entities = {amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " "}
@@ -110,19 +117,30 @@ Kirigami.ScrollablePage {
                 title: modelData.title
                 subtitle: [modelData.date.slice(0, 10), page.status(modelData)].filter(s => s.length > 0).join(" · ")
                 readonly property var queueArgs: ({
-                    title: page.shown.title, imageUri: page.shown.imageUri,
+                    title: page.shown?.title ?? "", imageUri: page.shown?.imageUri ?? "",
                     episodes: page.details.episodes, startIndex: index})
-                onClicked: applicationWindow().playCall("episodesQueue", queueArgs)
+                onClicked: applicationWindow().open("PodcastEpisodePage", {
+                    seriesId: page.seriesId, episodeId: modelData.id, details: page.details})
                 // Episodes' progress and downloads are keyed by their GUID.
                 etag: modelData.eid
-                trailing: QQC2.ToolButton {
-                    visible: !download
-                    icon.name: "download"
-                    text: qsTr("Download")
-                    display: QQC2.AbstractButton.IconOnly
-                    QQC2.ToolTip.text: text
-                    QQC2.ToolTip.visible: hovered
-                    onClicked: applicationWindow().downloadCall("episodesQueue", queueArgs, index)
+                trailing: RowLayout {
+                    QQC2.ToolButton {
+                        visible: !download
+                        icon.name: "download"
+                        text: qsTr("Download")
+                        display: QQC2.AbstractButton.IconOnly
+                        QQC2.ToolTip.text: text
+                        QQC2.ToolTip.visible: hovered
+                        onClicked: applicationWindow().downloadCall("episodesQueue", queueArgs, index)
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "media-playback-start"
+                        text: qsTr("Play")
+                        display: QQC2.AbstractButton.IconOnly
+                        QQC2.ToolTip.text: text
+                        QQC2.ToolTip.visible: hovered
+                        onClicked: applicationWindow().playCall("episodesQueue", queueArgs)
+                    }
                 }
             }
         }

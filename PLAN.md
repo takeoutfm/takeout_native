@@ -637,7 +637,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            dispatcher). UI: a mini player under the pages (not Kirigami's window footer, which
            it offsets under the drawer), Now Playing (cover, seek bar, controls, ♥, repeat,
            queue), play / shuffle / radio actions on album, artist, playlist and search
-           pages, Recently Played, and Podcasts (series grid, a series' episodes). MPRIS
+           pages, Recently Played, and Podcasts (series grid, a series' episodes, and an episode page as the
+           Mac's: Resume / Play, Start Over, Mark as Played, Download, show notes, older / newer). MPRIS
            (`Mpris`: `org.mpris.MediaPlayer2.takeoutfm`, Raise, play/pause/next/previous,
            Seek / SetPosition, LoopStatus) checked with `qdbus6`. libmpv needs
            `LC_NUMERIC=C`. Not checked here: playing an episode (it changes real progress).

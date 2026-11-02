@@ -109,9 +109,21 @@ Kirigami.ScrollablePage {
                 required property int index
                 title: modelData.title
                 subtitle: [modelData.date.slice(0, 10), page.status(modelData)].filter(s => s.length > 0).join(" · ")
-                onClicked: applicationWindow().playCall("episodesQueue", {
+                readonly property var queueArgs: ({
                     title: page.shown.title, imageUri: page.shown.imageUri,
                     episodes: page.details.episodes, startIndex: index})
+                onClicked: applicationWindow().playCall("episodesQueue", queueArgs)
+                // Episodes' progress and downloads are keyed by their GUID.
+                etag: modelData.eid
+                trailing: QQC2.ToolButton {
+                    visible: !download
+                    icon.name: "download"
+                    text: qsTr("Download")
+                    display: QQC2.AbstractButton.IconOnly
+                    QQC2.ToolTip.text: text
+                    QQC2.ToolTip.visible: hovered
+                    onClicked: applicationWindow().downloadCall("episodesQueue", queueArgs, index)
+                }
             }
         }
     }

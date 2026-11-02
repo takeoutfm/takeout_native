@@ -56,13 +56,6 @@ Kirigami.ScrollablePage {
         function onVideoClosed() { page.isSeries ? page.load() : page.loadOffset() }
     }
 
-    function bytes(n) {
-        const KB = 1024, MB = KB * 1024, GB = MB * 1024
-        if (n >= GB) return (Math.round(n * 10 / GB) / 10).toFixed(1) + " GB"
-        if (n >= MB) return Math.floor(n / MB) + " MB"
-        return Math.max(1, Math.floor(n / KB)) + " KB"
-    }
-
     /** "S2E5 · Mar 3, 2014 · TV-14 · 47 min · ★ 8.1/10", as the phone. */
     function facts(d) {
         const runtime = d.kind === "Series" ? qsTr("%1 seasons · %2 episodes").arg(d.seasonCount).arg(d.episodeCount)
@@ -73,7 +66,7 @@ Kirigami.ScrollablePage {
             d.episode ? `S${d.episode.season}E${d.episode.episode}` : "",
             aired || (d.year !== "0001" ? d.year : ""),
             d.rating,
-            d.size > 0 ? bytes(d.size) : "",
+            d.size > 0 ? applicationWindow().formatBytes(d.size) : "",
             runtime,
             d.voteAverage !== null && d.voteAverage !== undefined ? qsTr("★ %1/10").arg(d.voteAverage.toFixed(1)) : "",
         ].filter(s => s && s.length > 0).join(" · ")
@@ -181,6 +174,23 @@ Kirigami.ScrollablePage {
                 icon.name: "media-playback-start"
                 text: qsTr("Play") + parent.target
                 onClicked: applicationWindow().playVideo(page.videoId, false)
+            }
+            // A movie or episode can be downloaded to watch offline.
+            QQC2.Button {
+                readonly property var download: Core.downloadsByEtag[page.details?.etag ?? ""]
+                visible: page.details?.videoUri !== "" && page.details?.kind !== "Series" && (page.details?.etag ?? "") !== ""
+                enabled: download?.state !== "Queued" && download?.state !== "Downloading"
+                icon.name: download?.state === "Done" ? "edit-delete-remove" : "download"
+                text: download?.state === "Done" ? qsTr("Remove Download")
+                    : download?.state === "Downloading" ? qsTr("Downloading %1%").arg(Math.round(download.fraction * 100))
+                    : download?.state === "Queued" ? qsTr("Waiting to download")
+                    : download?.state === "Failed" ? qsTr("Download again")
+                    : qsTr("Download") + (page.details?.size > 0 ? ` (${applicationWindow().formatBytes(page.details.size)})` : "")
+                onClicked: {
+                    if (download?.state === "Done") Core.call("removeDownloads", {etags: [page.details.etag]})
+                    else if (download?.state === "Failed") Core.call("retryDownload", {etag: page.details.etag})
+                    else Core.call("downloadVideo", {id: page.videoId})
+                }
             }
         }
 

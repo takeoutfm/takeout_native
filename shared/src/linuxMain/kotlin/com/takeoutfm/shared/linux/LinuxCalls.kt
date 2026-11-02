@@ -89,6 +89,7 @@ class LinuxCalls(private val core: LinuxCore) {
         "favoriteTracks" -> core.music.favoriteTrackEtags.encoded()
         "recentlyPlayed" -> core.history.entries.encoded()
         "listenBrainz" -> core.listenBrainz.user.encoded()
+        "downloads" -> core.downloads.downloads.map { it.values.toList() }.encoded()
         "settings" -> combine(
             core.settings.reportPlays, core.settings.submitListens,
             core.settings.playbackCaching, core.settings.theme, ::Settings,
@@ -237,6 +238,17 @@ class LinuxCalls(private val core: LinuxCore) {
         action("streamSongHeard") { a ->
             core.streamHistory.heard(a.get("station"), a.get("imageUri", ""), a.get("title"))
         }
+
+        // ---- Downloads ----
+        /** A queue's items (all, or [only] some), grouped with the queue. */
+        action("downloadQueue") { a ->
+            core.downloads.download(a.get<MusicQueue>("queue"), a.get<List<QueueItem>?>("only", null))
+        }
+        /** A movie or episode, by id. */
+        action("downloadVideo") { a -> core.downloads.download(core.video.details(a.get("id"))) }
+        action("retryDownload") { a -> core.downloads.retry(a.get("etag")) }
+        action("removeDownloads") { a -> core.downloads.remove(a.get<List<String>>("etags")) }
+        action("removeAllDownloads") { core.downloads.removeAll() }
 
         // ---- Settings ----
         action("setSettings") { a ->

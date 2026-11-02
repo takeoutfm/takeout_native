@@ -659,10 +659,24 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            search. `Core.call` now reports a callback that throws (Qt's JS has no
            `Array.flatMap`). Checked with Godzilla (1954) and Breaking Bad S1E3, each played
            under 10 s from its resume point so nothing was saved.
-     - [ ] **L6 — downloads and offline**: `linuxMain` `MediaDownloads` (whole files by ETag in
-           `$XDG_DATA_HOME/takeoutfm/media`, JSON index like the Mac's `MediaCache`; Ktor
-           streaming to disk, two at a time), Downloads page, playback prefers the local file;
-           the response cache already covers offline browsing.
+     - [x] **L6 — downloads and offline** (done 2026-11-01): `linuxMain` `MediaDownloads`, as
+           the Mac's `MediaCache`: whole files by ETag in `$XDG_DATA_HOME/takeoutfm/media`
+           (keeping the stream's extension), the index (`DownloadEntry`: what it is, its group —
+           album / playlist location, `title:<podcast>`, or a video's id) in a `FileStore`, two
+           at a time over Ktor (the media token only to Takeout, whose redirect to storage is
+           followed without it; streamed to a `.part` file, renamed when whole; the index is
+           saved before a download is announced done). Interrupted downloads restart on
+           launch. Bridge: `downloadQueue {queue, only?}`, `downloadVideo {id}`,
+           `retryDownload`, `removeDownloads`, `removeAllDownloads`, and the `downloads`
+           watch; `MediaDownloadsTest` covers the redirect, the token, the file and the index.
+           `Core.localFile(etag)`: `Player` and the video player play a download instead of
+           streaming. UI: Download / Remove Download on albums, playlists, podcast episodes and
+           movie or episode pages (with progress), state on track rows, a Downloads page by
+           group (play, retry, remove, Remove All, space used). Offline checked by running
+           the app in a network namespace (`unshare -rn`): browsing comes from the response
+           cache, downloads play (music and video), but playing an album from its page needs
+           the server (its playlist response isn't cached) — as on the phone and the Mac,
+           offline playback starts from Downloads. Not ported: Playback Caching.
      - [ ] **L7 — packaging**: `.desktop` file, icon (from the Play Store artwork), AppStream
            metainfo; a `.deb` via CPack first (fastest to try here), Flatpak (KDE runtime 6.x,
            mpv module) once the app is worth sharing.

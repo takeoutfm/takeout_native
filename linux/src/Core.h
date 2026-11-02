@@ -18,6 +18,9 @@ class Core : public QObject
     Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
     Q_PROPERTY(QStringList favoriteTracks READ favoriteTracks NOTIFY favoriteTracksChanged)
     Q_PROPERTY(QVariantList recentlyPlayed READ recentlyPlayed NOTIFY recentlyPlayedChanged)
+    /** Downloads ({entry, state, fraction, path}), and the same keyed by ETag. */
+    Q_PROPERTY(QVariantList downloads READ downloads NOTIFY downloadsChanged)
+    Q_PROPERTY(QVariantMap downloadsByEtag READ downloadsByEtag NOTIFY downloadsChanged)
 
 public:
     explicit Core(QObject *parent = nullptr);
@@ -44,6 +47,10 @@ public:
     QVariantMap settings() const { return m_settings; }
     QStringList favoriteTracks() const { return m_favoriteTracks; }
     QVariantList recentlyPlayed() const { return m_recentlyPlayed; }
+    QVariantList downloads() const { return m_downloads; }
+    QVariantMap downloadsByEtag() const { return m_downloadsByEtag; }
+    /** The downloaded file for [etag], or "" when it isn't wholly here. */
+    Q_INVOKABLE QString localFile(const QString &etag) const;
 
 Q_SIGNALS:
     void sessionChanged();
@@ -51,6 +58,7 @@ Q_SIGNALS:
     void settingsChanged();
     void favoriteTracksChanged();
     void recentlyPlayedChanged();
+    void downloadsChanged();
     void failed(const QString &name, const QVariantMap &error);
 
 private:
@@ -66,4 +74,6 @@ private:
     QVariantMap m_settings;
     QStringList m_favoriteTracks;
     QVariantList m_recentlyPlayed;
+    QVariantList m_downloads;
+    QVariantMap m_downloadsByEtag;
 };

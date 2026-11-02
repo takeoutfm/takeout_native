@@ -192,7 +192,9 @@ void Player::load(int start, double seconds)
 
 void Player::loadFile(const QVariantMap &item, const char *flag, int at, double seconds)
 {
-    const QString uri = text(item, "uri");
+    // Downloaded: play the file (offline too).
+    const QString local = m_core->localFile(text(item, "etag"));
+    const QString uri = local.isEmpty() ? text(item, "uri") : local;
     QList<std::pair<QString, mpv_node>> options;
     Node node;
     const QString endpoint = m_core->endpoint();

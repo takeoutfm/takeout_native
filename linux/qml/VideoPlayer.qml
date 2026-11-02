@@ -74,9 +74,14 @@ QQC2.Popup {
                 return
             }
             details = d
-            const resume = (ms) => Core.call("mediaAuthorization", {url: d.videoUri}, (auth) => {
-                if (id === videoId) video.load(d.videoUri, auth ?? "", ms / 1000)
-            })
+            const local = Core.localFile(d.etag)
+            const resume = (ms) => {
+                // Downloaded: play the file (offline too).
+                if (local) video.load(local, "", ms / 1000)
+                else Core.call("mediaAuthorization", {url: d.videoUri}, (auth) => {
+                    if (id === videoId) video.load(d.videoUri, auth ?? "", ms / 1000)
+                })
+            }
             if (startOver) resume(0)
             else Core.call("resumePositionMs", {etag: d.etag}, (ms) => resume(ms ?? 0))
         })

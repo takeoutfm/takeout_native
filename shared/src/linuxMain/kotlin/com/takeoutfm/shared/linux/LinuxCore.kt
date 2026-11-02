@@ -53,6 +53,7 @@ class LinuxCore internal constructor(
     val music = TakeoutMusicRepository(api, library, urls)
     val podcasts = TakeoutPodcastRepository(api, urls, progress)
     val video = TakeoutVideoRepository(api, session, library, urls, progress)
+    val downloads = MediaDownloads(dataDirectory, session, userAgent, engine)
 
     init {
         // Every GET is kept for browsing offline, as on Android.

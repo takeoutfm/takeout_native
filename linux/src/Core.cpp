@@ -48,7 +48,7 @@ bool Core::start(const QString &dataDir, const QString &userAgent)
         secrets.empty() ? nullptr : secrets.c_str(),
         [](void *, const char *json) { SecretStore::save(json); }, nullptr);
     if (status != 0) return false;
-    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed"}) watch(name);
+    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads"}) watch(name);
     return true;
 }
 
@@ -86,7 +86,20 @@ void Core::updated(const QByteArray &name, const QVariant &value)
     } else if (name == "recentlyPlayed") {
         m_recentlyPlayed = value.toList();
         Q_EMIT recentlyPlayedChanged();
+    } else if (name == "downloads") {
+        m_downloads = value.toList();
+        m_downloadsByEtag.clear();
+        for (const QVariant &download : std::as_const(m_downloads))
+            m_downloadsByEtag.insert(download.toMap().value("entry").toMap().value("etag").toString(), download);
+        Q_EMIT downloadsChanged();
     }
+}
+
+QString Core::localFile(const QString &etag) const
+{
+    if (etag.isEmpty()) return {};
+    const QVariantMap download = m_downloadsByEtag.value(etag).toMap();
+    return download.value("state").toString() == "Done" ? download.value("path").toString() : QString();
 }
 
 void Core::call(const QString &name, const QVariantMap &args, const QJSValue &callback)

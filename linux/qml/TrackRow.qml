@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import TakeoutFM.Core
 
 /** A track in a list: its number (or cover), title and a second line. */
 QQC2.ItemDelegate {
@@ -12,6 +13,11 @@ QQC2.ItemDelegate {
     property string subtitle: ""
     property string imageUri: ""
     property bool favorite: false
+    /** Shows whether it's downloaded (or how far along) when given. */
+    property string etag: ""
+    readonly property var download: etag ? Core.downloadsByEtag[etag] : undefined
+    /** A control at the row's end (a podcast episode's Download). */
+    property Component trailing: null
 
     Layout.fillWidth: true
     width: ListView.view ? ListView.view.width : implicitWidth
@@ -52,6 +58,23 @@ QQC2.ItemDelegate {
                 visible: text.length > 0
                 font: Kirigami.Theme.smallFont
             }
+        }
+        // Downloaded, downloading or failed.
+        QQC2.BusyIndicator {
+            visible: row.download?.state === "Queued" || row.download?.state === "Downloading"
+            running: visible
+            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+        }
+        Kirigami.Icon {
+            visible: row.download?.state === "Done" || row.download?.state === "Failed"
+            source: row.download?.state === "Failed" ? "data-warning" : "download"
+            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+        }
+        Loader {
+            active: row.trailing !== null
+            sourceComponent: row.trailing
         }
         Kirigami.Icon {
             visible: row.favorite

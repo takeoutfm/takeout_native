@@ -38,6 +38,15 @@ Kirigami.ScrollablePage {
             icon.name: "media-playlist-shuffle"
             enabled: page.tracks.length > 0
             onTriggered: Player.play(page.queue, true)
+        },
+        Kirigami.Action {
+            readonly property var etags: page.tracks.map(t => t.etag).filter(e => e)
+            readonly property bool all: etags.length > 0 && etags.every(e => Core.downloadsByEtag[e]?.state === "Done")
+            text: all ? qsTr("Remove Download") : qsTr("Download")
+            icon.name: all ? "edit-delete-remove" : "download"
+            displayHint: Kirigami.DisplayHint.AlwaysHide
+            enabled: etags.length > 0
+            onTriggered: all ? Core.call("removeDownloads", {etags: etags}) : Core.call("downloadQueue", {queue: page.queue})
         }
     ]
 
@@ -48,6 +57,7 @@ Kirigami.ScrollablePage {
             required property var modelData
             required property int index
             onClicked: Player.play(page.queue, false, index)
+            etag: modelData.etag
             title: modelData.title
             subtitle: [modelData.artist, modelData.album].filter(s => s.length > 0).join(" · ")
             imageUri: modelData.imageUri

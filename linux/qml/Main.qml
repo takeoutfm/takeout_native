@@ -47,6 +47,23 @@ Kirigami.ApplicationWindow {
         pageStack.push(Qt.resolvedUrl(name + ".qml"), properties ?? {})
     }
 
+    /** Bytes as "12 MB" / "1.4 GB". */
+    function formatBytes(n) {
+        const KB = 1024, MB = KB * 1024, GB = MB * 1024
+        if (n >= GB) return (Math.round(n * 10 / GB) / 10).toFixed(1) + " GB"
+        if (n >= MB) return Math.floor(n / MB) + " MB"
+        return Math.max(1, Math.floor(n / KB)) + " KB"
+    }
+
+    /** Downloads the queue that shared call [name] returns (all of it, or item [only]). */
+    function downloadCall(name, args, only) {
+        Core.call(name, args, (queue) => {
+            if (!queue) return
+            Core.call("downloadQueue", only === undefined ? {queue: queue} : {queue: queue, only: [queue.items[only]]})
+            showPassiveNotification(qsTr("Downloading %1").arg(only === undefined ? queue.title : queue.items[only].title))
+        })
+    }
+
     /** Plays the queue that shared call [name] returns (albumQueue, stationQueue…). */
     function playCall(name, args, shuffled) {
         Core.call(name, args, (queue, error) => {
@@ -159,6 +176,11 @@ Kirigami.ApplicationWindow {
                 visible: root.hasPodcasts
                 checked: root.section === "PodcastsPage"
                 onTriggered: root.show("PodcastsPage")
+            },
+            Kirigami.Action {
+                text: qsTr("Downloads"); icon.name: "download"
+                checked: root.section === "DownloadsPage"
+                onTriggered: root.show("DownloadsPage")
             },
             Kirigami.Action {
                 text: qsTr("Settings"); icon.name: "settings-configure"

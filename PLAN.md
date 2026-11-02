@@ -642,6 +642,17 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            (`Mpris`: `org.mpris.MediaPlayer2.takeoutfm`, Raise, play/pause/next/previous,
            Seek / SetPosition, LoopStatus) checked with `qdbus6`. libmpv needs
            `LC_NUMERIC=C`. Not checked here: playing an episode (it changes real progress).
+     - **Layout as the Mac's** (2026-11-01): the sidebar has the Mac's sections — Music
+           (Recently Played, the first page; Recently Added, New Releases, Artists, Favorites,
+           Playlists, Radio, Podcasts), Video (Watch, Movies, TV Shows), On This Computer
+           (Downloads, and Settings, which the Mac keeps in its menu) and the last Search —
+           with the search field at its top. Recently Added and New Releases are album grids
+           (`AlbumGridPage`); Favorites (artists row, tracks with Play All / Download) and
+           Watch (Continue Watching, Recently Added, New Releases, TV) are new; Movies and
+           TV Shows are poster grids; search lists rows (`CardRow`, horizontal) of artists,
+           albums, radio, movies, shows and episodes, then tracks (playing on through the
+           results); Recently Played shows "creator · N tracks" and when; the Now Playing bar
+           has ♥, a seek bar with times or LIVE, and the queue.
      - [x] **L5 — video** (done 2026-11-01): the best-audio ranking moved to `:shared`
            `video/AudioTrackRanking.kt` (`AudioCodec` instead of Media3 mime types; a table of
            ISO 639-2 codes instead of `java.util.Locale`), its test to `commonTest`;

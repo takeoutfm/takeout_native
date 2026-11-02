@@ -15,7 +15,8 @@ Kirigami.ScrollablePage {
     property bool loading: false
     property var error: null
 
-    title: qsTr("Search")
+    // The query is typed in the sidebar's search field.
+    title: query
 
     readonly property bool empty: !!results && results.artists.length === 0 && results.albums.length === 0
         && results.tracks.length === 0 && results.stations.length === 0
@@ -36,19 +37,14 @@ Kirigami.ScrollablePage {
     }
     onQueryChanged: load() // also for the query the page is opened with
 
-    header: QQC2.Control {
-        padding: Kirigami.Units.smallSpacing
-        contentItem: Kirigami.SearchField {
-            text: page.query
-            placeholderText: qsTr("Search")
-            onAccepted: page.query = text.trim()
-            Component.onCompleted: forceActiveFocus()
-        }
+    component Poster: VideoTile {
+        required property var modelData
+        card: modelData
+        width: Kirigami.Units.gridUnit * 8
     }
 
     ColumnLayout {
-        id: content
-        spacing: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.largeSpacing * 2
 
         LoadState {
             Layout.alignment: Qt.AlignHCenter
@@ -58,58 +54,66 @@ Kirigami.ScrollablePage {
         }
         Kirigami.PlaceholderMessage {
             Layout.fillWidth: true
+            Layout.topMargin: Kirigami.Units.gridUnit * 4
             visible: page.empty && !page.loading
             icon.name: "edit-find"
             text: qsTr("Nothing found for “%1”").arg(page.query)
         }
 
-        SectionHeading { text: qsTr("Artists"); visible: (page.results?.artists.length ?? 0) > 0 }
-        GridLayout {
-            Layout.fillWidth: true
-            columns: Math.max(1, Math.floor(width / (Kirigami.Units.gridUnit * 16)))
-            columnSpacing: 0
-            rowSpacing: 0
-            Repeater {
-                model: page.results?.artists ?? []
-                ArtistRow {
-                    required property var modelData
-                    artist: modelData
-                }
-            }
+        CardRow {
+            title: qsTr("Artists")
+            model: page.results?.artists ?? []
+            delegate: ArtistCard { required property var modelData; artist: modelData }
         }
-
-        AlbumFlow { title: qsTr("Albums"); albums: page.results?.albums ?? [] }
-
-        SectionHeading { text: qsTr("Tracks"); visible: (page.results?.tracks.length ?? 0) > 0 }
-        Repeater {
-            model: page.results?.tracks ?? []
-            TrackRow {
+        CardRow {
+            title: qsTr("Albums")
+            model: page.results?.albums ?? []
+            delegate: AlbumTile {
                 required property var modelData
-                onClicked: applicationWindow().playCall("trackQueue", {trackId: modelData.id})
-                title: modelData.title
-                subtitle: [modelData.artist, modelData.album].join(" · ")
-                imageUri: modelData.coverUri
-                favorite: Core.favoriteTracks.includes(modelData.etag)
+                album: modelData
+                width: Kirigami.Units.gridUnit * 9
+            }
+        }
+        CardRow {
+            title: qsTr("Radio")
+            model: page.results?.stations ?? []
+            delegate: StationTile {
+                required property var modelData
+                station: modelData
+                width: Kirigami.Units.gridUnit * 8
+            }
+        }
+        CardRow { title: qsTr("Movies"); model: page.video?.movies ?? []; delegate: Poster {} }
+        CardRow { title: qsTr("TV Shows"); model: page.video?.shows ?? []; delegate: Poster {} }
+        CardRow {
+            title: qsTr("Episodes")
+            model: page.video?.episodes ?? []
+            delegate: VideoTile {
+                required property var modelData
+                card: modelData
+                wide: true
+                width: Kirigami.Units.gridUnit * 14
             }
         }
 
-        SectionHeading { text: qsTr("Radio"); visible: (page.results?.stations.length ?? 0) > 0 }
-        Flow {
-            id: stations
-            Layout.fillWidth: true
-            readonly property int columns: Math.max(1, Math.floor(content.width / (Kirigami.Units.gridUnit * 8)))
+        ColumnLayout {
+            visible: (page.results?.tracks.length ?? 0) > 0
+            spacing: 0
+            SectionHeading { text: qsTr("Tracks") }
             Repeater {
-                model: page.results?.stations ?? []
-                StationTile {
+                model: page.results?.tracks ?? []
+                TrackRow {
                     required property var modelData
-                    station: modelData
-                    width: content.width / stations.columns
+                    required property int index
+                    // The results, from this one on.
+                    onClicked: applicationWindow().playCall("tracksQueue", {title: page.query, tracks: page.results.tracks, startIndex: index})
+                    title: modelData.title
+                    subtitle: [modelData.artist, modelData.album].join(" · ")
+                    imageUri: modelData.coverUri
+                    etag: modelData.etag
+                    favorite: Core.favoriteTracks.includes(modelData.etag)
                 }
             }
         }
-
-        VideoFlow { title: qsTr("Movies"); cards: page.video?.movies ?? [] }
-        VideoFlow { title: qsTr("TV"); cards: page.video?.shows ?? [] }
-        VideoFlow { title: qsTr("Episodes"); cards: page.video?.episodes ?? []; wide: true }
     }
 }

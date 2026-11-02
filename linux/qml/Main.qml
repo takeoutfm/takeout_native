@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM.Core
 
@@ -35,9 +36,12 @@ Kirigami.ApplicationWindow {
     }
     property string section: ""
 
-    /** Shows top-level page [name] (e.g. "HomePage"), dropping whatever was open. */
-    function show(name, properties) {
-        section = name
+    /**
+     * Shows top-level page [name] (e.g. "RecentPage"), dropping whatever was open; [key] tells
+     * the sidebar which entry it is when one page serves several (album and poster grids).
+     */
+    function show(name, properties, key) {
+        section = key ?? name
         pageStack.clear()
         pageStack.push(Qt.resolvedUrl(name + ".qml"), properties ?? {})
     }
@@ -89,14 +93,14 @@ Kirigami.ApplicationWindow {
         onOpen: root.showNowPlaying()
     }
 
-    // Sign-in or Home, once the session is known and whenever signing in or out changes it
+    // Sign-in or Recently Played (the Mac's first page), once the session is known and whenever signing in or out changes it
     // (the session also changes when tokens are refreshed).
     property var routedFor: undefined
     function route() {
         if (!Core.ready || routedFor === Core.signedIn) return
         routedFor = Core.signedIn
         if (Core.signedIn) {
-            show("HomePage")
+            show("RecentPage")
             Core.call("refreshLibrary", {maxAgeMs: 0})
         } else {
             show("SignInPage")
@@ -112,6 +116,30 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    /** The last search, kept in the sidebar as on the Mac. */
+    property string lastSearch: ""
+
+    component SidebarHeading: Kirigami.Heading {
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.largeSpacing
+        leftPadding: Kirigami.Units.largeSpacing
+        level: 5
+        opacity: 0.7
+    }
+
+    /** A page in the sidebar: [page] (a QML file) with [properties], selected while [key] is shown. */
+    component SidebarItem: QQC2.ItemDelegate {
+        property string page
+        property var properties: ({})
+        property string key: page
+        Layout.fillWidth: true
+        highlighted: root.section === key
+        onClicked: {
+            root.show(page, properties, key)
+            if (root.globalDrawer.modal) root.globalDrawer.close()
+        }
+    }
+
     globalDrawer: Kirigami.GlobalDrawer {
         // Hidden (modal and closed, no handle) until signed in.
         isMenu: false
@@ -121,72 +149,104 @@ Kirigami.ApplicationWindow {
         collapsible: false
         header: Kirigami.SearchField {
             id: search
-            placeholderText: qsTr("Search")
-            onAccepted: if (text.trim().length > 0) root.show("SearchPage", {query: text.trim()})
-        }
-        actions: [
-            Kirigami.Action {
-                text: qsTr("Home"); icon.name: "go-home"
-                checked: root.section === "HomePage"
-                onTriggered: root.show("HomePage")
-            },
-            Kirigami.Action {
-                text: qsTr("Now Playing"); icon.name: "media-playback-playing"
-                visible: Player.hasQueue
-                onTriggered: root.showNowPlaying()
-            },
-            Kirigami.Action {
-                text: qsTr("Recent"); icon.name: "document-open-recent"
-                visible: root.hasMusic
-                checked: root.section === "RecentPage"
-                onTriggered: root.show("RecentPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Artists"); icon.name: "view-media-artist"
-                visible: root.hasMusic
-                checked: root.section === "ArtistsPage"
-                onTriggered: root.show("ArtistsPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Radio"); icon.name: "radio"
-                visible: root.hasMusic
-                checked: root.section === "RadioPage"
-                onTriggered: root.show("RadioPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Playlists"); icon.name: "view-media-playlist"
-                visible: root.hasMusic
-                checked: root.section === "PlaylistsPage"
-                onTriggered: root.show("PlaylistsPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Movies"); icon.name: "video-x-generic"
-                visible: root.hasMovies
-                checked: root.section === "MoviesPage"
-                onTriggered: root.show("MoviesPage")
-            },
-            Kirigami.Action {
-                text: qsTr("TV"); icon.name: "video-television"
-                visible: root.hasShows
-                checked: root.section === "ShowsPage"
-                onTriggered: root.show("ShowsPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Podcasts"); icon.name: "podcast-symbolic"
-                visible: root.hasPodcasts
-                checked: root.section === "PodcastsPage"
-                onTriggered: root.show("PodcastsPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Downloads"); icon.name: "download"
-                checked: root.section === "DownloadsPage"
-                onTriggered: root.show("DownloadsPage")
-            },
-            Kirigami.Action {
-                text: qsTr("Settings"); icon.name: "settings-configure"
-                checked: root.section === "SettingsPage"
-                onTriggered: root.show("SettingsPage")
+            placeholderText: qsTr("Artists, albums, tracks")
+            onAccepted: {
+                const query = text.trim()
+                if (query.length === 0) return
+                root.lastSearch = query
+                root.show("SearchPage", {query: query}, "search")
             }
-        ]
+        }
+
+        // As the Mac's sidebar: Music, Video, this computer, and the last search.
+        topContent: ColumnLayout {
+            Layout.fillWidth: true
+            // The drawer gives its top content all the height, centring what can't grow: fill it,
+            // with the space after the last entry.
+            Layout.fillHeight: true
+            spacing: 0
+
+            SidebarHeading { text: qsTr("Music"); visible: root.hasMusic }
+            SidebarItem {
+                visible: root.hasMusic
+                text: qsTr("Recently Played"); icon.name: "document-open-recent"
+                page: "RecentPage"
+            }
+            SidebarItem {
+                visible: root.hasMusic
+                text: qsTr("Recently Added"); icon.name: "list-add"
+                page: "AlbumGridPage"; key: "recentlyAdded"
+                properties: ({title: qsTr("Recently Added"), call: "recentlyAdded"})
+            }
+            SidebarItem {
+                visible: root.hasMusic
+                text: qsTr("New Releases"); icon.name: "media-album-cover"
+                page: "AlbumGridPage"; key: "newReleases"
+                properties: ({title: qsTr("New Releases"), call: "newReleases"})
+            }
+            SidebarItem {
+                visible: root.hasMusic
+                text: qsTr("Artists"); icon.name: "view-media-artist"
+                page: "ArtistsPage"
+            }
+            SidebarItem {
+                visible: root.hasMusic
+                text: qsTr("Favorites"); icon.name: "emblem-favorite"
+                page: "FavoritesPage"
+            }
+            SidebarItem {
+                visible: root.hasMusic && (root.library.hasPlaylists ?? true)
+                text: qsTr("Playlists"); icon.name: "view-media-playlist"
+                page: "PlaylistsPage"
+            }
+            SidebarItem {
+                visible: root.hasMusic
+                text: qsTr("Radio"); icon.name: "radio"
+                page: "RadioPage"
+            }
+            SidebarItem {
+                visible: root.hasPodcasts
+                text: qsTr("Podcasts"); icon.name: "podcast-symbolic"
+                page: "PodcastsPage"
+            }
+
+            SidebarHeading { text: qsTr("Video"); visible: root.hasMovies || root.hasShows }
+            SidebarItem {
+                visible: root.hasMovies || root.hasShows
+                text: qsTr("Watch"); icon.name: "video-display"
+                page: "WatchPage"
+            }
+            SidebarItem {
+                visible: root.hasMovies
+                text: qsTr("Movies"); icon.name: "video-x-generic"
+                page: "VideoGridPage"; key: "movies"
+                properties: ({title: qsTr("Movies"), call: "movies"})
+            }
+            SidebarItem {
+                visible: root.hasShows
+                text: qsTr("TV Shows"); icon.name: "video-television"
+                page: "VideoGridPage"; key: "shows"
+                properties: ({title: qsTr("TV Shows"), call: "shows"})
+            }
+
+            SidebarHeading { text: qsTr("On This Computer") }
+            SidebarItem {
+                text: qsTr("Downloads"); icon.name: "download"
+                page: "DownloadsPage"
+            }
+            SidebarItem {
+                text: qsTr("Settings"); icon.name: "settings-configure"
+                page: "SettingsPage"
+            }
+
+            SidebarHeading { text: qsTr("Search"); visible: root.lastSearch.length > 0 }
+            SidebarItem {
+                visible: root.lastSearch.length > 0
+                text: root.lastSearch; icon.name: "search"
+                page: "SearchPage"; key: "search"
+                properties: ({query: root.lastSearch})
+            }
+            Item { Layout.fillHeight: true }
+        }
     }
 }

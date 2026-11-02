@@ -4,95 +4,153 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM.Core
 
-/** The footer while something is queued: cover, what's playing, previous / play / next. */
+/**
+ * The bar along the bottom while something is queued, as the Mac's: cover and title (opening
+ * Now Playing), ♥, previous / play / next with a seek bar, or LIVE for a stream, and the queue.
+ */
 QQC2.ToolBar {
     id: bar
 
     signal open()
 
+    readonly property var item: Player.current
+    // Podcast episodes' etag is their GUID, not a track's.
+    readonly property bool isTrack: (item.etag ?? "") !== "" && !(item.podcast ?? false)
+    readonly property bool favorite: Core.favoriteTracks.includes(item.etag ?? "")
+
     position: QQC2.ToolBar.Footer
-    padding: 0
     // Hidden, it takes no room.
     height: visible ? implicitHeight : 0
-    implicitHeight: content.implicitHeight
+    implicitHeight: content.implicitHeight + Kirigami.Units.smallSpacing * 2
 
-    ColumnLayout {
+    function time(seconds) {
+        const s = Math.max(0, Math.floor(seconds))
+        const two = n => String(n).padStart(2, "0")
+        const h = Math.floor(s / 3600)
+        return h > 0 ? `${h}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`
+    }
+
+    component BarButton: QQC2.ToolButton {
+        display: QQC2.AbstractButton.IconOnly
+        QQC2.ToolTip.text: text
+        QQC2.ToolTip.visible: hovered
+        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+    }
+
+    RowLayout {
         id: content
         anchors.fill: parent
-        spacing: 0
+        anchors.leftMargin: Kirigami.Units.largeSpacing
+        anchors.rightMargin: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.largeSpacing
 
-        // How far into the track (nothing for a live stream).
-        QQC2.ProgressBar {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Kirigami.Units.smallSpacing / 2
-            visible: !Player.live
-            from: 0
-            to: Math.max(Player.duration, 1)
-            value: Player.position
-            background: null
-        }
-
+        // What's playing; opens Now Playing.
         RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: Kirigami.Units.smallSpacing
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 16
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 16
             spacing: Kirigami.Units.largeSpacing
 
-            // What's playing; opens Now Playing.
-            RowLayout {
+            TapHandler { onTapped: bar.open() }
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+
+            Image {
+                Layout.preferredWidth: Kirigami.Units.iconSizes.large
+                Layout.preferredHeight: Kirigami.Units.iconSizes.large
+                source: bar.item.imageUri ?? ""
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                sourceSize.width: width * Screen.devicePixelRatio
+                sourceSize.height: height * Screen.devicePixelRatio
+            }
+            ColumnLayout {
                 Layout.fillWidth: true
-                spacing: Kirigami.Units.largeSpacing
-
-                TapHandler { onTapped: bar.open() }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-
-                Image {
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
-                    source: Player.current.imageUri ?? ""
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    sourceSize.width: width * Screen.devicePixelRatio
-                    sourceSize.height: height * Screen.devicePixelRatio
-                }
-                ColumnLayout {
+                spacing: 0
+                QQC2.Label {
                     Layout.fillWidth: true
-                    spacing: 0
-                    QQC2.Label {
-                        Layout.fillWidth: true
-                        text: Player.displayTitle
-                        elide: Text.ElideRight
-                        font.weight: Font.DemiBold
-                    }
-                    QQC2.Label {
-                        Layout.fillWidth: true
-                        text: Player.displaySubtitle
-                        elide: Text.ElideRight
-                        opacity: 0.7
-                    }
+                    text: Player.displayTitle
+                    elide: Text.ElideRight
+                    font.weight: Font.DemiBold
+                }
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    text: Player.displaySubtitle
+                    elide: Text.ElideRight
+                    opacity: 0.7
                 }
             }
+        }
 
-            QQC2.ToolButton {
-                icon.name: "media-skip-backward"
-                display: QQC2.AbstractButton.IconOnly
-                text: qsTr("Previous")
-                onClicked: Player.previous()
-            }
-            QQC2.ToolButton {
-                icon.name: Player.playing ? "media-playback-pause" : "media-playback-start"
-                icon.width: Kirigami.Units.iconSizes.medium
-                icon.height: Kirigami.Units.iconSizes.medium
-                display: QQC2.AbstractButton.IconOnly
-                text: Player.playing ? qsTr("Pause") : qsTr("Play")
-                onClicked: Player.togglePlay()
-            }
-            QQC2.ToolButton {
-                icon.name: "media-skip-forward"
-                display: QQC2.AbstractButton.IconOnly
-                text: qsTr("Next")
-                enabled: Player.index + 1 < Player.items.length
-                onClicked: Player.next()
-            }
+        BarButton {
+            visible: bar.isTrack
+            icon.name: bar.favorite ? "emblem-favorite" : "emblem-favorite-symbolic"
+            text: bar.favorite ? qsTr("Unfavorite") : qsTr("Favorite")
+            onClicked: Core.call("setTrackFavorite", {etag: bar.item.etag, favorite: !bar.favorite})
+        }
+
+        // A live stream: play / stop and LIVE.
+        BarButton {
+            visible: Player.live
+            icon.name: Player.playing ? "media-playback-stop" : "media-playback-start"
+            icon.width: Kirigami.Units.iconSizes.medium
+            icon.height: Kirigami.Units.iconSizes.medium
+            text: Player.playing ? qsTr("Stop") : qsTr("Play")
+            onClicked: Player.togglePlay()
+        }
+        QQC2.Label {
+            visible: Player.live
+            text: qsTr("LIVE")
+            color: "white"
+            font.weight: Font.Bold
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            leftPadding: Kirigami.Units.smallSpacing
+            rightPadding: Kirigami.Units.smallSpacing
+            background: Rectangle { color: Kirigami.Theme.negativeTextColor; radius: height / 2 }
+        }
+        Item { visible: Player.live; Layout.fillWidth: true }
+
+        // Anything else: previous / play / next and where it is.
+        BarButton {
+            visible: !Player.live
+            icon.name: "media-skip-backward"
+            text: qsTr("Previous")
+            onClicked: Player.previous()
+        }
+        BarButton {
+            visible: !Player.live
+            icon.name: Player.playing ? "media-playback-pause" : "media-playback-start"
+            icon.width: Kirigami.Units.iconSizes.medium
+            icon.height: Kirigami.Units.iconSizes.medium
+            text: Player.playing ? qsTr("Pause") : qsTr("Play")
+            onClicked: Player.togglePlay()
+        }
+        BarButton {
+            visible: !Player.live
+            icon.name: "media-skip-forward"
+            text: qsTr("Next")
+            enabled: Player.index + 1 < Player.items.length
+            onClicked: Player.next()
+        }
+        QQC2.Slider {
+            id: seek
+            visible: !Player.live
+            Layout.fillWidth: true
+            from: 0
+            to: Math.max(Player.duration, 1)
+            enabled: Player.duration > 0
+            Binding on value { value: Player.position; when: !seek.pressed }
+            onPressedChanged: if (!pressed) Player.seek(value)
+        }
+        QQC2.Label {
+            visible: !Player.live
+            text: bar.time(seek.pressed ? seek.value : Player.position) + " / " + bar.time(Player.duration)
+            font.features: {"tnum": 1}
+            opacity: 0.7
+        }
+
+        BarButton {
+            icon.name: "view-media-playlist"
+            text: qsTr("Queue")
+            onClicked: bar.open()
         }
     }
 }

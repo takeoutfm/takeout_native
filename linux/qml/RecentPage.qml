@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
 import TakeoutFM.Core
@@ -23,6 +24,26 @@ Kirigami.ScrollablePage {
         }
     }
 
+    /** "Beck · 13 tracks", or just the count when the creator is the title. */
+    function detail(entry) {
+        const n = entry.items.length
+        const tracks = n === 1 ? qsTr("1 track") : qsTr("%1 tracks").arg(n)
+        return entry.creator && entry.creator !== entry.title ? `${entry.creator} · ${tracks}` : tracks
+    }
+
+    /** When, relative to now: "5 minutes ago", "yesterday", "3 days ago", else the date. */
+    function played(ms) {
+        const minutes = Math.floor((Date.now() - ms) / 60000)
+        if (minutes < 1) return qsTr("just now")
+        if (minutes < 60) return minutes === 1 ? qsTr("1 minute ago") : qsTr("%1 minutes ago").arg(minutes)
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) return hours === 1 ? qsTr("1 hour ago") : qsTr("%1 hours ago").arg(hours)
+        const days = Math.floor(hours / 24)
+        if (days === 1) return qsTr("yesterday")
+        if (days < 7) return qsTr("%1 days ago").arg(days)
+        return new Date(ms).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+    }
+
     actions: [
         Kirigami.Action {
             text: qsTr("Clear")
@@ -34,20 +55,25 @@ Kirigami.ScrollablePage {
 
     ListView {
         model: Core.recentlyPlayed
-        delegate: KD.SubtitleDelegate {
-            id: row
+        // The list focuses its current item; a wrapper takes that, so no row looks selected.
+        delegate: Item {
+            id: cell
             required property var modelData
             width: ListView.view.width
+            height: row.implicitHeight
+        KD.SubtitleDelegate {
+            id: row
+            readonly property var modelData: cell.modelData
+            width: parent.width
             text: modelData.title
-            subtitle: [modelData.creator, new Date(modelData.playedAt).toLocaleString(Qt.locale(), Locale.ShortFormat)]
-                .filter(s => s.length > 0).join(" · ")
+            subtitle: page.detail(modelData)
             onClicked: Player.play(page.toQueue(modelData))
 
-            contentItem: Row {
+            contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing
                 Image {
-                    width: Kirigami.Units.iconSizes.large
-                    height: width
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
                     source: row.modelData.imageUri || (row.modelData.items[0]?.imageUri ?? "")
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
@@ -55,12 +81,16 @@ Kirigami.ScrollablePage {
                     sourceSize.height: height * Screen.devicePixelRatio
                 }
                 KD.TitleSubtitle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - Kirigami.Units.iconSizes.large - parent.spacing
+                    Layout.fillWidth: true
                     title: row.text
                     subtitle: row.subtitle
                 }
+                QQC2.Label {
+                    text: page.played(row.modelData.playedAt)
+                    opacity: 0.7
+                }
             }
+        }
         }
 
         Kirigami.PlaceholderMessage {

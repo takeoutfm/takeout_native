@@ -51,7 +51,6 @@ qt_add_qml_module(takeoutfm
     QML_FILES
         qml/Main.qml
         qml/SignInPage.qml
-        qml/HomePage.qml
         qml/ArtistsPage.qml
         qml/ArtistPage.qml
         qml/AlbumPage.qml
@@ -72,8 +71,6 @@ qt_add_qml_module(takeoutfm
         qml/RecentPage.qml
         qml/PodcastsPage.qml
         qml/PodcastPage.qml
-        qml/MoviesPage.qml
-        qml/ShowsPage.qml
         qml/VideoGridPage.qml
         qml/VideoPage.qml
         qml/PersonPage.qml
@@ -83,7 +80,12 @@ qt_add_qml_module(takeoutfm
         qml/PersonTile.qml
         qml/VideoPlayer.qml
         qml/DownloadsPage.qml
-        qml/PodcastEpisodePage.qml)
+        qml/PodcastEpisodePage.qml
+        qml/AlbumGridPage.qml
+        qml/FavoritesPage.qml
+        qml/WatchPage.qml
+        qml/CardRow.qml
+        qml/ArtistCard.qml)
 target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(takeoutfm PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::OpenGL Qt6::Qml Qt6::Quick Qt6::QuickControls2

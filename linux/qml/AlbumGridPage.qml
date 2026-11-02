@@ -4,44 +4,27 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM.Core
 
-/** Music Home: Recently Added or New Releases, as the phone's media bar. */
+/** Albums from shared call [call] as a grid: Recently Added, New Releases (the Mac's pages). */
 Kirigami.ScrollablePage {
     id: page
 
-    title: qsTr("Home")
-
-    property int list: 0
+    required property string call
     property var albums: []
     property bool loading: false
     property var error: null
 
-    readonly property var calls: ["recentlyAdded", "newReleases"]
-
     function load() {
         loading = true
         error = null
-        Core.call(calls[list], {}, (result, failure) => {
+        Core.call(call, {}, (result, failure) => {
             loading = false
             error = failure
             albums = result ?? []
         })
     }
-    onListChanged: load()
     Component.onCompleted: load()
 
     actions: [
-        Kirigami.Action {
-            text: qsTr("Recently Added")
-            checkable: true
-            checked: page.list === 0
-            onTriggered: page.list = 0
-        },
-        Kirigami.Action {
-            text: qsTr("New Releases")
-            checkable: true
-            checked: page.list === 1
-            onTriggered: page.list = 1
-        },
         Kirigami.Action {
             text: qsTr("Reload")
             icon.name: "view-refresh"

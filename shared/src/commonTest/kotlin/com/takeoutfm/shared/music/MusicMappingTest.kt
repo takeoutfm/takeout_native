@@ -62,7 +62,7 @@ class MusicMappingTest {
     fun coversFollowTheServersRule() {
         assertEquals("/img/mb/re/re1/front", releaseCoverPath("re1", "rg1", true, true, "", false))
         assertEquals("/img/mb/rg/rg1/front", releaseCoverPath("re1", "rg1", true, true, "", true))
-        assertEquals("/img/mb/re/re1", releaseCoverPath("re1", "rg1", true, false, "123", false))
+        assertEquals("/img/mb/re/re1/123", releaseCoverPath("re1", "rg1", true, false, "123", false))
         assertEquals("", releaseCoverPath("re1", "rg1", false, false, "", false))
     }
 

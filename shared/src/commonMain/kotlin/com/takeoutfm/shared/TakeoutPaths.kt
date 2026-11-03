@@ -28,7 +28,7 @@ object TakeoutPaths {
         val base = if (groupArtwork) "/img/mb/rg/$rgid" else "/img/mb/re/$reid"
         return when {
             artwork && frontArtwork -> "$base/front"
-            artwork && otherArtwork.isNotEmpty() -> base
+            artwork && otherArtwork.isNotEmpty() -> "$base/$otherArtwork"
             else -> ""
         }
     }

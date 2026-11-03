@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -128,8 +129,8 @@ fun DashboardTopBar(
     modifier: Modifier = Modifier,
     selectedTabIndex: Int,
     tabs: List<DashboardTab>,
-    /** One per tab, plus the profile avatar's first. */
-    focusRequesters: List<FocusRequester>,
+    /** The profile avatar's, then one per tab. */
+    focus: TopBarFocus,
     onAvatarFocusChanged: (isFocused: Boolean) -> Unit = {},
     mode: LibraryMode = LibraryMode.Video,
     /** With music in the library, the logo becomes a video/music switch. */
@@ -146,19 +147,22 @@ fun DashboardTopBar(
                 .background(MaterialTheme.colorScheme.surface)
                 // Coming up from the page always lands on the current tab (the profile avatar on
                 // the profile page), not on whatever is geometrically closest: from a grid's
-                // first column that was the avatar.
+                // first column that was the avatar. A tab that isn't laid out yet (the row just
+                // changed) falls back to the default.
                 .focusProperties {
-                    enter = {
-                        focusRequesters.getOrNull(selectedTabIndex + 1) ?: FocusRequester.Default
-                    }
+                    enter = { focus.target(selectedTabIndex + 1) ?: FocusRequester.Default }
                 }
                 .focusGroup(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            DisposableEffect(focus) {
+                focus.attach(0)
+                onDispose { focus.detach(0) }
+            }
             UserAvatar(
                 modifier = Modifier
                     .size(32.dp)
-                    .focusRequester(focusRequesters[0])
+                    .focusRequester(focus[0])
                     .onFocusChanged { onAvatarFocusChanged(it.hasFocus) }
                     .semantics {
                         contentDescription =
@@ -200,10 +204,14 @@ fun DashboardTopBar(
                 ) {
                     tabs.forEachIndexed { index, tab ->
                         key(index) {
+                            DisposableEffect(focus) {
+                                focus.attach(index + 1)
+                                onDispose { focus.detach(index + 1) }
+                            }
                             Tab(
                                 modifier = Modifier
                                     .height(32.dp)
-                                    .focusRequester(focusRequesters[index + 1]),
+                                    .focusRequester(focus[index + 1]),
                                 selected = index == highlightedTabIndex,
                                 onFocus = {
                                     focusedTabIndex = index

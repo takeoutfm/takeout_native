@@ -35,12 +35,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -140,8 +140,8 @@ fun DashboardScreen(
     val startDestination = remember {
         if (mode == LibraryMode.Music) Screens.MusicHome() else Screens.Home()
     }
-    // +1 for the profile avatar, which comes first.
-    val topBarFocusRequesters = remember(tabs.size) { List(tabs.size + 1) { FocusRequester() } }
+    // The profile avatar's, then a tab each; the same requesters however the tabs change.
+    val topBarFocus = remember { TopBarFocus() }
 
     // The current tab's route, with a recommendation page's index filled in.
     var currentDestination: String? by remember { mutableStateOf(null) }
@@ -187,11 +187,11 @@ fun DashboardScreen(
         onBackPressed = {
             if (!isTopBarVisible) {
                 isTopBarVisible = true
-                topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
+                topBarFocus.requestFocus(currentTopBarSelectedTabIndex + 1)
             } else if (currentTopBarSelectedTabIndex == 0) onBackPressed()
             else if (!isTopBarFocused) {
-                topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
-            } else topBarFocusRequesters[1].requestFocus()
+                topBarFocus.requestFocus(currentTopBarSelectedTabIndex + 1)
+            } else topBarFocus.requestFocus(1)
         }
     ) {
         // We do not want to focus the TopBar everytime we come back from another screen e.g.
@@ -233,9 +233,15 @@ fun DashboardScreen(
             resetIsComingBackFromDifferentScreen()
         }
 
+        // Focus the current tab once it's laid out (the tab row composes its tabs late, and they
+        // change as the library index arrives).
+        val selectedTopBarSlot by rememberUpdatedState(currentTopBarSelectedTabIndex + 1)
         LaunchedEffect(Unit) {
             if (!wasTopBarFocusRequestedBefore) {
-                topBarFocusRequesters[currentTopBarSelectedTabIndex + 1].requestFocus()
+                withTimeoutOrNull(ReturnFocusTimeoutMillis) {
+                    snapshotFlow { selectedTopBarSlot }
+                        .first { topBarFocus.isAttached(it) }
+                }?.let { topBarFocus.requestFocus(it) }
                 wasTopBarFocusRequestedBefore = true
             }
         }
@@ -256,7 +262,7 @@ fun DashboardScreen(
                 ),
             selectedTabIndex = currentTopBarSelectedTabIndex,
             tabs = tabs,
-            focusRequesters = topBarFocusRequesters,
+            focus = topBarFocus,
             mode = mode,
             canSwitchMode = canSwitchMode,
             onSwitchMode = {

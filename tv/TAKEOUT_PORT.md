@@ -600,7 +600,11 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Next episode doesn't auto-play when one ends.
 - Playback speed resets to Normal for each title.
 - Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
-- Hiding tabs for a library without movies or shows is untested (the test library has both).
+- Hiding tabs: tested with a library that has movies but no shows (no Shows tab; launch, device-code
+  sign-in and D-pad into the top bar work). It used to crash with "FocusRequester is not
+  initialized" because the tab requesters were rebuilt when the tab count changed; `TopBarFocus`
+  now keeps them stable and only hands out ones whose tab is on screen. A library without movies
+  is still untested.
 - Music search isn't there yet (search is video-only); podcasts aren't in search either.
 - Not verified end to end: a real ListenBrainz connect and submission (tested with an invalid
   token only) and Takeout activity reporting (settings left off during testing).
@@ -612,7 +616,8 @@ Each step is its own commit(s), checked on the emulator and TV.
 
 ## Testing notes
 - Unit tests: `./gradlew :tv:testDebugUnitTest` (JUnit 4; Continue Watching window and
-  "in progress"/"finished" rules, best audio track ranking, dollar formatting, directors first in Cast & Crew).
+  "in progress"/"finished" rules, best audio track ranking, dollar formatting, directors first in Cast & Crew,
+  top bar focus requesters).
 - **Use the release build on real TVs**; the debug build is much slower there. Problems that only
   show on the TV (e.g. the Movies tab ANR) don't reproduce on an emulator running on a laptop.
 - Debug builds log every title's tracks, decoder support and errors to logcat (`EventLogger`).

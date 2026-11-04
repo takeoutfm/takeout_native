@@ -20,12 +20,12 @@ kotlin {
 }
 
 android {
-    namespace = "com.takeoutfm.watch"
+    namespace = "com.takeoutfm.wear"
     compileSdk = 36
 
     defaultConfig {
-        // Replaces the Flutter watch app in place (same id; higher versionCode than its 2600).
-        applicationId = "com.takeoutfm.watch"
+        // Its own id: installs beside the Flutter watch app (com.takeoutfm.watch) rather than replacing it.
+        applicationId = "com.takeoutfm.wear"
         minSdk = 30
         targetSdk = 36
         versionCode = 3000

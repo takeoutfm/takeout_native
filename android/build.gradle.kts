@@ -24,12 +24,12 @@ val releaseKey = Properties().apply {
 }
 
 android {
-    namespace = "com.takeoutfm.mobile"
+    namespace = "com.takeoutfm.android"
     compileSdk = 36
 
     defaultConfig {
-        // Replaces the Flutter app in place (same id; higher versionCode than its 2600).
-        applicationId = "com.takeoutfm.mobile"
+        // Its own id: installs beside the Flutter app (com.takeoutfm.mobile) rather than replacing it.
+        applicationId = "com.takeoutfm.android"
         minSdk = 28
         // The Flutter app it replaces already targets 36.
         targetSdk = 36

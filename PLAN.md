@@ -109,11 +109,10 @@ and one build.
 
 ### 2.5 Identity — decided
 
-- **Application ID**: reuse `com.takeoutfm.mobile` so the native app *replaces* the Flutter app
-  in place (same signing key, `versionCode` above 2600). Debug builds use an
-  `applicationIdSuffix = ".debug"` so they install beside the Flutter app during development.
-- Wear OS: reuse `com.takeoutfm.watch` (the Flutter watch app's id) so it also replaces it in place
-  (same signing key).
+- **Application ID**: `com.takeoutfm.android` (package too), matching the module names; it
+  installs beside the Flutter app (`com.takeoutfm.mobile`) rather than replacing it (changed
+  2026-11-03 from reusing the Flutter id). Debug builds use an `applicationIdSuffix = ".debug"`.
+- Wear OS: `com.takeoutfm.wear` (package too), beside the Flutter watch app (`com.takeoutfm.watch`).
 - Kotlin package: `com.takeoutfm.*` for all new code (the TV app still uses JetStream's
   `com.google.jetstream`; rename it when moving into the monorepo).
 
@@ -311,7 +310,7 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - [x] Re-verify the TV app: each step on the emulator; the finished phase 0 release on the
          Chromecast (2026-10-25: signed in, Recently Played and progress migrated, music and
          video Home, Continue Watching).
-1. **App skeleton** — done (2026-10-25): `:android` (`com.takeoutfm.mobile`, versionCode 3000);
+1. **App skeleton** — done (2026-10-25): `:android` (`com.takeoutfm.android`, versionCode 3000);
    login (password + passcode, device code with "get a new code"), dynamic theme, bottom bar
    / rail (rail whenever the width isn't compact), per-tab stacks, Home with media bar
    (music: added/new; movies: added/new/recommended/favorites; TV: added), read-only Artists
@@ -423,7 +422,7 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
    - a Tile (recent queues / play-pause) and a complication.
    Controlling playback on the phone needs nothing extra: Wear OS mirrors the phone's media
    session.
-   - [x] Module `wear/` (`com.takeoutfm.watch`, `.debug` for debug builds; versionCode 3000 over
+   - [x] Module `wear/` (`com.takeoutfm.wear`, `.debug` for debug builds; versionCode 3000 over
          Flutter's 2600; release key shared with the phone): Wear Compose Material (1.4) home
          list, Recent, New Music, Artists, album/artist pages, Playlists (+ Favorites), Radio,
          Podcasts, Downloads, Settings; Now Playing with progress ring, LIVE badge and the
@@ -741,8 +740,8 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
 ## 7. Decisions and open questions
 
 1. Repository: **monorepo** (this repo), `takeout_tv` moved in with its history.
-2. Application ID: **`com.takeoutfm.mobile`**, replacing the Flutter app (debug builds add
-   `.debug`).
+2. Application ID: **`com.takeoutfm.android`** (watch: `com.takeoutfm.wear`), beside the Flutter
+   app rather than replacing it (debug builds add `.debug`).
 3. Min SDK: **28** (Wear OS 30).
 4. Caching: **Media3 cache (chunked) is fine**, playback only; with Playback Caching off, no
    caching at all; **any cached track always plays from the cache**; no caching for live

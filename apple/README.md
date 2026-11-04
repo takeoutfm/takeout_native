@@ -70,17 +70,21 @@ xcodegen                 # writes TakeoutFM.xcodeproj from project.yml (not comm
 open TakeoutFM.xcodeproj # then Run (⌘R)
 ```
 
-or from the command line:
+or from the command line, keeping the build in `apple/build/` (git-ignored) instead of
+`~/Library/Developer/Xcode/DerivedData`; the app is
+`build/DerivedData/Build/Products/Debug/TakeoutFM.app`:
 
 ```
-xcodebuild -project TakeoutFM.xcodeproj -scheme TakeoutFM -configuration Debug build
+xcodebuild -project TakeoutFM.xcodeproj -scheme TakeoutFM -configuration Debug \
+  -derivedDataPath build/DerivedData build
 ```
 
 iOS (the `TakeoutFM-iOS` scheme, `com.takeoutfm.ios`), for the simulator:
 
 ```
 xcodebuild -project TakeoutFM.xcodeproj -scheme TakeoutFM-iOS -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath build/DerivedData build
 ```
 
 A real iPhone needs signing: set your team in Xcode (TakeoutFM-iOS → Signing & Capabilities),

@@ -10,6 +10,7 @@ import com.takeoutfm.shared.model.ApiHomeView
 import com.takeoutfm.shared.model.ApiIndexView
 import com.takeoutfm.shared.model.ApiLink
 import com.takeoutfm.shared.model.ApiLogin
+import com.takeoutfm.shared.model.ApiMe
 import com.takeoutfm.shared.model.ApiMovieView
 import com.takeoutfm.shared.model.ApiMoviesView
 import com.takeoutfm.shared.model.ApiOffsets
@@ -279,6 +280,10 @@ class TakeoutApi internal constructor(
     }
 
     // ---- Endpoints ----
+
+    /** The signed-in user (never kept: it's only shown, and older servers lack it). */
+    suspend fun me(): ApiMe =
+        decode(ApiMe.serializer(), authed("/api/me"))
 
     suspend fun index(): ApiIndexView =
         decode(ApiIndexView.serializer(), getText("/api/index"))

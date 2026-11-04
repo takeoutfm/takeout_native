@@ -115,11 +115,11 @@ class BridgeTest {
         )
         val session = Watch("session")
         try {
-            assertEquals("""{"signedIn":false,"endpoint":""}""", session.next())
+            assertEquals("""{"signedIn":false,"endpoint":"","user":null}""", session.next())
             assertEquals(Answer("""{"code":"AB12CD","link":"$server/link"}""", null), call("requestCode", """{"host":"takeout.example"}"""))
             assertEquals(Answer("true", null), call("awaitCode", """{"intervalMs":1,"tries":5}"""))
             assertEquals(2, checks)
-            assertEquals("""{"signedIn":true,"endpoint":"$server"}""", session.next())
+            assertEquals("""{"signedIn":true,"endpoint":"$server","user":null}""", session.next())
             val secrets = Json.parseToJsonElement(saved.last()).jsonObject
             assertEquals("m", secrets["takeout_session.media"]!!.jsonPrimitive.content)
         } finally {

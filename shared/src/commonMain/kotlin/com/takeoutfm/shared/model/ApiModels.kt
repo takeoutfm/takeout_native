@@ -39,6 +39,12 @@ data class ApiRefreshTokens(
     @SerialName("RefreshToken") val refreshToken: String = "",
 )
 
+/** GET /api/me: who the access token belongs to. */
+@Serializable
+data class ApiMe(
+    @SerialName("User") val user: String = "",
+)
+
 @Serializable
 data class ApiAccessCode(
     @SerialName("Code") val code: String = "",

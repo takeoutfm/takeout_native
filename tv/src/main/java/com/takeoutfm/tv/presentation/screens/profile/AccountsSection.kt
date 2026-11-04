@@ -62,9 +62,14 @@ fun AccountsSection(viewModel: AccountViewModel = hiltViewModel()) {
     val childPadding = rememberChildPadding()
     val session by viewModel.state.collectAsStateWithLifecycle()
     val items = listOf(
+        // The server, then who's signed in to it (/api/me), as ListenBrainz shows its account.
         AccountsSectionData(
-            title = "Server",
-            value = session.endpoint.ifEmpty { "Not connected" },
+            title = session.endpoint.ifEmpty { "Server" },
+            value = when {
+                session.endpoint.isEmpty() -> "Not connected"
+                session.user != null -> "Connected as ${session.user}"
+                else -> "Server"
+            },
         ),
         AccountsSectionData(
             title = "Sign out",

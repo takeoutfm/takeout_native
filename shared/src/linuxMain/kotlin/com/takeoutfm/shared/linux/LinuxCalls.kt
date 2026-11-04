@@ -50,7 +50,7 @@ internal class Args(private val o: JsonObject) {
 }
 
 @Serializable
-data class SessionInfo(val signedIn: Boolean, val endpoint: String)
+data class SessionInfo(val signedIn: Boolean, val endpoint: String, val user: String? = null)
 
 @Serializable
 data class LinkCode(val code: String, val link: String)
@@ -84,7 +84,7 @@ class LinuxCalls(private val core: LinuxCore) {
 
     /** The flows the app can follow with `takeout_watch`. */
     fun watchable(name: String): Flow<JsonElement>? = when (name) {
-        "session" -> core.session.state.map { SessionInfo(it.isLoggedIn, it.endpoint) }.encoded()
+        "session" -> core.session.state.map { SessionInfo(it.isLoggedIn, it.endpoint, it.user) }.encoded()
         "library" -> core.library.index.encoded()
         "favoriteTracks" -> core.music.favoriteTrackEtags.encoded()
         "recentlyPlayed" -> core.history.entries.encoded()

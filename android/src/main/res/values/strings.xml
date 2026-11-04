@@ -79,6 +79,7 @@
     <string name="setting_listenbrainz_unreachable">Couldn\'t reach ListenBrainz. Try again.</string>
     <string name="setting_account">Account</string>
     <string name="setting_server">Server</string>
+    <string name="setting_server_connected">Connected as %1$s</string>
 
     <!-- About -->
     <string name="about_version">Version %1$s</string>

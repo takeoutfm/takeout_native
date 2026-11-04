@@ -444,6 +444,7 @@ private fun Settings(vm: WatchViewModel) {
     val reportPlays by vm.settings.reportPlays.collectAsStateWithLifecycle()
     val caching by vm.settings.playbackCaching.collectAsStateWithLifecycle()
     val mobileData by vm.settings.streamOverMobileData.collectAsStateWithLifecycle()
+    val session by vm.session_.collectAsStateWithLifecycle()
     ListPage(stringResource(R.string.settings)) {
         item {
             ToggleChip(
@@ -472,7 +473,15 @@ private fun Settings(vm: WatchViewModel) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        item { Entry(stringResource(R.string.server), onClick = {}, secondary = vm.endpoint) }
+        item {
+            // The server, then who's signed in to it (/api/me), as the phone shows it.
+            Entry(
+                session.endpoint,
+                onClick = {},
+                secondary = session.user?.let { stringResource(R.string.connected_as, it) }
+                    ?: stringResource(R.string.server),
+            )
+        }
         item { Entry(stringResource(R.string.sign_out), onClick = vm::signOut, icon = Icons.Filled.Logout) }
         item { Text(stringResource(R.string.version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.caption3) }
     }

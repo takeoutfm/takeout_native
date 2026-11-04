@@ -123,7 +123,7 @@ and one build.
 Already written, tested on devices, and extracted into `shared`/`android-media` in phase 0:
 
 - `TakeoutApi` (bearer + media token, refresh on 401, decoding off the main thread),
-  `TakeoutSession` (encrypted tokens), `TakeoutUrls`, `TakeoutLibrary` (index + home, saved),
+  `TakeoutSession` (encrypted tokens, and the user from `/api/me`), `TakeoutUrls`, `TakeoutLibrary` (index + home, saved),
   `TakeoutSettings`.
 - Music data layer: `MusicApiModels`, `TakeoutMusicRepository` (home, artists, artist/album
   details, release grouping, queues from spiff playlists, favorites, radio, playlists),

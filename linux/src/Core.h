@@ -17,6 +17,8 @@ class Core : public QObject
     Q_PROPERTY(bool ready READ ready NOTIFY sessionChanged)
     Q_PROPERTY(bool signedIn READ signedIn NOTIFY sessionChanged)
     Q_PROPERTY(QString endpoint READ endpoint NOTIFY sessionChanged)
+    /** Who's signed in to the server (/api/me); empty until it says. */
+    Q_PROPERTY(QString user READ user NOTIFY sessionChanged)
     Q_PROPERTY(QVariantMap library READ library NOTIFY libraryChanged)
     Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
     Q_PROPERTY(QStringList favoriteTracks READ favoriteTracks NOTIFY favoriteTracksChanged)
@@ -51,6 +53,7 @@ public:
     bool ready() const { return m_ready; }
     bool signedIn() const { return m_signedIn; }
     QString endpoint() const { return m_endpoint; }
+    QString user() const { return m_user; }
     QVariantMap library() const { return m_library; }
     QVariantMap settings() const { return m_settings; }
     QStringList favoriteTracks() const { return m_favoriteTracks; }
@@ -80,6 +83,7 @@ private:
     bool m_ready = false;
     bool m_signedIn = false;
     QString m_endpoint;
+    QString m_user;
     QVariantMap m_library;
     QVariantMap m_settings;
     QStringList m_favoriteTracks;

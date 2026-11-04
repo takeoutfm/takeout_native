@@ -6,10 +6,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** The signed-in server + tokens. */
+/** The signed-in server + tokens, and the user's name once the server has said it (/api/me). */
 data class SessionState(
     val endpoint: String = "",
     val tokens: ApiTokens? = null,
+    /** Null until /api/me answers (servers without it never do). */
+    val user: String? = null,
 ) {
     val isLoggedIn: Boolean get() = endpoint.isNotEmpty() && tokens?.isValid() == true
 }
@@ -35,11 +37,18 @@ class TakeoutSession(private val store: KeyValueStore?) {
         } else {
             null
         }
-        return SessionState(s.getString(KEY_ENDPOINT).orEmpty(), tokens)
+        val user = if (tokens != null) s.getString(KEY_USER) else null
+        return SessionState(s.getString(KEY_ENDPOINT).orEmpty(), tokens, user)
     }
 
+    /** A new sign-in, perhaps as someone else: the user is asked for again. */
     fun signIn(endpoint: String, tokens: ApiTokens) {
         _state.value = SessionState(endpoint, tokens)
+        store?.remove(KEY_USER)
+        saveTokens(endpoint, tokens)
+    }
+
+    private fun saveTokens(endpoint: String, tokens: ApiTokens) {
         store?.putStrings(
             mapOf(
                 KEY_ENDPOINT to endpoint,
@@ -54,7 +63,17 @@ class TakeoutSession(private val store: KeyValueStore?) {
     fun updateTokens(access: String, refresh: String) {
         val current = _state.value
         val media = current.tokens?.mediaToken ?: return
-        signIn(current.endpoint, ApiTokens(access, media, refresh))
+        val tokens = ApiTokens(access, media, refresh)
+        _state.value = current.copy(tokens = tokens)
+        saveTokens(current.endpoint, tokens)
+    }
+
+    /** The signed-in user's name, from /api/me. */
+    fun setUser(user: String) {
+        val current = _state.value
+        if (current.tokens == null || current.user == user) return
+        _state.value = current.copy(user = user)
+        store?.putStrings(mapOf(KEY_USER to user))
     }
 
     /**
@@ -74,7 +93,7 @@ class TakeoutSession(private val store: KeyValueStore?) {
     fun signOut() {
         val endpoint = _state.value.endpoint
         _state.value = SessionState(endpoint = endpoint, tokens = null)
-        store?.remove(KEY_ACCESS, KEY_MEDIA, KEY_REFRESH)
+        store?.remove(KEY_ACCESS, KEY_MEDIA, KEY_REFRESH, KEY_USER)
     }
 
     private companion object {
@@ -82,5 +101,6 @@ class TakeoutSession(private val store: KeyValueStore?) {
         const val KEY_ACCESS = "access"
         const val KEY_MEDIA = "media"
         const val KEY_REFRESH = "refresh"
+        const val KEY_USER = "user"
     }
 }

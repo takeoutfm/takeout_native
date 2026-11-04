@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.library
 
+import com.takeoutfm.shared.api.HttpException
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.model.ApiHomeView
@@ -81,7 +82,11 @@ class TakeoutLibrary(
     suspend fun refresh(maxAgeMs: Long = 0) {
         refreshLock.withLock {
             val current = _index.value
-            if (current != null && now() - current.fetchedAt < maxAgeMs) return
+            if (current != null && now() - current.fetchedAt < maxAgeMs) {
+                if (session.state.value.user == null && !noMe) refreshUser()
+                return
+            }
+            refreshUser()
             try {
                 val view = api.index()
                 val hasRecommendations = view.hasRecommendMovies ?: true
@@ -109,6 +114,24 @@ class TakeoutLibrary(
             } catch (e: Exception) {
                 // Offline or server error: keep showing what we had.
             }
+        }
+    }
+
+    /** The server refused /api/me (older servers lack it); asked again only with the index. */
+    private var noMe = false
+
+    /** Asks the server who's signed in (/api/me) for the settings; failures keep what we had. */
+    private suspend fun refreshUser() {
+        try {
+            val me = api.me()
+            noMe = false
+            if (me.user.isNotEmpty()) session.setUser(me.user)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            noMe = true
+        } catch (e: Exception) {
+            // Offline: keep what we had.
         }
     }
 

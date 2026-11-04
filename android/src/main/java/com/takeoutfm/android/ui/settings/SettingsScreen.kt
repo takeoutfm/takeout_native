@@ -59,6 +59,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -70,6 +73,11 @@ class SettingsViewModel @Inject constructor(
     session: TakeoutSession,
 ) : ViewModel() {
     val endpoint: String = session.endpoint
+
+    /** Who's signed in to the server (/api/me); null until it says, or if it can't. */
+    val serverUser: StateFlow<String?> = session.state
+        .map { it.user }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), session.state.value.user)
     val user: StateFlow<ListenBrainzUser?> = listenBrainz.user
 
     private val _connecting = MutableStateFlow(false)
@@ -105,6 +113,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
     val theme by viewModel.settings.theme.collectAsStateWithLifecycle()
     val submitListens by viewModel.settings.submitListens.collectAsStateWithLifecycle()
     val user by viewModel.user.collectAsStateWithLifecycle()
+    val serverUser by viewModel.serverUser.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -124,8 +133,14 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
         ) {
             ListItem(
                 leadingContent = { Icon(Icons.Filled.Dns, contentDescription = null) },
-                headlineContent = { Text(stringResource(R.string.setting_server)) },
-                supportingContent = { Text(viewModel.endpoint) },
+                // As ListenBrainz below: the server, then who's signed in to it.
+                headlineContent = { Text(viewModel.endpoint) },
+                supportingContent = {
+                    Text(
+                        serverUser?.let { stringResource(R.string.setting_server_connected, it) }
+                            ?: stringResource(R.string.setting_server)
+                    )
+                },
             )
             ListItem(
                 leadingContent = { Icon(Icons.Filled.DarkMode, contentDescription = null) },

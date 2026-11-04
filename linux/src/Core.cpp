@@ -84,6 +84,7 @@ void Core::updated(const QByteArray &name, const QVariant &value)
         m_ready = true;
         m_signedIn = session.value("signedIn").toBool();
         m_endpoint = session.value("endpoint").toString();
+        m_user = session.value("user").toString();
         Q_EMIT sessionChanged();
     } else if (name == "library") {
         m_library = value.toMap();

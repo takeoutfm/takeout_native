@@ -45,6 +45,9 @@ final class AppModel: ObservableObject {
     }
     /// The connected ListenBrainz account's user name, if any.
     @Published private(set) var listenBrainzUser: String?
+    /// The signed-in server, and who's signed in to it (/api/me) once it has said.
+    @Published private(set) var endpoint = ""
+    @Published private(set) var serverUser: String?
     /// The full Now Playing screen is over the window.
     @Published var showNowPlaying = false
     /// A short message at the bottom of the window ("Playing Next"), cleared after a moment.
@@ -81,7 +84,10 @@ final class AppModel: ObservableObject {
         watches = [
             WatchKt.watch(flow: core.session.state) { [weak self] state in
                 guard let self else { return }
-                let now = (state as? SessionState)?.isLoggedIn ?? false
+                let session = state as? SessionState
+                let now = session?.isLoggedIn ?? false
+                endpoint = session?.endpoint ?? ""
+                serverUser = session?.user
                 // Just signed in: learn the library (which pages exist) and the favorites. The
                 // sign-in's own refresh can fail quietly, leaving iPhone's Library half empty.
                 if now && !signedIn {

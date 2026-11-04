@@ -137,7 +137,9 @@ ctest --test-dir linux/build                # C API smoke test
 - **Shared core (`:shared`, `com.takeoutfm.shared.*`):**
   - `api/`: `TakeoutApi` (Ktor with the OkHttp engine, bearer access token, refresh on 401,
     JSON decoded off the main thread), `TakeoutSession` (tokens; streams use the separate
-    *media* token, only for URLs on the signed-in server), `TakeoutUrls` (full server URLs for
+    *media* token, only for URLs on the signed-in server; also the user's name from `/api/me`,
+    which `TakeoutLibrary.refresh` asks for and every app's settings shows as "Connected as"
+    — null offline before it's known or on servers without it), `TakeoutUrls` (full server URLs for
     locations, images and release covers).
   - `library/TakeoutLibrary`: the `/api/index` library index + recommendation sets — decides
     which tabs exist and which requests are made; saved on device and refreshed on

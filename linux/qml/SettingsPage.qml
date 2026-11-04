@@ -39,6 +39,13 @@ AppPage {
                 text: KI18n.i18n("Server")
                 description: Core.endpoint
             }
+            FormCard.FormDelegateSeparator { visible: Core.user.length > 0 }
+            // As ListenBrainz below: who's signed in to the server (/api/me).
+            FormCard.FormTextDelegate {
+                visible: Core.user.length > 0
+                text: KI18n.i18n("Connected as")
+                description: Core.user
+            }
             FormCard.FormDelegateSeparator {}
             FormCard.FormButtonDelegate {
                 text: KI18n.i18n("Sign Out…")

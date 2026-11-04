@@ -33,8 +33,8 @@ android {
         minSdk = 28
         // The Flutter app it replaces already targets 36.
         targetSdk = 36
-        versionCode = 3000
-        versionName = "3.0.0-dev"
+        versionCode = property("takeout.versionCode").toString().toInt()
+        versionName = property("takeout.versionName").toString()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

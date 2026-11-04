@@ -44,6 +44,11 @@ ctest --test-dir linux/build                # C API smoke test
 ./gradlew :tv:compileDebugKotlin            # fast compile check
 ```
 
+- Releases: one version for the phone, TV and watch apps (`takeout.versionCode` /
+  `takeout.versionName` in `gradle.properties`), all signed with `android/key.properties`.
+  `fdroid/publish.sh [--deploy]` publishes them to the F-Droid repo in `~/fdroid`
+  (**`fdroid/README.md`**).
+
 - `installDebug` installs on **every** connected device. To target one, build and use
   `adb -s <serial> install -r <apk>` (serials from `adb devices -l`).
 - Real TV (Chromecast with Google TV, wireless debugging): always install the **release** APK

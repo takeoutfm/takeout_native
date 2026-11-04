@@ -28,8 +28,8 @@ android {
         applicationId = "com.takeoutfm.wear"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3000
-        versionName = "3.0.0-dev"
+        versionCode = property("takeout.versionCode").toString().toInt()
+        versionName = property("takeout.versionName").toString()
     }
 
     signingConfigs {

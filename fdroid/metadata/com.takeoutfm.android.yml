@@ -1,0 +1,31 @@
+# https://f-droid.org/docs/Build_Metadata_Reference/
+
+AuthorName: defsub
+AuthorEmail: defsub@takeoutfm.com
+License: GPL-3.0-or-later
+Categories:
+  - Internet
+  - Multimedia
+
+WebSite: https://takeoutfm.com/
+SourceCode: https://gitlab.com/takeoutfm/takeout_native
+IssueTracker: https://gitlab.com/takeoutfm/takeout_native/issues
+
+Name: TakeoutFM
+Summary: Android client for TakeoutFM
+
+Description: >
+  TakeoutFM is a self-hosted free software media system. Enjoy your media on
+  your phone, desktop, television, and watch. Store your media at home, in the
+  cloud, and run the server anywhere.
+  <p>
+  TakeoutFM for Android supports Music, Movies, TV Shows, Podcasts, Internet
+  Radio, Downloads for offline playback, Android Auto, voice search and
+  ListenBrainz.
+  <p>
+  TakeoutFM apps are distributed under the terms of the GNU General Public
+  License 3.0 or later.
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Server uses themoviedb.org, fanart.tv, and optionally last.fm

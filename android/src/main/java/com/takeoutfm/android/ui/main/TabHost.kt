@@ -1,0 +1,134 @@
+package com.takeoutfm.android.ui.main
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import com.takeoutfm.android.ui.home.HomeScreen
+import com.takeoutfm.android.ui.home.HomeViewModel
+import com.takeoutfm.android.ui.music.ActivityScreen
+import com.takeoutfm.android.ui.music.AlbumScreen
+import com.takeoutfm.android.ui.music.RecentTracksScreen
+import com.takeoutfm.android.ui.music.ArtistScreen
+import com.takeoutfm.android.ui.music.DownloadsScreen
+import com.takeoutfm.android.ui.music.ArtistsScreen
+import com.takeoutfm.android.ui.music.MusicNav
+import com.takeoutfm.android.ui.music.PlayerScreen
+import com.takeoutfm.android.ui.music.PlaylistsScreen
+import com.takeoutfm.android.ui.music.PodcastEpisodeScreen
+import com.takeoutfm.android.ui.music.PodcastScreen
+import com.takeoutfm.android.ui.music.QueueScreen
+import com.takeoutfm.android.ui.music.RadioScreen
+import com.takeoutfm.android.ui.music.RecentScreen
+import com.takeoutfm.android.ui.music.SearchScreen
+import com.takeoutfm.android.ui.settings.LinkScreen
+import com.takeoutfm.android.ui.settings.SettingsScreen
+import com.takeoutfm.android.ui.video.GenreScreen
+import com.takeoutfm.android.ui.video.PersonScreen
+import com.takeoutfm.android.ui.video.VideoNav
+import com.takeoutfm.android.ui.video.VideoScreen
+import kotlinx.serialization.Serializable
+
+// Routes. Each tab has its own NavHost (and so its own back stack); the pages any tab can
+// open (artists, albums, search, playlists) are in every tab's graph.
+@Serializable object HomeRoute
+@Serializable object ArtistsRoute
+@Serializable object RecentRoute
+@Serializable object RadioRoute
+@Serializable object PlayerRoute
+@Serializable object SettingsRoute
+@Serializable object LinkRoute
+@Serializable object SearchRoute
+@Serializable object PlaylistsRoute
+@Serializable object RecentTracksRoute
+@Serializable object ActivityRoute
+@Serializable object DownloadsRoute
+@Serializable data class ArtistRoute(val id: String)
+@Serializable data class AlbumRoute(val id: String)
+@Serializable data class VideoRoute(val id: String)
+@Serializable data class PodcastRoute(val id: String)
+@Serializable data class PodcastEpisodeRoute(val seriesId: String, val episodeId: String)
+@Serializable data class PersonRoute(val id: String)
+@Serializable data class GenreRoute(val id: String)
+@Serializable data class QueueRoute(val kind: String, val id: String, val title: String)
+
+@Composable
+fun TabHost(
+    tab: Tab,
+    navController: NavHostController,
+    homeViewModel: HomeViewModel,
+    mainViewModel: MainViewModel,
+) {
+    val start: Any = when (tab) {
+        Tab.Home -> HomeRoute
+        Tab.Artists -> ArtistsRoute
+        Tab.Recent -> RecentRoute
+        Tab.Radio -> RadioRoute
+        Tab.Player -> PlayerRoute
+    }
+    val nav = remember(navController) {
+        MusicNav(
+            openArtist = { navController.navigate(ArtistRoute(it)) },
+            openAlbum = { navController.navigate(AlbumRoute(it)) },
+            openQueue = { kind, id, title -> navController.navigate(QueueRoute(kind, id, title)) },
+            openPlaylists = { navController.navigate(PlaylistsRoute) },
+            openRecentTracks = { navController.navigate(RecentTracksRoute) },
+            openActivity = { navController.navigate(ActivityRoute) },
+            openPodcast = { navController.navigate(PodcastRoute(it)) },
+            openEpisode = { series, episode -> navController.navigate(PodcastEpisodeRoute(series, episode)) },
+            openDownloads = { navController.navigate(DownloadsRoute) },
+            openSearch = { navController.navigate(SearchRoute) },
+            back = { navController.back() },
+        )
+    }
+    val videoNav = remember(navController) {
+        VideoNav(
+            openVideo = { navController.navigate(VideoRoute(it)) },
+            openPerson = { navController.navigate(PersonRoute(it)) },
+            openGenre = { navController.navigate(GenreRoute(it)) },
+            back = { navController.back() },
+        )
+    }
+    NavHost(navController, startDestination = start) {
+        composable<HomeRoute> {
+            HomeScreen(
+                homeViewModel, mainViewModel, nav, videoNav,
+                onSettings = { navController.navigate(SettingsRoute) },
+                onLink = { navController.navigate(LinkRoute) },
+            )
+        }
+        composable<ArtistsRoute> { ArtistsScreen(mainViewModel, nav) }
+        composable<RecentRoute> { RecentScreen(mainViewModel) }
+        composable<RadioRoute> { RadioScreen(mainViewModel) }
+        composable<PlayerRoute> { PlayerScreen(mainViewModel) }
+        composable<SettingsRoute> { SettingsScreen(onBack = nav.back) }
+        composable<LinkRoute> { LinkScreen(onBack = nav.back) }
+        musicPages(mainViewModel, nav, videoNav)
+        composable<VideoRoute> { VideoScreen(mainViewModel, videoNav) }
+        composable<PersonRoute> { PersonScreen(videoNav) }
+        composable<GenreRoute> { GenreScreen(videoNav) }
+    }
+}
+
+private fun NavGraphBuilder.musicPages(main: MainViewModel, nav: MusicNav, videoNav: VideoNav) {
+    composable<ArtistRoute> { ArtistScreen(main, nav) }
+    composable<AlbumRoute> { AlbumScreen(main, nav) }
+    composable<SearchRoute> { SearchScreen(main, nav, videoNav) }
+    composable<PlaylistsRoute> { PlaylistsScreen(main, nav) }
+    composable<QueueRoute> { QueueScreen(main, nav) }
+    composable<RecentTracksRoute> { RecentTracksScreen(main, nav) }
+    composable<PodcastRoute> { PodcastScreen(main, nav) }
+    composable<PodcastEpisodeRoute> { PodcastEpisodeScreen(main, nav) }
+    composable<ActivityRoute> { ActivityScreen(main, nav) }
+    composable<DownloadsRoute> { DownloadsScreen(main, nav) }
+}
+
+/**
+ * Back from a pushed page: pops it, but never the tab's first page. A second tap while a page is
+ * still closing would otherwise pop that too and leave the tab empty.
+ */
+private fun NavHostController.back() {
+    if (previousBackStackEntry != null) popBackStack()
+}

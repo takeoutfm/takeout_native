@@ -42,6 +42,8 @@ targets:
   TakeoutFM:
     type: application
     platform: macOS
+    # A shared scheme, so `xcodebuild -scheme TakeoutFM` works without opening Xcode first.
+    scheme: {}
     sources:
       - TakeoutFM
       # Its Info.plist is written by xcodegen (info: below), not a resource.
@@ -81,6 +83,7 @@ targets:
   TakeoutFM-iOS:
     type: application
     platform: iOS
+    scheme: {}
     sources:
       - TakeoutFM
       - path: iOS

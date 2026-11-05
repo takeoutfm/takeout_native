@@ -99,6 +99,9 @@ private:
     void saveEpisode();
     qint64 durationMs() const { return qint64(m_duration * 1000); }
     void report(const char *name, const QVariantMap &args);
+    /** Off or All, as kept in the settings' repeatAll; a new player and a new queue start with it. */
+    RepeatMode savedRepeat() const;
+    void restoreRepeat();
 
     Core *m_core;
     mpv_handle *m_mpv = nullptr;
@@ -122,6 +125,8 @@ private:
     bool m_live = false;
     QString m_streamTitle;
     RepeatMode m_repeat = RepeatOff;
+    /** The saved mode has been applied (settings arrive from the core after start). */
+    bool m_repeatRestored = false;
 
     QElapsedTimer m_savedAt;
     QElapsedTimer m_episodeSavedAt;

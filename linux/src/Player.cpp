@@ -117,6 +117,8 @@ Player::Player(Core *core, QObject *parent)
 
     m_ticker.setInterval(500);
     connect(&m_ticker, &QTimer::timeout, this, &Player::tick);
+    connect(m_core, &Core::settingsChanged, this, &Player::restoreRepeat);
+    restoreRepeat();
     m_savedAt.start();
     m_episodeSavedAt.start();
 }
@@ -165,6 +167,7 @@ void Player::play(const QVariantMap &queue, bool shuffled, int start)
 {
     saveProgress();
     saveEpisode();
+    if (m_repeat == RepeatOne) setRepeatMode(savedRepeat());
     const int generation = ++m_generation;
     QVariantList list = queue.value("items").toList();
     int index = start >= 0 ? start : queue.value("startIndex").toInt();
@@ -304,7 +307,21 @@ void Player::setRepeatMode(RepeatMode mode)
     m_repeat = mode;
     setString(m_mpv, "loop-file", mode == RepeatOne ? "inf" : "no");
     setString(m_mpv, "loop-playlist", mode == RepeatAll ? "inf" : "no");
+    // Off and All are kept for later queues and launches; One only lasts for this queue.
+    if (mode != RepeatOne && mode != savedRepeat()) report("setSettings", {{"repeatAll", mode == RepeatAll}});
     Q_EMIT repeatModeChanged();
+}
+
+Player::RepeatMode Player::savedRepeat() const
+{
+    return m_core->settings().value("repeatAll").toBool() ? RepeatAll : RepeatOff;
+}
+
+void Player::restoreRepeat()
+{
+    if (m_repeatRestored || m_core->settings().isEmpty()) return;
+    m_repeatRestored = true;
+    setRepeatMode(savedRepeat());
 }
 
 void Player::stop()

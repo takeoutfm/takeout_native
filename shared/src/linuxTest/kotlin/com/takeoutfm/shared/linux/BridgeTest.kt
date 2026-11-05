@@ -135,6 +135,8 @@ class BridgeTest {
             assertTrue(settings.next().contains(""""theme":"System""""))
             assertEquals(Answer("null", null), call("setSettings", """{"theme":"Dark"}"""))
             assertTrue(settings.next().contains(""""theme":"Dark""""))
+            assertEquals(Answer("null", null), call("setSettings", """{"repeatAll":true}"""))
+            assertTrue(settings.next().contains(""""repeatAll":true"""))
         } finally {
             settings.stop()
         }

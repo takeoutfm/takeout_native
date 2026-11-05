@@ -2,6 +2,7 @@ package com.takeoutfm.tv.data.takeout
 
 import android.content.Context
 import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.settings.RepeatSetting
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 @Singleton
 class TakeoutSettings @Inject constructor(
     @ApplicationContext context: Context,
-) {
+) : RepeatSetting {
     private val prefs = context.getSharedPreferences("takeout_settings", Context.MODE_PRIVATE)
 
     private val _continueWatchingDays =
@@ -67,6 +68,15 @@ class TakeoutSettings @Inject constructor(
         prefs.edit().putBoolean(KEY_SUBMIT_LISTENS, on).apply()
     }
 
+    private val _repeatAll = MutableStateFlow(prefs.getBoolean(KEY_REPEAT_ALL, false))
+
+    override val repeatAll: StateFlow<Boolean> = _repeatAll.asStateFlow()
+
+    override fun setRepeatAll(on: Boolean) {
+        _repeatAll.value = on
+        prefs.edit().putBoolean(KEY_REPEAT_ALL, on).apply()
+    }
+
     private val _mode = MutableStateFlow(
         LibraryMode.entries.firstOrNull { it.name == prefs.getString(KEY_MODE, null) }
             ?: LibraryMode.Video
@@ -91,6 +101,7 @@ class TakeoutSettings @Inject constructor(
         private const val KEY_MODE = "library_mode"
         private const val KEY_REPORT_PLAYS = "report_plays"
         private const val KEY_SUBMIT_LISTENS = "submit_listens"
+        private const val KEY_REPEAT_ALL = "repeat_all"
     }
 }
 

@@ -17,8 +17,19 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var queueTitle = ""
     /// The queue as played, for Playback Caching's grouping.
     private var queue: MusicQueue?
-    /// Off, the whole queue, or the current item.
-    @Published var repeatMode: RepeatMode = .off
+    /// Off, the whole queue, or the current item. Off and All are kept (`calls.repeatAll`) for
+    /// later queues and launches; One lasts until something else is played.
+    @Published var repeatMode: RepeatMode = .off {
+        didSet {
+            switch repeatMode {
+            case .off: calls.repeatAll = false
+            case .all: calls.repeatAll = true
+            case .one: break
+            }
+        }
+    }
+    /// The kept mode, which a new queue starts with.
+    private var savedRepeat: RepeatMode { calls.repeatAll ? .all : .off }
 
     enum RepeatMode { case off, all, one }
     @Published private(set) var index = 0
@@ -74,6 +85,7 @@ final class AudioPlayer: ObservableObject {
         self.calls = calls
         self.cache = cache
         listens = calls.listenSession()
+        repeatMode = calls.repeatAll ? .all : .off
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.tick(time) }
         }
@@ -122,6 +134,7 @@ final class AudioPlayer: ObservableObject {
         saveProgress()
         saveEpisode()
         historyId = calls.recordPlayed(queue: queue)
+        if repeatMode == .one { repeatMode = savedRepeat }
         var list = queue.items
         var index = start ?? Int(queue.startIndex)
         var seconds = start == nil ? Double(queue.startPositionMs) / 1000 : 0

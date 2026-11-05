@@ -60,6 +60,8 @@ data class Settings(
     val submitListens: Boolean,
     val playbackCaching: Boolean,
     val theme: ThemeMode,
+    /** Repeat All kept for every queue played (Repeat One isn't kept). */
+    val repeatAll: Boolean,
 )
 
 /**
@@ -91,7 +93,7 @@ class LinuxCalls(private val core: LinuxCore) {
         "downloads" -> core.downloads.downloads.map { it.values.toList() }.encoded()
         "settings" -> combine(
             core.settings.reportPlays, core.settings.submitListens,
-            core.settings.playbackCaching, core.settings.theme, ::Settings,
+            core.settings.playbackCaching, core.settings.theme, core.settings.repeatAll, ::Settings,
         ).encoded()
         else -> null
     }
@@ -243,6 +245,7 @@ class LinuxCalls(private val core: LinuxCore) {
             a.get<Boolean?>("submitListens", null)?.let(core.settings::setSubmitListens)
             a.get<Boolean?>("playbackCaching", null)?.let(core.settings::setPlaybackCaching)
             a.get<ThemeMode?>("theme", null)?.let(core.settings::setTheme)
+            a.get<Boolean?>("repeatAll", null)?.let(core.settings::setRepeatAll)
         }
         call("connectListenBrainz") { a -> core.listenBrainz.connect(a.get("token")) }
         action("disconnectListenBrainz") { core.listenBrainz.disconnect() }

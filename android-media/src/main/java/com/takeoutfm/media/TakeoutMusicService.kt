@@ -40,6 +40,7 @@ import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.progress.TakeoutProgress
+import com.takeoutfm.shared.settings.RepeatSetting
 
 /**
  * Plays music in the background: owns the music player and its queue, so playback continues
@@ -79,6 +80,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     /** Favorite tracks for the system controls' ♥ button; null for no button. */
     protected open val music: TakeoutMusicRepository? = null
 
+    /** Where Repeat All is kept between queues and restarts; null to start each player with repeat off. */
+    protected open val repeatSetting: RepeatSetting? = null
+
     /** App-specific player options (e.g. Wear OS's output checks), applied last. */
     protected open fun configure(builder: ExoPlayer.Builder): ExoPlayer.Builder = builder
 
@@ -92,6 +96,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private var listenTracker: ListenTracker? = null
     private var podcastProgress: PodcastProgress? = null
     private var historyProgress: HistoryProgress? = null
+    private var savedRepeat: SavedRepeat? = null
     private var playedDownloads: PlayedDownloads? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -126,6 +131,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             playedDownloads = PlayedDownloads(this, player, cache, history, downloads).also { it.attach() }
         }
         progress?.let { podcastProgress = PodcastProgress(player, it).also { p -> p.attach() } }
+        repeatSetting?.let { savedRepeat = SavedRepeat(player, it).also { r -> r.attach() } }
 
         // Opening the session from the system's now-playing controls returns to the app.
         val openApp = PendingIntent.getActivity(
@@ -159,6 +165,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         historyProgress = null
         playedDownloads?.detach()
         playedDownloads = null
+        savedRepeat?.detach()
+        savedRepeat = null
         listenTracker = null
         session?.run {
             player.release()

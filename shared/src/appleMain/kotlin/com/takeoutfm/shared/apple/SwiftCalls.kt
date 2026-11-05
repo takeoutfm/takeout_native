@@ -204,6 +204,11 @@ class SwiftCalls(private val core: TakeoutCore) {
         get() = core.settings.submitListens.value
         set(value) = core.settings.setSubmitListens(value)
 
+    /** Repeat All kept for every queue played (Repeat One isn't kept). */
+    var repeatAll: Boolean
+        get() = core.settings.repeatAll.value
+        set(value) = core.settings.setRepeatAll(value)
+
     /** System, Light or Dark. */
     var theme: ThemeMode
         get() = core.settings.theme.value

@@ -10,6 +10,7 @@ import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
+import com.takeoutfm.shared.settings.PlaySettings
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -24,6 +25,8 @@ class MusicService : TakeoutMusicService() {
     @Inject public override lateinit var mediaCache: TakeoutMediaCache
     @Inject public override lateinit var browseTree: TakeoutBrowseTree
     @Inject public override lateinit var music: TakeoutMusicRepository
+    @Inject lateinit var settings: PlaySettings
+    override val repeatSetting get() = settings
     override val downloadService = DownloadService::class.java
     override val sessionActivity = MainActivity::class.java
 }

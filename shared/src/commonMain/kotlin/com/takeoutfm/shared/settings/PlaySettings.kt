@@ -11,10 +11,20 @@ import kotlinx.serialization.Serializable
 enum class ThemeMode { System, Light, Dark }
 
 /**
- * Per-device settings for the phone and watch apps (the TV keeps its own), with the
- * Flutter app's defaults.
+ * Repeat All kept for every queue played until it's turned off. Repeat One isn't kept: it's
+ * for the track playing, and a new queue goes back to this.
  */
-class PlaySettings(private val store: KeyValueStore) {
+interface RepeatSetting {
+    val repeatAll: StateFlow<Boolean>
+
+    fun setRepeatAll(on: Boolean)
+}
+
+/**
+ * Per-device settings for the phone, watch, Mac/iOS and Linux apps (the TV keeps its own),
+ * with the Flutter app's defaults.
+ */
+class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
     private fun flag(key: String, default: Boolean) =
         MutableStateFlow(store.getString(key)?.toBooleanStrictOrNull() ?: default)
 
@@ -46,6 +56,12 @@ class PlaySettings(private val store: KeyValueStore) {
 
     fun setStreamOverMobileData(on: Boolean) = set(_mobileData, KEY_MOBILE_DATA, on)
 
+    private val _repeatAll = flag(KEY_REPEAT_ALL, false)
+
+    override val repeatAll: StateFlow<Boolean> = _repeatAll.asStateFlow()
+
+    override fun setRepeatAll(on: Boolean) = set(_repeatAll, KEY_REPEAT_ALL, on)
+
     private val _theme = MutableStateFlow(
         store.getString(KEY_THEME)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.System
     )
@@ -69,5 +85,6 @@ class PlaySettings(private val store: KeyValueStore) {
         const val KEY_PLAYBACK_CACHING = "playbackCaching"
         const val KEY_THEME = "theme"
         const val KEY_MOBILE_DATA = "streamOverMobileData"
+        const val KEY_REPEAT_ALL = "repeatAll"
     }
 }

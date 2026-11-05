@@ -50,6 +50,7 @@ struct MainView: View {
     @State private var page: Page? = .recentlyPlayed
     @State private var path: [Route] = []
     @State private var query = ""
+    @State private var showAccount = false
     @Environment(\.playVideo) private var playVideo
 
     private var musicPages: [Page] {
@@ -66,6 +67,14 @@ struct MainView: View {
         if model.hasMovies { pages.append(.movies) }
         if model.hasShows { pages.append(.shows) }
         return pages
+    }
+
+    /// A label over its value, in the account popover.
+    private func accountRow(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(value)
+        }
     }
 
     var body: some View {
@@ -90,10 +99,29 @@ struct MainView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
             .toolbar {
                 ToolbarItem {
-                    Menu {
-                        Button("Sign Out") { model.signOut() }
+                    // Who's signed in, and where (the user once /api/me has said). A popover,
+                    // not a menu, which would grey out text that isn't a command.
+                    Button {
+                        showAccount.toggle()
                     } label: {
                         Image(systemName: "person.crop.circle")
+                    }
+                    .help(model.serverUser.map { "Connected as \($0)" } ?? "Account")
+                    .popover(isPresented: $showAccount, arrowEdge: .bottom) {
+                        // As Linux's Account card: the server, then who's signed in to it.
+                        VStack(alignment: .leading, spacing: 2) {
+                            accountRow("Server", model.endpoint)
+                            if let user = model.serverUser {
+                                accountRow("Connected as", user).padding(.top, 8)
+                            }
+                            Divider().padding(.vertical, 8)
+                            Button("Sign Out") {
+                                showAccount = false
+                                model.signOut()
+                            }
+                        }
+                        .padding()
+                        .frame(minWidth: 200, alignment: .leading)
                     }
                 }
             }

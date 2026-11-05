@@ -11,16 +11,16 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            // As ListenBrainz below: the server, then who's signed in to it.
+            // The sidebar's profile menu shows the account on the Mac and iPad; iPhone has none.
+            #if os(iOS)
             Section("Account") {
                 LabeledContent("Server", value: model.endpoint)
                 if let user = model.serverUser {
                     LabeledContent("Connected as", value: user)
                 }
-                #if os(iOS)
                 Button("Sign Out", role: .destructive) { model.signOut() }
-                #endif
             }
+            #endif
             Section("Appearance") {
                 Picker("Theme", selection: $model.theme) {
                     Text("System").tag(ThemeMode.system)

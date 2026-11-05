@@ -6,7 +6,7 @@ import org.kde.kirigamiaddons.formcard as FormCard
 import TakeoutFM
 import org.kde.ki18n
 
-/** The server and signing out, what's reported, and About — as KDE apps' settings (FormCard). */
+/** The server and signing out, what's reported, the theme, and About — as KDE apps' settings (FormCard). */
 AppPage {
     id: page
 
@@ -61,6 +61,18 @@ AppPage {
                 description: KI18n.i18n("Tells your Takeout server what you listen to (half a track, or 4 minutes), for its Activity and stats.")
                 checked: Core.settings.reportPlays ?? true
                 onToggled: Core.call("setSettings", {reportPlays: checked})
+            }
+        }
+
+        FormCard.FormHeader { title: KI18n.i18n("Appearance") }
+        FormCard.FormCard {
+            // As the phone's Settings → Theme; Light and Dark are Breeze's, for this app only.
+            FormCard.FormComboBoxDelegate {
+                readonly property var themes: ["System", "Light", "Dark"]
+                text: KI18n.i18n("Theme")
+                model: [KI18n.i18n("System"), KI18n.i18n("Light"), KI18n.i18n("Dark")]
+                currentIndex: Math.max(0, themes.indexOf(Core.settings.theme ?? "System"))
+                onActivated: index => Core.call("setSettings", {theme: themes[index]})
             }
         }
 

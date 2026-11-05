@@ -4,6 +4,7 @@
 #include "Player.h"
 
 #include <KAboutData>
+#include <KColorSchemeManager>
 #include <KCrash>
 #include <KDBusService>
 #include <KLocalizedQmlContext>
@@ -54,6 +55,22 @@ int main(int argc, char *argv[])
         qCritical("TakeoutFM: can't open the data in %s", qPrintable(dataDir));
         return 1;
     }
+
+    // Settings → Theme: Breeze Light or Breeze Dark for this app only, or Plasma's colours
+    // (System). The shared settings keep the choice, so the manager doesn't save its own.
+    auto *schemes = KColorSchemeManager::instance();
+    schemes->setAutosaveChanges(false);
+    QString appliedTheme;
+    const auto applyTheme = [&core, schemes, &appliedTheme] {
+        const QString theme = core.settings().value("theme").toString();
+        if (theme.isEmpty() || theme == appliedTheme) return; // not known yet, or unchanged
+        appliedTheme = theme;
+        schemes->activateSchemeId(theme == "Light" ? QStringLiteral("BreezeLight")
+                                  : theme == "Dark" ? QStringLiteral("BreezeDark")
+                                                    : QString());
+    };
+    QObject::connect(&core, &Core::settingsChanged, &app, applyTheme);
+    applyTheme();
 
     Player player(&core);
     Mpris mpris(&player);

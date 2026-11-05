@@ -10,6 +10,7 @@ find_package(KF6I18n 6.8 REQUIRED)
 find_package(KF6CoreAddons REQUIRED)
 find_package(KF6DBusAddons REQUIRED)
 find_package(KF6Crash REQUIRED)
+find_package(KF6ColorScheme REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
@@ -95,7 +96,7 @@ qt_add_qml_module(takeoutfm
 target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(takeoutfm PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::OpenGL Qt6::Qml Qt6::Quick Qt6::QuickControls2
-    KF6::Kirigami KF6::I18n KF6::I18nQml KF6::CoreAddons KF6::DBusAddons KF6::Crash PkgConfig::SECRET PkgConfig::MPV takeout)
+    KF6::Kirigami KF6::I18n KF6::I18nQml KF6::CoreAddons KF6::DBusAddons KF6::Crash KF6::ColorScheme PkgConfig::SECRET PkgConfig::MPV takeout)
 # The window icon when the installed one isn't there (running from the build directory).
 qt_add_resources(takeoutfm "icon" PREFIX "/" BASE data
     FILES data/icons/hicolor/256x256/apps/com.takeoutfm.linux.png)

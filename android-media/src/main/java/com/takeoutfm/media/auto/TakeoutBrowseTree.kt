@@ -94,7 +94,9 @@ class TakeoutBrowseTree(
         )
         parentId == ArtistsRecent -> recentArtists().map(::artistFolder)
         parentId == ArtistsFavorite -> music.favorites().artists.map(::artistFolder)
-        parentId == ArtistsAll -> music.artists().first().map(::artistFolder)
+        // Android Auto orders long lists by title for its A–Z scroller, which would put every
+        // "The …" under T; the sort name ("Beatles, The") keeps them where the list has them.
+        parentId == ArtistsAll -> music.artists().first().map { artistFolder(it, it.sortName.ifEmpty { it.name }) }
         parentId.startsWith(ArtistPrefix) -> {
             val id = parentId.removePrefix(ArtistPrefix)
             val details = music.artistDetails(id)
@@ -150,8 +152,8 @@ class TakeoutBrowseTree(
         return names.mapNotNull { byName[it.lowercase()] }.distinct().take(RecentArtists)
     }
 
-    private fun artistFolder(artist: Artist) =
-        folder("$ArtistPrefix${artist.id}", artist.name, grid = true, subtitle = artist.genre, imageUri = artist.imageUri)
+    private fun artistFolder(artist: Artist, title: String = artist.name) =
+        folder("$ArtistPrefix${artist.id}", title, grid = true, subtitle = artist.genre, imageUri = artist.imageUri)
 
     private fun albumItem(album: Album) = playable("${PlayPrefix}album:${album.id}", album.name, album.artist, album.coverUri)
 

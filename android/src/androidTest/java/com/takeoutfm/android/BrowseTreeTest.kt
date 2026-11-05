@@ -7,6 +7,7 @@ import androidx.media3.session.SessionToken
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.takeoutfm.android.playback.MusicService
+import com.takeoutfm.shared.util.sortKey
 import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -66,6 +67,9 @@ class BrowseTreeTest {
         assertTrue("at most 5 recent", children("artists:recent").size <= 5)
         val all = children("artists:all")
         assertTrue("artists", all.isNotEmpty())
+        // Titled by sort name, so Android Auto's A–Z ordering by title keeps the list's order.
+        val keys = all.map { sortKey(it.mediaMetadata.title.toString()) }
+        assertEquals(keys.sorted(), keys)
         val items = children(all.first().mediaId)
         assertEquals(3, items.count { it.mediaId.startsWith("play:artist:") })
         assertTrue(items.all { it.mediaMetadata.isPlayable == true })

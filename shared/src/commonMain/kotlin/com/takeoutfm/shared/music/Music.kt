@@ -16,6 +16,8 @@ data class Artist(
     val arid: String = "",
     /** The artist's wide background image, or "". */
     val backgroundUri: String = "",
+    /** The name as sorted ("Beatles, The"), or "" when the server has none. */
+    val sortName: String = "",
 )
 
 /** A Music Home banner slide: a new album over its artist's background. */

@@ -294,6 +294,7 @@ class TakeoutMusicRepository(
         genre = genre,
         arid = arid,
         backgroundUri = urls.absolute(background),
+        sortName = sortName,
     )
 
     private fun ApiRelease.toAlbum() = Album(

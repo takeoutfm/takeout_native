@@ -9,17 +9,31 @@ object ProgressRules {
     /** Offsets before this are treated as not started. */
     const val MinResumeSeconds = 10
 
-    /** Within this much of the end counts as finished, so the title starts over. */
+    /** Within this much of the end always counts as finished, so the title starts over. */
     const val FinishedSeconds = 120
+
+    /**
+     * Films and episodes also count as finished in their last 8% (as Kodi), which covers the
+     * end credits: a 2-hour film is watched in its last ~10 minutes.
+     */
+    const val VideoEndPercent = 8
+
+    /** Podcast episodes have no credits: only the last [FinishedSeconds]. */
+    const val PodcastEndPercent = 0
 
     /** For [selectInProgress]: no age limit. */
     const val AllTime = 0
 
-    fun shouldResume(offset: Int, duration: Int): Boolean =
-        offset >= MinResumeSeconds && (duration <= 0 || offset < duration - FinishedSeconds)
+    /** How far from the end (seconds) counts as finished: [FinishedSeconds] or [endPercent]. */
+    fun finishedWithin(duration: Int, endPercent: Int = VideoEndPercent): Int =
+        maxOf(FinishedSeconds, duration * endPercent / 100)
 
-    fun isFinished(o: ApiOffset): Boolean =
-        o.duration > 0 && o.offset >= o.duration - FinishedSeconds
+    fun shouldResume(offset: Int, duration: Int, endPercent: Int = VideoEndPercent): Boolean =
+        offset >= MinResumeSeconds &&
+            (duration <= 0 || offset < duration - finishedWithin(duration, endPercent))
+
+    fun isFinished(o: ApiOffset, endPercent: Int = VideoEndPercent): Boolean =
+        o.duration > 0 && o.offset >= o.duration - finishedWithin(o.duration, endPercent)
 
     /** The newest offset (by date) for each ETag. */
     fun newestByEtag(offsets: Collection<ApiOffset>): Map<String, ApiOffset> {

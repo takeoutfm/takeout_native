@@ -48,10 +48,25 @@ class ProgressRulesTest {
     }
 
     @Test
-    fun finishedMeansWithinTwoMinutesOfTheEnd() {
-        assertTrue(ProgressRules.isFinished(offset("a", 5300, 5400, 0)))
-        assertFalse(ProgressRules.isFinished(offset("b", 5200, 5400, 0)))
+    fun videoIsFinishedInItsLastEightPercentOrTwoMinutes() {
+        // 2-hour film: the last 576 s (9.6 min) of credits count as watched.
+        assertTrue(ProgressRules.isFinished(offset("a", 7200 - 576, 7200, 0)))
+        assertFalse(ProgressRules.isFinished(offset("b", 7200 - 577, 7200, 0)))
+        // 22-minute episode: 8% is under 2 minutes, so the 2 minutes apply.
+        assertTrue(ProgressRules.isFinished(offset("c", 1320 - 120, 1320, 0)))
+        assertFalse(ProgressRules.isFinished(offset("d", 1320 - 121, 1320, 0)))
         // Unknown duration is never "finished".
-        assertFalse(ProgressRules.isFinished(offset("c", 5300, 0, 0)))
+        assertFalse(ProgressRules.isFinished(offset("e", 5300, 0, 0)))
+        // Resuming stops where finished starts.
+        assertTrue(ProgressRules.shouldResume(7200 - 577, 7200))
+        assertFalse(ProgressRules.shouldResume(7200 - 576, 7200))
+    }
+
+    @Test
+    fun podcastsAreFinishedOnlyInTheirLastTwoMinutes() {
+        val p = ProgressRules.PodcastEndPercent
+        assertTrue(ProgressRules.isFinished(offset("a", 3600 - 120, 3600, 0), p))
+        assertFalse(ProgressRules.isFinished(offset("b", 3600 - 121, 3600, 0), p))
+        assertTrue(ProgressRules.shouldResume(3600 - 121, 3600, p))
     }
 }

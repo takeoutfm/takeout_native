@@ -100,7 +100,7 @@ class TakeoutPodcastRepository(
     suspend fun episodesQueue(title: String, imageUri: String, episodes: List<PodcastEpisode>, startIndex: Int): MusicQueue {
         val start = episodes.getOrNull(startIndex)
         val resumeMs = start?.let { orNull { progress.latest()[it.eid] } }
-            ?.takeIf { ProgressRules.shouldResume(it.offset, it.duration) }
+            ?.takeIf { ProgressRules.shouldResume(it.offset, it.duration, ProgressRules.PodcastEndPercent) }
             ?.let { it.offset * 1000L } ?: 0L
         return MusicQueue(
             title = title,
@@ -170,7 +170,7 @@ class TakeoutPodcastRepository(
         /** Not started (or barely), started with time left, or within the end (Complete). */
         fun episodeProgress(offset: ApiOffset?): EpisodeProgress = when {
             offset == null || offset.offset < ProgressRules.MinResumeSeconds -> EpisodeProgress.NotStarted
-            ProgressRules.isFinished(offset) -> EpisodeProgress.Complete
+            ProgressRules.isFinished(offset, ProgressRules.PodcastEndPercent) -> EpisodeProgress.Complete
             offset.duration > 0 -> EpisodeProgress.Started(
                 fraction = offset.offset.toFloat() / offset.duration,
                 minutesLeft = ((offset.duration - offset.offset) / 60).coerceAtLeast(1),

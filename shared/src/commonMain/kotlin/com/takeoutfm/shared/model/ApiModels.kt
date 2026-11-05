@@ -49,7 +49,15 @@ data class ApiMe(
 data class ApiAccessCode(
     @SerialName("Code") val code: String = "",
     @SerialName("AccessToken") val accessToken: String = "",
+    /** Seconds until the code (and its token) stop being valid; 0 from older servers. */
+    @SerialName("ExpiresIn") val expiresIn: Int = 0,
+    /** Minimum seconds between checks; 0 from older servers. */
+    @SerialName("Interval") val interval: Int = 0,
 )
+
+/** POST /api/code: has the code been approved yet? */
+@Serializable
+data class ApiCodeCheck(@SerialName("Code") val code: String)
 
 @Serializable
 data class ApiPerson(

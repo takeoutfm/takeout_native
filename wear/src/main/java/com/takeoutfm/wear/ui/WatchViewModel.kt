@@ -9,10 +9,10 @@ import com.takeoutfm.media.NowPlaying
 import com.takeoutfm.media.offline.DownloadedItem
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.api.SessionState
+import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.library.TakeoutLibrary
-import com.takeoutfm.shared.model.ApiTokens
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.PlayedQueue
@@ -26,17 +26,25 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Sign-in by code on the watch: the code to approve on the phone (Link) or the web. */
-data class CodeState(val code: String? = null, val link: String? = null, val busy: Boolean = false, val error: Boolean = false)
+/**
+ * Sign-in by code on the watch: the code to approve on the phone (Link) or the web
+ * ([DeviceCode.link]), and whether it [expired] (its time ran out, or the server forgot it).
+ */
+data class CodeState(
+    val code: DeviceCode? = null,
+    val expired: Boolean = false,
+    val busy: Boolean = false,
+    val error: Boolean = false,
+)
 
 /** Everything the watch screens share: session, library, player, downloads, settings. */
 @HiltViewModel
@@ -76,30 +84,18 @@ class WatchViewModel @Inject constructor(
         codeJob?.cancel()
         codeJob = viewModelScope.launch {
             _code.value = CodeState(busy = true)
-            try {
-                val accessCode = api.requestCode(endpoint)
-                _code.value = CodeState(code = accessCode.code, link = "$endpoint/link")
-                repeat(200) {
-                    delay(3_000)
-                    val tokens: ApiTokens? = try {
-                        api.checkCode(endpoint, accessCode)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        null
-                    }
-                    if (tokens != null) {
-                        session.signIn(endpoint, tokens)
-                        library.refresh()
-                        return@launch
-                    }
-                }
-                _code.value = CodeState()
+            val code = try {
+                api.requestCode(endpoint)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _code.value = CodeState(error = true)
+                return@launch run { _code.value = CodeState(error = true) }
             }
+            _code.value = CodeState(code = code)
+            val tokens = api.awaitCode(code) ?: return@launch _code.update { it.copy(expired = true) }
+            _code.value = CodeState() // not shown again after a sign-out
+            session.signIn(endpoint, tokens)
+            runCatching { library.refresh() }
         }
     }
 

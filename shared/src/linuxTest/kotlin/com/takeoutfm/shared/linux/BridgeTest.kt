@@ -107,8 +107,8 @@ class BridgeTest {
             MockEngine { request ->
                 when {
                     request.url.encodedPath != "/api/code" -> respondError(HttpStatusCode.NotFound)
-                    request.method == HttpMethod.Get -> respond("""{"Code":"AB12CD","AccessToken":"code-token"}""", headers = jsonHeaders)
-                    ++checks < 2 -> respondError(HttpStatusCode.Unauthorized) // not approved yet
+                    request.method == HttpMethod.Get -> respond("""{"Code":"AB12CD","AccessToken":"code-token","ExpiresIn":300,"Interval":1}""", headers = jsonHeaders)
+                    ++checks < 2 -> respondError(HttpStatusCode.Forbidden) // not approved yet
                     else -> respond("""{"AccessToken":"a","MediaToken":"m","RefreshToken":"r"}""", headers = jsonHeaders)
                 }
             },
@@ -116,8 +116,8 @@ class BridgeTest {
         val session = Watch("session")
         try {
             assertEquals("""{"signedIn":false,"endpoint":"","user":null}""", session.next())
-            assertEquals(Answer("""{"code":"AB12CD","link":"$server/link"}""", null), call("requestCode", """{"host":"takeout.example"}"""))
-            assertEquals(Answer("true", null), call("awaitCode", """{"intervalMs":1,"tries":5}"""))
+            assertEquals(Answer("""{"code":"AB12CD","link":"$server/link","expiresIn":300}""", null), call("requestCode", """{"host":"takeout.example"}"""))
+            assertEquals(Answer("true", null), call("awaitCode"))
             assertEquals(2, checks)
             assertEquals("""{"signedIn":true,"endpoint":"$server","user":null}""", session.next())
             val secrets = Json.parseToJsonElement(saved.last()).jsonObject

@@ -24,18 +24,22 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.takeoutfm.android.R
+import com.takeoutfm.shared.api.DeviceCode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,21 +125,34 @@ private fun androidx.compose.foundation.layout.ColumnScope.CodeSignIn(ui: SignIn
     val code = ui.code
     if (code == null) {
         BusyButton(ui.busy, stringResource(R.string.get_code), viewModel::getCode)
-    } else {
-        Text(stringResource(R.string.code_instructions, ui.link.orEmpty()))
+        return
+    }
+    val left by remember(code) { code.remaining() }.collectAsStateWithLifecycle(code.secondsLeft())
+    val expired = ui.expired || left == 0
+    Text(stringResource(R.string.code_instructions, code.link))
+    Text(
+        code.code,
+        fontSize = 40.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 6.sp,
+        textDecoration = if (expired) TextDecoration.LineThrough else null,
+        modifier = Modifier.align(Alignment.CenterHorizontally).alpha(if (expired) 0.38f else 1f),
+    )
+    if (expired) {
         Text(
-            code,
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 6.sp,
+            stringResource(R.string.code_expired),
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
+        Button(onClick = viewModel::getCode, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(stringResource(R.string.get_new_code))
+        }
+    } else {
         Text(
-            stringResource(R.string.code_waiting),
+            stringResource(R.string.code_waiting, DeviceCode.countdown(left)),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
-        // Codes expire on the server; a fresh one replaces this one.
         TextButton(onClick = viewModel::getCode, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(stringResource(R.string.get_new_code))
         }

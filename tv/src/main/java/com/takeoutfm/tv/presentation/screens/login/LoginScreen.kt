@@ -16,11 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +33,7 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 
 @Composable
@@ -101,14 +104,35 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 
         val code = ui.code
         if (code != null) {
+            val left by remember(code) { code.remaining() }.collectAsStateWithLifecycle(code.secondsLeft())
+            val expired = ui.expired || left == 0
             Spacer(Modifier.height(32.dp))
-            Text(text = code, style = MaterialTheme.typography.displayMedium)
-            Spacer(Modifier.height(8.dp))
             Text(
-                text = "On your phone or computer, go to ${ui.link} and enter this code. " +
-                    "This screen will continue automatically.",
-                style = MaterialTheme.typography.bodyLarge,
+                text = code.code,
+                style = MaterialTheme.typography.displayMedium,
+                textDecoration = if (expired) TextDecoration.LineThrough else null,
+                modifier = Modifier.alpha(if (expired) 0.38f else 1f),
             )
+            Spacer(Modifier.height(8.dp))
+            if (expired) {
+                Text(
+                    text = "This code has expired. Select New code for another.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                Text(
+                    text = "On your phone or computer, go to ${code.link} and enter this code. " +
+                        "This screen will continue automatically.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Expires in ${DeviceCode.countdown(left)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         val error = ui.error

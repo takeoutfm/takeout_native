@@ -6,6 +6,8 @@
     <string name="code_instructions">On your phone: TakeoutFM → Link, and enter</string>
     <string name="code_or_web">or open %1$s</string>
     <string name="get_new_code">New code</string>
+    <string name="code_expires">Expires in %1$s</string>
+    <string name="code_expired">Code expired</string>
     <string name="cant_reach">Couldn\'t reach the server</string>
     <string name="recent">Recent</string>
     <string name="music">New Music</string>

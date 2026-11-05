@@ -3,6 +3,7 @@ package com.takeoutfm.android.ui.signin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.takeoutfm.android.R
+import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.library.TakeoutLibrary
@@ -10,7 +11,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,9 +28,10 @@ data class SignInUiState(
     /** Device-code sign-in instead of a password. */
     val withCode: Boolean = false,
     val busy: Boolean = false,
-    /** The code to approve on a signed-in device, and where. */
-    val code: String? = null,
-    val link: String? = null,
+    /** The code to approve on a signed-in device, and where ([DeviceCode.link]). */
+    val code: DeviceCode? = null,
+    /** [code] is no longer valid (its time ran out, or the server forgot it). */
+    val expired: Boolean = false,
     val error: SignInError? = null,
 )
 
@@ -53,7 +54,7 @@ class SignInViewModel @Inject constructor(
 
     fun toggleMode() {
         job?.cancel()
-        _ui.update { it.copy(withCode = !it.withCode, busy = false, code = null, link = null, error = null) }
+        _ui.update { it.copy(withCode = !it.withCode, busy = false, code = null, expired = false, error = null) }
     }
 
     fun signIn() {
@@ -87,26 +88,18 @@ class SignInViewModel @Inject constructor(
         if (endpoint.isEmpty()) return fail(SignInError(R.string.error_no_host))
         job?.cancel()
         job = viewModelScope.launch {
-            _ui.update { it.copy(busy = true, code = null, link = null, error = null) }
+            _ui.update { it.copy(busy = true, code = null, expired = false, error = null) }
+            val code = try {
+                api.requestCode(endpoint)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return@launch fail(SignInError(R.string.error_unreachable, endpoint))
+            }
+            _ui.update { it.copy(busy = false, code = code) }
+            val tokens = api.awaitCode(code) ?: return@launch _ui.update { it.copy(expired = true) }
             try {
-                val accessCode = api.requestCode(endpoint)
-                if (accessCode.code.isEmpty() || accessCode.accessToken.isEmpty()) {
-                    return@launch fail(SignInError(R.string.error_unreachable, endpoint))
-                }
-                _ui.update { it.copy(busy = false, code = accessCode.code, link = "$endpoint/link") }
-                repeat(MaxPolls) {
-                    delay(PollIntervalMs)
-                    val tokens = try {
-                        api.checkCode(endpoint, accessCode)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        null // transient network error: keep polling
-                    }
-                    if (tokens != null) return@launch signedIn(endpoint, tokens)
-                }
-                _ui.update { it.copy(code = null, link = null) }
-                fail(SignInError(R.string.error_code_expired))
+                signedIn(endpoint, tokens)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -116,6 +109,7 @@ class SignInViewModel @Inject constructor(
     }
 
     private suspend fun signedIn(endpoint: String, tokens: com.takeoutfm.shared.model.ApiTokens) {
+        _ui.update { it.copy(busy = false, code = null, expired = false) } // not shown again after a sign-out
         session.signIn(endpoint, tokens)
         library.refresh()
     }
@@ -124,7 +118,5 @@ class SignInViewModel @Inject constructor(
 
     private companion object {
         const val DefaultHost = "https://takeout.fm"
-        const val PollIntervalMs = 3_000L
-        const val MaxPolls = 200 // ~10 minutes
     }
 }

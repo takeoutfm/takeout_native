@@ -1,8 +1,8 @@
 package com.takeoutfm.shared.linux
 
+import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.listen.ListenSession
-import com.takeoutfm.shared.model.ApiAccessCode
 import com.takeoutfm.shared.music.ActivityInterval
 import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicQueue
@@ -14,10 +14,8 @@ import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.settings.ThemeMode
 import com.takeoutfm.shared.video.AudioCandidate
 import com.takeoutfm.shared.video.bestAudioTrack
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -53,7 +51,8 @@ internal class Args(private val o: JsonObject) {
 data class SessionInfo(val signedIn: Boolean, val endpoint: String, val user: String? = null)
 
 @Serializable
-data class LinkCode(val code: String, val link: String)
+/** A sign-in code, the page to approve it on, and the seconds it's valid for from now. */
+data class LinkCode(val code: String, val link: String, val expiresIn: Int)
 
 @Serializable
 data class Settings(
@@ -100,7 +99,7 @@ class LinuxCalls(private val core: LinuxCore) {
     private inline fun <reified T> Flow<T>.encoded(): Flow<JsonElement> = map { bridgeJson.encodeToJsonElement(it) }
 
     // Device-code sign-in: requestCode, then awaitCode until the user approves at <server>/link.
-    private var pending: Pair<String, ApiAccessCode>? = null
+    private var pending: DeviceCode? = null
     private var awaiting: Job? = null
 
     // ListenSession isn't thread-safe; calls run on any thread.
@@ -114,32 +113,20 @@ class LinuxCalls(private val core: LinuxCore) {
 
         // ---- Session ----
         call("requestCode") { a ->
-            val endpoint = TakeoutApi.normalizeEndpoint(a.get<String>("host"))
-            val code = core.api.requestCode(endpoint)
-            pending = endpoint to code
-            LinkCode(code.code, "$endpoint/link")
+            awaiting?.cancel() // a new code replaces the one being waited for
+            val code = core.api.requestCode(TakeoutApi.normalizeEndpoint(a.get<String>("host")))
+            pending = code
+            LinkCode(code.code, code.link, code.expiresIn)
         }
-        call("awaitCode") { a ->
-            val (endpoint, code) = pending ?: throw IllegalStateException("no code requested")
+        /** True once signed in; false when the code expired (ask for a new one). */
+        call("awaitCode") {
+            val code = pending ?: throw IllegalStateException("no code requested")
             awaiting = currentCoroutineContext()[Job]
-            val intervalMs = a.get("intervalMs", 3_000L)
-            repeat(a.get("tries", 200)) {
-                delay(intervalMs)
-                val tokens = try {
-                    core.api.checkCode(endpoint, code)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    null
-                }
-                if (tokens != null) {
-                    pending = null
-                    core.session.signIn(endpoint, tokens)
-                    runCatching { core.library.refresh() }
-                    return@call true
-                }
-            }
-            false
+            val tokens = core.api.awaitCode(code) ?: return@call false
+            pending = null
+            core.session.signIn(code.endpoint, tokens)
+            runCatching { core.library.refresh() }
+            true
         }
         /** Stops awaitCode, which then fails as cancelled. */
         action("cancelCode") { awaiting?.cancel() }

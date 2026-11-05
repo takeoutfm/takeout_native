@@ -2,6 +2,7 @@ package com.takeoutfm.tv.presentation.screens.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.api.SessionState
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
@@ -9,11 +10,9 @@ import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.progress.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,8 +43,10 @@ class SessionViewModel @Inject constructor(
 data class LoginUiState(
     val endpoint: String,
     val busy: Boolean = false,
-    val code: String? = null,
-    val link: String? = null,
+    /** The code to approve at [DeviceCode.link]. */
+    val code: DeviceCode? = null,
+    /** [code] is no longer valid (its time ran out, or the server forgot it). */
+    val expired: Boolean = false,
     val error: String? = null,
 )
 
@@ -78,41 +79,22 @@ class LoginViewModel @Inject constructor(
             return
         }
         pollJob = viewModelScope.launch {
-            _ui.update { it.copy(busy = true, code = null, link = null, error = null) }
-            try {
-                val accessCode = api.requestCode(endpoint)
-                if (accessCode.code.isEmpty() || accessCode.accessToken.isEmpty()) {
-                    throw IOException("Server returned no code")
-                }
-                _ui.update {
-                    it.copy(busy = false, code = accessCode.code, link = "$endpoint/link")
-                }
-                repeat(MaxPolls) {
-                    delay(PollIntervalMs)
-                    val tokens = try {
-                        api.checkCode(endpoint, accessCode)
-                    } catch (e: IOException) {
-                        null // transient network error: keep polling
-                    }
-                    if (tokens != null) {
-                        session.signIn(endpoint, tokens)
-                        return@launch
-                    }
-                }
-                _ui.update { it.copy(code = null, link = null, error = "Code expired. Get a new code.") }
+            _ui.update { it.copy(busy = true, code = null, expired = false, error = null) }
+            val code = try {
+                api.requestCode(endpoint)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _ui.update {
-                    it.copy(busy = false, code = null, link = null, error = "Couldn't reach $endpoint")
-                }
+                return@launch _ui.update { it.copy(busy = false, error = "Couldn't reach $endpoint") }
             }
+            _ui.update { it.copy(busy = false, code = code) }
+            val tokens = api.awaitCode(code) ?: return@launch _ui.update { it.copy(expired = true) }
+            _ui.update { it.copy(code = null) } // not shown again after a sign-out
+            session.signIn(endpoint, tokens)
         }
     }
 
     private companion object {
         const val DefaultEndpoint = "https://takeout.fm"
-        const val PollIntervalMs = 3_000L
-        const val MaxPolls = 200 // ~10 minutes
     }
 }

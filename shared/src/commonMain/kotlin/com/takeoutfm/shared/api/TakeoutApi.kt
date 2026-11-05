@@ -3,6 +3,7 @@ package com.takeoutfm.shared.api
 import com.takeoutfm.shared.model.ApiAccessCode
 import com.takeoutfm.shared.model.ApiActivityEvents
 import com.takeoutfm.shared.model.ApiArtistView
+import com.takeoutfm.shared.model.ApiCodeCheck
 import com.takeoutfm.shared.model.ApiArtistsView
 import com.takeoutfm.shared.model.ApiFavoriteView
 import com.takeoutfm.shared.model.ApiGenreView
@@ -47,6 +48,7 @@ import io.ktor.http.encodeURLParameter
 import io.ktor.http.isSuccess
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -160,17 +162,40 @@ class TakeoutApi internal constructor(
 
     // ---- Device-code flow ----
 
-    suspend fun requestCode(endpoint: String): ApiAccessCode =
-        decode(ApiAccessCode.serializer(), execute("$endpoint/api/code"))
+    /** Asks [endpoint] for a code for the user to approve at <endpoint>/link. */
+    suspend fun requestCode(endpoint: String): DeviceCode {
+        val code = decode(ApiAccessCode.serializer(), execute("$endpoint/api/code"))
+        if (code.code.isEmpty() || code.accessToken.isEmpty()) throw IOException("Server returned no code")
+        return DeviceCode(endpoint, code, now())
+    }
 
-    /** Returns tokens once the user has approved the code, or null if not approved yet. */
-    suspend fun checkCode(endpoint: String, code: ApiAccessCode): ApiTokens? {
-        val body = json.encodeToString(ApiAccessCode.serializer(), code)
-        return try {
-            val text = execute("$endpoint/api/code", HttpMethod.Post, code.accessToken, body)
-            decode(ApiTokens.serializer(), text).takeIf { it.isValid() }
-        } catch (e: HttpException) {
-            null
+    /**
+     * Checks [code] every [DeviceCode.intervalMs] until the user approves it, returning the
+     * tokens, or until it expires or the server no longer knows it (401), returning null.
+     * Network errors are retried; a 429 slows the checks down by 5 s, as RFC 8628's slow_down.
+     */
+    suspend fun awaitCode(code: DeviceCode): ApiTokens? {
+        val body = json.encodeToString(ApiCodeCheck.serializer(), ApiCodeCheck(code.code))
+        var wait = code.intervalMs
+        while (true) {
+            val left = code.expiresAtMs - now()
+            if (left <= 0) return null
+            delay(minOf(wait, left))
+            if (now() >= code.expiresAtMs) return null
+            try {
+                val text = execute("${code.endpoint}/api/code", HttpMethod.Post, code.accessToken, body)
+                decode(ApiTokens.serializer(), text).takeIf { it.isValid() }?.let { return it }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: HttpException) {
+                when (e.code) {
+                    401 -> return null // expired or unknown
+                    429 -> wait += 5_000
+                    else -> {} // 403: not approved yet
+                }
+            } catch (e: Exception) {
+                // network error: keep checking
+            }
         }
     }
 

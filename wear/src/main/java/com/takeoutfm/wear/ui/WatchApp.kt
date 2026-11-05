@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -53,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +78,7 @@ import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.takeoutfm.media.offline.CacheStatus
+import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.StationKind
@@ -131,10 +134,36 @@ private fun SignIn(vm: WatchViewModel) {
             if (code.error) item { Text(stringResource(R.string.cant_reach), color = MaterialTheme.colors.error, textAlign = TextAlign.Center) }
         } else {
             item { Text(stringResource(R.string.code_instructions), textAlign = TextAlign.Center, style = MaterialTheme.typography.caption1) }
-            item { Text(c, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp) }
-            item { Text(stringResource(R.string.code_or_web, code.link.orEmpty()), textAlign = TextAlign.Center, style = MaterialTheme.typography.caption2) }
-            item { Chip(onClick = { vm.getCode(host) }, label = { Text(stringResource(R.string.get_new_code)) }, colors = ChipDefaults.secondaryChipColors()) }
+            item { CodeText(c, code.expired, vm, host) }
         }
+    }
+}
+
+/** The code, its time left (or that it expired) and a chip for a new one. */
+@Composable
+private fun CodeText(code: DeviceCode, expiredEarly: Boolean, vm: WatchViewModel, host: String) {
+    val left by remember(code) { code.remaining() }.collectAsStateWithLifecycle(code.secondsLeft())
+    val expired = expiredEarly || left == 0
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            code.code,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 3.sp,
+            textDecoration = if (expired) TextDecoration.LineThrough else null,
+            modifier = Modifier.alpha(if (expired) 0.38f else 1f),
+        )
+        if (expired) {
+            Text(stringResource(R.string.code_expired), color = MaterialTheme.colors.error, style = MaterialTheme.typography.caption1)
+        } else {
+            Text(stringResource(R.string.code_expires, DeviceCode.countdown(left)), style = MaterialTheme.typography.caption2)
+            Text(stringResource(R.string.code_or_web, code.link), textAlign = TextAlign.Center, style = MaterialTheme.typography.caption2)
+        }
+        Chip(
+            onClick = { vm.getCode(host) },
+            label = { Text(stringResource(R.string.get_new_code)) },
+            colors = if (expired) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+        )
     }
 }
 

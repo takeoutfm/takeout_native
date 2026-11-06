@@ -108,13 +108,11 @@ Kirigami.Page {
                 sourceSize.width: side * Screen.devicePixelRatio
                 sourceSize.height: side * Screen.devicePixelRatio
             }
-            Kirigami.Heading {
+            // One line, sliding sideways when it's too long, so the controls below stay put.
+            Marquee {
                 Layout.fillWidth: true
                 text: Player.displayTitle
                 horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
             }
             QQC2.Label {
                 Layout.fillWidth: true

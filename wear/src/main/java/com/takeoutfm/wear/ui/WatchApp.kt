@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -425,12 +426,13 @@ private fun Player(vm: WatchViewModel) {
                         modifier = Modifier.background(Color(0xFFD32F2F), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
+                // One line, scrolling sideways when it's too long, so the controls stay put.
                 Text(
                     onAir?.second ?: playing.streamTitle ?: item.title,
                     style = MaterialTheme.typography.title3,
                     textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE),
                 )
                 Text(
                     onAir?.first ?: item.artist,

@@ -89,7 +89,9 @@ struct NowPlayingView: View {
     @ViewBuilder
     private func details(_ item: QueueItem, showQueueButton: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(player.displayTitle).font(.largeTitle.bold()).lineLimit(2)
+            // One line, sliding sideways when it's too long, so the cover keeps its size and
+            // the controls stay put from track to track.
+            MarqueeText(text: player.displayTitle, font: .largeTitle.bold())
             Text(player.streamTitle == nil ? item.artist : player.displaySubtitle).font(.title2).lineLimit(1)
             if !player.isLive && !item.album.isEmpty && item.album != item.artist {
                 Text(item.album).font(.title3).foregroundStyle(.secondary).lineLimit(1)

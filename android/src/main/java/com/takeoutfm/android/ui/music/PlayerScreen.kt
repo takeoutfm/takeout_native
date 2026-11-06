@@ -1,7 +1,10 @@
 package com.takeoutfm.android.ui.music
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -109,11 +112,17 @@ fun PlayerScreen(main: MainViewModel) {
             if (wide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
                     cover(Modifier.fillMaxHeight())
-                    Column(Modifier.weight(1f)) { details() }
+                    // Scrolls when a short screen can't fit it all, so the controls stay reachable.
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { details() }
                 }
             } else {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    cover(Modifier.widthIn(max = 420.dp).fillMaxWidth())
+                    // The details are the same height for every track (one line each), so
+                    // nothing moves between tracks. They're measured first and the cover gets
+                    // the height left, still square: a short screen or large font makes it
+                    // smaller rather than push the bottom row off. No fillMaxWidth, which would
+                    // fix the width and make aspectRatio ignore the height.
+                    cover(Modifier.weight(1f, fill = false).widthIn(max = 420.dp))
                     Column(Modifier.padding(top = 24.dp).widthIn(max = 480.dp)) { details() }
                 }
             }
@@ -122,21 +131,46 @@ fun PlayerScreen(main: MainViewModel) {
     if (showQueue) QueueSheet(playing, onPlay = { main.playAt(it); showQueue = false }, onDismiss = { showQueue = false })
 }
 
+/** What's playing: a stream's song (its ICY "Artist - Title") above the station, else the track. */
+private fun titleOf(playing: NowPlaying): String =
+    playing.streamTitle?.let(::parseStreamTitle)?.second ?: playing.streamTitle ?: playing.current?.title.orEmpty()
+
+/** One line, scrolling sideways when it's too long to fit (as other music players do). */
 @Composable
-private fun PlayerDetails(playing: NowPlaying, favorite: Boolean, main: MainViewModel, onQueue: () -> Unit) {
+private fun PlayerTitle(playing: NowPlaying) {
+    Text(
+        titleOf(playing),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE),
+    )
+}
+
+@Composable
+private fun PlayerDetails(
+    playing: NowPlaying,
+    favorite: Boolean,
+    main: MainViewModel,
+    onQueue: () -> Unit,
+) {
     val item = playing.current ?: return
-    // A stream's song, from its ICY title ("Artist - Title"), above the station.
     val onAir = playing.streamTitle?.let(::parseStreamTitle)
-    val title = onAir?.second ?: playing.streamTitle ?: item.title
+    val title = titleOf(playing)
     val subtitle = onAir?.first ?: item.artist
     val third = (if (playing.isLive) item.title.takeIf { it != title }.orEmpty() else item.album)
         .takeIf { it != subtitle }.orEmpty()
-    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-    if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    if (third.isNotEmpty()) Text(third, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    playing.error?.let { error ->
-        Text(stringResource(R.string.cant_play_reason, error), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-    }
+    // One line each, an error in the last, so nothing below moves from track to track.
+    PlayerTitle(playing)
+    Text(subtitle, style = MaterialTheme.typography.titleMedium, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val error = playing.error
+    Text(
+        if (error != null) stringResource(R.string.cant_play_reason, error) else third,
+        color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        minLines = 1,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 
     if (playing.isLive) {
         LiveBadge(playing.isPlaying, Modifier.padding(vertical = 16.dp))

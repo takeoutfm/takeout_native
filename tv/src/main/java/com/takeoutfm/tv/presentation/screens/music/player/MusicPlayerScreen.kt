@@ -7,6 +7,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -206,11 +207,13 @@ private fun NowPlayingContent(
             // song it says is playing instead, with the station on the last line.
             val lines = nowPlayingLines(item, state)
             Column(Modifier.padding(start = 48.dp)) {
+                // One line, scrolling sideways when it's too long, so the seek bar and buttons
+                // stay in the same place from track to track.
                 Text(
                     text = lines.title,
                     style = MaterialTheme.typography.displaySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE),
                 )
                 if (lines.artist.isNotEmpty()) {
                     Text(

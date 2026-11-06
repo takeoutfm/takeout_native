@@ -18,6 +18,7 @@ struct DownloadButton: View {
             } label: {
                 Label("Downloaded", systemImage: "checkmark.circle")
             }
+            .menuStyle(.button)
             .fixedSize()
         } else if p.active > 0 {
             HStack(spacing: 6) {

@@ -68,7 +68,7 @@ private struct HomeTab: View {
     var body: some View {
         // Again when the library index arrives (at launch it can come just after): it says
         // whether there's video for the Continue Watching and New Films rows.
-        Loaded(id: "\(version)/\(model.hasMovies || model.hasShows)", load: load) { rows in
+        Loaded(id: "\(version)/\(model.hasMovies || model.hasShows)", keepContent: true, load: load) { rows in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 28) {
                     AlbumRow(title: "Recently Added", albums: rows.recentlyAdded)

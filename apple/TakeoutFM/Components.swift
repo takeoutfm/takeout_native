@@ -169,17 +169,22 @@ enum LibraryList: Hashable {
  */
 struct Loaded<Value, Content: View>: View {
     let id: AnyHashable
+    /** Keep showing the old value when [id] changes too, for a new look at the same page. */
+    let keepContent: Bool
     let load: @MainActor () async throws -> Value
     let content: (Value) -> Content
     @State private var value: Value?
+    @State private var loadedId: AnyHashable?
     @State private var failed = false
 
     init(
         id: AnyHashable = 0,
+        keepContent: Bool = false,
         load: @escaping @MainActor () async throws -> Value,
         @ViewBuilder content: @escaping (Value) -> Content
     ) {
         self.id = id
+        self.keepContent = keepContent
         self.load = load
         self.content = content
     }
@@ -194,15 +199,18 @@ struct Loaded<Value, Content: View>: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        // Runs again each time the page reappears: that refreshes what's shown, without taking
+        // it away (which would lose the scroll position and any tap in the meantime).
         .task(id: id) {
-            value = nil
+            if loadedId != id && !keepContent { value = nil }
             failed = false
             do {
                 value = try await load()
+                loadedId = id
             } catch is CancellationError {
             } catch {
                 NSLog("Load failed: \(error)")
-                failed = true
+                failed = value == nil
             }
         }
     }

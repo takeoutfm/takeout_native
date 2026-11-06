@@ -36,8 +36,10 @@ struct SignInView: View {
                         if gone {
                             Text("This code has expired.").foregroundStyle(.red)
                             Button("Get a New Code", action: start)
+                                .buttonStyle(.borderedProminent)
                                 .keyboardShortcut(.defaultAction)
                             Button("Cancel") { stop() }
+                                .buttonStyle(.bordered)
                         } else {
                             HStack(spacing: 8) {
                                 ProgressView().controlSize(.small)
@@ -46,6 +48,7 @@ struct SignInView: View {
                                     .monospacedDigit()
                             }
                             Button("Cancel") { stop() }
+                                .buttonStyle(.bordered)
                         }
                     }
                 }
@@ -55,6 +58,7 @@ struct SignInView: View {
                     .frame(width: 360)
                     .onSubmit(start)
                 Button("Sign In", action: start)
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                 if failed {
                     Text("Couldn't sign in. Check the server and try again.")

@@ -43,7 +43,7 @@ struct PlaylistView: View {
             return try await model.calls.playlistQueue(playlistId: playlistId)
         }) { queue in
             List {
-                HStack {
+                FlowRow {
                     Button { player.play(queue, from: 0) } label: { Label("Play", systemImage: "play.fill") }
                         .buttonStyle(.borderedProminent)
                     Button { player.play(queue, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
@@ -51,6 +51,9 @@ struct PlaylistView: View {
                         cache.download(queue)
                     }
                 }
+                .buttonStyle(.bordered)
+                // In a List row a Label takes the row's look: a wide gap and an accent icon, unseen on Play.
+                .labelStyle(.titleAndIcon)
                 .disabled(queue.items.isEmpty)
                 .padding(.vertical, 8)
                 ForEach(Array(queue.items.enumerated()), id: \.offset) { index, item in
@@ -95,6 +98,7 @@ struct FavoritesView: View {
                                         }
                                     }
                                 }
+                                .buttonStyle(.bordered)
                                 ForEach(Array(favorites.tracks.enumerated()), id: \.offset) { index, track in
                                     TrackRow(
                                         title: track.title,

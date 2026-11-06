@@ -82,6 +82,7 @@ private struct ArtistPage: View {
                                 .help(favorite ? "Remove from Favorites" : "Add to Favorites")
                             }
                         }
+                        .buttonStyle(.bordered)
                     }
                 }
                 if !details.popular.isEmpty {
@@ -103,6 +104,7 @@ private struct ArtistPage: View {
             .padding(24)
         }
         .navigationTitle(details.artist.name)
+        .onChange(of: details.isFavorite) { _, value in favorite = value }
     }
 
     private func mix(_ mix: ArtistMix) {

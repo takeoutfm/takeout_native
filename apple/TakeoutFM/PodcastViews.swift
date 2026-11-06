@@ -16,7 +16,7 @@ struct PodcastsView: View {
                 ContentUnavailableView {
                     Label(showAll ? "No Podcasts" : "No Subscriptions", systemImage: "antenna.radiowaves.left.and.right")
                 } actions: {
-                    if !showAll { Button("Show All Podcasts") { showAll = true } }
+                    if !showAll { Button("Show All Podcasts") { showAll = true }.buttonStyle(.bordered) }
                 }
             } else {
                 ScrollView {
@@ -89,12 +89,15 @@ private struct PodcastPage: View {
                     Text(details.series.title).font(.largeTitle.bold())
                     Text(details.series.author).font(.title3).foregroundStyle(.secondary)
                     Text(details.series.description_).lineLimit(5).foregroundStyle(.secondary)
-                    HStack {
+                    FlowRow {
                         Button { play(0) } label: { Label("Play Latest", systemImage: "play.fill") }
                             .buttonStyle(.borderedProminent)
                             .disabled(details.episodes.isEmpty)
                         Button(subscribed ? "Unsubscribe" : "Subscribe", action: toggleSubscribed)
                     }
+                    .buttonStyle(.bordered)
+                    // In a List row a Label takes the row's look: a wide gap and an accent icon, unseen on Play.
+                    .labelStyle(.titleAndIcon)
                     .padding(.top, 4)
                 }
             }
@@ -117,6 +120,7 @@ private struct PodcastPage: View {
             }
         }
         .navigationTitle(details.series.title)
+        .onChange(of: details.subscribed) { _, value in subscribed = value }
     }
 
     private func play(_ index: Int) {
@@ -271,6 +275,7 @@ struct PodcastEpisodeView: View {
                                 }
                             }
                         }
+                        .buttonStyle(.bordered)
                         .controlSize(.large)
                         .padding(.top, 4)
                     }
@@ -280,7 +285,7 @@ struct PodcastEpisodeView: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: 760, alignment: .leading)
                 }
-                HStack {
+                FlowRow {
                     if let older {
                         NavigationLink(value: Route.podcastEpisode(seriesId: series.id, episodeId: older.id)) {
                             Label("Previous Episode", systemImage: "chevron.left")
@@ -292,6 +297,7 @@ struct PodcastEpisodeView: View {
                         }
                     }
                 }
+                .buttonStyle(.bordered)
             }
             .padding(24)
         }

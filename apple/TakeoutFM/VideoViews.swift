@@ -207,6 +207,7 @@ private struct VideoPage: View {
             .padding(24)
         }
         .navigationTitle(details.title)
+        .onChange(of: details.isFavorite) { _, value in favorite = value }
         .task(id: details.etag) {
             guard details.kind != .series, !details.etag.isEmpty else { return }
             resumeMs = (try? await model.calls.resumePositionMs(etag: details.etag))?.int64Value ?? 0
@@ -261,6 +262,7 @@ private struct VideoPage: View {
                 NavigationLink(value: Route.video(next)) { Label("Next", systemImage: "chevron.right") }
             }
         }
+        .buttonStyle(.bordered)
         .controlSize(.large)
     }
 

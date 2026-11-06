@@ -66,6 +66,9 @@ struct AlbumView: View {
                                 }
                             }
                         }
+                        .buttonStyle(.bordered)
+                        // In a List row a Label takes the row's look: a wide gap and an accent icon, unseen on Play.
+                        .labelStyle(.titleAndIcon)
                     }
                 }
                 .padding(.vertical, 12)

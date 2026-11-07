@@ -43,13 +43,19 @@ add_dependencies(takeout takeout_core)
 
 # ---- The app ----
 
+# Qt Core only, for both the KDE app and tofm: the shared core, mpv playback, MPRIS, secrets.
+qt_add_library(takeoutcore STATIC
+    src/core/TakeoutCore.cpp src/core/TakeoutCore.h
+    src/core/Player.cpp src/core/Player.h
+    src/core/Mpris.cpp src/core/Mpris.h
+    src/core/SecretStore.cpp src/core/SecretStore.h)
+target_include_directories(takeoutcore PUBLIC src/core)
+target_link_libraries(takeoutcore PUBLIC Qt6::Core Qt6::DBus PkgConfig::MPV takeout PRIVATE PkgConfig::SECRET)
+
 qt_add_executable(takeoutfm
     src/main.cpp
     src/Core.cpp src/Core.h
-    src/SecretStore.cpp src/SecretStore.h
     src/ImageCache.cpp src/ImageCache.h
-    src/Player.cpp src/Player.h
-    src/Mpris.cpp src/Mpris.h
     src/VideoView.cpp src/VideoView.h)
 qt_add_qml_module(takeoutfm
     URI TakeoutFM
@@ -97,7 +103,7 @@ qt_add_qml_module(takeoutfm
 target_compile_definitions(takeoutfm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(takeoutfm PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::OpenGL Qt6::Qml Qt6::Quick Qt6::QuickControls2
-    KF6::Kirigami KF6::I18n KF6::I18nQml KF6::CoreAddons KF6::DBusAddons KF6::Crash KF6::ColorScheme PkgConfig::SECRET PkgConfig::MPV takeout)
+    KF6::Kirigami KF6::I18n KF6::I18nQml KF6::CoreAddons KF6::DBusAddons KF6::Crash KF6::ColorScheme PkgConfig::MPV takeoutcore)
 # The window icon when the installed one isn't there (running from the build directory).
 qt_add_resources(takeoutfm "icon" PREFIX "/" BASE data
     FILES data/icons/hicolor/256x256/apps/com.takeoutfm.linux.png)

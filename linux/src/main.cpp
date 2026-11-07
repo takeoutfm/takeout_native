@@ -1,7 +1,7 @@
 #include "Core.h"
 #include "ImageCache.h"
-#include "Mpris.h"
-#include "Player.h"
+#include "core/Mpris.h"
+#include "core/Player.h"
 
 #include <KAboutData>
 #include <KColorSchemeManager>
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 
     Core core(nullptr);
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (!core.start(dataDir, "TakeoutFM-Linux/" PROJECT_VERSION)) {
+    if (!core.start(dataDir, "TakeoutFM-Linux/" PROJECT_VERSION, "takeoutfm")) {
         qCritical("TakeoutFM: can't open the data in %s", qPrintable(dataDir));
         return 1;
     }
@@ -72,8 +72,9 @@ int main(int argc, char *argv[])
     QObject::connect(&core, &Core::settingsChanged, &app, applyTheme);
     applyTheme();
 
-    Player player(&core);
-    Mpris mpris(&player);
+    Player player(&core, QStringLiteral("TakeoutFM"), QStringLiteral("TakeoutFM-Linux/" PROJECT_VERSION));
+    PlayerForeign::instance = &player;
+    Mpris mpris(&player, {QStringLiteral("takeoutfm"), QStringLiteral("TakeoutFM"), QStringLiteral("com.takeoutfm.linux")});
 
     QQmlApplicationEngine engine;
     // KDE's translations in QML: KI18n.i18n() (org.kde.ki18n) and the context functions

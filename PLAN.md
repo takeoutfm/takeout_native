@@ -783,9 +783,13 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
      the server's search refs (`resolveRef`, as Android voice requests); `tofm --status` prints
      what's playing (for status bars). Control while running: MPRIS (`playerctl -p tofm`).
    - **Phases:**
-     - [ ] **T0 — split the Linux C++:** `Core`, `Player`, `Mpris`, `SecretStore` into
-           `src/core/` with QML wrappers; the KDE app unchanged (its `ctest` passes, checked
-           in the window).
+     - [x] **T0 — split the Linux C++** (done 2026-11-06): `src/core/` (static library
+           `takeoutcore`, Qt Core + DBus, libmpv, libsecret): `TakeoutCore` (was `Core`, without
+           QML; `start(dataDir, userAgent, secretsApp)`), `Player(core, clientName, userAgent)`,
+           `Mpris(player, MprisIdentity{busName, identity, desktopEntry, canRaise})`,
+           `SecretStore::load/save(app, …)`. The KDE app's `src/Core` derives from
+           `TakeoutCore` for QML (JS-callback `call`, the singleton) and registers `Player` as a
+           foreign singleton. Its `ctest` passes; it starts signed in, MPRIS unchanged.
      - [ ] **T1 — skeleton:** `tui/` target, FTXUI on the Qt loop, own data / keyring /
            MPRIS name, sign-in with the countdown, the secrets file fallback.
      - [ ] **T2 — music:** sidebar lists, artist and album pages, play / queue / favorite, the

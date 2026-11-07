@@ -7,18 +7,27 @@
 
 class Player;
 
-// MPRIS on the session bus (org.mpris.MediaPlayer2.takeoutfm): Plasma's media controls, the
-// lock screen, media keys and KDE Connect see and drive the music player. ♥ stays in the app:
-// MPRIS has no favorite action.
+/** Who the player is on D-Bus: org.mpris.MediaPlayer2.<busName>, and what it tells controllers. */
+struct MprisIdentity {
+    QString busName;      // "takeoutfm", "tofm"
+    QString identity;     // "TakeoutFM"
+    QString desktopEntry; // "com.takeoutfm.linux"; "" for none
+    bool canRaise = true; // a window to show (Raise → raiseRequested)
+};
+
+// MPRIS on the session bus: Plasma's media controls, the lock screen, media keys, KDE Connect
+// and playerctl see and drive the music player. ♥ stays in the app: MPRIS has no favorite
+// action.
 class Mpris : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit Mpris(Player *player, QObject *parent = nullptr);
+    Mpris(Player *player, const MprisIdentity &identity, QObject *parent = nullptr);
     ~Mpris() override;
 
     Player *player() const { return m_player; }
+    const MprisIdentity &identity() const { return m_identity; }
     QVariantMap metadata() const;
     QString playbackStatus() const;
 
@@ -30,6 +39,7 @@ private:
     void changed(const QVariantMap &properties);
 
     Player *m_player;
+    MprisIdentity m_identity;
     QString m_artUrl;
 };
 
@@ -39,7 +49,7 @@ class MprisRoot : public QDBusAbstractAdaptor
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.mpris.MediaPlayer2")
     Q_PROPERTY(bool CanQuit READ yes)
-    Q_PROPERTY(bool CanRaise READ yes)
+    Q_PROPERTY(bool CanRaise READ canRaise)
     Q_PROPERTY(bool HasTrackList READ no)
     Q_PROPERTY(QString Identity READ identity)
     Q_PROPERTY(QString DesktopEntry READ desktopEntry)
@@ -50,8 +60,9 @@ public:
     explicit MprisRoot(Mpris *mpris);
     bool yes() const { return true; }
     bool no() const { return false; }
-    QString identity() const { return QStringLiteral("TakeoutFM"); }
-    QString desktopEntry() const { return QStringLiteral("com.takeoutfm.linux"); }
+    bool canRaise() const { return m_mpris->identity().canRaise; }
+    QString identity() const { return m_mpris->identity().identity; }
+    QString desktopEntry() const { return m_mpris->identity().desktopEntry; }
     QStringList none() const { return {}; }
 
 public Q_SLOTS:

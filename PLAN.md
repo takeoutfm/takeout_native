@@ -820,8 +820,27 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            size. Kitty / sixel images move to T4 (they live outside FTXUI's grid). Checked in
            a pty: browsing, finding, playing and pausing, the queue, and the cover (frames
            turned into HTML).
-     - [ ] **T3 — more:** search, playlists, radio (stream titles), podcasts (episode
-           progress), movies and TV opened in mpv with progress.
+     - [x] **T3 — more** (done 2026-11-06; `tui/Library.cpp`, `tui/Video.cpp`): the sidebar
+           shows what the library has (`hasMusic` / `hasPlaylists` / `hasPodcasts` /
+           `hasMovies` / `hasShows`, as the KDE app). Search (typing starts on entering it;
+           Enter runs music and video searches together: artists, albums, tracks, stations,
+           movies, shows, episodes; `/` or `s` for a new one). Playlists (▶ / ⤮, tracks, `a` /
+           `n` queue their items), Radio (stations by kind; stream titles via `Player`),
+           Podcasts (subscribe, the description, episodes with "12m left" / ✓; they play
+           through `episodesQueue`, so `Player` saves their progress). Movies and TV Shows
+           (lists with `/`), and a video page: year · rating · length · genres, ▶ Play (a
+           series' `playTarget`, e.g. "S1E2") and ↺ Start over, tagline, description, director,
+           seasons and episodes, similar. Note rows (descriptions) can't be selected. Video
+           plays in **mpv** (`QProcess`; needs a display and mpv, else it says so; one at a
+           time; music pauses): the `Authorization` header in a 0600 config file in
+           `$XDG_RUNTIME_DIR` passed with `--include` (deleted 5 s later and on exit) — never
+           on the command line; `--start` from `resumePositionMs` unless starting over;
+           `--no-terminal` and stdin / stdout / stderr to /dev/null so mpv can't touch the
+           screen; `--input-ipc-server` socket: `time-pos` / `duration` observed,
+           `reportProgress` every 10 s and when mpv closes (or tofm quits). Checked in a pty
+           (search, radio, podcasts, movies, a series' seasons) and with a stand-in `mpv` on
+           the PATH: the arguments, the 0600 file holding the header, no token on the command
+           line, `--start=513.0` (resuming), cleanup; then by the user with real mpv.
      - [ ] **T4 — settings and polish:** Track Activity, ListenBrainz, theme-independent
            colours, help, album art on page headers and the bar, the Album art setting, tmux.
      - [ ] **T5 — downloads and packaging:** offline play from downloads; a `tofm` .deb (no

@@ -9,11 +9,6 @@
 using namespace ftxui;
 
 namespace {
-struct SectionInfo {
-    const char *name;
-};
-const SectionInfo Sections[] = {{"Recent"}, {"Recently Added"}, {"New Releases"}, {"Artists"}, {"Favorites"}};
-constexpr int SectionCount = 5;
 constexpr int SidebarWidth = 18;
 
 QString ago(qint64 ms)
@@ -34,7 +29,11 @@ QString joined(const QStringList &parts, const QString &separator = QStringLiter
     return kept.join(separator);
 }
 
-bool selectable(const auto &row) { return row.kind != std::decay_t<decltype(row)>::Header; }
+bool selectable(const auto &row)
+{
+    using Row = std::decay_t<decltype(row)>;
+    return row.kind != Row::Header && row.kind != Row::Note;
+}
 }
 
 // ---- Pages ----
@@ -44,7 +43,7 @@ std::vector<int> Tofm::Page::visibleRows() const
     std::vector<int> shown;
     for (int i = 0; i < int(rows.size()); ++i) {
         const Row &row = rows[i];
-        if (filter.isEmpty()) {
+        if (filter.isEmpty() || search) {
             shown.push_back(i);
         } else if (row.kind == Row::Item
                    && (row.title.contains(filter, Qt::CaseInsensitive) || row.detail.contains(filter, Qt::CaseInsensitive))) {
@@ -111,10 +110,43 @@ void Tofm::back()
     redraw();
 }
 
+std::vector<Tofm::Section> Tofm::sections() const
+{
+    // What the server has, as the KDE app's sidebar (music unless it says otherwise).
+    const QVariantMap library = m_core->library();
+    const bool music = library.value("hasMusic", true).toBool();
+    std::vector<Section> shown = {Section::Recent, Section::Search};
+    if (music) {
+        for (Section section : {Section::RecentlyAdded, Section::NewReleases, Section::Artists, Section::Favorites})
+            shown.push_back(section);
+        if (library.value("hasPlaylists", true).toBool()) shown.push_back(Section::Playlists);
+        shown.push_back(Section::Radio);
+    }
+    if (library.value("hasPodcasts").toBool()) shown.push_back(Section::Podcasts);
+    if (library.value("hasMovies").toBool()) shown.push_back(Section::Movies);
+    if (library.value("hasShows").toBool()) shown.push_back(Section::Shows);
+    return shown;
+}
+
+namespace {
+const char *sectionName(int section)
+{
+    static const char *const Names[] = {"Recent", "Search", "Recently Added", "New Releases", "Artists", "Favorites",
+                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows"};
+    return Names[section];
+}
+}
+
 Tofm::PagePtr Tofm::sectionPage(Section section)
 {
     switch (section) {
     case Section::Recent: return recentPage();
+    case Section::Search: return searchPage();
+    case Section::Playlists: return playlistsPage();
+    case Section::Radio: return radioPage();
+    case Section::Podcasts: return podcastsPage();
+    case Section::Movies: return videoListPage(QStringLiteral("Movies"), QStringLiteral("movies"));
+    case Section::Shows: return videoListPage(QStringLiteral("TV Shows"), QStringLiteral("shows"));
     case Section::RecentlyAdded: return albumListPage(QStringLiteral("Recently Added"), QStringLiteral("recentlyAdded"));
     case Section::NewReleases: return albumListPage(QStringLiteral("New Releases"), QStringLiteral("newReleases"));
     case Section::Artists: return artistsPage();
@@ -416,15 +448,22 @@ Element Tofm::renderBrowse()
 Element Tofm::renderSidebar()
 {
     Elements items;
-    for (int i = 0; i < SectionCount; ++i) {
-        Element item = text(std::string(" ") + Sections[i].name);
-        if (i == int(m_section)) item = item | bold | (m_sidebarFocused && !m_nowPlaying ? inverted : color(Color::Cyan));
+    Section previous = Section::Recent;
+    for (Section section : sections()) {
+        // Gaps between the groups: history and search, music, podcasts and video.
+        if ((section == Section::RecentlyAdded && previous != section) || (section == Section::Podcasts)
+            || (section == Section::Movies && previous != Section::Podcasts))
+            items.push_back(text(""));
+        Element item = text(std::string(" ") + sectionName(int(section)));
+        if (section == m_section) item = item | bold | (m_sidebarFocused && !m_nowPlaying ? inverted : color(Color::Cyan));
         items.push_back(item);
+        previous = section;
     }
     items.push_back(text(""));
     Element nowPlaying = text(" Now Playing");
     if (m_nowPlaying) nowPlaying = nowPlaying | bold | color(Color::Cyan);
     items.push_back(m_player->hasQueue() ? nowPlaying : nowPlaying | dim);
+    if (m_video.process) items.push_back(text(" ▶ in mpv") | color(Color::Green));
     return vbox(items);
 }
 
@@ -433,7 +472,10 @@ Element Tofm::renderPage(const Page &page, int height)
     Elements lines;
     lines.push_back(hbox({text(" " + str(page.title)) | bold, filler()}));
     Element subtitle = text(" " + str(page.subtitle)) | dim;
-    if (page.filtering || !page.filter.isEmpty()) {
+    if (page.search) {
+        subtitle = hbox({text(" Search: ") | bold, text(str(page.filter)), page.filtering ? text("▏") | blink : text(""),
+                         text(page.filtering ? "   Enter: search · Esc: done" : "   / or s: new search") | dim});
+    } else if (page.filtering || !page.filter.isEmpty()) {
         subtitle = hbox({text(" / ") | bold, text(str(page.filter)), page.filtering ? text("▏") | blink : text(""),
                          text(page.filtering ? "   Enter: done · Esc: clear" : "   Esc: clear") | dim});
     }
@@ -462,12 +504,14 @@ Element Tofm::renderPage(const Page &page, int height)
         Element line;
         if (row.kind == Row::Header) {
             line = text(" " + str(row.title)) | bold | color(Color::Yellow);
+        } else if (row.kind == Row::Note) {
+            line = text("   " + str(row.title)) | dim;
         } else {
             const std::string heart = row.etag.isEmpty() ? "  " : favorites.contains(row.etag) ? "♥ " : "  ";
             Element title = text(str(row.title));
             if (row.kind == Row::Action) title = title | color(Color::Cyan);
-            // The marks keep their width; a long title or detail gives way.
-            line = hbox({text(" " + heart) | color(Color::Red) | size(WIDTH, EQUAL, 3), title | flex_shrink,
+            // The marks keep their width, and the title its room; the detail gives way.
+            line = hbox({text(" " + heart) | color(Color::Red) | size(WIDTH, EQUAL, 3), title,
                          text(row.detail.isEmpty() ? "" : "  " + str(row.detail)) | dim | flex_shrink, filler(),
                          text(row.right.isEmpty() ? "" : " " + str(row.right) + " ") | dim});
         }
@@ -502,12 +546,17 @@ bool Tofm::onBrowseEvent(const Event &event)
     if (m_nowPlaying) return onNowPlayingEvent(event);
 
     if (m_sidebarFocused) {
-        int section = int(m_section);
-        if (event == Event::ArrowUp || event == Event::Character('k')) section = std::max(0, section - 1);
-        else if (event == Event::ArrowDown || event == Event::Character('j')) section = std::min(SectionCount - 1, section + 1);
+        const std::vector<Section> shown = sections();
+        auto at = std::find(shown.begin(), shown.end(), m_section);
+        int index = at == shown.end() ? 0 : int(at - shown.begin());
+        const int before = index;
+        if (event == Event::ArrowUp || event == Event::Character('k')) index = std::max(0, index - 1);
+        else if (event == Event::ArrowDown || event == Event::Character('j')) index = std::min(int(shown.size()) - 1, index + 1);
         else if (event == Event::ArrowRight || event == Event::Character('l') || event == Event::Return || event == Event::Tab)
             m_sidebarFocused = false;
-        if (section != int(m_section)) showSection(Section(section));
+        if (index != before) showSection(shown[index]);
+        // Search starts typing straight away.
+        if (!m_sidebarFocused && m_section == Section::Search && page && page->rows.empty()) page->filtering = true;
         redraw();
         return true;
     }
@@ -521,6 +570,20 @@ bool Tofm::onBrowseEvent(const Event &event)
 
 bool Tofm::onPageEvent(Page &page, const Event &event)
 {
+    if (page.filtering && page.search) {
+        if (event == Event::Return) {
+            page.filtering = false;
+            if (!page.filter.trimmed().isEmpty()) page.search(page.filter.trimmed());
+        } else if (event == Event::Escape) {
+            page.filtering = false;
+        } else if (event == Event::Backspace) {
+            page.filter.chop(1);
+        } else if (event.is_character()) {
+            page.filter += QString::fromStdString(event.character());
+        }
+        redraw();
+        return true;
+    }
     if (page.filtering) {
         if (event == Event::Return) {
             page.filtering = false;
@@ -556,13 +619,13 @@ bool Tofm::onPageEvent(Page &page, const Event &event)
     } else if (event == Event::ArrowLeft || event == Event::Character('h') || event == Event::Backspace) {
         back();
     } else if (event == Event::Escape) {
-        if (!page.filter.isEmpty()) {
+        if (!page.filter.isEmpty() && !page.search) {
             page.filter.clear();
             selectFirst(page);
         } else {
             back();
         }
-    } else if (event == Event::Character('/')) {
+    } else if (event == Event::Character('/') || (page.search && event == Event::Character('s'))) {
         page.filtering = true;
     } else if (event == Event::Character('a') || event == Event::Character('n')) {
         if (row && row->enqueue) row->enqueue(event == Event::Character('a'));

@@ -13,6 +13,8 @@
 
 class Cover;
 class Player;
+class QLocalSocket;
+class QProcess;
 class TakeoutCore;
 
 // tofm's screens (FTXUI) over the shared core, on Qt's event loop: a timer runs FTXUI's
@@ -32,7 +34,8 @@ private:
 
     /** A line of a page: a heading, an action ("▶ Play"), or something to open or play. */
     struct Row {
-        enum Kind { Header, Action, Item } kind = Item;
+        /** Note: a line of text (a description), not selectable. */
+        enum Kind { Header, Action, Item, Note } kind = Item;
         QString title;
         QString detail;
         QString right;
@@ -56,12 +59,19 @@ private:
         int scroll = 0;
         QString filter;
         bool filtering = false;
+        /**
+         * A search page: the "filter" is the query, Enter runs this with it, and rows aren't
+         * filtered by it.
+         */
+        std::function<void(const QString &)> search;
         /** Rows to show: all, or those matching the filter (headings and actions hidden). */
         std::vector<int> visibleRows() const;
     };
     using PagePtr = std::shared_ptr<Page>;
 
-    enum class Section { Recent, RecentlyAdded, NewReleases, Artists, Favorites };
+    enum class Section {
+        Recent, Search, RecentlyAdded, NewReleases, Artists, Favorites, Playlists, Radio, Podcasts, Movies, Shows,
+    };
 
     // ---- Shell (Tofm.cpp) ----
     ftxui::Component build();
@@ -97,6 +107,28 @@ private:
     PagePtr favoritesPage();
     PagePtr artistPage(const QVariantMap &artist);
     PagePtr albumPage(const QVariantMap &album);
+    /** The sidebar's sections, those the server's library has. */
+    std::vector<Section> sections() const;
+
+    // ---- Search, playlists, radio, podcasts, video (Library.cpp) ----
+    PagePtr searchPage();
+    void runSearch(const PagePtr &page, const QString &query);
+    PagePtr playlistsPage();
+    PagePtr playlistPage(const QVariantMap &playlist);
+    PagePtr radioPage();
+    PagePtr podcastsPage();
+    PagePtr podcastPage(const QVariantMap &series);
+    PagePtr videoListPage(const QString &title, const QString &call);
+    PagePtr videoPage(const QVariantMap &card);
+    Row videoRow(const QVariantMap &card);
+    Row stationRow(const QVariantMap &station);
+
+    // ---- Video in an external player (Video.cpp) ----
+    /** Plays movie / series / episode [id] in mpv, from where it was left unless [startOver]. */
+    void playVideo(const QString &id, bool startOver);
+    void videoEvent(const QByteArray &line);
+    void saveVideoProgress();
+    void videoClosed();
     Row albumRow(const QVariantMap &album, bool showArtist);
     Row artistRow(const QVariantMap &artist);
     Row trackRow(const QVariantMap &track, const QString &detail, std::function<void()> play);
@@ -149,4 +181,19 @@ private:
     int m_queueSelected = 0;
     int m_queueScroll = 0;
     bool m_confirmSignOut = false;
+
+    // The video playing in mpv: its process, control socket, the token file, and where it got.
+    struct Video {
+        QProcess *process = nullptr;
+        QLocalSocket *socket = nullptr;
+        QString title;
+        QString etag;
+        QString configFile;
+        QString socketPath;
+        double position = 0;
+        double duration = 0;
+        QByteArray pending;
+    } m_video;
+    QTimer m_videoSave;
+    QTimer m_videoConnect;
 };

@@ -7,6 +7,7 @@
 #include "Text.h"
 
 #include <QCoreApplication>
+#include <QProcess>
 
 using namespace ftxui;
 
@@ -54,7 +55,16 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
     });
 }
 
-Tofm::~Tofm() = default;
+Tofm::~Tofm()
+{
+    // Quitting with a video open: save where it got, and close it.
+    if (m_video.process) {
+        saveVideoProgress();
+        m_video.process->terminate();
+        m_video.process->waitForFinished(2000);
+        videoClosed();
+    }
+}
 
 int Tofm::run()
 {

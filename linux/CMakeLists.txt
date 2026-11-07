@@ -117,7 +117,7 @@ set_target_properties(takeoutfm PROPERTIES
 # ---- tofm, the terminal client (PLAN.md §13) ----
 
 add_executable(tofm tui/main.cpp tui/Tofm.cpp tui/Tofm.h tui/Browse.cpp tui/NowPlaying.cpp tui/Text.h
-    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h)
+    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h tui/Library.cpp tui/Video.cpp)
 target_compile_definitions(tofm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(tofm PRIVATE takeoutcore Qt6::Network Qt6::Gui PkgConfig::CHAFA ftxui::component ftxui::dom ftxui::screen)
 set_target_properties(tofm PROPERTIES

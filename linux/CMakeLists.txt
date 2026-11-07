@@ -15,6 +15,7 @@ find_package(ftxui 5 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
+pkg_check_modules(CHAFA REQUIRED IMPORTED_TARGET chafa)
 qt_standard_project_setup(REQUIRES 6.6)
 include(GNUInstallDirs)
 
@@ -115,9 +116,10 @@ set_target_properties(takeoutfm PROPERTIES
 
 # ---- tofm, the terminal client (PLAN.md §13) ----
 
-add_executable(tofm tui/main.cpp tui/Tofm.cpp tui/Tofm.h)
+add_executable(tofm tui/main.cpp tui/Tofm.cpp tui/Tofm.h tui/Browse.cpp tui/NowPlaying.cpp tui/Text.h
+    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h)
 target_compile_definitions(tofm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
-target_link_libraries(tofm PRIVATE takeoutcore ftxui::component ftxui::dom ftxui::screen)
+target_link_libraries(tofm PRIVATE takeoutcore Qt6::Network Qt6::Gui PkgConfig::CHAFA ftxui::component ftxui::dom ftxui::screen)
 set_target_properties(tofm PROPERTIES
     BUILD_RPATH "\$ORIGIN"
     INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")

@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     // playerctl -p tofm; no window to raise.
     Mpris mpris(&player, {QStringLiteral("tofm"), QStringLiteral("tofm"), QString(), false});
 
-    Tofm tofm(&core);
+    Tofm tofm(&core, &player);
     const int code = tofm.run();
     player.pause();
     return code;

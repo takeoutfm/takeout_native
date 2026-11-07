@@ -1,37 +1,37 @@
 #include "Tofm.h"
 
+#include "Cover.h"
+#include "Player.h"
 #include "SecretStore.h"
 #include "TakeoutCore.h"
+#include "Text.h"
 
 #include <QCoreApplication>
 
 using namespace ftxui;
 
-namespace {
-std::string str(const QString &text) { return text.toStdString(); }
-
-QString countdown(int seconds)
-{
-    return QStringLiteral("%1:%2").arg(seconds / 60).arg(seconds % 60, 2, 10, QLatin1Char('0'));
-}
-
-Element keyHint(const std::string &key, const std::string &what)
-{
-    return hbox({text(key) | bold, text(" " + what + "   ") | dim});
-}
-}
-
-Tofm::Tofm(TakeoutCore *core)
+Tofm::Tofm(TakeoutCore *core, Player *player)
     : m_core(core)
+    , m_player(player)
+    , m_cover(std::make_unique<Cover>([this] { redraw(); }))
     , m_screen(ScreenInteractive::Fullscreen())
 {
     m_server = core->endpoint().isEmpty() ? std::string("https://takeout.fm") : str(core->endpoint());
     m_root = build();
 
     QObject::connect(core, &TakeoutCore::sessionChanged, core, [this] { sessionChanged(); });
-    QObject::connect(core, &TakeoutCore::failed, core, [this](const QString &, const QVariantMap &) { redraw(); });
+    QObject::connect(core, &TakeoutCore::failed, core, [this](const QString &, const QVariantMap &error) {
+        if (error.value("kind").toString() == "network") flash(QStringLiteral("Can't reach the server"));
+    });
+    QObject::connect(core, &TakeoutCore::favoriteTracksChanged, core, [this] { redraw(); });
+    QObject::connect(core, &TakeoutCore::recentlyPlayedChanged, core, [this] {
+        if (m_section == Section::Recent && m_stack.size() == 1) m_stack[0] = recentPage();
+        redraw();
+    });
+    for (auto signal : {&Player::itemsChanged, &Player::currentChanged, &Player::playingChanged,
+                        &Player::positionChanged, &Player::durationChanged, &Player::repeatModeChanged})
+        QObject::connect(player, signal, core, [this] { redraw(); });
 
-    // FTXUI's loop, a frame at a time, from Qt's.
     m_frames.setInterval(16);
     m_countdown.setInterval(1000);
     QObject::connect(&m_countdown, &QTimer::timeout, core, [this] {
@@ -39,6 +39,17 @@ Tofm::Tofm(TakeoutCore *core)
             m_expired = true;
             m_countdown.stop();
         }
+        redraw();
+    });
+    // Scrolling titles move a few times a second; nothing else needs frames.
+    m_marqueeTick.setInterval(150);
+    QObject::connect(&m_marqueeTick, &QTimer::timeout, core, [this] { redraw(); });
+    m_marqueeTick.start();
+    m_marqueeStart = QDateTime::currentDateTimeUtc();
+    m_flashTimer.setSingleShot(true);
+    m_flashTimer.setInterval(3000);
+    QObject::connect(&m_flashTimer, &QTimer::timeout, core, [this] {
+        m_flash.clear();
         redraw();
     });
 }
@@ -72,20 +83,74 @@ Component Tofm::build()
 
 void Tofm::redraw() { m_screen.PostEvent(Event::Custom); }
 
+void Tofm::flash(const QString &message)
+{
+    m_flash = message;
+    m_flashTimer.start();
+    redraw();
+}
+
+void Tofm::quit() { m_screen.Exit(); }
+
 void Tofm::sessionChanged()
 {
     if (!m_core->ready()) {
-        m_page = Page::Starting;
+        m_screenState = Screen::Starting;
     } else if (m_core->signedIn()) {
-        m_page = Page::Home;
-        m_countdown.stop();
-        m_code.clear();
-    } else if (m_page != Page::Code) {
-        m_page = Page::SignIn;
+        if (m_screenState != Screen::Browse) {
+            m_screenState = Screen::Browse;
+            m_countdown.stop();
+            m_code.clear();
+            m_core->call("refreshLibrary", {{"maxAgeMs", 60000}});
+            showSection(Section::Recent);
+        }
+    } else {
+        if (m_screenState == Screen::Browse) {
+            // Signed out: nothing of the old account stays.
+            m_player->stop();
+            m_stack.clear();
+            m_nowPlaying = false;
+        }
+        if (m_screenState != Screen::Code) m_screenState = Screen::SignIn;
         m_confirmSignOut = false;
     }
     redraw();
 }
+
+bool Tofm::onEvent(const Event &event)
+{
+    if (event == Event::Custom) return false;
+    switch (m_screenState) {
+    case Screen::Starting:
+        if (event == Event::Character('q')) quit();
+        return true;
+    case Screen::SignIn:
+    case Screen::Code:
+        return onSignInEvent(event);
+    case Screen::Browse:
+        return onBrowseEvent(event);
+    }
+    return false;
+}
+
+Element Tofm::render()
+{
+    Element body;
+    switch (m_screenState) {
+    case Screen::Starting: body = text("Starting…") | dim | center | flex; break;
+    case Screen::SignIn: body = renderSignIn() | center | flex; break;
+    case Screen::Code: body = renderCode() | center | flex; break;
+    case Screen::Browse: body = renderBrowse() | flex; break;
+    }
+    Element right = text(m_core->signedIn() ? str(m_core->endpoint()) + " " : "") | dim;
+    if (!m_flash.isEmpty()) right = text(str(m_flash) + " ") | color(Color::Yellow);
+    return vbox({
+        hbox({text(" tofm ") | bold | inverted, filler(), right}),
+        body,
+    });
+}
+
+// ---- Sign-in ----
 
 int Tofm::secondsLeft() const
 {
@@ -105,11 +170,10 @@ void Tofm::requestCode()
         m_requesting = false;
         if (generation != m_codeGeneration) return;
         if (error.isValid()) {
-            const QVariantMap failure = error.toMap();
-            m_error = failure.value("kind").toString() == "network"
+            m_error = error.toMap().value("kind").toString() == "network"
                 ? QStringLiteral("Can't reach %1").arg(QString::fromStdString(m_server))
                 : QStringLiteral("That server didn't give a code");
-            m_page = Page::SignIn;
+            m_screenState = Screen::SignIn;
             return redraw();
         }
         const QVariantMap code = result.toMap();
@@ -117,7 +181,7 @@ void Tofm::requestCode()
         m_link = code.value("link").toString();
         m_expiresAt = QDateTime::currentDateTimeUtc().addSecs(code.value("expiresIn").toInt());
         m_expired = false;
-        m_page = Page::Code;
+        m_screenState = Screen::Code;
         m_countdown.start();
         redraw();
         // True once approved (the session then changes to signed in); false when it expired.
@@ -137,71 +201,23 @@ void Tofm::cancelCode()
     m_core->call("cancelCode");
     m_countdown.stop();
     m_code.clear();
-    m_page = Page::SignIn;
+    m_screenState = Screen::SignIn;
     redraw();
 }
 
-bool Tofm::onEvent(const Event &event)
+bool Tofm::onSignInEvent(const Event &event)
 {
-    if (event == Event::Custom) return false;
-    switch (m_page) {
-    case Page::SignIn:
+    if (m_screenState == Screen::SignIn) {
         if (event == Event::Escape) {
-            m_screen.Exit();
+            quit();
             return true;
         }
         return false; // the server field
-    case Page::Code:
-        if (event == Event::Character('n')) {
-            requestCode();
-            return true;
-        }
-        if (event == Event::Escape) {
-            cancelCode();
-            return true;
-        }
-        if (event == Event::Character('q')) {
-            m_screen.Exit();
-            return true;
-        }
-        return true;
-    case Page::Home:
-        if (m_confirmSignOut) {
-            if (event == Event::Character('y')) m_core->call("signOut");
-            m_confirmSignOut = false;
-            redraw();
-            return true;
-        }
-        if (event == Event::Character('s')) {
-            m_confirmSignOut = true;
-            return true;
-        }
-        if (event == Event::Character('q')) {
-            m_screen.Exit();
-            return true;
-        }
-        return true;
-    case Page::Starting:
-        if (event == Event::Character('q')) m_screen.Exit();
-        return true;
     }
-    return false;
-}
-
-Element Tofm::render()
-{
-    Element body;
-    switch (m_page) {
-    case Page::Starting: body = text("Starting…") | dim; break;
-    case Page::SignIn: body = renderSignIn(); break;
-    case Page::Code: body = renderCode(); break;
-    case Page::Home: body = renderHome(); break;
-    }
-    return vbox({
-        hbox({text(" tofm ") | bold | inverted, filler(),
-              text(m_core->signedIn() ? str(m_core->endpoint()) + " " : "") | dim}),
-        body | center | flex,
-    });
+    if (event == Event::Character('n')) requestCode();
+    else if (event == Event::Escape) cancelCode();
+    else if (event == Event::Character('q')) quit();
+    return true;
 }
 
 Element Tofm::renderSignIn()
@@ -231,28 +247,10 @@ Element Tofm::renderCode()
         code | border | hcenter,
         text(""),
     };
-    if (m_expired) {
+    if (m_expired)
         lines.push_back(text("This code has expired.") | color(Color::Red) | hcenter);
-        lines.push_back(hbox({keyHint("n", "new code"), keyHint("Esc", "back"), keyHint("q", "quit")}) | hcenter);
-    } else {
-        lines.push_back(text("Waiting for approval · expires in " + str(countdown(secondsLeft()))) | dim | hcenter);
-        lines.push_back(hbox({keyHint("n", "new code"), keyHint("Esc", "back"), keyHint("q", "quit")}) | hcenter);
-    }
-    return vbox(lines);
-}
-
-Element Tofm::renderHome()
-{
-    const QString who = m_core->user().isEmpty() ? QString() : QStringLiteral(" as %1").arg(m_core->user());
-    Elements lines = {
-        text("Signed in to " + str(m_core->endpoint()) + str(who)) | hcenter,
-        text(""),
-        text("Browsing and playing music arrive in T2.") | dim | hcenter,
-        text(""),
-    };
-    if (m_confirmSignOut)
-        lines.push_back(text("Sign out? y: yes · any other key: no") | color(Color::Yellow) | hcenter);
     else
-        lines.push_back(hbox({keyHint("s", "sign out"), keyHint("q", "quit")}) | hcenter);
+        lines.push_back(text("Waiting for approval · expires in " + str(clock(secondsLeft()))) | dim | hcenter);
+    lines.push_back(hbox({keyHint("n", "new code"), keyHint("Esc", "back"), keyHint("q", "quit")}) | hcenter);
     return vbox(lines);
 }

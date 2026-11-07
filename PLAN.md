@@ -757,7 +757,7 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
      times, repeat / ♥). Lists filter as you type (`/`); Enter opens or plays, `a` adds to the
      queue, `n` plays next, `f` favorites. Full Now Playing with the cover and the queue.
      Search with the server's query syntax (artists, albums, tracks, movies, shows). Keys:
-     vim-style and arrows, `space` play/pause, `<` `>` previous/next, `←` `→` seek 10 / 30 s,
+     vim-style and arrows, `space` play/pause, `<` `>` previous/next, `[` `]` seek 10 / 30 s,
      `r` repeat (the saved Repeat All), `?` help; the mouse works too.
    - **Album art:** libchafa (`libchafa-dev`) picks the best the terminal can do — the kitty
      graphics protocol with Unicode placeholders (kitty, WezTerm, Ghostty, recent Konsole;
@@ -803,8 +803,23 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            without a terminal. Checked by driving it in a pty (frames read as text): the code
            and countdown, Esc back and quit (terminal restored), and the keyring fallback with
            no D-Bus.
-     - [ ] **T2 — music:** sidebar lists, artist and album pages, play / queue / favorite, the
-           Now Playing bar and view, MPRIS; album art on Now Playing (auto-detected).
+     - [x] **T2 — music** (done 2026-11-06): sidebar (Recent — tofm's own history —, Recently
+           Added, New Releases, Artists, Favorites, Now Playing); pages are lists of rows
+           (headings, actions like ▶ Play / ⤮ Shuffle / ≋ Radio, albums, artists, tracks) on a
+           page stack (`tui/Browse.cpp`): artist (mixes, ♥ artist, top 5 popular, albums /
+           singles / other, similar), album (discs, the artist, similar albums), favorites.
+           `/` finds as you type. Keys: arrows / `jk` move, Enter / `→` open or play, `←` /
+           `Esc` back, `Tab` sidebar, `a` / `n` queue, `f` ♥, space, `<` `>`, **`[` `]` seek
+           −10 / +30 s** (the arrows navigate), `r` repeat, `p` Now Playing, `S` sign out, `q`
+           quit, mouse wheel. Now Playing bar (scrolling title, ♥ / repeat marks, progress or
+           LIVE) and view (`tui/NowPlaying.cpp`: the cover, title, the queue; Enter skips to
+           an item). Album art (`tui/Cover.cpp`, `CoverCells.cpp`): fetched with Qt Network
+           into `$XDG_CACHE_HOME/tofm/covers`, decoded by `QImage`, turned into block
+           characters in 24-bit colour by libchafa (`libchafa-dev`) and drawn as FTXUI cells,
+           so redraws keep it and every terminal shows it; sized square from the cell's pixel
+           size. Kitty / sixel images move to T4 (they live outside FTXUI's grid). Checked in
+           a pty: browsing, finding, playing and pausing, the queue, and the cover (frames
+           turned into HTML).
      - [ ] **T3 — more:** search, playlists, radio (stream titles), podcasts (episode
            progress), movies and TV opened in mpv with progress.
      - [ ] **T4 — settings and polish:** Track Activity, ListenBrainz, theme-independent

@@ -28,6 +28,13 @@ void Cover::cellSize(int *width, int *height) const
         *width = 8;
         *height = 16;
     }
+    // Once, for the log: what the terminal said (why covers look the shape they do).
+    static bool logged = false;
+    if (!logged) {
+        logged = true;
+        qWarning("tofm: terminal %dx%d cells, %dx%d pixels: a cell is %dx%d", size.ws_col, size.ws_row,
+                 size.ws_xpixel, size.ws_ypixel, *width, *height);
+    }
 }
 
 int Cover::columnsFor(int rows) const
@@ -69,20 +76,23 @@ Element Cover::render(const QString &url, int rows)
         return blank();
     }
     const QString key = QStringLiteral("%1 %2x%3").arg(url).arg(cols).arg(rows);
-    if (key != m_cellsKey) {
+    if (!m_cells.contains(key)) {
         const QImage &image = m_images[url];
         int cellWidth = 0, cellHeight = 0;
         cellSize(&cellWidth, &cellHeight);
-        m_cells = coverCells(image.constBits(), image.width(), image.height(), int(image.bytesPerLine()),
-                             cols, rows, cellWidth, cellHeight);
-        m_cellsKey = key;
+        m_cells.insert(key, coverCells(image.constBits(), image.width(), image.height(), int(image.bytesPerLine()),
+                                       cols, rows, cellWidth, cellHeight));
+        m_cellsOrder << key;
+        // A handful are enough: what's on screen now.
+        while (m_cellsOrder.size() > 8) m_cells.remove(m_cellsOrder.takeFirst());
     }
-    if (m_cells.size() != size_t(cols) * rows) return blank();
+    const std::vector<CoverCell> &cells = m_cells[key];
+    if (cells.size() != size_t(cols) * rows) return blank();
     Elements lines;
     for (int y = 0; y < rows; ++y) {
         Elements line;
         for (int x = 0; x < cols; ++x) {
-            const CoverCell &cell = m_cells[size_t(y) * cols + x];
+            const CoverCell &cell = cells[size_t(y) * cols + x];
             Element glyph = text(cell.glyph);
             if (cell.fg >= 0) glyph = glyph | color(Color::RGB((cell.fg >> 16) & 0xff, (cell.fg >> 8) & 0xff, cell.fg & 0xff));
             if (cell.bg >= 0) glyph = glyph | bgcolor(Color::RGB((cell.bg >> 16) & 0xff, (cell.bg >> 8) & 0xff, cell.bg & 0xff));

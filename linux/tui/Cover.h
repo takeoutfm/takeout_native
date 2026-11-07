@@ -36,7 +36,7 @@ private:
     QHash<QString, QImage> m_images;
     QSet<QString> m_pending;
     QSet<QString> m_failed;
-    /** The last conversion: redone only when the cover or its size changes. */
-    QString m_cellsKey;
-    std::vector<CoverCell> m_cells;
+    /** Conversions by cover and size (a page's, the bar's and Now Playing's can all show). */
+    QHash<QString, std::vector<CoverCell>> m_cells;
+    QStringList m_cellsOrder;
 };

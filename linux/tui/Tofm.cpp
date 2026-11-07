@@ -8,6 +8,7 @@
 
 #include <QCoreApplication>
 #include <QProcess>
+#include <QStandardPaths>
 
 using namespace ftxui;
 
@@ -16,6 +17,7 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
     , m_player(player)
     , m_cover(std::make_unique<Cover>([this] { redraw(); }))
     , m_screen(ScreenInteractive::Fullscreen())
+    , m_prefs(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/tofm.conf", QSettings::IniFormat)
 {
     m_server = core->endpoint().isEmpty() ? std::string("https://takeout.fm") : str(core->endpoint());
     m_root = build();
@@ -25,6 +27,8 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
         if (error.value("kind").toString() == "network") flash(QStringLiteral("Can't reach the server"));
     });
     QObject::connect(core, &TakeoutCore::favoriteTracksChanged, core, [this] { redraw(); });
+    QObject::connect(core, &TakeoutCore::settingsChanged, core, [this] { refreshSettings(); });
+    QObject::connect(core, &TakeoutCore::listenBrainzChanged, core, [this] { refreshSettings(); });
     QObject::connect(core, &TakeoutCore::recentlyPlayedChanged, core, [this] {
         if (m_section == Section::Recent && m_stack.size() == 1) m_stack[0] = recentPage();
         redraw();
@@ -122,7 +126,7 @@ void Tofm::sessionChanged()
             m_nowPlaying = false;
         }
         if (m_screenState != Screen::Code) m_screenState = Screen::SignIn;
-        m_confirmSignOut = false;
+        m_prompt.reset();
     }
     redraw();
 }

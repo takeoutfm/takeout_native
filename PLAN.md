@@ -841,8 +841,14 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            (search, radio, podcasts, movies, a series' seasons) and with a stand-in `mpv` on
            the PATH: the arguments, the 0600 file holding the header, no token on the command
            line, `--start=513.0` (resuming), cleanup; then by the user with real mpv.
-     - [ ] **T4 — settings and polish:** Track Activity, ListenBrainz, theme-independent
-           colours, help, album art on page headers and the bar, the Album art setting, tmux.
+     - [ ] **T4 — settings and polish** (most done 2026-11-06): Settings page (server, user,
+           sign out, Track Activity, ListenBrainz connect with a masked token prompt / submit /
+           disconnect, Album art Auto / Characters / Off, bar cover — off over SSH; tofm's own
+           in `~/.config/tofm/tofm.conf`), `?` help, one-line prompts, covers on album and
+           artist pages (~40% of the page) and a 3-line Now Playing bar (cover, "Next:"), the
+           terminal's cell size logged. **Open:** real images (kitty graphics under the text,
+           else sixel redrawn after frames) — test first in Konsole with a script; tmux
+           passthrough.
      - [ ] **T5 — downloads and packaging:** offline play from downloads; a `tofm` .deb (no
            Kirigami or Qt Quick dependencies), `tofm.1` man page.
    - **Testing:** FTXUI screens rendered to text as `ctest` snapshot tests (half-block covers

@@ -37,7 +37,7 @@ QString Tofm::marquee(const QString &text, int width) const
 
 Element Tofm::renderBar()
 {
-    if (!m_player->hasQueue()) return vbox({text(" Nothing playing") | dim, text("")});
+    if (!m_player->hasQueue()) return vbox({text(" Nothing playing") | dim, text(""), text("")});
     const QVariantMap item = m_player->current();
     const QString etag = item.value("etag").toString();
     const bool favorite = !etag.isEmpty() && m_core->favoriteTracks().contains(etag);
@@ -46,7 +46,7 @@ Element Tofm::renderBar()
     const QString subtitle = m_player->displaySubtitle();
 
     // The title gets what's left of the line after the state, the artist and the marks.
-    const int width = m_screen.dimx() - 4 - columns(subtitle) - 3 - 6;
+    const int width = m_screen.dimx() - 4 - columns(subtitle) - 3 - 6 - (barCover() ? m_cover->columnsFor(3) + 1 : 0);
     const QString title = marquee(m_player->displayTitle(), std::max(12, width));
 
     Element line1 = hbox({
@@ -69,7 +69,18 @@ Element Tofm::renderBar()
             text(" " + str(clock(qint64(duration))) + " "),
         });
     }
-    return vbox({line1, line2});
+    // What's next in the queue, on the third line.
+    const QVariantList items = m_player->items();
+    const int next = m_player->index() + 1;
+    Element line3 = text("");
+    if (next > 0 && next < items.size()) {
+        const QVariantMap upcoming = items[next].toMap();
+        line3 = hbox({text(" Next: ") | dim, text(str(upcoming.value("title").toString())),
+                      text("  " + str(upcoming.value("artist").toString())) | dim | flex_shrink, filler()});
+    }
+    if (!barCover()) return vbox({line1, line2, line3});
+    // A small cover beside the bar's three lines.
+    return hbox({text(" "), m_cover->render(item.value("imageUri").toString(), 3), vbox({line1, line2, line3}) | flex});
 }
 
 Element Tofm::renderNowPlaying(int height)
@@ -83,10 +94,10 @@ Element Tofm::renderNowPlaying(int height)
     // The cover as big as the view allows: its full height, up to a bit over half its width;
     // what's playing and the queue in a column beside it.
     const int width = m_screen.dimx() - 19;
-    int coverRows = std::max(4, height);
-    int coverCols = m_cover->columnsFor(coverRows);
+    int coverRows = art() == Art::Off ? 0 : std::max(4, height);
+    int coverCols = coverRows ? m_cover->columnsFor(coverRows) : 0;
     const int maxCols = width * 11 / 20;
-    if (coverCols > maxCols) {
+    if (coverRows && coverCols > maxCols) {
         coverRows = std::max(4, coverRows * maxCols / coverCols);
         coverCols = m_cover->columnsFor(coverRows);
     }
@@ -116,6 +127,7 @@ Element Tofm::renderNowPlaying(int height)
         if (i == m_queueSelected) line = line | inverted;
         column.push_back(line);
     }
+    if (!coverRows) return hbox({text(" "), vbox(column) | flex});
     return hbox({
         text(" "),
         m_cover->render(item.value("imageUri").toString(), coverRows),

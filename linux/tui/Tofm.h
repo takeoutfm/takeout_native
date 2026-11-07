@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDateTime>
+#include <QSettings>
 #include <QString>
 #include <QTimer>
 #include <QVariant>
@@ -64,13 +65,28 @@ private:
          * filtered by it.
          */
         std::function<void(const QString &)> search;
+        /** A cover (album, artist) beside the title; "" for none. */
+        QString coverUri;
         /** Rows to show: all, or those matching the filter (headings and actions hidden). */
         std::vector<int> visibleRows() const;
     };
     using PagePtr = std::shared_ptr<Page>;
 
     enum class Section {
-        Recent, Search, RecentlyAdded, NewReleases, Artists, Favorites, Playlists, Radio, Podcasts, Movies, Shows,
+        Recent, Search, RecentlyAdded, NewReleases, Artists, Favorites, Playlists, Radio, Podcasts, Movies, Shows, Settings,
+    };
+
+    /** Album art: as the terminal allows (block characters for now), always characters, or none. */
+    enum class Art { Auto, Characters, Off };
+
+    /** A one-line question at the bottom (the ListenBrainz token, "sign out?"). */
+    struct Prompt {
+        QString label;
+        QString value;
+        bool secret = false;
+        /** y / n instead of typing. */
+        bool yesNo = false;
+        std::function<void(const QString &)> done;
     };
 
     // ---- Shell (Tofm.cpp) ----
@@ -122,6 +138,16 @@ private:
     PagePtr videoPage(const QVariantMap &card);
     Row videoRow(const QVariantMap &card);
     Row stationRow(const QVariantMap &station);
+
+    // ---- Settings and help (Settings.cpp) ----
+    PagePtr settingsPage();
+    void refreshSettings();
+    ftxui::Element renderHelp();
+    void ask(const Prompt &prompt);
+    bool onPromptEvent(const ftxui::Event &event);
+    ftxui::Element renderPrompt();
+    Art art() const;
+    bool barCover() const;
 
     // ---- Video in an external player (Video.cpp) ----
     /** Plays movie / series / episode [id] in mpv, from where it was left unless [startOver]. */
@@ -180,7 +206,10 @@ private:
     bool m_nowPlaying = false;
     int m_queueSelected = 0;
     int m_queueScroll = 0;
-    bool m_confirmSignOut = false;
+    bool m_help = false;
+    std::unique_ptr<Prompt> m_prompt;
+    /** tofm's own settings (album art): ~/.config/tofm/tofm.conf. */
+    QSettings m_prefs;
 
     // The video playing in mpv: its process, control socket, the token file, and where it got.
     struct Video {

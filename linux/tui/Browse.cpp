@@ -2,6 +2,7 @@
 
 #include "Tofm.h"
 
+#include "Cover.h"
 #include "Player.h"
 #include "TakeoutCore.h"
 #include "Text.h"
@@ -125,6 +126,7 @@ std::vector<Tofm::Section> Tofm::sections() const
     if (library.value("hasPodcasts").toBool()) shown.push_back(Section::Podcasts);
     if (library.value("hasMovies").toBool()) shown.push_back(Section::Movies);
     if (library.value("hasShows").toBool()) shown.push_back(Section::Shows);
+    shown.push_back(Section::Settings);
     return shown;
 }
 
@@ -132,7 +134,7 @@ namespace {
 const char *sectionName(int section)
 {
     static const char *const Names[] = {"Recent", "Search", "Recently Added", "New Releases", "Artists", "Favorites",
-                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows"};
+                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows", "Settings"};
     return Names[section];
 }
 }
@@ -147,6 +149,7 @@ Tofm::PagePtr Tofm::sectionPage(Section section)
     case Section::Podcasts: return podcastsPage();
     case Section::Movies: return videoListPage(QStringLiteral("Movies"), QStringLiteral("movies"));
     case Section::Shows: return videoListPage(QStringLiteral("TV Shows"), QStringLiteral("shows"));
+    case Section::Settings: return settingsPage();
     case Section::RecentlyAdded: return albumListPage(QStringLiteral("Recently Added"), QStringLiteral("recentlyAdded"));
     case Section::NewReleases: return albumListPage(QStringLiteral("New Releases"), QStringLiteral("newReleases"));
     case Section::Artists: return artistsPage();
@@ -262,12 +265,14 @@ Tofm::PagePtr Tofm::artistPage(const QVariantMap &artist)
     const QString id = artist.value("id").toString();
     page->title = artist.value("name").toString();
     page->subtitle = artist.value("genre").toString();
+    page->coverUri = artist.value("imageUri").toString();
     load(page, QStringLiteral("artistDetails"), {{"artistId", id}}, [this, id](Page &page, const QVariant &result) {
         const QVariantMap details = result.toMap();
         const QVariantMap artist = details.value("artist").toMap();
         const QString name = artist.value("name").toString();
         page.title = name;
         page.subtitle = artist.value("genre").toString();
+        page.coverUri = artist.value("imageUri").toString();
         auto mix = [this, id](const char *mix) {
             return [this, id, mix] { playCall(QStringLiteral("artistQueue"), {{"artistId", id}, {"mix", mix}}); };
         };
@@ -318,12 +323,14 @@ Tofm::PagePtr Tofm::albumPage(const QVariantMap &album)
     const QString id = album.value("id").toString();
     page->title = album.value("name").toString();
     page->subtitle = joined({album.value("artist").toString(), album.value("year").toString(), album.value("type").toString()});
+    page->coverUri = album.value("coverUri").toString();
     load(page, QStringLiteral("albumDetails"), {{"albumId", id}}, [this, id](Page &page, const QVariant &result) {
         const QVariantMap details = result.toMap();
         const QVariantMap album = details.value("album").toMap();
         const QString artist = album.value("artist").toString();
         page.title = album.value("name").toString();
         page.subtitle = joined({artist, album.value("year").toString(), album.value("type").toString()});
+        page.coverUri = album.value("coverUri").toString();
         page.rows.push_back({Row::Action, QStringLiteral("▶ Play"), {}, {}, {},
                              [this, id] { playCall(QStringLiteral("albumQueue"), {{"albumId", id}}); }, {}});
         page.rows.push_back({Row::Action, QStringLiteral("⤮ Shuffle"), {}, {}, {},
@@ -421,27 +428,27 @@ void Tofm::toggleFavorite(const QString &etag)
 
 int Tofm::pageHeight() const
 {
-    // Top bar, page title and subtitle, separator, Now Playing bar (2), key hints.
-    return std::max(3, m_screen.dimy() - 8);
+    // Top bar, page title and subtitle, separator, Now Playing bar (3), key hints.
+    return std::max(3, m_screen.dimy() - 9);
 }
 
 Element Tofm::renderBrowse()
 {
     Element content;
-    if (m_nowPlaying) content = renderNowPlaying(pageHeight() + 2);
+    if (m_help) content = renderHelp();
+    else if (m_nowPlaying) content = renderNowPlaying(pageHeight() + 2);
     else if (Page *page = currentPage()) content = renderPage(*page, pageHeight());
     else content = text("");
 
     Elements hints = {keyHint("⏎", "open/play"), keyHint("/", "find"), keyHint("␣", "pause"), keyHint("<>", "skip"),
                       keyHint("[]", "seek"), keyHint("a/n", "queue"), keyHint("f", "♥"), keyHint("r", "repeat"),
-                      keyHint("p", "playing"), keyHint("q", "quit")};
-    if (m_confirmSignOut) hints = {text("Sign out? y: yes · any other key: no") | color(Color::Yellow)};
+                      keyHint("p", "playing"), keyHint("?", "help"), keyHint("q", "quit")};
 
     return vbox({
         hbox({renderSidebar() | size(WIDTH, EQUAL, SidebarWidth), separator(), content | flex}) | flex,
         separator(),
         renderBar(),
-        hbox(hints) | dim,
+        m_prompt ? renderPrompt() : hbox(hints) | dim,
     });
 }
 
@@ -452,7 +459,7 @@ Element Tofm::renderSidebar()
     for (Section section : sections()) {
         // Gaps between the groups: history and search, music, podcasts and video.
         if ((section == Section::RecentlyAdded && previous != section) || (section == Section::Podcasts)
-            || (section == Section::Movies && previous != Section::Podcasts))
+            || (section == Section::Movies && previous != Section::Podcasts) || section == Section::Settings)
             items.push_back(text(""));
         Element item = text(std::string(" ") + sectionName(int(section)));
         if (section == m_section) item = item | bold | (m_sidebarFocused && !m_nowPlaying ? inverted : color(Color::Cyan));
@@ -469,8 +476,24 @@ Element Tofm::renderSidebar()
 
 Element Tofm::renderPage(const Page &page, int height)
 {
+    // An album's or artist's cover beside its title; the rows below get less room.
+    if (!page.coverUri.isEmpty() && art() != Art::Off && height > 14) {
+        // About 40% of the page's height, at least 6 rows, so it grows with the window.
+        const int CoverRows = std::clamp(height * 2 / 5, 6, 18);
+        Page rest = page;
+        rest.coverUri.clear();
+        rest.title.clear();
+        rest.subtitle.clear();
+        Element list = renderPage(rest, height - CoverRows + 1);
+        // The copy's scroll is the one that counts.
+        const_cast<Page &>(page).scroll = rest.scroll;
+        Element head = hbox({text(" "), m_cover->render(page.coverUri, CoverRows), text(" "),
+                             vbox({text(str(page.title)) | bold, text(str(page.subtitle)) | dim, filler()}) | flex});
+        return vbox({head, list});
+    }
     Elements lines;
-    lines.push_back(hbox({text(" " + str(page.title)) | bold, filler()}));
+    if (!page.title.isEmpty() || !page.subtitle.isEmpty() || page.search || page.filtering || !page.filter.isEmpty())
+        lines.push_back(hbox({text(" " + str(page.title)) | bold, filler()}));
     Element subtitle = text(" " + str(page.subtitle)) | dim;
     if (page.search) {
         subtitle = hbox({text(" Search: ") | bold, text(str(page.filter)), page.filtering ? text("▏") | blink : text(""),
@@ -511,7 +534,9 @@ Element Tofm::renderPage(const Page &page, int height)
             Element title = text(str(row.title));
             if (row.kind == Row::Action) title = title | color(Color::Cyan);
             // The marks keep their width, and the title its room; the detail gives way.
-            line = hbox({text(" " + heart) | color(Color::Red) | size(WIDTH, EQUAL, 3), title,
+            Element mark = text(" " + heart) | size(WIDTH, EQUAL, 3);
+            if (heart != "  ") mark = mark | color(Color::Red); // else selecting the row would show a red block
+            line = hbox({mark, title,
                          text(row.detail.isEmpty() ? "" : "  " + str(row.detail)) | dim | flex_shrink, filler(),
                          text(row.right.isEmpty() ? "" : " " + str(row.right) + " ") | dim});
         }
@@ -525,12 +550,7 @@ Element Tofm::renderPage(const Page &page, int height)
 
 bool Tofm::onBrowseEvent(const Event &event)
 {
-    if (m_confirmSignOut) {
-        if (event == Event::Character('y')) m_core->call("signOut");
-        m_confirmSignOut = false;
-        redraw();
-        return true;
-    }
+    if (m_prompt) return onPromptEvent(event);
     Page *page = currentPage();
     // Typing a filter takes every key.
     if (page && page->filtering && !m_nowPlaying) return onPageEvent(*page, event);
@@ -540,7 +560,18 @@ bool Tofm::onBrowseEvent(const Event &event)
         return true;
     }
     if (event == Event::Character('S')) {
-        m_confirmSignOut = true;
+        ask({QStringLiteral("Sign out of %1?").arg(m_core->endpoint()), {}, false, true,
+             [this](const QString &) { m_core->call("signOut"); }});
+        return true;
+    }
+    if (event == Event::Character('?')) {
+        m_help = !m_help;
+        redraw();
+        return true;
+    }
+    if (m_help) {
+        if (event == Event::Escape || event == Event::Character('q') || event == Event::ArrowLeft) m_help = false;
+        redraw();
         return true;
     }
     if (m_nowPlaying) return onNowPlayingEvent(event);

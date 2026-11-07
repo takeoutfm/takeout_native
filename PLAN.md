@@ -790,8 +790,19 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            `SecretStore::load/save(app, …)`. The KDE app's `src/Core` derives from
            `TakeoutCore` for QML (JS-callback `call`, the singleton) and registers `Player` as a
            foreign singleton. Its `ctest` passes; it starts signed in, MPRIS unchanged.
-     - [ ] **T1 — skeleton:** `tui/` target, FTXUI on the Qt loop, own data / keyring /
-           MPRIS name, sign-in with the countdown, the secrets file fallback.
+     - [x] **T1 — skeleton** (done 2026-11-06): `linux/tui/` (`main.cpp`, `Tofm`), FTXUI 5
+           (`libftxui-dev`) on `QCoreApplication`: a 16 ms `QTimer` runs `Loop::RunOnce()`,
+           state changes post `Event::Custom`. Data in `~/.local/share/tofm`, keyring item
+           `tofm`, MPRIS `org.mpris.MediaPlayer2.tofm` (no Raise); stderr goes to
+           `~/.local/state/tofm/tofm.log`, so Qt / mpv / libsecret warnings don't draw over the
+           screen. `SecretStore::setFallbackFile`: with no Secret Service the sign-in goes in
+           `secrets.json` (0600, written to a `.part` file and renamed), and the sign-in page
+           says so. Sign-in: server field, Enter for a code, the code with its countdown,
+           expired state, `n` new code, `Esc` back; signed in: a placeholder page with `s`
+           sign out (confirmed) and `q` quit. `tofm --version`, `--help`; refuses to run
+           without a terminal. Checked by driving it in a pty (frames read as text): the code
+           and countdown, Esc back and quit (terminal restored), and the keyring fallback with
+           no D-Bus.
      - [ ] **T2 — music:** sidebar lists, artist and album pages, play / queue / favorite, the
            Now Playing bar and view, MPRIS; album art on Now Playing (auto-detected).
      - [ ] **T3 — more:** search, playlists, radio (stream titles), podcasts (episode

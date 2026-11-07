@@ -10,4 +10,12 @@ namespace SecretStore {
 std::string load(const std::string &app);
 /** Replaces [app]'s saved JSON; called from the core's threads. */
 void save(const std::string &app, const char *json);
+
+/**
+ * Where secrets go when there's no Secret Service to keep them (tofm over SSH, a headless
+ * box): a file only the user can read. "" (the default, the KDE app) for none.
+ */
+void setFallbackFile(const std::string &path);
+/** The fallback file is in use: there was no Secret Service. */
+bool usingFallback();
 }

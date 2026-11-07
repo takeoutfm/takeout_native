@@ -11,6 +11,7 @@ find_package(KF6CoreAddons REQUIRED)
 find_package(KF6DBusAddons REQUIRED)
 find_package(KF6Crash REQUIRED)
 find_package(KF6ColorScheme REQUIRED)
+find_package(ftxui 5 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
@@ -109,6 +110,15 @@ qt_add_resources(takeoutfm "icon" PREFIX "/" BASE data
     FILES data/icons/hicolor/256x256/apps/com.takeoutfm.linux.png)
 # libtakeout.so sits beside the binary in the build, and in lib/takeoutfm when installed.
 set_target_properties(takeoutfm PROPERTIES
+    BUILD_RPATH "\$ORIGIN"
+    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")
+
+# ---- tofm, the terminal client (PLAN.md §13) ----
+
+add_executable(tofm tui/main.cpp tui/Tofm.cpp tui/Tofm.h)
+target_compile_definitions(tofm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
+target_link_libraries(tofm PRIVATE takeoutcore ftxui::component ftxui::dom ftxui::screen)
+set_target_properties(tofm PROPERTIES
     BUILD_RPATH "\$ORIGIN"
     INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")
 

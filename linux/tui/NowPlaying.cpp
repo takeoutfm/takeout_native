@@ -79,27 +79,27 @@ Element Tofm::renderNowPlaying(int height)
     }
     const QVariantMap item = m_player->current();
     const QVariantList items = m_player->items();
-    // The cover beside what's playing, the queue under both.
-    const int coverRows = std::clamp(height / 2, 4, 14);
-    const int coverCols = m_cover->columnsFor(coverRows);
-    const int infoWidth = m_screen.dimx() - 20 - coverCols - 4;
-    Element info = vbox({
-        text(" Now Playing") | dim,
-        text(""),
-        text(" " + str(marquee(m_player->displayTitle(), infoWidth))) | bold,
+
+    // The cover as big as the view allows: its full height, up to a bit over half its width;
+    // what's playing and the queue in a column beside it.
+    const int width = m_screen.dimx() - 19;
+    int coverRows = std::max(4, height);
+    int coverCols = m_cover->columnsFor(coverRows);
+    const int maxCols = width * 11 / 20;
+    if (coverCols > maxCols) {
+        coverRows = std::max(4, coverRows * maxCols / coverCols);
+        coverCols = m_cover->columnsFor(coverRows);
+    }
+    const int columnWidth = std::max(10, width - coverCols - 3);
+
+    Elements column = {
+        text(" " + str(marquee(m_player->displayTitle(), columnWidth - 1))) | bold,
         text(" " + str(m_player->displaySubtitle())),
         text(" " + str(m_player->live() ? QString() : item.value("album").toString())) | dim,
-        filler(),
-    });
-    Elements lines = {
-        hbox({text(" "), m_cover->render(item.value("imageUri").toString(), coverRows), text(" "), info | flex}),
         text(""),
-        hbox({text(" Queue") | bold, text(QStringLiteral("  %1 of %2 · %3")
-                                              .arg(m_player->index() + 1).arg(items.size()).arg(m_player->queueTitle()).toStdString()) | dim}),
+        hbox({text(" Queue") | bold, text(QStringLiteral("  %1 of %2").arg(m_player->index() + 1).arg(items.size()).toStdString()) | dim}),
     };
-    // The cover's rows count once (they're one element).
-    const int used = coverRows + 2;
-    const int rows = std::max(1, height - used);
+    const int rows = std::max(1, height - int(column.size()));
     m_queueSelected = std::clamp(m_queueSelected, 0, std::max(0, int(items.size()) - 1));
     if (m_queueSelected < m_queueScroll) m_queueScroll = m_queueSelected;
     if (m_queueSelected >= m_queueScroll + rows) m_queueScroll = m_queueSelected - rows + 1;
@@ -114,9 +114,14 @@ Element Tofm::renderNowPlaying(int height)
             filler(),
         });
         if (i == m_queueSelected) line = line | inverted;
-        lines.push_back(line);
+        column.push_back(line);
     }
-    return vbox(lines);
+    return hbox({
+        text(" "),
+        m_cover->render(item.value("imageUri").toString(), coverRows),
+        text("  "),
+        vbox(column) | flex,
+    });
 }
 
 bool Tofm::onPlayerKey(const Event &event)

@@ -192,6 +192,11 @@ void Player::load(int start, double seconds)
     for (int i = 0; i < m_items.size(); ++i)
         loadFile(m_items.at(i).toMap(), i == start ? "append-play" : "append", -1, i == start ? seconds : 0);
     setFlag(m_mpv, "pause", false);
+    // The new queue's item now. mpv reports playlist-pos only when it differs from what it last
+    // reported, and stop + loadfile land in one go: a new album started at the same position
+    // as the old queue (track 1 after track 1) would never be announced, leaving no current
+    // item (no title, no cover) until the next track.
+    indexChanged(start);
 }
 
 void Player::loadFile(const QVariantMap &item, const char *flag, int at, double seconds)

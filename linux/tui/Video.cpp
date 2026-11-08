@@ -11,6 +11,7 @@
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocalSocket>
@@ -32,11 +33,15 @@ void Tofm::playVideo(const QString &id, bool startOver)
     if (m_video.process) return flash(QStringLiteral("A video is already open in mpv"));
     if (qEnvironmentVariableIsEmpty("DISPLAY") && qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))
         return flash(QStringLiteral("Videos need a display (tofm opens them in mpv)"));
-    if (QStandardPaths::findExecutable(QStringLiteral("mpv")).isEmpty())
-        return flash(QStringLiteral("Install mpv to watch videos"));
+    // Settings → Video player: mpv unless the user named another command.
+    const QStringList command = QProcess::splitCommand(m_prefs.value("videoPlayer").toString().trimmed());
+    const QString program = command.isEmpty() ? QStringLiteral("mpv") : command.first();
+    const bool mpv = QFileInfo(program).fileName() == "mpv";
+    if (QStandardPaths::findExecutable(program).isEmpty() && !QFileInfo(program).isExecutable())
+        return flash(mpv ? QStringLiteral("Install mpv to watch videos") : QStringLiteral("Can't find ") + program);
     flash(QStringLiteral("Opening in mpv…"));
 
-    m_core->call("videoDetails", {{"id", id}}, [this, startOver](const QVariant &result, const QVariant &error) {
+    m_core->call("videoDetails", {{"id", id}}, [this, startOver, mpv, command](const QVariant &result, const QVariant &error) {
         const QVariantMap d = result.toMap();
         const QString uri = d.value("videoUri").toString();
         if (error.isValid() || uri.isEmpty()) return flash(QStringLiteral("Nothing to play"));
@@ -47,6 +52,31 @@ void Tofm::playVideo(const QString &id, bool startOver)
             : QStringLiteral("%1 · S%2E%3 %4").arg(episode.value("seriesTitle").toString()).arg(episode.value("season").toInt())
                   .arg(episode.value("episode").toInt()).arg(episode.value("name").toString());
         const QString local = m_core->localFile(etag);
+
+        // Another player can't be given the token (or report where it got): downloads only.
+        if (!mpv) {
+            if (local.isEmpty())
+                return flash(QStringLiteral("%1 can only open downloaded videos: ↓ Download it first").arg(command.first()));
+            QStringList args = command.mid(1);
+            if (args.contains(QStringLiteral("{file}"))) args.replaceInStrings(QStringLiteral("{file}"), local);
+            else args << local;
+            auto *process = new QProcess;
+            process->setProgram(command.first());
+            process->setArguments(args);
+            process->setStandardInputFile(QProcess::nullDevice());
+            process->setStandardOutputFile(QProcess::nullDevice());
+            process->setStandardErrorFile(QProcess::nullDevice());
+            QObject::connect(process, &QProcess::finished, m_core, [this] { videoClosed(); });
+            m_video = {process, nullptr, title, QString(), QString(), QString(), 0, 0, {}};
+            process->start();
+            if (!process->waitForStarted(3000)) {
+                videoClosed();
+                return flash(QStringLiteral("Can't start ") + command.first());
+            }
+            m_player->pause();
+            flash(QStringLiteral("Playing in %1: %2").arg(QFileInfo(command.first()).fileName(), title));
+            return redraw();
+        }
 
         auto launch = [this, uri, local, etag, title](const QString &authorization, double seconds) {
             if (m_video.process) return;

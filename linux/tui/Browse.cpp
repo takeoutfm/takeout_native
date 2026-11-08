@@ -435,7 +435,7 @@ void Tofm::toggleFavorite(const QString &etag)
 int Tofm::pageHeight() const
 {
     // Top bar, page title and subtitle, separator, Now Playing bar (3), key hints.
-    return std::max(3, m_screen.dimy() - 9);
+    return std::max(3, rows() - 9);
 }
 
 Element Tofm::renderBrowse()
@@ -476,7 +476,7 @@ Element Tofm::renderSidebar()
     Element nowPlaying = text(" Now Playing");
     if (m_nowPlaying) nowPlaying = nowPlaying | bold | (m_sidebarFocused ? inverted : color(Color::Cyan));
     items.push_back(m_player->hasQueue() ? nowPlaying : nowPlaying | dim);
-    if (m_video.process) items.push_back(text(" ▶ in mpv") | color(Color::Green));
+    if (m_video.process) items.push_back(text(" ▶ video open") | color(Color::Green));
     return vbox(items);
 }
 
@@ -543,7 +543,7 @@ Element Tofm::renderPage(const Page &page, int height)
             // Fitted by hand: the marks always show, the title gets what's left, the detail the rest.
             const QString right = row.right.isEmpty() ? QString() : " " + row.right + " ";
             const QString markText = mark.isEmpty() ? QString() : mark + " ";
-            const int room = std::max(10, m_screen.dimx() - 19 - 3 - int(right.size()) - int(markText.size()) - 1);
+            const int room = std::max(10, columns() - 19 - 3 - int(right.size()) - int(markText.size()) - 1);
             auto cut = [](const QString &text, int width) {
                 return text.size() <= width ? text : width <= 1 ? QString() : text.left(width - 1) + QStringLiteral("…");
             };

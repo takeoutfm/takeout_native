@@ -858,14 +858,29 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            `takeoutfm` (unchanged) and `tofm` (`/usr/bin/tofm`, its own
            `/usr/lib/tofm/libtakeout.so`, `tofm.1`; dependencies from the binary — no
            Kirigami or Qt Quick — and Recommends: mpv).
-     - [ ] **Later:** `tofm play …` / `--status`; snapshot tests in `ctest`; the external
-           player setting.
+     - [x] **Later items** (done 2026-11-08): `tofm play [artist|radio|album|song] WORDS…`
+           searches (GET, as the Search page) and plays the match the usual way (artist mix
+           Popular / Radio, album, matching tracks, a station; plain words: an exact artist,
+           album or station name first, then tracks) — **no PATCH of `/api/playlist`**
+           (`resolveRef` answered 400 from takeout.fm, and nothing else uses it). A running
+           tofm gets the request over its own D-Bus service `com.takeoutfm.tofm` (`/tofm`:
+           `Play(kind, words)`, `Status()`); else tofm starts and plays it once signed in.
+           `tofm --status` prints "▶ Title · Artist" (⏸ paused) from the running tofm, else
+           exits 1. Settings → Video player: a command (`{file}` for the path, else added
+           last), empty for mpv; another player opens downloads only and saves no progress
+           (only mpv gets the token file and IPC). `tests/tofm_test.cpp` (`ctest`): screens
+           rendered off-screen with FTXUI and compared as text (a page with headings, actions,
+           a cut title, a note; the sign-in code and expiry; help; settings rows; the bar),
+           plus the `play` parsing, `clock`, the scrolling title and the cover conversion; the
+           screens run on a core that isn't started (`TofmTest` is a friend of `Tofm`; sizes
+           via `columns()` / `rows()`).
+           Noticed: *13 Assassins*' video page never finishes loading (`videoDetails`), also
+           in T3 — likely the server; not looked into.
    - **Testing:** FTXUI screens rendered to text as `ctest` snapshot tests (half-block covers
      too; kitty / sixel checked for the expected escape codes); the bridge and player tests
      already there; by hand in kitty, Konsole and foot, over SSH, and with video in mpv.
-   - **Open:** the external-player setting's format (a command with `{file}`?); whether
-     `tofm play …` should hand off to a running `tofm` (MPRIS can't load a queue; a small
-     D-Bus method of our own could).
+   - **Settled:** the external player is a command with `{file}`; `tofm play …` hands off to a
+     running `tofm` over its own D-Bus service.
 
 ---
 

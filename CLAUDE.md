@@ -39,7 +39,7 @@ JDK 17; `local.properties` must point `sdk.dir` at the Android SDK (it isn't com
 ./gradlew :shared:linuxX64Test              # shared commonTest on Kotlin/Native, here
 ./gradlew :shared:linkReleaseSharedLinuxX64 # libtakeout.so for the Linux app
 cmake -S linux -B linux/build -G Ninja && cmake --build linux/build   # Linux app (builds libtakeout.so via Gradle)
-ctest --test-dir linux/build                # C API smoke test
+ctest --test-dir linux/build                # C API smoke test, tofm_test (tofm's screens as text)
 (cd linux/build && cpack)                   # takeoutfm_ and tofm_<version>_amd64.deb; install with apt install ./…
 ./gradlew :tv:compileDebugKotlin            # fast compile check
 ```

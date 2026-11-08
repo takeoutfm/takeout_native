@@ -116,10 +116,16 @@ set_target_properties(takeoutfm PROPERTIES
 
 # ---- tofm, the terminal client (PLAN.md §13) ----
 
-add_executable(tofm tui/main.cpp tui/Tofm.cpp tui/Tofm.h tui/Browse.cpp tui/NowPlaying.cpp tui/Text.h
-    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h tui/Library.cpp tui/Video.cpp tui/Settings.cpp tui/Downloads.cpp)
-target_compile_definitions(tofm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
-target_link_libraries(tofm PRIVATE takeoutcore Qt6::Network Qt6::Gui PkgConfig::CHAFA ftxui::component ftxui::dom ftxui::screen)
+# Its screens as a library, so the tests can render them.
+add_library(tofmui STATIC tui/Tofm.cpp tui/Tofm.h tui/Browse.cpp tui/NowPlaying.cpp tui/Text.h
+    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h tui/Library.cpp tui/Video.cpp tui/Settings.cpp
+    tui/Downloads.cpp tui/Bus.h tui/Requests.h)
+target_include_directories(tofmui PUBLIC tui)
+target_compile_definitions(tofmui PUBLIC PROJECT_VERSION="${PROJECT_VERSION}")
+target_link_libraries(tofmui PUBLIC takeoutcore Qt6::DBus Qt6::Network Qt6::Gui PkgConfig::CHAFA
+    ftxui::component ftxui::dom ftxui::screen)
+add_executable(tofm tui/main.cpp)
+target_link_libraries(tofm PRIVATE tofmui)
 set_target_properties(tofm PROPERTIES
     BUILD_RPATH "\$ORIGIN"
     INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/tofm")
@@ -178,3 +184,8 @@ add_executable(bridge_smoke tests/bridge_smoke.cpp)
 target_link_libraries(bridge_smoke PRIVATE takeout)
 set_target_properties(bridge_smoke PROPERTIES BUILD_RPATH "\$ORIGIN")
 add_test(NAME bridge_smoke COMMAND bridge_smoke)
+# tofm's screens rendered off-screen and compared as text, and its plain helpers.
+add_executable(tofm_test tests/tofm_test.cpp)
+target_link_libraries(tofm_test PRIVATE tofmui)
+set_target_properties(tofm_test PROPERTIES BUILD_RPATH "\$ORIGIN")
+add_test(NAME tofm_test COMMAND tofm_test)

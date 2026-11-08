@@ -10,6 +10,7 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 class Cover;
@@ -23,12 +24,24 @@ class TakeoutCore;
 // thread. State changes call redraw().
 class Tofm
 {
+    // tests/tofm_test.cpp renders the screens.
+    friend class TofmTest;
+
 public:
     Tofm(TakeoutCore *core, Player *player);
     ~Tofm();
 
     /** Runs until the user quits (q, Ctrl-C); the exit code. */
     int run();
+
+    /**
+     * `tofm play …`: once signed in, searches for [words] and plays the match — an artist's
+     * popular tracks or radio, an album, tracks, a station ([kind] "artist", "radio", "album",
+     * "song", or "" for the best of them) — and shows Now Playing.
+     */
+    void playRequest(const QString &kind, const QString &words);
+    /** `tofm --status`: "▶ Title · Artist" (⏸ when paused), or "" with nothing playing. */
+    QString status() const;
 
 private:
     enum class Screen { Starting, SignIn, Code, Browse };
@@ -99,6 +112,9 @@ private:
     void redraw();
     void flash(const QString &message);
     void quit();
+    /** The terminal's size (a test sets its own). */
+    int columns() const { return m_size.first ? m_size.first : m_screen.dimx(); }
+    int rows() const { return m_size.second ? m_size.second : m_screen.dimy(); }
 
     // ---- Sign-in (Tofm.cpp) ----
     ftxui::Element renderSignIn();
@@ -191,6 +207,7 @@ private:
     Player *m_player;
     std::unique_ptr<Cover> m_cover;
     ftxui::ScreenInteractive m_screen;
+    std::pair<int, int> m_size{0, 0};
     ftxui::Component m_root;
     ftxui::Component m_serverInput;
     QTimer m_frames;
@@ -220,6 +237,8 @@ private:
     int m_queueSelected = 0;
     int m_queueScroll = 0;
     bool m_help = false;
+    /** A `tofm play …` waiting for the sign-in. */
+    std::optional<std::pair<QString, QString>> m_pendingPlay;
     std::unique_ptr<Prompt> m_prompt;
     /** tofm's own settings (album art): ~/.config/tofm/tofm.conf. */
     QSettings m_prefs;

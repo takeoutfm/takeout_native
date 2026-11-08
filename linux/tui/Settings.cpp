@@ -103,6 +103,18 @@ Tofm::PagePtr Tofm::settingsPage()
         refreshSettings();
     }, {}});
 
+    rows.push_back({Row::Header, QStringLiteral("Video")});
+    const QString player = m_prefs.value("videoPlayer").toString().trimmed();
+    rows.push_back({Row::Action, QStringLiteral("Video player: ") + (player.isEmpty() ? QStringLiteral("mpv") : player),
+                    player.isEmpty() ? QStringLiteral("streams, resumes and saves progress")
+                                     : QStringLiteral("downloads only, no progress (only mpv gets those)"),
+                    {}, {}, [this, player] {
+        ask({QStringLiteral("Video player ({file} for the file; empty for mpv):"), player, false, false, [this](const QString &value) {
+            m_prefs.setValue("videoPlayer", value.trimmed());
+            refreshSettings();
+        }});
+    }, {}});
+
     rows.push_back({Row::Header, QStringLiteral("About")});
     rows.push_back({Row::Note, QStringLiteral("tofm %1 — TakeoutFM in the terminal").arg(QCoreApplication::applicationVersion())});
     rows.push_back({Row::Note, QStringLiteral("GPL-3.0-or-later · https://takeout.fm")});

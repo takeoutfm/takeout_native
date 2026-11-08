@@ -12,7 +12,7 @@ using namespace ftxui;
 
 namespace {
 /** Columns [text] takes, counting each character as one (titles are mostly Latin). */
-int columns(const QString &text) { return int(text.toUcs4().size()); }
+int textColumns(const QString &text) { return int(text.toUcs4().size()); }
 }
 
 QString Tofm::marquee(const QString &text, int width) const
@@ -46,7 +46,7 @@ Element Tofm::renderBar()
     const QString subtitle = m_player->displaySubtitle();
 
     // The title gets what's left of the line after the state, the artist and the marks.
-    const int width = m_screen.dimx() - 4 - columns(subtitle) - 3 - 6 - (barCover() ? m_cover->columnsFor(3) + 1 : 0);
+    const int width = columns() - 4 - textColumns(subtitle) - 3 - 6 - (barCover() ? m_cover->columnsFor(3) + 1 : 0);
     const QString title = marquee(m_player->displayTitle(), std::max(12, width));
 
     Element line1 = hbox({
@@ -93,7 +93,7 @@ Element Tofm::renderNowPlaying(int height)
 
     // The cover as big as the view allows: its full height, up to a bit over half its width;
     // what's playing and the queue in a column beside it.
-    const int width = m_screen.dimx() - 19;
+    const int width = columns() - 19;
     int coverRows = art() == Art::Off ? 0 : std::max(4, height);
     int coverCols = coverRows ? m_cover->columnsFor(coverRows) : 0;
     const int maxCols = width * 11 / 20;

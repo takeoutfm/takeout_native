@@ -98,6 +98,94 @@ Component Tofm::build()
 
 void Tofm::redraw() { m_screen.PostEvent(Event::Custom); }
 
+void Tofm::playRequest(const QString &kind, const QString &words)
+{
+    if (m_screenState != Screen::Browse) {
+        m_pendingPlay = std::make_pair(kind, words);
+        return;
+    }
+    m_pendingPlay.reset();
+    flash(QStringLiteral("Finding “%1”…").arg(words));
+    m_core->call("search", {{"query", words}}, [this, kind, words](const QVariant &result, const QVariant &error) {
+        const QVariantMap found = result.toMap();
+        // An exact name first, else the server's first match.
+        auto pick = [&words](const QVariantList &list, const char *field) -> QVariantMap {
+            for (const QVariant &value : list)
+                if (value.toMap().value(field).toString().compare(words, Qt::CaseInsensitive) == 0) return value.toMap();
+            return list.isEmpty() ? QVariantMap() : list.first().toMap();
+        };
+        auto exact = [&words](const QVariantList &list, const char *field) {
+            return std::any_of(list.begin(), list.end(), [&](const QVariant &value) {
+                return value.toMap().value(field).toString().compare(words, Qt::CaseInsensitive) == 0;
+            });
+        };
+        const QVariantList artists = found.value("artists").toList();
+        const QVariantList albums = found.value("albums").toList();
+        const QVariantList tracks = found.value("tracks").toList();
+        const QVariantList stations = found.value("stations").toList();
+        auto artist = [&](const char *mix) {
+            const QVariantMap a = pick(artists, "name");
+            playCall(QStringLiteral("artistQueue"), {{"artistId", a.value("id")}, {"mix", mix}});
+            return a.value("name").toString();
+        };
+        auto album = [&] {
+            const QVariantMap a = pick(albums, "name");
+            playCall(QStringLiteral("albumQueue"), {{"albumId", a.value("id")}});
+            return a.value("name").toString();
+        };
+        auto songs = [&] {
+            QVariantList matching;
+            for (const QVariant &t : tracks)
+                if (t.toMap().value("title").toString().compare(words, Qt::CaseInsensitive) == 0) matching << t;
+            playCall(QStringLiteral("tracksQueue"), {{"title", words}, {"tracks", matching.isEmpty() ? tracks : matching}});
+            return words;
+        };
+        auto station = [&] {
+            const QVariantMap s = pick(stations, "name");
+            playCall(QStringLiteral("stationQueue"), {{"stationId", s.value("id")}});
+            return s.value("name").toString();
+        };
+
+        QString playing;
+        if (error.isValid()) {
+            // Nothing found, below.
+        } else if (kind == "artist" || kind == "radio") {
+            if (!artists.isEmpty()) playing = artist(kind == "radio" ? "Radio" : "Popular");
+        } else if (kind == "album") {
+            if (!albums.isEmpty()) playing = album();
+        } else if (kind == "song") {
+            if (!tracks.isEmpty()) playing = songs();
+        } else if (exact(artists, "name")) {
+            playing = artist("Popular");
+        } else if (exact(albums, "name")) {
+            playing = album();
+        } else if (exact(stations, "name")) {
+            playing = station();
+        } else if (!tracks.isEmpty()) {
+            playing = songs();
+        } else if (!albums.isEmpty()) {
+            playing = album();
+        } else if (!artists.isEmpty()) {
+            playing = artist("Popular");
+        } else if (!stations.isEmpty()) {
+            playing = station();
+        }
+        if (playing.isEmpty()) return flash(QStringLiteral("Nothing found for “%1”").arg(words));
+        m_nowPlaying = true;
+        m_sidebarFocused = false;
+        m_queueSelected = 0;
+        flash(QStringLiteral("Playing ") + playing);
+    });
+}
+
+QString Tofm::status() const
+{
+    if (!m_player->hasQueue() || m_player->current().isEmpty()) return {};
+    const QString artist = m_player->displaySubtitle();
+    return (m_player->playing() ? QStringLiteral("▶ ") : QStringLiteral("⏸ ")) + m_player->displayTitle()
+        + (artist.isEmpty() ? QString() : QStringLiteral(" · ") + artist);
+}
+
 void Tofm::flash(const QString &message)
 {
     m_flash = message;
@@ -118,6 +206,7 @@ void Tofm::sessionChanged()
             m_code.clear();
             m_core->call("refreshLibrary", {{"maxAgeMs", 60000}});
             showSection(Section::Recent);
+            if (m_pendingPlay) playRequest(m_pendingPlay->first, m_pendingPlay->second);
         }
     } else {
         if (m_screenState == Screen::Browse) {

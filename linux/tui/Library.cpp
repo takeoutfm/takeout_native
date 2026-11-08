@@ -7,6 +7,9 @@
 #include "TakeoutCore.h"
 #include "Text.h"
 
+#include <QFileInfo>
+#include <QProcess>
+
 namespace {
 QString joined(const QStringList &parts, const QString &separator = QStringLiteral(" · "))
 {
@@ -331,8 +334,12 @@ Tofm::PagePtr Tofm::videoPage(const QVariantMap &card)
 
         if (!d.value("videoUri").toString().isEmpty()) {
             const QString target = d.value("playTarget").toString();
+            const QStringList command = QProcess::splitCommand(m_prefs.value("videoPlayer").toString().trimmed());
+            const QString player = command.isEmpty() ? QStringLiteral("mpv") : QFileInfo(command.first()).fileName();
             page.rows.push_back({Row::Action, target.isEmpty() ? QStringLiteral("▶ Play") : QStringLiteral("▶ Play ") + target,
-                                 QStringLiteral("in mpv, from where it was left"), {}, {}, [this, id] { playVideo(id, false); }, {}});
+                                 player == "mpv" ? QStringLiteral("in mpv, from where it was left")
+                                                 : QStringLiteral("in %1 (downloads only)").arg(player),
+                                 {}, {}, [this, id] { playVideo(id, false); }, {}});
             if (kind != "Series") {
                 page.rows.push_back({Row::Action, QStringLiteral("↺ Start over"), {}, {}, {}, [this, id] { playVideo(id, true); }, {}});
                 const QString etag = d.value("etag").toString();

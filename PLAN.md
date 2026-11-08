@@ -757,10 +757,19 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
              Careful with Qt decompressing gzip by itself: it changes `Content-Length`, which
              download progress uses (media isn't compressed; JSON is fine).
            *Phases:*
-           - **H1** — the C API and `HostEngine`; `linuxTest` with a fake host written in
-             Kotlin (`staticCFunction`s): methods, headers, bodies both ways, a 302 not
-             followed, a large body streamed with pause / resume, cancellation mid-body,
-             errors and timeouts mapped. `bridge_smoke` gains a minimal host.
+           - [x] **H1** (done 2026-11-08) — the C API (`takeout_set_http`, `takeout_http_head`,
+             `takeout_http_data` → 1 to pause, `takeout_http_end`; `linux/HttpBridge.kt`,
+             `takeout.h`, exported by `takeout.map` — now a link input) and `api/HostEngine.kt`
+             (requests as JSON with merged headers and timeouts; the body through a bounded
+             queue into Ktor's ByteChannel — pause above 1 MB unread, resume below 256 KB; the
+             call's end cancels a request the host hasn't ended; host errors become
+             `IOException`s). `HostEngineTest` (linuxTest, a Kotlin fake host behind the real C
+             entry points): GET with headers both ways, POST body and content type, a 302 left
+             to the client (and followed by Ktor's plugin as a second request), 8 MB streamed
+             with pauses and checked byte by byte (never more than ~2.8 MB ahead of the reader:
+             our 1 MB plus Ktor's channel), cancellation, errors before and during the body,
+             timeouts passed on. `bridge_smoke` registers a host. The apps still use Curl
+             until H3.
            - **H2** — `HttpHost` in Qt; a `ctest` against a local `QTcpServer` serving JSON, a
              redirect, a large body, a slow and a broken response.
            - **H3** — `ktor-client-curl` out of `linuxMain`'s dependencies; check: `ldd` lists

@@ -3,5 +3,6 @@
    libssl that Qt loads (Qt's TLS then calls into our copy and crashes). */
 {
   global: takeout_init; takeout_call; takeout_watch; takeout_unwatch;
+          takeout_set_http; takeout_http_head; takeout_http_data; takeout_http_end;
   local: *;
 };

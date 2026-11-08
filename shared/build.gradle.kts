@@ -31,6 +31,8 @@ kotlin {
     linuxX64 {
         binaries.sharedLib("takeout") {
             linkerOpts("--version-script=${projectDir}/src/linuxMain/takeout.map")
+            // The exported names (takeout.map) are an input: a change re-links.
+            linkTaskProvider.configure { inputs.file("${projectDir}/src/linuxMain/takeout.map") }
         }
         binaries.all {
             linkerOpts("-L/usr/lib/x86_64-linux-gnu", "-lsqlite3", "--allow-shlib-undefined")

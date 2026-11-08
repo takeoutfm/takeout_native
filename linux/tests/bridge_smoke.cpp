@@ -10,6 +10,13 @@
 int main()
 {
     char dir[] = "/tmp/takeout-smoke-XXXXXX";
+    // A host that has no network: every request ends at once with an error (the core's HTTP
+    // goes through the host, PLAN.md L8).
+    takeout_set_http(
+        [](void *, void *handle, const char *, const void *, size_t) {
+            takeout_http_end(handle, R"({"kind":"network","message":"no network in the smoke test"})");
+        },
+        [](void *, void *) {}, [](void *, void *) {}, nullptr);
     if (!mkdtemp(dir) || takeout_init(dir, "TakeoutFM-smoke", nullptr, nullptr, nullptr) != 0) {
         std::fprintf(stderr, "takeout_init failed\n");
         return 1;

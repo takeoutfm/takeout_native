@@ -32,7 +32,7 @@ add_custom_command(
     COMMAND "${REPO_DIR}/gradlew" -q :shared:linkReleaseSharedLinuxX64
     COMMAND ${CMAKE_COMMAND} -E copy "${TAKEOUT_GRADLE_LIB}" "${TAKEOUT_LIB}"
     WORKING_DIRECTORY "${REPO_DIR}"
-    DEPENDS ${TAKEOUT_SOURCES} "${REPO_DIR}/shared/build.gradle.kts"
+    DEPENDS ${TAKEOUT_SOURCES} "${REPO_DIR}/shared/build.gradle.kts" "${REPO_DIR}/shared/src/linuxMain/takeout.map"
     COMMENT "Building libtakeout.so with Gradle"
     USES_TERMINAL)
 add_custom_target(takeout_core DEPENDS "${TAKEOUT_LIB}")

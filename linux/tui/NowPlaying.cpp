@@ -146,6 +146,7 @@ bool Tofm::onPlayerKey(const Event &event)
     else if (event == Event::Character('r')) m_player->cycleRepeat();
     else if (event == Event::Character('p')) {
         m_nowPlaying = !m_nowPlaying;
+        m_sidebarFocused = false;
         m_queueSelected = std::max(0, m_player->index());
     } else {
         return false;
@@ -166,7 +167,8 @@ bool Tofm::onNowPlayingEvent(const Event &event)
     else if (wheel(event)) m_queueSelected += 3 * wheel(event);
     else if (event == Event::Return) m_player->skipTo(m_queueSelected);
     else if (event == Event::Character('f')) toggleFavorite(m_player->current().value("etag").toString());
-    else if (event == Event::Escape || event == Event::ArrowLeft || event == Event::Character('h')) m_nowPlaying = false;
+    // Back to the sidebar, Now Playing selected there (as the other pages).
+    else if (event == Event::Escape || event == Event::ArrowLeft || event == Event::Character('h')) m_sidebarFocused = true;
     else return true;
     m_queueSelected = std::clamp(m_queueSelected, 0, std::max(0, count - 1));
     redraw();

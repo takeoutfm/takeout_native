@@ -126,6 +126,7 @@ std::vector<Tofm::Section> Tofm::sections() const
     if (library.value("hasPodcasts").toBool()) shown.push_back(Section::Podcasts);
     if (library.value("hasMovies").toBool()) shown.push_back(Section::Movies);
     if (library.value("hasShows").toBool()) shown.push_back(Section::Shows);
+    shown.push_back(Section::Downloads);
     shown.push_back(Section::Settings);
     return shown;
 }
@@ -134,7 +135,7 @@ namespace {
 const char *sectionName(int section)
 {
     static const char *const Names[] = {"Recent", "Search", "Recently Added", "New Releases", "Artists", "Favorites",
-                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows", "Settings"};
+                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows", "Downloads", "Settings"};
     return Names[section];
 }
 }
@@ -149,6 +150,7 @@ Tofm::PagePtr Tofm::sectionPage(Section section)
     case Section::Podcasts: return podcastsPage();
     case Section::Movies: return videoListPage(QStringLiteral("Movies"), QStringLiteral("movies"));
     case Section::Shows: return videoListPage(QStringLiteral("TV Shows"), QStringLiteral("shows"));
+    case Section::Downloads: return downloadsPage();
     case Section::Settings: return settingsPage();
     case Section::RecentlyAdded: return albumListPage(QStringLiteral("Recently Added"), QStringLiteral("recentlyAdded"));
     case Section::NewReleases: return albumListPage(QStringLiteral("New Releases"), QStringLiteral("newReleases"));
@@ -335,6 +337,10 @@ Tofm::PagePtr Tofm::albumPage(const QVariantMap &album)
                              [this, id] { playCall(QStringLiteral("albumQueue"), {{"albumId", id}}); }, {}});
         page.rows.push_back({Row::Action, QStringLiteral("⤮ Shuffle"), {}, {}, {},
                              [this, id] { playCall(QStringLiteral("albumQueue"), {{"albumId", id}}, true); }, {}});
+        QStringList etags;
+        for (const QVariant &track : details.value("tracks").toList()) etags << track.toMap().value("etag").toString();
+        etags.removeAll(QString());
+        page.rows.push_back(downloadRow(etags, [this, id] { downloadCall(QStringLiteral("albumQueue"), {{"albumId", id}}); }));
         const QString artistId = details.value("artistId").toString();
         if (!artistId.isEmpty()) {
             page.rows.push_back({Row::Action, QStringLiteral("→ ") + artist, QStringLiteral("the artist"), {}, {},
@@ -459,16 +465,16 @@ Element Tofm::renderSidebar()
     for (Section section : sections()) {
         // Gaps between the groups: history and search, music, podcasts and video.
         if ((section == Section::RecentlyAdded && previous != section) || (section == Section::Podcasts)
-            || (section == Section::Movies && previous != Section::Podcasts) || section == Section::Settings)
+            || (section == Section::Movies && previous != Section::Podcasts) || section == Section::Downloads)
             items.push_back(text(""));
         Element item = text(std::string(" ") + sectionName(int(section)));
-        if (section == m_section) item = item | bold | (m_sidebarFocused && !m_nowPlaying ? inverted : color(Color::Cyan));
+        if (section == m_section && !m_nowPlaying) item = item | bold | (m_sidebarFocused ? inverted : color(Color::Cyan));
         items.push_back(item);
         previous = section;
     }
     items.push_back(text(""));
     Element nowPlaying = text(" Now Playing");
-    if (m_nowPlaying) nowPlaying = nowPlaying | bold | color(Color::Cyan);
+    if (m_nowPlaying) nowPlaying = nowPlaying | bold | (m_sidebarFocused ? inverted : color(Color::Cyan));
     items.push_back(m_player->hasQueue() ? nowPlaying : nowPlaying | dim);
     if (m_video.process) items.push_back(text(" ▶ in mpv") | color(Color::Green));
     return vbox(items);
@@ -530,15 +536,23 @@ Element Tofm::renderPage(const Page &page, int height)
         } else if (row.kind == Row::Note) {
             line = text("   " + str(row.title)) | dim;
         } else {
-            const std::string heart = row.etag.isEmpty() ? "  " : favorites.contains(row.etag) ? "♥ " : "  ";
-            Element title = text(str(row.title));
+            const std::string heart = favorites.contains(row.etag) && !row.etag.isEmpty() ? "♥ " : "  ";
+            Element heartMark = text(" " + heart) | size(WIDTH, EQUAL, 3);
+            if (heart != "  ") heartMark = heartMark | color(Color::Red); // else selecting the row would show a red block
+            const QString mark = downloadMark(row.etag);
+            // Fitted by hand: the marks always show, the title gets what's left, the detail the rest.
+            const QString right = row.right.isEmpty() ? QString() : " " + row.right + " ";
+            const QString markText = mark.isEmpty() ? QString() : mark + " ";
+            const int room = std::max(10, m_screen.dimx() - 19 - 3 - int(right.size()) - int(markText.size()) - 1);
+            auto cut = [](const QString &text, int width) {
+                return text.size() <= width ? text : width <= 1 ? QString() : text.left(width - 1) + QStringLiteral("…");
+            };
+            const QString titleText = cut(row.title, room);
+            const QString detailText = row.detail.isEmpty() ? QString() : cut("  " + row.detail, room - int(titleText.size()));
+            Element title = text(str(titleText));
             if (row.kind == Row::Action) title = title | color(Color::Cyan);
-            // The marks keep their width, and the title its room; the detail gives way.
-            Element mark = text(" " + heart) | size(WIDTH, EQUAL, 3);
-            if (heart != "  ") mark = mark | color(Color::Red); // else selecting the row would show a red block
-            line = hbox({mark, title,
-                         text(row.detail.isEmpty() ? "" : "  " + str(row.detail)) | dim | flex_shrink, filler(),
-                         text(row.right.isEmpty() ? "" : " " + str(row.right) + " ") | dim});
+            line = hbox({heartMark, title, text(str(detailText)) | dim, filler(), text(str(right)) | dim,
+                         text(str(markText)) | color(mark == "✗" ? Color::Red : Color::Green)});
         }
         if (i == page.selected && !m_sidebarFocused) line = line | inverted;
         lines.push_back(line);
@@ -574,20 +588,24 @@ bool Tofm::onBrowseEvent(const Event &event)
         redraw();
         return true;
     }
-    if (m_nowPlaying) return onNowPlayingEvent(event);
-
     if (m_sidebarFocused) {
+        // The sections, then Now Playing.
         const std::vector<Section> shown = sections();
         auto at = std::find(shown.begin(), shown.end(), m_section);
-        int index = at == shown.end() ? 0 : int(at - shown.begin());
+        const int nowPlaying = int(shown.size());
+        int index = m_nowPlaying ? nowPlaying : at == shown.end() ? 0 : int(at - shown.begin());
         const int before = index;
         if (event == Event::ArrowUp || event == Event::Character('k')) index = std::max(0, index - 1);
-        else if (event == Event::ArrowDown || event == Event::Character('j')) index = std::min(int(shown.size()) - 1, index + 1);
+        else if (event == Event::ArrowDown || event == Event::Character('j')) index = std::min(nowPlaying, index + 1);
         else if (event == Event::ArrowRight || event == Event::Character('l') || event == Event::Return || event == Event::Tab)
             m_sidebarFocused = false;
-        if (index != before) showSection(shown[index]);
+        if (index != before) {
+            m_nowPlaying = index == nowPlaying;
+            if (m_nowPlaying) m_queueSelected = std::max(0, m_player->index());
+            else showSection(shown[index]);
+        }
         // Search starts typing straight away.
-        if (!m_sidebarFocused && m_section == Section::Search && page && page->rows.empty()) page->filtering = true;
+        if (!m_sidebarFocused && !m_nowPlaying && m_section == Section::Search && page && page->rows.empty()) page->filtering = true;
         redraw();
         return true;
     }
@@ -596,6 +614,7 @@ bool Tofm::onBrowseEvent(const Event &event)
         redraw();
         return true;
     }
+    if (m_nowPlaying) return onNowPlayingEvent(event);
     return page ? onPageEvent(*page, event) : true;
 }
 
@@ -661,7 +680,17 @@ bool Tofm::onPageEvent(Page &page, const Event &event)
     } else if (event == Event::Character('a') || event == Event::Character('n')) {
         if (row && row->enqueue) row->enqueue(event == Event::Character('a'));
     } else if (event == Event::Character('f')) {
-        if (row) toggleFavorite(row->etag);
+        if (row && row->enqueue) toggleFavorite(row->etag); // tracks only
+
+    } else if (event == Event::Character('d')) {
+        if (row && row->download) row->download();
+    } else if (event == Event::Character('x')) {
+        if (row && !downloadMark(row->etag).isEmpty()) removeDownloads({row->etag}, row->title);
+    } else if (event == Event::Character('R')) {
+        if (row && downloadMark(row->etag) == "✗") {
+            m_core->call("retryDownload", {{"etag", row->etag}});
+            flash(QStringLiteral("Trying again"));
+        }
     } else {
         return false;
     }

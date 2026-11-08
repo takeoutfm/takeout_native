@@ -155,12 +155,20 @@ Tofm::PagePtr Tofm::playlistPage(const QVariantMap &playlist)
 {
     auto page = std::make_shared<Page>();
     page->title = playlist.value("name").toString();
-    load(page, QStringLiteral("playlistQueue"), {{"playlistId", playlist.value("id")}}, [this](Page &page, const QVariant &result) {
+    const QVariant id = playlist.value("id");
+    load(page, QStringLiteral("playlistQueue"), {{"playlistId", id}}, [this, id](Page &page, const QVariant &result) {
         const QVariantMap queue = result.toMap();
         const QVariantList items = queue.value("items").toList();
         page.subtitle = count(items.size(), QStringLiteral("1 track"), QStringLiteral("%1 tracks"));
         page.rows.push_back({Row::Action, QStringLiteral("▶ Play"), {}, {}, {}, [this, queue] { m_player->play(queue); }, {}});
         page.rows.push_back({Row::Action, QStringLiteral("⤮ Shuffle"), {}, {}, {}, [this, queue] { m_player->play(queue, true); }, {}});
+        QStringList etags;
+        for (const QVariant &item : items) etags << item.toMap().value("etag").toString();
+        etags.removeAll(QString());
+        page.rows.push_back(downloadRow(etags, [this, queue] {
+            m_core->call("downloadQueue", {{"queue", queue}});
+            flash(QStringLiteral("Downloading ") + queue.value("title").toString());
+        }));
         page.rows.push_back({Row::Header, QStringLiteral("Tracks")});
         for (int i = 0; i < items.size(); ++i) {
             const QVariantMap item = items[i].toMap();
@@ -253,7 +261,7 @@ Tofm::PagePtr Tofm::podcastPage(const QVariantMap &series)
         }, {}});
         for (const QString &line : wrap(series.value("description").toString()).mid(0, 3))
             page.rows.push_back({Row::Note, line});
-        page.rows.push_back({Row::Header, QStringLiteral("Episodes")});
+        page.rows.push_back({Row::Header, QStringLiteral("Episodes · d: download")});
         for (int i = 0; i < episodes.size(); ++i) {
             const QVariantMap episode = episodes[i].toMap();
             const QVariantMap progress = episode.value("progress").toMap();
@@ -264,10 +272,13 @@ Tofm::PagePtr Tofm::podcastPage(const QVariantMap &series)
             row.right = state == "Complete" ? QStringLiteral("✓")
                 : state == "Started" ? QStringLiteral("%1m left").arg(progress.value("minutesLeft").toInt())
                                      : QString();
-            row.activate = [this, series, episodes, i] {
-                playCall(QStringLiteral("episodesQueue"), {{"title", series.value("title")}, {"imageUri", series.value("imageUri")},
-                                                           {"episodes", episodes}, {"startIndex", i}});
-            };
+            const QVariantMap args{{"title", series.value("title")}, {"imageUri", series.value("imageUri")},
+                                   {"episodes", episodes}, {"startIndex", i}};
+            row.activate = [this, args] { playCall(QStringLiteral("episodesQueue"), args); };
+            row.download = [this, args, i] { downloadCall(QStringLiteral("episodesQueue"), args, i); };
+            // Its download is keyed by the GUID (eid), as its queue item's etag. Not a track:
+            // no ♥ (only tracks can be favorites).
+            row.etag = episode.value("eid").toString();
             page.rows.push_back(row);
         }
     });
@@ -324,6 +335,11 @@ Tofm::PagePtr Tofm::videoPage(const QVariantMap &card)
                                  QStringLiteral("in mpv, from where it was left"), {}, {}, [this, id] { playVideo(id, false); }, {}});
             if (kind != "Series") {
                 page.rows.push_back({Row::Action, QStringLiteral("↺ Start over"), {}, {}, {}, [this, id] { playVideo(id, true); }, {}});
+                const QString etag = d.value("etag").toString();
+                page.rows.push_back(downloadRow(etag.isEmpty() ? QStringList() : QStringList{etag}, [this, id] {
+                    m_core->call("downloadVideo", {{"id", id}});
+                    flash(QStringLiteral("Downloading…"));
+                }));
             }
         }
         if (kind == "Episode" && !episode.value("seriesId").toString().isEmpty()) {

@@ -88,10 +88,12 @@ Tofm::PagePtr Tofm::settingsPage()
     }
 
     rows.push_back({Row::Header, QStringLiteral("Display")});
-    const Art current = art();
-    rows.push_back({Row::Action, QStringLiteral("Album art: ") + artName(int(current)),
-                    QStringLiteral("Auto · Characters · Off"), {}, {}, [this, current] {
-        m_prefs.setValue("art", artName((int(current) + 1) % 3));
+    // Covers are drawn with block characters, in every terminal (decided 2026-11-08: no kitty /
+    // sixel images), so it's simply on or off.
+    const bool covers = art() != Art::Off;
+    rows.push_back({Row::Action, QStringLiteral("Album art: ") + onOff(covers),
+                    QStringLiteral("covers drawn with coloured block characters"), {}, {}, [this, covers] {
+        m_prefs.setValue("art", covers ? "Off" : "Auto");
         refreshSettings();
     }, {}});
     const bool bar = barCover();
@@ -131,6 +133,7 @@ Element Tofm::renderHelp()
                                 {"Enter → l", "open or play"}, {"← h Esc", "back"}, {"Tab", "the sidebar"},
                                 {"/", "find in the list"}, {"s", "a new search (Search)"}}),
         group("Tracks", {{"a", "add to the end of the queue"}, {"n", "play next"}, {"f", "♥ favorite"}}),
+        group("Downloads", {{"d", "download an episode"}, {"x", "remove a download"}, {"R", "retry a failed one"}}),
     });
     Element right = vbox({
         group("Playing", {{"space", "play / pause"}, {"< >", "previous / next"}, {"[ ]", "back 10 s / ahead 30 s"},

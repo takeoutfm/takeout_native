@@ -841,16 +841,25 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            (search, radio, podcasts, movies, a series' seasons) and with a stand-in `mpv` on
            the PATH: the arguments, the 0600 file holding the header, no token on the command
            line, `--start=513.0` (resuming), cleanup; then by the user with real mpv.
-     - [ ] **T4 — settings and polish** (most done 2026-11-06): Settings page (server, user,
+     - [x] **T4 — settings and polish** (done 2026-11-08): Settings page (server, user,
            sign out, Track Activity, ListenBrainz connect with a masked token prompt / submit /
-           disconnect, Album art Auto / Characters / Off, bar cover — off over SSH; tofm's own
-           in `~/.config/tofm/tofm.conf`), `?` help, one-line prompts, covers on album and
+           disconnect, Album art On / Off, bar cover — off over SSH; tofm's own in
+           `~/.config/tofm/tofm.conf`), `?` help, one-line prompts, covers on album and
            artist pages (~40% of the page) and a 3-line Now Playing bar (cover, "Next:"), the
-           terminal's cell size logged. **Open:** real images (kitty graphics under the text,
-           else sixel redrawn after frames) — test first in Konsole with a script; tmux
-           passthrough.
-     - [ ] **T5 — downloads and packaging:** offline play from downloads; a `tofm` .deb (no
-           Kirigami or Qt Quick dependencies), `tofm.1` man page.
+           terminal's cell size logged. **Decided: covers stay block characters** (no kitty /
+           sixel images): one drawing path that works in every terminal, SSH and tmux.
+     - [x] **T5 — downloads and packaging** (done 2026-11-08; `tui/Downloads.cpp`):
+           ↓ Download / ✕ Remove download on albums, playlists and movies or episodes, `d` on
+           a podcast episode; rows show ✓ / ↓ 30% / ✗; a Downloads page by group (size, Enter
+           plays the group's downloaded music offline or opens a video, `x` remove, `R` retry,
+           ✕ Remove all). Files in `~/.local/share/tofm/media` (the shared core); checked by
+           downloading an album and playing it in a network namespace (`unshare -rn`). Rows
+           are fitted by hand so their marks always show. `cpack` makes two packages:
+           `takeoutfm` (unchanged) and `tofm` (`/usr/bin/tofm`, its own
+           `/usr/lib/tofm/libtakeout.so`, `tofm.1`; dependencies from the binary — no
+           Kirigami or Qt Quick — and Recommends: mpv).
+     - [ ] **Later:** `tofm play …` / `--status`; snapshot tests in `ctest`; the external
+           player setting.
    - **Testing:** FTXUI screens rendered to text as `ctest` snapshot tests (half-block covers
      too; kitty / sixel checked for the expected escape codes); the bridge and player tests
      already there; by hand in kitty, Konsole and foot, over SSH, and with video in mpv.

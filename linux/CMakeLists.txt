@@ -117,27 +117,33 @@ set_target_properties(takeoutfm PROPERTIES
 # ---- tofm, the terminal client (PLAN.md §13) ----
 
 add_executable(tofm tui/main.cpp tui/Tofm.cpp tui/Tofm.h tui/Browse.cpp tui/NowPlaying.cpp tui/Text.h
-    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h tui/Library.cpp tui/Video.cpp tui/Settings.cpp)
+    tui/Cover.cpp tui/Cover.h tui/CoverCells.cpp tui/CoverCells.h tui/Library.cpp tui/Video.cpp tui/Settings.cpp tui/Downloads.cpp)
 target_compile_definitions(tofm PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
 target_link_libraries(tofm PRIVATE takeoutcore Qt6::Network Qt6::Gui PkgConfig::CHAFA ftxui::component ftxui::dom ftxui::screen)
 set_target_properties(tofm PROPERTIES
     BUILD_RPATH "\$ORIGIN"
-    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")
+    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/tofm")
 
 # ---- Installing and packaging ----
 
-install(TARGETS takeoutfm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/takeoutfm)
-install(FILES data/com.takeoutfm.linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-install(FILES data/com.takeoutfm.linux.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
-install(DIRECTORY data/icons/ DESTINATION ${CMAKE_INSTALL_DATADIR}/icons)
-install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DOCDIR})
+# Two packages: takeoutfm (the KDE app) and tofm (the terminal client), each with its own copy
+# of libtakeout.so, so either installs without the other.
+install(TARGETS takeoutfm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT takeoutfm)
+install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/takeoutfm COMPONENT takeoutfm)
+install(FILES data/com.takeoutfm.linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT takeoutfm)
+install(FILES data/com.takeoutfm.linux.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo COMPONENT takeoutfm)
+install(DIRECTORY data/icons/ DESTINATION ${CMAKE_INSTALL_DATADIR}/icons COMPONENT takeoutfm)
+install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/takeoutfm COMPONENT takeoutfm)
 
-# cpack -G DEB in the build directory makes takeoutfm_<version>_amd64.deb.
+install(TARGETS tofm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT tofm)
+install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/tofm COMPONENT tofm)
+install(FILES tui/tofm.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 COMPONENT tofm)
+install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/tofm COMPONENT tofm)
+
+# cpack -G DEB in the build directory makes takeoutfm_<version>_amd64.deb and tofm_<version>_amd64.deb.
 set(CPACK_PACKAGE_NAME takeoutfm)
 set(CPACK_PACKAGE_VENDOR TakeoutFM)
 set(CPACK_PACKAGE_CONTACT "TakeoutFM <defsub@defsub.com>")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Music, radio, podcasts, movies and TV from your Takeout server")
 set(CPACK_PACKAGE_HOMEPAGE_URL https://takeout.fm)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../COPYING")
 set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
@@ -148,7 +154,20 @@ set(CPACK_DEBIAN_PACKAGE_SECTION sound)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "${CMAKE_CURRENT_BINARY_DIR}")
 # QML modules and the style, which nothing links.
-set(CPACK_DEBIAN_PACKAGE_DEPENDS
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+set(CPACK_COMPONENTS_ALL takeoutfm tofm)
+set(CPACK_DEBIAN_TAKEOUTFM_PACKAGE_NAME takeoutfm)
+set(CPACK_DEBIAN_TOFM_PACKAGE_NAME tofm)
+# Each package's first line is its summary (no CPACK_PACKAGE_DESCRIPTION_SUMMARY: CPackDeb would put it
+# in front of both).
+set(CPACK_DEBIAN_TAKEOUTFM_DESCRIPTION "Music, radio, podcasts, movies and TV from your Takeout server
+TakeoutFM for KDE Plasma: browse and play a Takeout media server, with downloads for offline play.")
+set(CPACK_DEBIAN_TOFM_DESCRIPTION "TakeoutFM in the terminal
+Music, radio and podcasts from your Takeout server in the terminal, covers drawn with block
+characters; movies and TV open in mpv.")
+# tofm opens videos in mpv.
+set(CPACK_DEBIAN_TOFM_PACKAGE_RECOMMENDS mpv)
+set(CPACK_DEBIAN_TAKEOUTFM_PACKAGE_DEPENDS
     "qml6-module-org-kde-kirigami, qml6-module-qtquick-effects, qml6-module-org-kde-ki18n, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
 include(CPack)
 

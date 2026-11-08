@@ -46,6 +46,8 @@ private:
         std::function<void()> activate;
         /** a / n: add a track at the end of the queue (true) or play it next. */
         std::function<void(bool last)> enqueue;
+        /** d: download it (an episode). */
+        std::function<void()> download;
     };
 
     /** A page of rows: a sidebar section, or what it opened (an artist, an album). */
@@ -73,7 +75,7 @@ private:
     using PagePtr = std::shared_ptr<Page>;
 
     enum class Section {
-        Recent, Search, RecentlyAdded, NewReleases, Artists, Favorites, Playlists, Radio, Podcasts, Movies, Shows, Settings,
+        Recent, Search, RecentlyAdded, NewReleases, Artists, Favorites, Playlists, Radio, Podcasts, Movies, Shows, Downloads, Settings,
     };
 
     /** Album art: as the terminal allows (block characters for now), always characters, or none. */
@@ -138,6 +140,17 @@ private:
     PagePtr videoPage(const QVariantMap &card);
     Row videoRow(const QVariantMap &card);
     Row stationRow(const QVariantMap &station);
+
+    // ---- Downloads (Downloads.cpp) ----
+    PagePtr downloadsPage();
+    void refreshDownloads();
+    /** Downloads the queue [call] returns: all of it, or its item [only]. */
+    void downloadCall(const QString &call, const QVariantMap &args, int only = -1);
+    /** "↓ Download" or "✕ Remove download" for [etags] (an album's tracks, a playlist's items). */
+    Row downloadRow(const QStringList &etags, std::function<void()> download);
+    /** ✓, a percentage, or "" for [etag]'s download. */
+    QString downloadMark(const QString &etag) const;
+    void removeDownloads(const QStringList &etags, const QString &what);
 
     // ---- Settings and help (Settings.cpp) ----
     PagePtr settingsPage();

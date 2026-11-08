@@ -50,9 +50,10 @@ qt_add_library(takeoutcore STATIC
     src/core/TakeoutCore.cpp src/core/TakeoutCore.h
     src/core/Player.cpp src/core/Player.h
     src/core/Mpris.cpp src/core/Mpris.h
-    src/core/SecretStore.cpp src/core/SecretStore.h)
+    src/core/SecretStore.cpp src/core/SecretStore.h
+    src/core/HttpHost.cpp src/core/HttpHost.h)
 target_include_directories(takeoutcore PUBLIC src/core)
-target_link_libraries(takeoutcore PUBLIC Qt6::Core Qt6::DBus PkgConfig::MPV takeout PRIVATE PkgConfig::SECRET)
+target_link_libraries(takeoutcore PUBLIC Qt6::Core Qt6::DBus PkgConfig::MPV takeout PRIVATE Qt6::Network PkgConfig::SECRET)
 
 qt_add_executable(takeoutfm
     src/main.cpp
@@ -189,3 +190,8 @@ add_executable(tofm_test tests/tofm_test.cpp)
 target_link_libraries(tofm_test PRIVATE tofmui)
 set_target_properties(tofm_test PROPERTIES BUILD_RPATH "\$ORIGIN")
 add_test(NAME tofm_test COMMAND tofm_test)
+# HttpHost (the core's HTTP through Qt) against a local server.
+add_executable(http_host_test tests/http_host_test.cpp)
+target_link_libraries(http_host_test PRIVATE takeoutcore Qt6::Network)
+set_target_properties(http_host_test PROPERTIES BUILD_RPATH "\$ORIGIN")
+add_test(NAME http_host_test COMMAND http_host_test)

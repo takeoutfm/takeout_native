@@ -1,5 +1,6 @@
 #include "TakeoutCore.h"
 
+#include "HttpHost.h"
 #include "SecretStore.h"
 #include "takeout.h"
 
@@ -44,6 +45,8 @@ bool TakeoutCore::start(const QString &dataDir, const QString &userAgent, const 
     static std::string app;
     app = secretsApp.toStdString();
     const std::string secrets = SecretStore::load(app);
+    // The core's HTTP goes through Qt Network (PLAN.md L8).
+    HttpHost::install();
     const int status = takeout_init(
         dataDir.toUtf8().constData(), userAgent.toUtf8().constData(),
         secrets.empty() ? nullptr : secrets.c_str(),

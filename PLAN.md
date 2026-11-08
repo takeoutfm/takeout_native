@@ -770,8 +770,22 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
              our 1 MB plus Ktor's channel), cancellation, errors before and during the body,
              timeouts passed on. `bridge_smoke` registers a host. The apps still use Curl
              until H3.
-           - **H2** — `HttpHost` in Qt; a `ctest` against a local `QTcpServer` serving JSON, a
-             redirect, a large body, a slow and a broken response.
+           - [x] **H2** (done 2026-11-08) — `linux/src/core/HttpHost` (in `takeoutcore`, so both
+             apps; `TakeoutCore::start` installs it before `takeout_init`): a
+             `QNetworkAccessManager` on a thread of its own (`takeout-http`, stopped on
+             `aboutToQuit`), so a busy UI never stalls HTTP; manual redirects, no cache, no
+             cookies, the system proxy; `setReadBufferSize(256 KB)` so a paused request leaves
+             the rest in the socket; its own timers for the timeouts (before the head: connect +
+             socket; then between reads; none while paused). Qt answers `Accept-Encoding` with
+             gzip/deflate/br/zstd and decodes the body, so `Content-Length` / `Content-Encoding`
+             aren't passed on then; Qt joins a repeated response header's values ("a, b"). HTTP
+             errors (404…) are responses; only connection failures, cut-short bodies and timeouts
+             end with an error. `http_host_test` (ctest; a recording sink instead of
+             libtakeout.so, a local `QTcpServer`): GET headers both ways, POST body and type, a
+             302 not followed, a 404, a deflate body, 8 MB with a slow reader (pauses, never more
+             than 1 MB + one read ahead, checked byte by byte), connection refused, a body cut
+             short, timeouts before the head and mid-body, cancel (ended once; later cancel /
+             resume ignored). The core still uses Curl until H3.
            - **H3** — `ktor-client-curl` out of `linuxMain`'s dependencies; check: `ldd` lists
              the system's libssl through Qt only, `strings libtakeout.so` has no "OpenSSL 3",
              size (expected ~9–10 MB stripped, from 20).

@@ -717,6 +717,67 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            (`qml6-module-org-kde-desktop`) listed by hand. Checked by running the unpacked
            package. Open: the project's licence for the metainfo (`project_license`) and the
            package; Flatpak (KDE runtime 6.x, mpv module) once the app is worth sharing.
+     - [ ] **L8 — HTTP through the host: no bundled curl / OpenSSL** (planned 2026-11-08).
+           *Why:* Ktor's Linux engine (`ktor-client-curl`, `HttpEngine.linux.kt`) compiles in
+           its own libcurl (FTP, telnet, SOCKS… we never use) and **OpenSSL 3.3.2**, ~6 MB of
+           `libtakeout.so`'s 20 MB, and frozen: the distribution's OpenSSL security updates
+           never reach it. Android (OkHttp) and Apple (Darwin, `NSURLSession`) already use the
+           system's TLS; afterwards Linux does too. Only `linuxMain`, the C API and
+           `linux/src/core/` change — not `commonMain`, the Android or Apple apps.
+           *Who uses HTTP in the core on Linux:* `TakeoutApi` (JSON, all methods, small bodies,
+           `HttpTimeout`, refresh on 401), `ListenBrainzAccount`, `MediaDownloads`
+           (`followRedirects = false`: it follows Takeout's redirect to presigned storage
+           itself, sending the media token only to Takeout; streams GB-size bodies with
+           `bodyAsChannel` into `.part` files). mpv and the cover / image loaders already do
+           their own HTTP (system libraries) and don't change.
+           *Design:*
+           - **C API** (`linux/src/takeout.h`): the host registers an HTTP handler before
+             `takeout_init` — `takeout_set_http(start, cancel, resume)`. `start(ctx, request)`
+             gets one request (JSON: method, URL, headers, timeouts; the body as bytes) and a
+             handle; the host answers through `takeout_http_head(handle, status, headers)`,
+             `takeout_http_data(handle, bytes, n)` (returns "pause" when the core's buffer is
+             full; the host stops reading until `resume(handle)`), and
+             `takeout_http_end(handle, error)` (null when complete; else
+             `{kind: network|timeout|cancelled, message}`). `cancel(handle)` aborts. Calls from
+             the core come on its threads; the host hands them to its main thread.
+           - **Kotlin** (`linuxMain` `api/HostEngine.kt`): a Ktor `HttpClientEngine` built on
+             those functions (`HttpEngine.linux.kt` returns it instead of `Curl`): the
+             response body is a bounded `ByteChannel`, so downloads stream without holding them
+             in memory; cancelling the coroutine cancels the host's request; host errors
+             become the `IOException`s the rest of the core already treats as "offline";
+             `HttpTimeoutCapability` passes connect / socket timeouts to the host (the request
+             timeout stays Ktor's). The engine **never follows redirects** — Ktor's plugin and
+             `MediaDownloads` decide, so the token rule stays in shared code.
+           - **Qt host** (`linux/src/core/HttpHost`, both the KDE app and tofm):
+             `QNetworkAccessManager` on the main thread; `ManualRedirectPolicy`; no cache
+             (`AlwaysNetwork`) and no cookies for API calls; reads in chunks with
+             `setReadBufferSize` for pause / resume; maps `QNetworkReply` errors to the kinds
+             above; system proxy settings (`QNetworkProxyFactory::setUseSystemConfiguration`).
+             TLS: Qt's OpenSSL backend with the system's libssl, updated by the distribution.
+             Careful with Qt decompressing gzip by itself: it changes `Content-Length`, which
+             download progress uses (media isn't compressed; JSON is fine).
+           *Phases:*
+           - **H1** — the C API and `HostEngine`; `linuxTest` with a fake host written in
+             Kotlin (`staticCFunction`s): methods, headers, bodies both ways, a 302 not
+             followed, a large body streamed with pause / resume, cancellation mid-body,
+             errors and timeouts mapped. `bridge_smoke` gains a minimal host.
+           - **H2** — `HttpHost` in Qt; a `ctest` against a local `QTcpServer` serving JSON, a
+             redirect, a large body, a slow and a broken response.
+           - **H3** — `ktor-client-curl` out of `linuxMain`'s dependencies; check: `ldd` lists
+             the system's libssl through Qt only, `strings libtakeout.so` has no "OpenSSL 3",
+             size (expected ~9–10 MB stripped, from 20).
+           - **H4** — by hand in both apps: device-code sign-in, browsing, token refresh,
+             playback, a download (the redirect to storage, the token only to Takeout),
+             ListenBrainz, offline (`unshare -rn`), cancelling (leaving a page mid-load,
+             `cancelCode`).
+           *Also, smaller and separate:* strip the shipped library (`CPACK_STRIP_FILES`, 20 →
+           15 MB); one `libtakeout` package that `takeoutfm` and `tofm` depend on instead of
+           a copy in each.
+           *Risks:* Ktor's engine API is lower-level than the client API (follow its
+           `CurlClientEngine` / `DarwinClientEngine` as models); the C API's callbacks come
+           from Kotlin/Native threads into Qt (marshal everything to the main thread; no
+           Kotlin call from inside a callback); downloads must not regress (they're the
+           biggest bodies and the token rule matters most there).
    - **Done for #14** when L1–L5 work on this machine (sign in, browse, play music and video,
      listens and progress reported, MPRIS); L6–L7 can follow as their own issues.
    - **Risks**: (L0 settled the libcurl and presigned-URL ones.) K/N has no ICU (sort keys only

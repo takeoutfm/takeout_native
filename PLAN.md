@@ -806,8 +806,11 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
              build directory keeps the debug info. `takeoutfm_*.deb` 13.9 → 3.0 MB (installed
              11 MB), `tofm_*.deb` 9.1 → 2.8 MB (installed 10 MB); before L8 they were 16.4 and
              11.4 MB.
-           - [ ] One `libtakeout` package that `takeoutfm` and `tofm` depend on, instead of a
-             copy in each.
+           - [x] One `libtakeout` package (2026-11-08): `/usr/lib/takeout/libtakeout.so`, 2.4 MB
+             (9.2 MB installed; depends on sqlite); `takeoutfm` (0.55 MB) and `tofm` (0.33 MB)
+             depend on `libtakeout (= version)`, as the C API changes with the apps, and find it
+             by RPATH `$ORIGIN/../lib/takeout`. Both apps installed: 3.3 MB of packages, 12 MB
+             on disk (before L8: 27.8 MB of packages, 84 MB on disk, unstripped, a 20 MB library in each).
            *Risks:* Ktor's engine API is lower-level than the client API (follow its
            `CurlClientEngine` / `DarwinClientEngine` as models); the C API's callbacks come
            from Kotlin/Native threads into Qt (marshal everything to the main thread; no

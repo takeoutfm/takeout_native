@@ -786,9 +786,12 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
              than 1 MB + one read ahead, checked byte by byte), connection refused, a body cut
              short, timeouts before the head and mid-body, cancel (ended once; later cancel /
              resume ignored). The core still uses Curl until H3.
-           - **H3** — `ktor-client-curl` out of `linuxMain`'s dependencies; check: `ldd` lists
-             the system's libssl through Qt only, `strings libtakeout.so` has no "OpenSSL 3",
-             size (expected ~9–10 MB stripped, from 20).
+           - [x] **H3** (done 2026-11-08) — `ktor-client-curl` gone (`linuxMain` dependency and the
+             version catalog); `HttpEngine.linux.kt` returns `Host`. `libtakeout.so`: 20.3 →
+             12.8 MB (9.4 MB stripped); `ldd` lists only libc, libm, sqlite and friends; no
+             "OpenSSL" / "libcurl" in its strings; 8 exported `takeout_*` symbols. Shared tests
+             (linuxX64, JVM) and the three ctests pass; tofm browses takeout.fm through it
+             (playlists, artists, podcasts, "Signed in as", ListenBrainz).
            - **H4** — by hand in both apps: device-code sign-in, browsing, token refresh,
              playback, a download (the redirect to storage, the token only to Takeout),
              ListenBrainz, offline (`unshare -rn`), cancelling (leaving a page mid-load,

@@ -58,9 +58,6 @@ kotlin {
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
-        linuxMain.dependencies {
-            implementation(libs.ktor.client.curl)
-        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)

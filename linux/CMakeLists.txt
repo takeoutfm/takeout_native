@@ -113,7 +113,7 @@ qt_add_resources(takeoutfm "icon" PREFIX "/" BASE data
 # libtakeout.so sits beside the binary in the build, and in lib/takeoutfm when installed.
 set_target_properties(takeoutfm PROPERTIES
     BUILD_RPATH "\$ORIGIN"
-    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeout")
+    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")
 
 # ---- tofm, the terminal client (PLAN.md §13) ----
 
@@ -129,20 +129,21 @@ add_executable(tofm tui/main.cpp)
 target_link_libraries(tofm PRIVATE tofmui)
 set_target_properties(tofm PROPERTIES
     BUILD_RPATH "\$ORIGIN"
-    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeout")
+    INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/takeoutfm")
 
 # ---- Installing and packaging ----
 
-# Three packages: libtakeout (the shared core, /usr/lib/takeout/libtakeout.so), and takeoutfm
+# Three packages: takeoutfm-core (the shared core, /usr/lib/takeoutfm/libtakeout.so: private to
+# the apps, so not a lib… package), and takeoutfm
 # (the KDE app) and tofm (the terminal client), which both depend on it.
-install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/takeout COMPONENT libtakeout)
+install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/takeoutfm COMPONENT core)
 # Installed as a file, which install/strip and CPACK_STRIP_FILES leave alone: stripped here
 # when they strip the rest.
 install(CODE "
     if(CMAKE_INSTALL_DO_STRIP)
-        execute_process(COMMAND \"${CMAKE_STRIP}\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/takeout/libtakeout.so\")
-    endif()" COMPONENT libtakeout)
-install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/libtakeout COMPONENT libtakeout)
+        execute_process(COMMAND \"${CMAKE_STRIP}\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/takeoutfm/libtakeout.so\")
+    endif()" COMPONENT core)
+install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/takeoutfm-core COMPONENT core)
 
 install(TARGETS takeoutfm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT takeoutfm)
 install(FILES data/com.takeoutfm.linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT takeoutfm)
@@ -154,7 +155,7 @@ install(TARGETS tofm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT tofm)
 install(FILES tui/tofm.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 COMPONENT tofm)
 install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/tofm COMPONENT tofm)
 
-# cpack in the build directory makes libtakeout_, takeoutfm_ and tofm_<version>_amd64.deb.
+# cpack in the build directory makes takeoutfm-core_, takeoutfm_ and tofm_<version>_amd64.deb.
 set(CPACK_PACKAGE_NAME takeoutfm)
 set(CPACK_PACKAGE_VENDOR TakeoutFM)
 set(CPACK_PACKAGE_CONTACT "TakeoutFM <defsub@defsub.com>")
@@ -166,24 +167,27 @@ set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_SECTION sound)
 # Without debug info (most of each binary's size); the build directory keeps it.
 set(CPACK_STRIP_FILES ON)
-# Libraries from what each binary links; libtakeout.so (found here) is the libtakeout package's,
+# Libraries from what each binary links; libtakeout.so (found here) is takeoutfm-core's,
 # which the apps depend on by name below.
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "${CMAKE_CURRENT_BINARY_DIR}")
 # QML modules and the style, which nothing links.
 set(CPACK_DEB_COMPONENT_INSTALL ON)
-set(CPACK_COMPONENTS_ALL libtakeout takeoutfm tofm)
+set(CPACK_COMPONENTS_ALL core takeoutfm tofm)
 set(CPACK_DEBIAN_TAKEOUTFM_PACKAGE_NAME takeoutfm)
 set(CPACK_DEBIAN_TOFM_PACKAGE_NAME tofm)
-set(CPACK_DEBIAN_LIBTAKEOUT_PACKAGE_NAME libtakeout)
-set(CPACK_DEBIAN_LIBTAKEOUT_PACKAGE_SECTION libs)
+set(CPACK_DEBIAN_CORE_PACKAGE_NAME takeoutfm-core)
+set(CPACK_DEBIAN_CORE_PACKAGE_SECTION libs)
+# Named libtakeout (/usr/lib/takeout) for a day: installing this removes that.
+set(CPACK_DEBIAN_CORE_PACKAGE_CONFLICTS libtakeout)
+set(CPACK_DEBIAN_CORE_PACKAGE_REPLACES libtakeout)
 # The C API changes with the apps: each needs the core built with it.
-set(CPACK_DEBIAN_TOFM_PACKAGE_DEPENDS "libtakeout (= ${PROJECT_VERSION})")
+set(CPACK_DEBIAN_TOFM_PACKAGE_DEPENDS "takeoutfm-core (= ${PROJECT_VERSION})")
 # Each package's first line is its summary (no CPACK_PACKAGE_DESCRIPTION_SUMMARY: CPackDeb would put it
 # in front of all of them).
 set(CPACK_DEBIAN_TAKEOUTFM_DESCRIPTION "Music, radio, podcasts, movies and TV from your Takeout server
 TakeoutFM for KDE Plasma: browse and play a Takeout media server, with downloads for offline play.")
-set(CPACK_DEBIAN_LIBTAKEOUT_DESCRIPTION "TakeoutFM's shared core for takeoutfm and tofm
+set(CPACK_DEBIAN_CORE_DESCRIPTION "TakeoutFM's shared core for takeoutfm and tofm
 The Takeout server's API, the library index, downloads, listens and progress, shared by the
 TakeoutFM apps (Kotlin Multiplatform, through a small C API).")
 set(CPACK_DEBIAN_TOFM_DESCRIPTION "TakeoutFM in the terminal
@@ -192,7 +196,7 @@ characters; movies and TV open in mpv.")
 # tofm opens videos in mpv.
 set(CPACK_DEBIAN_TOFM_PACKAGE_RECOMMENDS mpv)
 set(CPACK_DEBIAN_TAKEOUTFM_PACKAGE_DEPENDS
-    "libtakeout (= ${PROJECT_VERSION}), qml6-module-org-kde-kirigami, qml6-module-qtquick-effects, qml6-module-org-kde-ki18n, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
+    "takeoutfm-core (= ${PROJECT_VERSION}), qml6-module-org-kde-kirigami, qml6-module-qtquick-effects, qml6-module-org-kde-ki18n, qml6-module-org-kde-kirigamiaddons-formcard, qml6-module-org-kde-kirigamiaddons-components, qml6-module-org-kde-coreaddons, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtqml-workerscript, qml6-module-qtcore, qml6-module-qt-labs-platform | qml6-module-qtquick-dialogs, qml6-module-org-kde-desktop | kf6-qqc2-desktop-style, qt6-image-formats-plugins")
 include(CPack)
 
 # ---- Tests ----

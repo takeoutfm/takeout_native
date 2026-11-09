@@ -796,7 +796,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
              playback, a download (the redirect to storage, the token only to Takeout),
              ListenBrainz, offline (`unshare -rn`), cancelling (leaving a page mid-load,
              `cancelCode`). So far: a token refresh in the KDE app (a 401 on start, then
-             refreshed and saved).
+             refreshed and saved); a download and playback (checked by the user); offline
+             (`unshare -rn build/tofm`: the host's network errors reach the core as "offline",
+             and Playlists and Artists come from the saved responses). ListenBrainz submitting (checked by the user). Left:
+             cancelling, device-code sign-in.
            *Also, smaller and separate:*
            - [x] Stripped packages (2026-11-08): `CPACK_STRIP_FILES`, plus an install step
              (`takeout_strip_lib`) for `libtakeout.so`, which is installed as a plain file. The

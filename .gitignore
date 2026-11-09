@@ -13,4 +13,4 @@ key.properties
 *.jks
 *.keystore
 # Linux app (CMake)
-/linux/build
+/linux/build*/

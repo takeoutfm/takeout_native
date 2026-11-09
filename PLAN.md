@@ -795,10 +795,16 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
            - **H4** — by hand in both apps: device-code sign-in, browsing, token refresh,
              playback, a download (the redirect to storage, the token only to Takeout),
              ListenBrainz, offline (`unshare -rn`), cancelling (leaving a page mid-load,
-             `cancelCode`).
-           *Also, smaller and separate:* strip the shipped library (`CPACK_STRIP_FILES`, 20 →
-           15 MB); one `libtakeout` package that `takeoutfm` and `tofm` depend on instead of
-           a copy in each.
+             `cancelCode`). So far: a token refresh in the KDE app (a 401 on start, then
+             refreshed and saved).
+           *Also, smaller and separate:*
+           - [x] Stripped packages (2026-11-08): `CPACK_STRIP_FILES`, plus an install step
+             (`takeout_strip_lib`) for `libtakeout.so`, which is installed as a plain file. The
+             build directory keeps the debug info. `takeoutfm_*.deb` 13.9 → 3.0 MB (installed
+             11 MB), `tofm_*.deb` 9.1 → 2.8 MB (installed 10 MB); before L8 they were 16.4 and
+             11.4 MB.
+           - [ ] One `libtakeout` package that `takeoutfm` and `tofm` depend on, instead of a
+             copy in each.
            *Risks:* Ktor's engine API is lower-level than the client API (follow its
            `CurlClientEngine` / `DarwinClientEngine` as models); the C API's callbacks come
            from Kotlin/Native threads into Qt (marshal everything to the main thread; no

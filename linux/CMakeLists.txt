@@ -133,10 +133,20 @@ set_target_properties(tofm PROPERTIES
 
 # ---- Installing and packaging ----
 
+# libtakeout.so is installed as a file, which install/strip and CPACK_STRIP_FILES leave alone:
+# stripped here when they strip the rest.
+function(takeout_strip_lib component)
+    install(CODE "
+        if(CMAKE_INSTALL_DO_STRIP)
+            execute_process(COMMAND \"${CMAKE_STRIP}\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/${component}/libtakeout.so\")
+        endif()" COMPONENT ${component})
+endfunction()
+
 # Two packages: takeoutfm (the KDE app) and tofm (the terminal client), each with its own copy
 # of libtakeout.so, so either installs without the other.
 install(TARGETS takeoutfm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT takeoutfm)
 install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/takeoutfm COMPONENT takeoutfm)
+takeout_strip_lib(takeoutfm)
 install(FILES data/com.takeoutfm.linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT takeoutfm)
 install(FILES data/com.takeoutfm.linux.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo COMPONENT takeoutfm)
 install(DIRECTORY data/icons/ DESTINATION ${CMAKE_INSTALL_DATADIR}/icons COMPONENT takeoutfm)
@@ -144,6 +154,7 @@ install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/takeoutfm 
 
 install(TARGETS tofm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT tofm)
 install(FILES "${TAKEOUT_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/tofm COMPONENT tofm)
+takeout_strip_lib(tofm)
 install(FILES tui/tofm.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 COMPONENT tofm)
 install(FILES data/copyright DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/tofm COMPONENT tofm)
 
@@ -157,6 +168,8 @@ set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
 set(CPACK_GENERATOR DEB)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_SECTION sound)
+# Without debug info (most of each binary's size); the build directory keeps it.
+set(CPACK_STRIP_FILES ON)
 # Libraries from what the binary links; libtakeout.so is the package's own.
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "${CMAKE_CURRENT_BINARY_DIR}")

@@ -1,5 +1,7 @@
 package com.takeoutfm.shared.video
 
+import kotlinx.serialization.Serializable
+
 /**
  * An audio format as the track pickers name it; [codec] is how the ranking ([bestAudioTrack])
  * orders it. Each player finds it from its own codec name with [audioFormat].
@@ -12,6 +14,8 @@ enum class AudioFormat(val title: String, val codec: AudioCodec) {
     /** DTS-HD where the player doesn't say which (Media3), or High Resolution. */
     DTSHD("DTS-HD", AudioCodec.Lossless),
     DTS("DTS", AudioCodec.DTS),
+    /** DTS-HD's lossy low-bitrate profile (LBR). */
+    DTSExpress("DTS Express", AudioCodec.DTS),
     EAC3Atmos("Dolby Digital Plus Atmos", AudioCodec.EAC3Atmos),
     EAC3("Dolby Digital Plus", AudioCodec.EAC3),
     AC3("Dolby Digital", AudioCodec.AC3),
@@ -41,6 +45,7 @@ fun audioFormat(codec: String, profile: String = ""): AudioFormat? {
         "ac3" in c || "ac-3" in c || "a52" in c -> AudioFormat.AC3
         "dts" in c -> when {
             ":x" in p || "uhd" in c -> AudioFormat.DTSX
+            "lbr" in c || "express" in p -> AudioFormat.DTSExpress
             "ma" in p.split(Regex("[^a-z]+")) -> AudioFormat.DTSHDMA
             "hd" in c || "dts-hd" in p -> AudioFormat.DTSHD
             else -> AudioFormat.DTS
@@ -72,6 +77,7 @@ fun channelLayout(channels: Int): String? = when {
  * [detail] the language and anything the file's own name for it adds ("English · Director's
  * Commentary"), possibly empty.
  */
+@Serializable
 data class AudioTrackLabel(val title: String, val detail: String)
 
 /**

@@ -96,39 +96,14 @@ QString languageName(const QString &code)
     return QLocale::languageToString(language);
 }
 
-/** The shared ranking's AudioCodec for an mpv (ffmpeg) codec name. */
-QString rankedCodec(const QString &codec, const QString &profile)
-{
-    if (codec == "truehd") return "Lossless";
-    if (codec == "dts") return profile.contains("MA") || profile.contains(":X") ? "Lossless" : "DTS";
-    if (codec == "eac3") return "EAC3";
-    if (codec == "ac3") return "AC3";
-    if (codec == "flac" || codec == "alac" || codec.startsWith("pcm_")) return "Uncompressed";
-    if (codec == "aac" || codec == "opus" || codec == "vorbis") return "Common";
-    return "Other";
-}
-
-QString codecName(const QString &codec, const QString &profile)
+/** A subtitle format's name ("PGS"). */
+QString subtitleFormat(const QString &codec)
 {
     static const QHash<QString, QString> names{
-        {"aac", "AAC"}, {"ac3", "AC-3"}, {"eac3", "E-AC-3"}, {"truehd", "TrueHD"}, {"opus", "Opus"},
-        {"flac", "FLAC"}, {"mp3", "MP3"}, {"vorbis", "Vorbis"}, {"subrip", "SRT"}, {"ass", "ASS"},
-        {"ssa", "SSA"}, {"webvtt", "WebVTT"}, {"hdmv_pgs_subtitle", "PGS"}, {"dvd_subtitle", "VobSub"},
-        {"dvb_subtitle", "DVB"}, {"mov_text", "Timed Text"}};
-    if (codec == "dts") return profile.isEmpty() ? QStringLiteral("DTS") : profile;
-    return names.value(codec, codec.startsWith("pcm_") ? QStringLiteral("PCM") : QString());
-}
-
-QString channelLayout(qint64 channels)
-{
-    switch (channels) {
-    case 0: return {};
-    case 1: return QStringLiteral("Mono");
-    case 2: return QStringLiteral("Stereo");
-    case 6: return QStringLiteral("5.1");
-    case 8: return QStringLiteral("7.1");
-    default: return QStringLiteral("%1 ch").arg(channels);
-    }
+        {"subrip", "SRT"}, {"ass", "ASS"}, {"ssa", "SSA"}, {"webvtt", "WebVTT"},
+        {"hdmv_pgs_subtitle", "PGS"}, {"dvd_subtitle", "VobSub"}, {"dvb_subtitle", "DVB"},
+        {"mov_text", "Timed Text"}};
+    return names.value(codec);
 }
 }
 
@@ -305,45 +280,40 @@ void VideoView::tracksUpdated(const mpv_node *list)
             const QString title = string(track, "title");
             const QString codec = string(track, "codec");
             const QString profile = string(track, "codec-profile");
-            const qint64 channels = integer(track, "demux-channel-count");
-            // e.g. "English · 5.1 · E-AC-3" or "English · SDH · PGS", as the phone.
-            QStringList parts;
-            const QString languageText = languageName(language);
-            if (!languageText.isEmpty() && !title.contains(languageText, Qt::CaseInsensitive)) parts << languageText;
-            if (!title.isEmpty()) parts << title;
-            // Not what the title already says ("Surround 5.1").
-            const auto add = [&](const QString &part) {
-                if (!title.contains(part, Qt::CaseInsensitive)) parts << part;
-            };
-            if (type == "audio") {
-                add(channelLayout(channels));
-            } else {
-                if (flag(track, "forced")) parts << QStringLiteral("Forced");
-                if (flag(track, "hearing-impaired")) parts << QStringLiteral("SDH");
-            }
-            add(codecName(codec, profile));
-            parts.removeAll(QString());
-            parts.removeDuplicates();
             const int id = int(integer(track, "id"));
+            const QString languageText = languageName(language);
             QVariantMap item{
                 {"id", id},
-                {"label", parts.isEmpty() ? QStringLiteral("Track %1").arg(id) : parts.join(QStringLiteral(" · "))},
                 {"language", language},
                 {"selected", flag(track, "selected")},
             };
             if (type == "audio") {
-                // What the shared ranking (bestAudioTrack) looks at.
-                item.insert("candidate", QVariantMap{
+                // Labelled and ranked by the shared core (Core.call("audioTracks")); until it
+                // answers, the language is the label.
+                item.insert("label", languageText.isEmpty() ? (title.isEmpty() ? QStringLiteral("Track %1").arg(audio.size() + 1) : title) : languageText);
+                item.insert("info", QVariantMap{
+                    {"codec", codec},
+                    {"profile", profile},
+                    {"channels", integer(track, "demux-channel-count")},
                     {"language", language.isEmpty() ? QVariant() : QVariant(language)},
-                    {"label", title.isEmpty() ? QVariant() : QVariant(title)},
-                    {"codec", rankedCodec(codec, profile)},
-                    {"channels", channels},
+                    {"languageName", languageText.isEmpty() ? QVariant() : QVariant(languageText)},
+                    {"title", title.isEmpty() ? QVariant() : QVariant(title)},
                     {"bitrate", integer(track, "demux-bitrate")},
                     {"isDefault", flag(track, "default")},
-                    {"isCommentary", title.contains("commentary", Qt::CaseInsensitive)},
                 });
                 audio << item;
             } else {
+                // e.g. "English · SDH · PGS".
+                QStringList parts;
+                if (!languageText.isEmpty() && !title.contains(languageText, Qt::CaseInsensitive)) parts << languageText;
+                if (!title.isEmpty()) parts << title;
+                if (flag(track, "forced")) parts << QStringLiteral("Forced");
+                if (flag(track, "hearing-impaired")) parts << QStringLiteral("SDH");
+                const QString format = subtitleFormat(codec);
+                if (!format.isEmpty() && !title.contains(format, Qt::CaseInsensitive)) parts << format;
+                parts.removeAll(QString());
+                parts.removeDuplicates();
+                item.insert("label", parts.isEmpty() ? QStringLiteral("Track %1").arg(id) : parts.join(QStringLiteral(" · ")));
                 subtitles << item;
             }
         }

@@ -23,6 +23,10 @@ QQC2.Popup {
     /** Playback has really started, so a failed load never resets saved progress. */
     property bool hasPlayed: false
     property bool audioChosen: false
+    /** The shared labels ({title, detail}) of video.audioTracks, in the same order. */
+    property var audioLabels: []
+    /** The audio tracks audioLabels are for (their ids), so a stale answer is dropped. */
+    property string audioLabelsFor: ""
     property int previousVisibility: Window.Windowed
 
     parent: QQC2.Overlay.overlay
@@ -65,6 +69,8 @@ QQC2.Popup {
         details = null
         hasPlayed = false
         audioChosen = false
+        audioLabels = []
+        audioLabelsFor = ""
         Core.call("videoDetails", {id: id}, (d, error) => {
             if (id !== videoId) return
             if (!d || d.videoUri === "") {
@@ -166,13 +172,21 @@ QQC2.Popup {
                 }
             }
             onTracksChanged: {
-                if (player.audioChosen || audioTracks.length === 0) return
+                // Selecting a track changes the list too: ask only when the tracks are new.
+                const ids = audioTracks.map(t => t.id).join(",")
+                if (audioTracks.length === 0 || ids === player.audioLabelsFor) return
+                player.audioLabelsFor = ids
+                const tracks = audioTracks
+                const choose = !player.audioChosen
                 player.audioChosen = true
-                if (audioTracks.length === 1) return
-                Core.call("bestAudioTrack", {
-                    candidates: audioTracks.map(t => t.candidate),
+                Core.call("audioTracks", {
+                    tracks: tracks.map(t => t.info),
                     preferredLanguage: settings.audioLanguage || Qt.locale().name,
-                }, (best) => { if (best >= 0) video.setAudio(audioTracks[best].id) })
+                }, (result) => {
+                    if (!result || ids !== player.audioLabelsFor) return
+                    player.audioLabels = result.labels
+                    if (choose && tracks.length > 1 && result.best >= 0) video.setAudio(tracks[result.best].id)
+                })
             }
             onEnded: {
                 player.save()
@@ -289,7 +303,10 @@ QQC2.Popup {
                                     model: video.audioTracks
                                     QQC2.MenuItem {
                                         required property var modelData
-                                        text: modelData.label
+                                        required property int index
+                                        // "Dolby Digital · Surround 5.1 — English"
+                                        readonly property var shared: player.audioLabels[index]
+                                        text: shared ? [shared.title, shared.detail].filter(s => s).join(" — ") : modelData.label
                                         checkable: true
                                         checked: modelData.selected
                                         onTriggered: {

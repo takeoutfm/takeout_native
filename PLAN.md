@@ -491,7 +491,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          storage with a fresh-enough presigned URL (re-fetched on a 403). The best audio track and the track labels
          come from `:shared` (`bestAudioTrack`, `audioTrackLabel`; 2026-11-11, #21):
          `AudioTrackRanking.swift` turns VLC's track information into their inputs, with VLC's
-         own pick standing in for the "default" flag VLCKit doesn't give.
+         own pick standing in for the "default" flag VLCKit doesn't give. The TV and Linux use
+         the shared labels too (2026-11-11; Linux through the `audioTracks` bridge call, which
+         replaced `bestAudioTrack`). The phone keeps Media3's settings menu and its track names
+         (decided 2026-11-11; its `TrackNameProvider` can't be replaced), with the shared best track.
    - [x] Podcasts: Subscribed / All, podcast pages (Subscribe, episodes with progress, Mark as
          Played), episode pages (Resume / Start Over, show notes with links, older / newer), episodes in the music player resuming where they were left; `AudioPlayer`
          saves their position (by GUID, through `TakeoutProgress`) as Android's

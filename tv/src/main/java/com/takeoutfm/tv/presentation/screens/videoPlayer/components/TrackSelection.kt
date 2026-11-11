@@ -77,10 +77,13 @@ fun TrackPickerDialog(
                             enabled = option.isSupported,
                             onClick = { onSelect(option) },
                             headlineContent = { Text(option.label) },
-                            supportingContent = if (option.isSupported) {
-                                null
+                            supportingContent = if (!option.isSupported) {
+                                {
+                                    val notSupported = stringResource(R.string.track_not_supported)
+                                    Text(option.detail?.let { "$it · $notSupported" } ?: notSupported)
+                                }
                             } else {
-                                { Text(stringResource(R.string.track_not_supported)) }
+                                option.detail?.let { detail -> { Text(detail) } }
                             },
                             trailingContent = if (option.isSelected) {
                                 { Icon(Icons.Default.Check, contentDescription = null) }

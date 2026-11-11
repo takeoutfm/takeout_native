@@ -6,6 +6,8 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
+import com.takeoutfm.shared.video.audioFormat
+import com.takeoutfm.shared.video.audioTrackLabel
 import com.takeoutfm.shared.video.bestAudioTrack
 import java.util.Locale
 
@@ -19,6 +21,8 @@ enum class TrackPicker { Audio, Subtitles, Speed }
 /** One choice in a track picker; [select] applies it to the player. */
 data class TrackOption(
     val label: String,
+    /** A second line under [label]: an audio track's language and name ("English · Commentary"). */
+    val detail: String? = null,
     val isSelected: Boolean,
     /** The track's language, if it has one ("" for the subtitles Off option). */
     val language: String? = null,
@@ -85,10 +89,13 @@ private fun trackOptions(player: Player, type: @C.TrackType Int): List<TrackOpti
         (0 until group.length).map { i ->
             number++
             val override = TrackSelectionOverride(group.mediaTrackGroup, i)
+            val format = group.getTrackFormat(i)
+            val audio = if (type == C.TRACK_TYPE_AUDIO) format.audioLabel(number) else null
             TrackOption(
-                label = group.getTrackFormat(i).describe(type, number),
+                label = audio?.title ?: format.describe(number),
+                detail = audio?.detail?.takeIf { it.isNotEmpty() },
                 isSelected = group.isTrackSelected(i),
-                language = group.getTrackFormat(i).language,
+                language = format.language,
                 isSupported = group.isTrackSupported(i),
                 select = { p ->
                     p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
@@ -101,47 +108,38 @@ private fun trackOptions(player: Player, type: @C.TrackType Int): List<TrackOpti
     }
 }
 
-/** e.g. "English · 5.1 · E-AC-3" or "English · SDH · PGS". */
-private fun Format.describe(type: @C.TrackType Int, number: Int): String {
+/** The shared audio label: "Dolby Digital · Surround 5.1" over "English". */
+private fun Format.audioLabel(number: Int) = audioTrackLabel(
+    format = sampleMimeType?.let { audioFormat(it) },
+    channels = channelCount,
+    languageName = languageName(),
+    name = label,
+    isCommentary = roleFlags and C.ROLE_FLAG_COMMENTARY != 0,
+    number = number,
+)
+
+private fun Format.languageName(): String? = language
+    ?.takeIf { it.isNotEmpty() && it != C.LANGUAGE_UNDETERMINED }
+    ?.let { Locale.forLanguageTag(it).getDisplayLanguage(Locale.getDefault()).ifEmpty { it } }
+
+/** A subtitle track, e.g. "English · SDH · PGS". */
+private fun Format.describe(number: Int): String {
     val parts = mutableListOf<String>()
     val name = label?.takeIf { it.isNotBlank() }
-    val languageName = language
-        ?.takeIf { it.isNotEmpty() && it != C.LANGUAGE_UNDETERMINED }
-        ?.let { Locale.forLanguageTag(it).getDisplayLanguage(Locale.getDefault()).ifEmpty { it } }
+    val languageName = languageName()
     if (languageName != null && (name == null || !name.contains(languageName, ignoreCase = true))) {
         parts += languageName
     }
     if (name != null) parts += name
-    if (type == C.TRACK_TYPE_AUDIO) {
-        channelLayout(channelCount)?.let { parts += it }
-    } else {
-        if (selectionFlags and C.SELECTION_FLAG_FORCED != 0) parts += "Forced"
-        if (roleFlags and (C.ROLE_FLAG_CAPTION or C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND) != 0) {
-            parts += "SDH"
-        }
+    if (selectionFlags and C.SELECTION_FLAG_FORCED != 0) parts += "Forced"
+    if (roleFlags and (C.ROLE_FLAG_CAPTION or C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND) != 0) {
+        parts += "SDH"
     }
-    codecName(sampleMimeType)?.let { parts += it }
+    subtitleFormat(sampleMimeType)?.let { parts += it }
     return parts.distinct().joinToString(" · ").ifEmpty { "Track $number" }
 }
 
-private fun channelLayout(channels: Int): String? = when (channels) {
-    1 -> "Mono"
-    2 -> "Stereo"
-    6 -> "5.1"
-    8 -> "7.1"
-    Format.NO_VALUE -> null
-    else -> "$channels ch"
-}
-
-private fun codecName(mimeType: String?): String? = when (mimeType) {
-    MimeTypes.AUDIO_AAC -> "AAC"
-    MimeTypes.AUDIO_AC3 -> "AC-3"
-    MimeTypes.AUDIO_E_AC3, MimeTypes.AUDIO_E_AC3_JOC -> "E-AC-3"
-    MimeTypes.AUDIO_DTS, MimeTypes.AUDIO_DTS_HD, MimeTypes.AUDIO_DTS_EXPRESS -> "DTS"
-    MimeTypes.AUDIO_TRUEHD -> "TrueHD"
-    MimeTypes.AUDIO_OPUS -> "Opus"
-    MimeTypes.AUDIO_FLAC -> "FLAC"
-    MimeTypes.AUDIO_MPEG -> "MP3"
+private fun subtitleFormat(mimeType: String?): String? = when (mimeType) {
     MimeTypes.APPLICATION_SUBRIP -> "SRT"
     MimeTypes.TEXT_SSA -> "SSA"
     MimeTypes.TEXT_VTT -> "WebVTT"

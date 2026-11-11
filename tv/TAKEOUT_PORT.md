@@ -48,7 +48,7 @@ directly where needed.
 | ExoPlayer for Takeout streams (media token, decoder fallback) | `TakeoutPlayerFactory` in `:android-media` |
 | Player (progress, errors, release, media session) | `.../videoPlayer/VideoPlayerScreen.kt`, `components/RememberPlayer.kt` |
 | Audio/subtitle/speed pickers, subtitle rendering | `.../videoPlayer/components/TrackSelection.kt` |
-| Best audio track ranking (unit-tested) | `video/AudioTrackRanking.kt` in `:android-media` |
+| Best audio track ranking and labels (unit-tested) | `:shared` `video/AudioTrackRanking.kt`, `AudioTrackLabel.kt`; Media3 glue in `:android-media` `video/` |
 | Skeleton loading screens, player spinner | `presentation/common/Skeletons.kt` |
 | Focus return to the opened item | `presentation/utils/FocusMemory.kt` |
 | Server info + Sign out | `.../profile/AccountsSection.kt` |
@@ -267,8 +267,9 @@ paragraph at a time.
   network) instead of a stalled player.
 - **Speed**: the gear button opens a picker: 0.5×, 0.75×, Normal, 1.25×, 1.5×, 2×.
 - **Audio / subtitles**: embedded tracks only (no server subtitles, by design). ♪ = audio
-  picker, CC = subtitle picker with Off. Tracks are labelled by language, name, channel layout or
-  Forced/SDH, and codec; tracks this device can't decode are listed greyed out ("Not supported
+  picker, CC = subtitle picker with Off. Audio tracks show the shared `:shared`
+  `audioTrackLabel` ("Dolby Digital · Surround 5.1" over "English", the file's track name only
+  when it adds something); subtitles are labelled by language, name, Forced/SDH and format; tracks this device can't decode are listed greyed out ("Not supported
   on this device"). Subtitles render with Media3's `SubtitleView` (text and PGS/VobSub bitmaps),
   full-screen so they don't move with the controls. Pickers sit outside the auto-hiding controls.
 - **Best audio track**: each title starts on the best track the device can play: preferred

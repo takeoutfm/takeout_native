@@ -488,9 +488,10 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          and subtitle pickers, resume and saved progress, next episode. VLC can't send the media
          token, and after a redirect it seeks against the presigned URL, which expires in
          15 minutes; so VLC plays from `StreamProxy` (loopback), which fetches every range from
-         storage with a fresh-enough presigned URL (re-fetched on a 403). The phone's best-audio-track ranking is ported to Swift
-         (`AudioTrackRanking`, on VLC's track information; no "default" flag there), with the
-         phone's track names ("English · 5.1 · AC-3").
+         storage with a fresh-enough presigned URL (re-fetched on a 403). The best audio track and the track labels
+         come from `:shared` (`bestAudioTrack`, `audioTrackLabel`; 2026-11-11, #21):
+         `AudioTrackRanking.swift` turns VLC's track information into their inputs, with VLC's
+         own pick standing in for the "default" flag VLCKit doesn't give.
    - [x] Podcasts: Subscribed / All, podcast pages (Subscribe, episodes with progress, Mark as
          Played), episode pages (Resume / Start Over, show notes with links, older / newer), episodes in the music player resuming where they were left; `AudioPlayer`
          saves their position (by GUID, through `TakeoutProgress`) as Android's

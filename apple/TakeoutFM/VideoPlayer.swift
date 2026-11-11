@@ -17,6 +17,8 @@ struct VideoPlayRequest: Codable, Hashable {
 struct MediaTrack: Identifiable, Hashable {
     let index: Int32
     let name: String
+    /** A second line (an audio track's language), or "". */
+    var detail = ""
     var id: Int32 { index }
 }
 
@@ -128,7 +130,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         audioTrack = index
         // The language picked becomes the preference for the next title, as on the phone.
         if let media = player.media {
-            AudioTrackRanking.remember(AudioTrackRanking.candidates(media).first { $0.id == index }?.language)
+            AudioTrackRanking.remember(AudioTrackRanking.tracks(media).first { $0.id == index }?.language)
         }
     }
 
@@ -164,15 +166,19 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     private func refreshTracks() {
         defer {
             #if DEBUG
-            NSLog("Tracks: audio \(audioTracks.map(\.name)) (\(audioTrack)), subtitles \(subtitleTracks.map(\.name)) (\(subtitleTrack))")
+            NSLog("Tracks: audio \(audioTracks.map { "\($0.name) / \($0.detail)" }) (\(audioTrack)), subtitles \(subtitleTracks.map(\.name)) (\(subtitleTrack))")
             #endif
         }
-        // Named from the track details ("English · 5.1 · AC-3"): files often name every track alike.
-        let details = player.media.map(AudioTrackRanking.candidates) ?? []
+        // Named from the track details (the shared label: "Dolby Digital · Surround 5.1" over
+        // "English"): files often name every track alike.
+        let details = player.media.map(AudioTrackRanking.tracks) ?? []
         audioTracks = Self.tracks(names: player.audioTrackNames, indexes: player.audioTrackIndexes)
             .filter { $0.index >= 0 }
-            .map { track in
-                details.first { $0.id == track.index }.map { MediaTrack(index: track.index, name: AudioTrackRanking.label($0)) } ?? track
+            .enumerated()
+            .map { number, track in
+                guard let details = details.first(where: { $0.id == track.index }) else { return track }
+                let label = AudioTrackRanking.label(details, number: number + 1)
+                return MediaTrack(index: track.index, name: label.title, detail: label.detail)
             }
         subtitleTracks = Self.tracks(names: player.videoSubTitlesNames, indexes: player.videoSubTitlesIndexes)
         audioTrack = player.currentAudioTrackIndex
@@ -230,12 +236,12 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     /// Switches to the best audio track for this title (once; the viewer can change it).
     private func chooseAudio() {
         guard let media = player.media else { return }
-        let candidates = AudioTrackRanking.candidates(media)
-        let best = AudioTrackRanking.best(candidates, current: player.currentAudioTrackIndex)
+        let tracks = AudioTrackRanking.tracks(media)
+        let best = AudioTrackRanking.best(tracks, current: player.currentAudioTrackIndex)
         #if DEBUG
-        NSLog("Audio: \(candidates.map { "\($0.id) \($0.language ?? "?") \($0.codec) \($0.channels)ch \($0.bitrate) \($0.description)" }), VLC chose \(player.currentAudioTrackIndex) → best \(best.map(String.init) ?? "-")")
+        NSLog("Audio: \(tracks.map { "\($0.id) \($0.language ?? "?") \($0.format?.title ?? "?") \($0.channels)ch \($0.bitrate) \($0.name)" }), VLC chose \(player.currentAudioTrackIndex) → best \(best.map(String.init) ?? "-")")
         #endif
-        guard candidates.count > 1, let best, best != player.currentAudioTrackIndex else { return }
+        guard tracks.count > 1, let best, best != player.currentAudioTrackIndex else { return }
         player.currentAudioTrackIndex = best
     }
 

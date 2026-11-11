@@ -523,6 +523,7 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
          swipe actions (Play Next / Add to Queue) and haptics.
    - [ ] iPad check; downloads, radio and podcasts on the phone; a real device (needs a team).
    - [ ] Lock screen / Control Center check, picture in picture, CarPlay and Siri.
+   - [ ] CarPlay: draft plan in `apple/CARPLAY.md` (2026-11-06), not reviewed or started.
 12. **Linux — KDE/Qt** (planned 2026-10-28; `linux/`). No JVM (decided). A Qt 6 / QML app with
     Kirigami (fits Plasma, runs on GNOME too), the shared core as a Kotlin/Native library, and
     libmpv for all playback. Linux is a native Kotlin target, so all of it builds, runs and is

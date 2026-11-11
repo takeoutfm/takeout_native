@@ -102,10 +102,13 @@ struct VideoPlayerView: View {
                 if video.audioTracks.count > 1 {
                     Menu {
                         ForEach(video.audioTracks) { track in
-                            Toggle(track.name, isOn: Binding(
+                            Toggle(isOn: Binding(
                                 get: { video.audioTrack == track.index },
                                 set: { _ in video.selectAudio(track.index) }
-                            ))
+                            )) {
+                                Text(track.name)
+                                if !track.detail.isEmpty { Text(track.detail) }
+                            }
                         }
                     } label: { Image(systemName: "waveform") }
                     .menuStyle(.button)

@@ -125,8 +125,16 @@ struct VideoPlayerScreen: View {
         HStack(spacing: 20) {
             if video.audioTracks.count > 1 {
                 Menu {
-                    Picker("Audio", selection: Binding(get: { video.audioTrack }, set: { video.selectAudio($0) })) {
-                        ForEach(video.audioTracks) { Text($0.name).tag($0.index) }
+                    // Toggles rather than a Picker: a menu shows each one's second Text (the
+                    // language) as a subtitle.
+                    ForEach(video.audioTracks) { track in
+                        Toggle(isOn: Binding(
+                            get: { video.audioTrack == track.index },
+                            set: { _ in video.selectAudio(track.index) }
+                        )) {
+                            Text(track.name)
+                            if !track.detail.isEmpty { Text(track.detail) }
+                        }
                     }
                 } label: { Image(systemName: "waveform").font(.title3) }
             }

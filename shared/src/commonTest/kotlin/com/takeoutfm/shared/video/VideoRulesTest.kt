@@ -76,10 +76,19 @@ class VideoRulesTest {
     }
 
     @Test
-    fun searchRequiresEveryWordAndDropsSyntax() {
+    fun searchRequiresEveryWordAndDropsStraySyntax() {
         assertEquals("+evil +dead", allWordsQuery("evil dead"))
-        assertEquals("+artist +Beck", allWordsQuery("artist:Beck"))
+        assertEquals("+Star +Wars +Episode +IV", allWordsQuery("Star Wars: Episode IV"))
+        assertEquals("+spider +man", allWordsQuery("spider-man"))
         assertEquals("", allWordsQuery("  +- "))
+    }
+
+    @Test
+    fun searchSyntaxGoesAsTyped() {
+        assertEquals("rating:G", allWordsQuery(" rating:G "))
+        assertEquals("genre:drama +war", allWordsQuery("genre:drama +war"))
+        assertEquals("+alien -resurrection", allWordsQuery("+alien -resurrection"))
+        assertEquals("\"evil dead\"", allWordsQuery("\"evil dead\""))
     }
 
     @Test

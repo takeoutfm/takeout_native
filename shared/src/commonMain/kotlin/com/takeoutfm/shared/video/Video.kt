@@ -183,9 +183,15 @@ fun withDirectorsFirst(directors: List<CastCredit>, cast: List<CastCredit>): Lis
 
 /**
  * The server takes a Bleve query string, where "evil dead" means evil OR dead; require every
- * word instead ("+evil +dead"). Query syntax characters are dropped from what the user typed.
+ * word instead ("+evil +dead"), dropping stray syntax characters ("Star Wars: Episode IV").
+ * A query that already uses the syntax — a field ("rating:G", "genre:drama"), a required or
+ * excluded term ("+alien -resurrection") or a quoted phrase — goes to the server as typed.
  */
 fun allWordsQuery(query: String): String =
-    query.replace(Regex("""[+\-=&|><!(){}\[\]^"~*?:\\/]"""), " ")
+    if (QuerySyntax.containsMatchIn(query)) query.trim()
+    else query.replace(Regex("""[+\-=&|><!(){}\[\]^"~*?:\\/]"""), " ")
         .split(Regex("\\s+")).filter { it.isNotBlank() }
         .joinToString(" ") { "+$it" }
+
+/** A field term, a leading + or - on a word, or a quote. */
+private val QuerySyntax = Regex("""(^|\s)(\w+:\S|[+-][\w"])|"""")

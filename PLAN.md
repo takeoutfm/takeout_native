@@ -725,6 +725,164 @@ Each phase ends with a usable build, tests passing, and a device check (phone + 
      the bridge's JSON cost is fine for pages but not for per-frame state — player position
      stays in C++ (mpv property observers), never crosses the bridge.
 
+13. **Terminal — `tofm`** (planned 2026-11-06; `linux/tui/`). A keyboard-driven terminal client
+    for music, radio and podcasts, at home in a desktop terminal, over SSH or on a headless box,
+    on the same shared core (`libtakeout.so`). Videos open in an external player.
+   - **Toolkit: C++ with FTXUI** (MIT; layouts, scrolling lists, inputs, mouse; renders to a
+     string, so screens get snapshot tests). Chosen over Kotlin/Native + Mosaic (no C API,
+     but experimental and no reuse of the mpv player), Rust ratatui / Go Bubble Tea (a new
+     toolchain for the same C API) and ncurses / notcurses (low-level, or heavier than FTXUI +
+     chafa). The KDE app's C++ already does the hard parts (gapless mpv queue, listens, podcast
+     progress, ICY titles, MPRIS), so this is mostly screens.
+   - **Layout:**
+
+     ```
+     linux/src/core/   Qt Core only, for both clients: Core (std::function callbacks, no
+                       QJSValue), Player (mpv), Mpris (bus name a parameter), SecretStore
+     linux/src/        the KDE app: thin QML wrappers over core/
+     linux/tui/        tofm: FTXUI screens over core/, on QCoreApplication (no GUI libraries)
+     ```
+
+     One event loop: a `QTimer` drives FTXUI's `Loop::RunOnce()`, so mpv events, D-Bus and
+     core callbacks arrive on one thread; redraws via `screen.PostEvent`.
+   - **Separate from the KDE app** (decided): its own data (`$XDG_DATA_HOME/tofm`, cache in
+     `$XDG_CACHE_HOME/tofm`), its own keyring item (`app = tofm`), MPRIS name
+     `org.mpris.MediaPlayer2.tofm`, user agent `TakeoutFM-Terminal/<version>`. Both can run at
+     once; each signs in on its own (a separate device on the server). Secrets: libsecret
+     when a Secret Service is running, else a file only the user can read (`0600`) in the
+     data folder, with a warning the first time (SSH, headless).
+   - **Screens:** sign-in (server, then the device code with its `expiresIn` countdown and an
+     expired state with a new-code key); a sidebar (Recent, Recently Added, New Releases,
+     Artists, Favorites, Playlists, Radio, Podcasts, Movies, TV, Downloads, Settings), the
+     current list, and a Now Playing bar (scrolling one-line title, artist, progress with
+     times, repeat / ♥). Lists filter as you type (`/`); Enter opens or plays, `a` adds to the
+     queue, `n` plays next, `f` favorites. Full Now Playing with the cover and the queue.
+     Search with the server's query syntax (artists, albums, tracks, movies, shows). Keys:
+     vim-style and arrows, `space` play/pause, `<` `>` previous/next, `[` `]` seek 10 / 30 s,
+     `r` repeat (the saved Repeat All), `?` help; the mouse works too.
+   - **Album art:** libchafa (`libchafa-dev`) picks the best the terminal can do — the kitty
+     graphics protocol with Unicode placeholders (kitty, WezTerm, Ghostty, recent Konsole;
+     part of the text grid, so FTXUI redraws keep it), sixel (foot, Konsole, xterm, mlterm;
+     redrawn over its reserved box after each render, only when the cover or box changes), or
+     24-bit colour half-blocks anywhere. Covers come from the shared core's URLs, fetched with
+     Qt Network into `$XDG_CACHE_HOME/tofm/covers`, decoded with `QImage` (no display needed),
+     sized from the cell's pixel size (`TIOCGWINSZ`) so they're square, converted once per
+     size. Shown on Now Playing (large), album / artist page headers, and optionally in the
+     Now Playing bar (off over SSH by default); not in lists. tmux: kitty images with
+     `allow-passthrough on`, else half-blocks. Setting: Album art Auto / Graphics / Characters
+     / Off.
+   - **Video in an external player** (decided): movies and episodes open in `mpv` by default
+     (a setting names another command). The media token never goes on the command line,
+     where other users can see it in `ps`: the `Authorization` header goes in a temporary
+     `0600` mpv config file passed with `--include`, removed when the player exits. Resume with
+     `--start=<offset>`; mpv's JSON IPC (`--input-ipc-server` on a socket in
+     `$XDG_RUNTIME_DIR`) reports the position, so watch progress is saved through the shared
+     `TakeoutProgress` as in the other apps. Downloads play from the local file. Players other
+     than mpv get no progress, and only downloaded files (they can't send the header). Over
+     SSH with no `$DISPLAY` / `$WAYLAND_DISPLAY`, it says video needs a display.
+   - **Command line:** `tofm` opens the UI; `tofm play artist "Beck"` plays straight away via
+     the server's search refs (`resolveRef`, as Android voice requests); `tofm --status` prints
+     what's playing (for status bars). Control while running: MPRIS (`playerctl -p tofm`).
+   - **Phases:**
+     - [x] **T0 — split the Linux C++** (done 2026-11-06): `src/core/` (static library
+           `takeoutcore`, Qt Core + DBus, libmpv, libsecret): `TakeoutCore` (was `Core`, without
+           QML; `start(dataDir, userAgent, secretsApp)`), `Player(core, clientName, userAgent)`,
+           `Mpris(player, MprisIdentity{busName, identity, desktopEntry, canRaise})`,
+           `SecretStore::load/save(app, …)`. The KDE app's `src/Core` derives from
+           `TakeoutCore` for QML (JS-callback `call`, the singleton) and registers `Player` as a
+           foreign singleton. Its `ctest` passes; it starts signed in, MPRIS unchanged.
+     - [x] **T1 — skeleton** (done 2026-11-06): `linux/tui/` (`main.cpp`, `Tofm`), FTXUI 5
+           (`libftxui-dev`) on `QCoreApplication`: a 16 ms `QTimer` runs `Loop::RunOnce()`,
+           state changes post `Event::Custom`. Data in `~/.local/share/tofm`, keyring item
+           `tofm`, MPRIS `org.mpris.MediaPlayer2.tofm` (no Raise); stderr goes to
+           `~/.local/state/tofm/tofm.log`, so Qt / mpv / libsecret warnings don't draw over the
+           screen. `SecretStore::setFallbackFile`: with no Secret Service the sign-in goes in
+           `secrets.json` (0600, written to a `.part` file and renamed), and the sign-in page
+           says so. Sign-in: server field, Enter for a code, the code with its countdown,
+           expired state, `n` new code, `Esc` back; signed in: a placeholder page with `s`
+           sign out (confirmed) and `q` quit. `tofm --version`, `--help`; refuses to run
+           without a terminal. Checked by driving it in a pty (frames read as text): the code
+           and countdown, Esc back and quit (terminal restored), and the keyring fallback with
+           no D-Bus.
+     - [x] **T2 — music** (done 2026-11-06): sidebar (Recent — tofm's own history —, Recently
+           Added, New Releases, Artists, Favorites, Now Playing); pages are lists of rows
+           (headings, actions like ▶ Play / ⤮ Shuffle / ≋ Radio, albums, artists, tracks) on a
+           page stack (`tui/Browse.cpp`): artist (mixes, ♥ artist, top 5 popular, albums /
+           singles / other, similar), album (discs, the artist, similar albums), favorites.
+           `/` finds as you type. Keys: arrows / `jk` move, Enter / `→` open or play, `←` /
+           `Esc` back, `Tab` sidebar, `a` / `n` queue, `f` ♥, space, `<` `>`, **`[` `]` seek
+           −10 / +30 s** (the arrows navigate), `r` repeat, `p` Now Playing, `S` sign out, `q`
+           quit, mouse wheel. Now Playing bar (scrolling title, ♥ / repeat marks, progress or
+           LIVE) and view (`tui/NowPlaying.cpp`: the cover, title, the queue; Enter skips to
+           an item). Album art (`tui/Cover.cpp`, `CoverCells.cpp`): fetched with Qt Network
+           into `$XDG_CACHE_HOME/tofm/covers`, decoded by `QImage`, turned into block
+           characters in 24-bit colour by libchafa (`libchafa-dev`) and drawn as FTXUI cells,
+           so redraws keep it and every terminal shows it; sized square from the cell's pixel
+           size. Kitty / sixel images move to T4 (they live outside FTXUI's grid). Checked in
+           a pty: browsing, finding, playing and pausing, the queue, and the cover (frames
+           turned into HTML).
+     - [x] **T3 — more** (done 2026-11-06; `tui/Library.cpp`, `tui/Video.cpp`): the sidebar
+           shows what the library has (`hasMusic` / `hasPlaylists` / `hasPodcasts` /
+           `hasMovies` / `hasShows`, as the KDE app). Search (typing starts on entering it;
+           Enter runs music and video searches together: artists, albums, tracks, stations,
+           movies, shows, episodes; `/` or `s` for a new one). Playlists (▶ / ⤮, tracks, `a` /
+           `n` queue their items), Radio (stations by kind; stream titles via `Player`),
+           Podcasts (subscribe, the description, episodes with "12m left" / ✓; they play
+           through `episodesQueue`, so `Player` saves their progress). Movies and TV Shows
+           (lists with `/`), and a video page: year · rating · length · genres, ▶ Play (a
+           series' `playTarget`, e.g. "S1E2") and ↺ Start over, tagline, description, director,
+           seasons and episodes, similar. Note rows (descriptions) can't be selected. Video
+           plays in **mpv** (`QProcess`; needs a display and mpv, else it says so; one at a
+           time; music pauses): the `Authorization` header in a 0600 config file in
+           `$XDG_RUNTIME_DIR` passed with `--include` (deleted 5 s later and on exit) — never
+           on the command line; `--start` from `resumePositionMs` unless starting over;
+           `--no-terminal` and stdin / stdout / stderr to /dev/null so mpv can't touch the
+           screen; `--input-ipc-server` socket: `time-pos` / `duration` observed,
+           `reportProgress` every 10 s and when mpv closes (or tofm quits). Checked in a pty
+           (search, radio, podcasts, movies, a series' seasons) and with a stand-in `mpv` on
+           the PATH: the arguments, the 0600 file holding the header, no token on the command
+           line, `--start=513.0` (resuming), cleanup; then by the user with real mpv.
+     - [x] **T4 — settings and polish** (done 2026-11-08): Settings page (server, user,
+           sign out, Track Activity, ListenBrainz connect with a masked token prompt / submit /
+           disconnect, Album art On / Off, bar cover — off over SSH; tofm's own in
+           `~/.config/tofm/tofm.conf`), `?` help, one-line prompts, covers on album and
+           artist pages (~40% of the page) and a 3-line Now Playing bar (cover, "Next:"), the
+           terminal's cell size logged. **Decided: covers stay block characters** (no kitty /
+           sixel images): one drawing path that works in every terminal, SSH and tmux.
+     - [x] **T5 — downloads and packaging** (done 2026-11-08; `tui/Downloads.cpp`):
+           ↓ Download / ✕ Remove download on albums, playlists and movies or episodes, `d` on
+           a podcast episode; rows show ✓ / ↓ 30% / ✗; a Downloads page by group (size, Enter
+           plays the group's downloaded music offline or opens a video, `x` remove, `R` retry,
+           ✕ Remove all). Files in `~/.local/share/tofm/media` (the shared core); checked by
+           downloading an album and playing it in a network namespace (`unshare -rn`). Rows
+           are fitted by hand so their marks always show. `cpack` makes two packages:
+           `takeoutfm` (unchanged) and `tofm` (`/usr/bin/tofm`, its own
+           `/usr/lib/tofm/libtakeout.so`, `tofm.1`; dependencies from the binary — no
+           Kirigami or Qt Quick — and Recommends: mpv).
+     - [x] **Later items** (done 2026-11-08): `tofm play [artist|radio|album|song] WORDS…`
+           searches (GET, as the Search page) and plays the match the usual way (artist mix
+           Popular / Radio, album, matching tracks, a station; plain words: an exact artist,
+           album or station name first, then tracks) — **no PATCH of `/api/playlist`**
+           (`resolveRef` answered 400 from takeout.fm, and nothing else uses it). A running
+           tofm gets the request over its own D-Bus service `com.takeoutfm.tofm` (`/tofm`:
+           `Play(kind, words)`, `Status()`); else tofm starts and plays it once signed in.
+           `tofm --status` prints "▶ Title · Artist" (⏸ paused) from the running tofm, else
+           exits 1. Settings → Video player: a command (`{file}` for the path, else added
+           last), empty for mpv; another player opens downloads only and saves no progress
+           (only mpv gets the token file and IPC). `tests/tofm_test.cpp` (`ctest`): screens
+           rendered off-screen with FTXUI and compared as text (a page with headings, actions,
+           a cut title, a note; the sign-in code and expiry; help; settings rows; the bar),
+           plus the `play` parsing, `clock`, the scrolling title and the cover conversion; the
+           screens run on a core that isn't started (`TofmTest` is a friend of `Tofm`; sizes
+           via `columns()` / `rows()`).
+           Noticed: *13 Assassins*' video page never finishes loading (`videoDetails`), also
+           in T3 — likely the server; not looked into.
+   - **Testing:** FTXUI screens rendered to text as `ctest` snapshot tests (half-block covers
+     too; kitty / sixel checked for the expected escape codes); the bridge and player tests
+     already there; by hand in kitty, Konsole and foot, over SSH, and with video in mpv.
+   - **Settled:** the external player is a command with `{file}`; `tofm play …` hands off to a
+     running `tofm` over its own D-Bus service.
+
 ---
 
 ## 6. Testing

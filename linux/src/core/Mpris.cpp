@@ -8,7 +8,6 @@
 
 namespace {
 const QString ObjectPath = QStringLiteral("/org/mpris/MediaPlayer2");
-const QString ServiceName = QStringLiteral("org.mpris.MediaPlayer2.takeoutfm");
 
 qlonglong micros(double seconds) { return qlonglong(seconds * 1e6); }
 
@@ -16,17 +15,23 @@ QDBusObjectPath trackId(int index)
 {
     return QDBusObjectPath(QStringLiteral("/com/takeoutfm/track/%1").arg(std::max(index, 0)));
 }
+
+QString serviceName(const MprisIdentity &identity)
+{
+    return QStringLiteral("org.mpris.MediaPlayer2.") + identity.busName;
+}
 }
 
-Mpris::Mpris(Player *player, QObject *parent)
+Mpris::Mpris(Player *player, const MprisIdentity &identity, QObject *parent)
     : QObject(parent)
     , m_player(player)
+    , m_identity(identity)
 {
     new MprisRoot(this);
     auto *adaptor = new MprisPlayer(this);
     QDBusConnection bus = QDBusConnection::sessionBus();
     bus.registerObject(ObjectPath, this);
-    if (!bus.registerService(ServiceName)) qWarning() << "MPRIS: can't take" << ServiceName;
+    if (!bus.registerService(serviceName(identity))) qWarning() << "MPRIS: can't take" << serviceName(identity);
 
     connect(player, &Player::currentChanged, this, [this] {
         changed({{"Metadata", metadata()}, {"CanGoNext", m_player->index() + 1 < m_player->items().size()}});
@@ -51,7 +56,7 @@ Mpris::Mpris(Player *player, QObject *parent)
 
 Mpris::~Mpris()
 {
-    QDBusConnection::sessionBus().unregisterService(ServiceName);
+    QDBusConnection::sessionBus().unregisterService(serviceName(m_identity));
 }
 
 QString Mpris::playbackStatus() const

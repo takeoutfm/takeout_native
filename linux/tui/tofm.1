@@ -1,0 +1,98 @@
+.TH TOFM 1 "November 2026" "tofm 0.1" "User Commands"
+.SH NAME
+tofm \- TakeoutFM in the terminal: music, radio, podcasts, movies and TV from a Takeout server
+.SH SYNOPSIS
+.B tofm
+.RB [ \-\-help ]
+.RB [ \-\-version ]
+.SH DESCRIPTION
+.B tofm
+browses and plays what a Takeout media server has: artists, albums, playlists, radio stations
+and podcasts play in the terminal (through libmpv); movies and TV episodes open in
+.BR mpv (1).
+It signs in with a device code: open the link it shows on a device that's already signed in
+and enter the code.
+.PP
+Covers are drawn with coloured block characters, so they show in any terminal, over SSH and in
+tmux.
+.SH KEYS
+.TP
+.BR "\(ua \(da" ", " "j k"
+Move.
+.TP
+.BR Enter ", " "\(->" ", " l
+Open, or play.
+.TP
+.BR "\(<-" ", " h ", " Esc
+Back.
+.TP
+.B Tab
+The sidebar.
+.TP
+.B /
+Find in the list (on Search, a new search; also
+.BR s ).
+.TP
+.BR "a" ", " "n"
+Add a track to the end of the queue; play it next.
+.TP
+.B f
+Favorite (\[u2665]) a track.
+.TP
+.BR d ", " x ", " R
+Download an episode; remove a download; retry a failed one.
+.TP
+.B space
+Play or pause.
+.TP
+.BR "<" ", " ">"
+Previous, next.
+.TP
+.BR "[" ", " "]"
+Back 10 seconds, ahead 30 seconds.
+.TP
+.B r
+Repeat: off, all, one.
+.TP
+.B p
+Now Playing and the queue.
+.TP
+.B ?
+All the keys.
+.TP
+.B S
+Sign out.
+.TP
+.B q
+Quit.
+.SH FILES
+.TP
+.I ~/.local/share/tofm/
+The library cache, play history and downloads
+.RI ( media/ ).
+.TP
+.I ~/.config/tofm/tofm.conf
+tofm's own settings (album art, the cover in the Now Playing bar).
+.TP
+.I ~/.local/state/tofm/tofm.log
+Warnings from Qt, mpv and the keyring, kept off the screen.
+.TP
+.I ~/.cache/tofm/covers/
+Album covers.
+.PP
+The sign-in is kept in the Secret Service (KWallet, GNOME Keyring). Without one (over SSH, on a
+headless computer) it is kept in
+.IR ~/.local/share/tofm/secrets.json ,
+which only the user can read.
+.SH NOTES
+Media controllers see tofm through MPRIS as
+.BR tofm :
+.B playerctl \-p tofm play-pause
+works. The media token is never put on
+.BR mpv 's
+command line, where other users could see it.
+.SH SEE ALSO
+.BR mpv (1),
+.BR playerctl (1),
+.UR https://takeout.fm
+.UE

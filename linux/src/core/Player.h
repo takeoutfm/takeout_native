@@ -3,12 +3,11 @@
 #include <QElapsedTimer>
 #include <optional>
 #include <QObject>
-#include <QQmlEngine>
 #include <QTimer>
 #include <QVariant>
 
 struct mpv_handle;
-class Core;
+class TakeoutCore;
 
 // Music playback on libmpv: the queue as mpv's playlist (gapless, the next item prefetched),
 // the media token sent only to the signed-in server, published for QML and MPRIS. As the Mac's
@@ -17,8 +16,6 @@ class Core;
 class Player : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
     Q_PROPERTY(QVariantList items READ items NOTIFY itemsChanged)
     Q_PROPERTY(QString queueTitle READ queueTitle NOTIFY itemsChanged)
     Q_PROPERTY(bool hasQueue READ hasQueue NOTIFY itemsChanged)
@@ -37,11 +34,12 @@ public:
     enum RepeatMode { RepeatOff, RepeatAll, RepeatOne };
     Q_ENUM(RepeatMode)
 
-    explicit Player(Core *core, QObject *parent = nullptr);
+    /**
+     * Plays through [core]; mpv tells the sound server it's [clientName] ("TakeoutFM", "tofm")
+     * and sends [userAgent] with its requests.
+     */
+    Player(TakeoutCore *core, const QString &clientName, const QString &userAgent, QObject *parent = nullptr);
     ~Player() override;
-
-    /** QML's Player: the one main() made. */
-    static Player *create(QQmlEngine *, QJSEngine *);
 
     /** Plays [queue] (a MusicQueue) from its start track, or from [start] when it's ≥ 0. */
     Q_INVOKABLE void play(const QVariantMap &queue, bool shuffled = false, int start = -1);
@@ -103,7 +101,7 @@ private:
     RepeatMode savedRepeat() const;
     void restoreRepeat();
 
-    Core *m_core;
+    TakeoutCore *m_core;
     mpv_handle *m_mpv = nullptr;
     QTimer m_ticker;
 

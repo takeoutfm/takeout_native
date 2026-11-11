@@ -1,94 +1,38 @@
 #pragma once
 
-#include <QJSValue>
-#include <functional>
-#include <QObject>
-#include <QQmlEngine>
-#include <QVariant>
-#include <qqmlintegration.h>
+#include "core/Player.h"
+#include "core/TakeoutCore.h"
 
-// The shared Kotlin core (libtakeout.so) for QML: calls answered on the main thread, and the
-// core's shared state (session, library index, settings…) as properties.
-class Core : public QObject
+#include <QJSValue>
+#include <QQmlEngine>
+
+// QML's Core: the shared core (TakeoutCore) with calls whose callback is a JavaScript function.
+class Core : public TakeoutCore
 {
     Q_OBJECT
     QML_ELEMENT
     QML_SINGLETON
-    Q_PROPERTY(bool ready READ ready NOTIFY sessionChanged)
-    Q_PROPERTY(bool signedIn READ signedIn NOTIFY sessionChanged)
-    Q_PROPERTY(QString endpoint READ endpoint NOTIFY sessionChanged)
-    /** Who's signed in to the server (/api/me); empty until it says. */
-    Q_PROPERTY(QString user READ user NOTIFY sessionChanged)
-    Q_PROPERTY(QVariantMap library READ library NOTIFY libraryChanged)
-    Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
-    Q_PROPERTY(QStringList favoriteTracks READ favoriteTracks NOTIFY favoriteTracksChanged)
-    Q_PROPERTY(QVariantList recentlyPlayed READ recentlyPlayed NOTIFY recentlyPlayedChanged)
-    /** The connected ListenBrainz user's name; "" when none is connected. */
-    Q_PROPERTY(QString listenBrainzUser READ listenBrainzUser NOTIFY listenBrainzChanged)
-    /** Downloads ({entry, state, fraction, path}), and the same keyed by ETag. */
-    Q_PROPERTY(QVariantList downloads READ downloads NOTIFY downloadsChanged)
-    Q_PROPERTY(QVariantMap downloadsByEtag READ downloadsByEtag NOTIFY downloadsChanged)
 
 public:
+    // No default parent: a default-constructible singleton would be created by QML itself,
+    // a second core, instead of coming from create().
     explicit Core(QObject *parent);
-    ~Core() override;
 
     /** QML's Core: the one main() made (the app has one core, created before QML loads). */
     static Core *create(QQmlEngine *, QJSEngine *);
 
-    /** Creates the core in [dataDir]; false if it couldn't be. */
-    bool start(const QString &dataDir, const QString &userAgent);
-
-    /**
-     * Runs shared call [name] with [args]; [callback] gets (result, error) on the main thread:
-     * error null on success, else {kind, message, status}. Failures are also announced by
-     * [failed], so QML can show them once.
-     */
+    /** TakeoutCore::call for QML: [callback] gets (result, error) on the main thread. */
     Q_INVOKABLE void call(const QString &name, const QVariantMap &args = {}, const QJSValue &callback = {});
+};
 
-    using Callback = std::function<void(const QVariant &result, const QVariant &error)>;
-    /** [call] for C++: [callback] gets the same (result, error), on the main thread. */
-    void call(const QString &name, const QVariantMap &args, Callback callback);
+// QML's Player: the one main() made (core/Player, which has no QML of its own).
+struct PlayerForeign {
+    Q_GADGET
+    QML_FOREIGN(Player)
+    QML_NAMED_ELEMENT(Player)
+    QML_SINGLETON
 
-    bool ready() const { return m_ready; }
-    bool signedIn() const { return m_signedIn; }
-    QString endpoint() const { return m_endpoint; }
-    QString user() const { return m_user; }
-    QVariantMap library() const { return m_library; }
-    QVariantMap settings() const { return m_settings; }
-    QStringList favoriteTracks() const { return m_favoriteTracks; }
-    QVariantList recentlyPlayed() const { return m_recentlyPlayed; }
-    QString listenBrainzUser() const { return m_listenBrainzUser; }
-    QVariantList downloads() const { return m_downloads; }
-    QVariantMap downloadsByEtag() const { return m_downloadsByEtag; }
-    /** The downloaded file for [etag], or "" when it isn't wholly here. */
-    Q_INVOKABLE QString localFile(const QString &etag) const;
-
-Q_SIGNALS:
-    void sessionChanged();
-    void libraryChanged();
-    void settingsChanged();
-    void favoriteTracksChanged();
-    void recentlyPlayedChanged();
-    void listenBrainzChanged();
-    void downloadsChanged();
-    void failed(const QString &name, const QVariantMap &error);
-
-private:
-    void watch(const char *name);
-    void updated(const QByteArray &name, const QVariant &value);
-    void run(const QString &name, const QVariantMap &args, const QJSValue &script, Callback native);
-
-    QList<void *> m_watches;
-    bool m_ready = false;
-    bool m_signedIn = false;
-    QString m_endpoint;
-    QString m_user;
-    QVariantMap m_library;
-    QVariantMap m_settings;
-    QStringList m_favoriteTracks;
-    QVariantList m_recentlyPlayed;
-    QString m_listenBrainzUser;
-    QVariantList m_downloads;
-    QVariantMap m_downloadsByEtag;
+public:
+    inline static Player *instance = nullptr;
+    static Player *create(QQmlEngine *, QJSEngine *);
 };

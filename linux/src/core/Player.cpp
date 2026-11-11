@@ -1,6 +1,6 @@
 #include "Player.h"
 
-#include "Core.h"
+#include "TakeoutCore.h"
 
 #include <QDebug>
 #include <algorithm>
@@ -80,29 +80,19 @@ void setFlag(mpv_handle *mpv, const char *name, bool value)
 QString text(const QVariantMap &map, const char *key) { return map.value(key).toString(); }
 }
 
-namespace {
-Player *instance = nullptr;
-}
-
-Player *Player::create(QQmlEngine *, QJSEngine *)
-{
-    QJSEngine::setObjectOwnership(instance, QJSEngine::CppOwnership);
-    return instance;
-}
-
-Player::Player(Core *core, QObject *parent)
+Player::Player(TakeoutCore *core, const QString &clientName, const QString &userAgent, QObject *parent)
     : QObject(parent)
     , m_core(core)
 {
-    instance = this;
     m_mpv = mpv_create();
     // Music only (L5's video gets its own); cover art embedded in files isn't shown as video.
     for (auto [name, value] : std::initializer_list<std::pair<const char *, const char *>>{
              {"vid", "no"}, {"audio-display", "no"}, {"idle", "yes"}, {"terminal", "no"},
              {"input-default-bindings", "no"}, {"ytdl", "no"}, {"prefetch-playlist", "yes"},
-             {"gapless-audio", "weak"}, {"cache", "yes"}, {"audio-client-name", "TakeoutFM"},
-             {"user-agent", "TakeoutFM-Linux/" PROJECT_VERSION}})
+             {"gapless-audio", "weak"}, {"cache", "yes"}})
         mpv_set_option_string(m_mpv, name, value);
+    mpv_set_option_string(m_mpv, "audio-client-name", clientName.toUtf8().constData());
+    mpv_set_option_string(m_mpv, "user-agent", userAgent.toUtf8().constData());
     if (mpv_initialize(m_mpv) < 0) qWarning() << "mpv didn't start";
 
     mpv_observe_property(m_mpv, 0, "playlist-pos", MPV_FORMAT_INT64);
@@ -117,7 +107,7 @@ Player::Player(Core *core, QObject *parent)
 
     m_ticker.setInterval(500);
     connect(&m_ticker, &QTimer::timeout, this, &Player::tick);
-    connect(m_core, &Core::settingsChanged, this, &Player::restoreRepeat);
+    connect(m_core, &TakeoutCore::settingsChanged, this, &Player::restoreRepeat);
     restoreRepeat();
     m_savedAt.start();
     m_episodeSavedAt.start();
@@ -202,6 +192,11 @@ void Player::load(int start, double seconds)
     for (int i = 0; i < m_items.size(); ++i)
         loadFile(m_items.at(i).toMap(), i == start ? "append-play" : "append", -1, i == start ? seconds : 0);
     setFlag(m_mpv, "pause", false);
+    // The new queue's item now. mpv reports playlist-pos only when it differs from what it last
+    // reported, and stop + loadfile land in one go: a new album started at the same position
+    // as the old queue (track 1 after track 1) would never be announced, leaving no current
+    // item (no title, no cover) until the next track.
+    indexChanged(start);
 }
 
 void Player::loadFile(const QVariantMap &item, const char *flag, int at, double seconds)
@@ -485,5 +480,5 @@ void Player::saveEpisode()
 
 void Player::report(const char *name, const QVariantMap &args)
 {
-    m_core->call(QString::fromLatin1(name), args, Core::Callback{});
+    m_core->call(QString::fromLatin1(name), args, TakeoutCore::Callback{});
 }

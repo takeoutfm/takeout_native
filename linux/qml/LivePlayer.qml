@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
@@ -9,7 +10,7 @@ import org.kde.ki18n
 /**
  * Live TV over the whole window: plays whatever is on a channel now from where it is now, by
  * the server's clock, then follows the schedule (the shared `tune` call decides what's on).
- * Up and Down change channel; pausing puts you behind live until the program ends or you jump
+ * Channels change from the guide; pausing puts you behind live until the program ends or you jump
  * back. Break music plays under an up-next slate and fades out when the next program cuts it
  * off. Watch progress isn't written, so flipping past things doesn't fill Continue Watching.
  */
@@ -23,6 +24,12 @@ QQC2.Popup {
     property string error: ""
     property real now: Date.now()
     property int previousVisibility: Window.Windowed
+    /** The shared labels ({title, detail}) of video.audioTracks, in the same order. */
+    property var audioLabels: []
+    /** The tracks audioLabels are for, so a stale answer (or a selection) is told apart. */
+    property string tracksFor: ""
+    /** The subtitle language last chosen here ("" off), for the programs after; null: none yet. */
+    property var subtitleLanguage: null
     /** Bumped by each tune, so a late answer for an old one is dropped. */
     property int generation: 0
 
@@ -41,6 +48,20 @@ QQC2.Popup {
     padding: 0
     closePolicy: QQC2.Popup.NoAutoClose
     background: Rectangle { color: "black" }
+
+    component PlayerButton: QQC2.ToolButton {
+        display: QQC2.AbstractButton.IconOnly
+        QQC2.ToolTip.text: text
+        QQC2.ToolTip.visible: hovered
+        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+    }
+
+    Settings {
+        id: settings
+        // the video player's: an audio language picked in either is used by both
+        category: "video"
+        property string audioLanguage: ""
+    }
 
     /** Opens the player on [name]. */
     function play(name) {
@@ -102,14 +123,6 @@ QQC2.Popup {
     function wait(ms) {
         retune.interval = Math.min(Math.max(ms, 1000), 5 * 60 * 1000)
         retune.restart()
-    }
-
-    function step(delta) {
-        const lineup = tuned?.lineup ?? []
-        if (lineup.length === 0) return
-        const index = Math.max(0, lineup.indexOf(channel))
-        channel = lineup[(index + delta + lineup.length) % lineup.length]
-        tune()
     }
 
     function togglePause() {
@@ -178,7 +191,7 @@ QQC2.Popup {
     Timer {
         id: hide
         interval: 4000
-        onTriggered: if (video.playing) controls.shown = false
+        onTriggered: if (video.playing && !audioMenu.visible && !subtitleMenu.visible) controls.shown = false
     }
 
     contentItem: Item {
@@ -186,8 +199,6 @@ QQC2.Popup {
 
         Keys.onPressed: (event) => {
             switch (event.key) {
-            case Qt.Key_Up: case Qt.Key_PageUp: player.step(-1); break
-            case Qt.Key_Down: case Qt.Key_PageDown: player.step(1); break
             case Qt.Key_Space: case Qt.Key_K: player.togglePause(); break
             case Qt.Key_L: if (player.behind) player.tune(); break
             case Qt.Key_F: player.toggleFullScreen(); break
@@ -212,6 +223,27 @@ QQC2.Popup {
                 else if (player.playingProgram) player.tuned = Object.assign({}, player.tuned, {kind: "slate", program: null})
             }
             onFailed: (message) => player.error = KI18n.i18n("Can't play this: %1", message)
+            onTracksChanged: {
+                // Selecting a track changes the list too: only new tracks (a new program) count.
+                const ids = audioTracks.map(t => t.id).join(",") + "/" + subtitleTracks.map(t => t.id).join(",")
+                if (audioTracks.length === 0 || ids === player.tracksFor) return
+                player.tracksFor = ids
+                const tracks = audioTracks
+                // subtitles as last chosen here, by language ("" off)
+                if (player.subtitleLanguage !== null) {
+                    const sub = subtitleTracks.find(t => t.language === player.subtitleLanguage)
+                    video.setSubtitle(player.subtitleLanguage === "" || !sub ? 0 : sub.id)
+                }
+                // audio: the shared ranking, in the language chosen last (here or in the video player)
+                Core.call("audioTracks", {
+                    tracks: tracks.map(t => t.info),
+                    preferredLanguage: settings.audioLanguage || Qt.locale().name,
+                }, (result) => {
+                    if (!result || ids !== player.tracksFor) return
+                    player.audioLabels = result.labels
+                    if (tracks.length > 1 && result.best >= 0) video.setAudio(tracks[result.best].id)
+                })
+            }
         }
 
         QQC2.BusyIndicator {
@@ -294,10 +326,13 @@ QQC2.Popup {
             hoverEnabled: true
             cursorShape: controls.shown ? Qt.ArrowCursor : Qt.BlankCursor
             onPositionChanged: player.showControls()
-            onClicked: player.showControls()
+            // as the video player: a click pauses (live, then you're behind)
+            onClicked: { player.togglePause(); player.showControls() }
             onDoubleClicked: player.toggleFullScreen()
         }
 
+        // The video player's controls, with live's differences: no seeking or speed; the
+        // program's progress in the seek bar's place; Jump to live after a pause.
         Item {
             id: controls
             Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
@@ -308,111 +343,170 @@ QQC2.Popup {
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 
-            QQC2.ToolButton {
-                anchors { left: parent.left; top: parent.top; margins: Kirigami.Units.largeSpacing }
-                icon.name: "go-previous"
-                text: KI18n.i18n("Back")
-                display: QQC2.AbstractButton.IconOnly
-                onClicked: player.finish()
-            }
-
-            ColumnLayout {
-                anchors { right: parent.right; verticalCenter: parent.verticalCenter; margins: Kirigami.Units.largeSpacing }
-                QQC2.ToolButton {
-                    icon.name: "go-up"
-                    text: KI18n.i18n("Previous channel")
-                    display: QQC2.AbstractButton.IconOnly
-                    onClicked: player.step(-1)
-                }
-                QQC2.ToolButton {
-                    icon.name: "go-down"
-                    text: KI18n.i18n("Next channel")
-                    display: QQC2.AbstractButton.IconOnly
-                    onClicked: player.step(1)
-                }
-            }
-
-            // The banner: channel, what's on, time left, what's next.
+            // Top: back and the title, with the channel and what's next.
             Rectangle {
+                anchors { left: parent.left; right: parent.right; top: parent.top }
+                height: top.implicitHeight + Kirigami.Units.largeSpacing * 2
+                gradient: Gradient {
+                    GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.7) }
+                    GradientStop { position: 1; color: "transparent" }
+                }
+                RowLayout {
+                    id: top
+                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: Kirigami.Units.largeSpacing }
+                    QQC2.ToolButton {
+                        Layout.alignment: Qt.AlignTop
+                        icon.name: "go-previous"
+                        text: KI18n.i18n("Back")
+                        display: QQC2.AbstractButton.IconOnly
+                        onClicked: player.finish()
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        RowLayout {
+                            Layout.fillWidth: true
+                            QQC2.Label {
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.3
+                                text: player.program ? player.programTitle(player.program)
+                                    : player.next ? KI18n.i18n("Up next: %1", player.programTitle(player.next)) : player.channel
+                            }
+                            // live, unless paused behind it
+                            QQC2.Label {
+                                visible: player.playingProgram && !player.behind && video.playing
+                                text: KI18n.i18n("Live")
+                                color: "white"
+                                font.bold: true
+                                leftPadding: Kirigami.Units.smallSpacing * 2
+                                rightPadding: Kirigami.Units.smallSpacing * 2
+                                background: Rectangle { color: "#cc0000"; radius: height / 2 }
+                            }
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            opacity: 0.8
+                            text: [
+                                player.channel,
+                                player.program?.block ?? "",
+                                player.program?.kind === "episode" ? player.program.subtitle : "",
+                                player.behind ? KI18n.i18n("Behind live") : "",
+                            ].filter(s => s).join(" · ")
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            visible: !!player.next && !!player.program
+                            elide: Text.ElideRight
+                            opacity: 0.7
+                            text: player.next ? KI18n.i18n("Next: %1 · %2", player.time(player.next.startMs), player.programTitle(player.next)) : ""
+                        }
+                    }
+                }
+            }
+
+            // Bottom: the program's progress, then the buttons.
+            Rectangle {
+                visible: player.playingProgram
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                height: banner.implicitHeight + Kirigami.Units.largeSpacing * 3
+                height: bottom.implicitHeight + Kirigami.Units.largeSpacing * 3
                 gradient: Gradient {
                     GradientStop { position: 0; color: "transparent" }
-                    GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.85) }
+                    GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.8) }
                 }
                 ColumnLayout {
-                    id: banner
-                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: Kirigami.Units.largeSpacing * 2 }
-                    spacing: Kirigami.Units.smallSpacing
+                    id: bottom
+                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: Kirigami.Units.largeSpacing }
 
-                    QQC2.Label {
-                        text: player.channel
-                        color: Kirigami.Theme.highlightColor
-                        font.bold: true
+                    RowLayout {
+                        QQC2.Label { text: player.program ? player.time(player.program.startMs) : "" }
+                        QQC2.ProgressBar {
+                            Layout.fillWidth: true
+                            from: player.program?.startMs ?? 0
+                            to: player.program?.endMs ?? 1
+                            value: player.now
+                        }
+                        QQC2.Label {
+                            text: player.program ? player.time(player.program.endMs)
+                                + (player.tuned?.left ? ` · ${player.tuned.left}` : "") : ""
+                        }
                     }
                     RowLayout {
-                        spacing: Kirigami.Units.largeSpacing
-                        QQC2.ToolButton {
-                            visible: player.playingProgram
+                        PlayerButton {
                             icon.name: video.playing ? "media-playback-pause" : "media-playback-start"
                             icon.width: Kirigami.Units.iconSizes.medium
                             icon.height: Kirigami.Units.iconSizes.medium
                             text: video.playing ? KI18n.i18n("Pause") : KI18n.i18n("Play")
-                            display: QQC2.AbstractButton.IconOnly
                             onClicked: player.togglePause()
-                        }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-                            QQC2.Label {
-                                visible: (player.program?.block ?? "") !== ""
-                                text: player.program?.block ?? ""
-                                color: Kirigami.Theme.positiveTextColor
-                            }
-                            Kirigami.Heading {
-                                Layout.fillWidth: true
-                                visible: !!player.program
-                                level: 2
-                                elide: Text.ElideRight
-                                text: player.program ? player.programTitle(player.program) : ""
-                            }
-                            QQC2.Label {
-                                Layout.fillWidth: true
-                                visible: player.program?.kind === "episode" && player.program.subtitle !== ""
-                                elide: Text.ElideRight
-                                text: player.program?.subtitle ?? ""
-                            }
-                            QQC2.Label {
-                                visible: !!player.program
-                                opacity: 0.8
-                                text: player.program ? `${player.time(player.program.startMs)} – ${player.time(player.program.endMs)}`
-                                    + (player.tuned.left ? ` · ${player.tuned.left}` : "") : ""
-                            }
                         }
                         QQC2.Button {
                             visible: player.behind
                             text: KI18n.i18n("Jump to live")
                             onClicked: player.tune()
                         }
-                    }
-                    QQC2.ProgressBar {
-                        Layout.fillWidth: true
-                        visible: !!player.program
-                        from: player.program?.startMs ?? 0
-                        to: player.program?.endMs ?? 1
-                        value: player.now
-                    }
-                    QQC2.Label {
-                        visible: player.behind
-                        text: KI18n.i18n("Behind live")
-                        opacity: 0.8
-                    }
-                    QQC2.Label {
-                        Layout.fillWidth: true
-                        visible: !!player.next
-                        elide: Text.ElideRight
-                        opacity: 0.8
-                        text: player.next ? KI18n.i18n("Next: %1 · %2", player.time(player.next.startMs), player.programTitle(player.next)) : ""
+                        Item { Layout.fillWidth: true }
+                        PlayerButton {
+                            icon.name: "audio-volume-high"
+                            text: KI18n.i18n("Audio")
+                            enabled: video.audioTracks.length > 1
+                            onClicked: audioMenu.popup()
+                            QQC2.Menu {
+                                id: audioMenu
+                                Repeater {
+                                    model: video.audioTracks
+                                    QQC2.MenuItem {
+                                        required property var modelData
+                                        required property int index
+                                        // "Dolby Digital · Surround 5.1 — English"
+                                        readonly property var shared: player.audioLabels[index]
+                                        text: shared ? [shared.title, shared.detail].filter(s => s).join(" — ") : modelData.label
+                                        checkable: true
+                                        checked: modelData.selected
+                                        onTriggered: {
+                                            video.setAudio(modelData.id)
+                                            if (modelData.language) settings.audioLanguage = modelData.language
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        PlayerButton {
+                            icon.name: "media-view-subtitles-symbolic"
+                            text: KI18n.i18n("Subtitles")
+                            enabled: video.subtitleTracks.length > 0
+                            onClicked: subtitleMenu.popup()
+                            QQC2.Menu {
+                                id: subtitleMenu
+                                QQC2.MenuItem {
+                                    text: KI18n.i18n("Off")
+                                    checkable: true
+                                    checked: !video.subtitleTracks.some(t => t.selected)
+                                    onTriggered: {
+                                        video.setSubtitle(0)
+                                        player.subtitleLanguage = ""
+                                    }
+                                }
+                                Repeater {
+                                    model: video.subtitleTracks
+                                    QQC2.MenuItem {
+                                        required property var modelData
+                                        text: modelData.label
+                                        checkable: true
+                                        checked: modelData.selected
+                                        onTriggered: {
+                                            video.setSubtitle(modelData.id)
+                                            player.subtitleLanguage = modelData.language ?? ""
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        PlayerButton {
+                            icon.name: applicationWindow().visibility === Window.FullScreen ? "view-restore" : "view-fullscreen"
+                            text: KI18n.i18n("Full screen")
+                            onClicked: player.toggleFullScreen()
+                        }
                     }
                 }
             }

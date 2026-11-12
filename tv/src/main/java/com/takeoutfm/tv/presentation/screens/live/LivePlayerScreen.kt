@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -61,16 +63,19 @@ import com.takeoutfm.shared.guide.GuideProgram
 import com.takeoutfm.shared.guide.OnNow
 import com.takeoutfm.shared.guide.ProgramKind
 import com.takeoutfm.shared.guide.TakeoutGuideRepository
+import com.takeoutfm.shared.guide.breakAt
 import com.takeoutfm.shared.guide.onNow
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import com.takeoutfm.tv.presentation.common.DelayedLoading
 import com.takeoutfm.tv.presentation.common.Spinner
+import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
 import com.takeoutfm.tv.presentation.screens.music.podcasts.ProgressBar
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.PlayerSubtitles
 import com.takeoutfm.tv.presentation.screens.videoPlayer.components.rememberPlayer
 import com.takeoutfm.tv.presentation.screens.videoPlayer.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
@@ -90,8 +95,15 @@ private sealed interface Tuned {
     data object Tuning : Tuned
     /** A program is playing; [behind] once paused, until it ends or the viewer jumps to live. */
     data class Playing(val program: GuideProgram, val next: GuideProgram?) : Tuned
-    /** A break, before the first program, or a program that left the library. */
-    data class Slate(val program: GuideProgram?, val next: GuideProgram?) : Tuned
+    /**
+     * A break, before the first program, or a program that left the library; [track] is the
+     * break's music playing now, if any.
+     */
+    data class Slate(
+        val program: GuideProgram?,
+        val next: GuideProgram?,
+        val track: GuideProgram? = null,
+    ) : Tuned
     data class Failed(val message: String) : Tuned
 }
 
@@ -233,6 +245,32 @@ fun LivePlayerScreen(
                     delay((program.end - g.now()).coerceIn(1.seconds, MaxWait))
                 }
             } else {
+                val music = if (program == null) breakAt(ch, g.now()) else null
+                if (music != null && music.first.videoUri.isNotEmpty()) {
+                    // Break music, joined where it is now, under the up-next slate.
+                    val (track, offset) = music
+                    tuned = Tuned.Slate(null, on.next, track)
+                    playbackError = null
+                    ended = false
+                    exoPlayer.volume = 1f
+                    exoPlayer.setMediaItem(track.toMediaItem(), offset.inWholeMilliseconds)
+                    exoPlayer.prepare()
+                    exoPlayer.playWhenReady = true
+                    // The last track is cut off at the next program, so it fades out.
+                    val cut = on.next?.start == track.end
+                    while (!ended && g.now() < track.end) {
+                        if (cut) {
+                            val left = track.end - g.now()
+                            exoPlayer.volume = (left / FadeOut).toFloat().coerceIn(0f, 1f)
+                        }
+                        delay(FadeTickMs)
+                    }
+                    exoPlayer.stop()
+                    exoPlayer.volume = 1f
+                    // a file a little shorter than its slot: quiet until the next starts
+                    if (g.now() < track.end) delay((track.end - g.now()).coerceIn(Duration.ZERO, MaxWait))
+                    continue
+                }
                 exoPlayer.stop()
                 tuned = Tuned.Slate(program, on.next)
                 bannerKey++
@@ -439,6 +477,38 @@ private fun SlateCard(slate: Tuned.Slate, now: Instant?, modifier: Modifier = Mo
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        val track = slate.track
+        if (track != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp),
+            ) {
+                MusicImage(
+                    url = track.imageUri,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    placeholderKey = track.title,
+                )
+                Column(Modifier.padding(start = 16.dp)) {
+                    Text(
+                        text = track.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = track.subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
         Text(title, style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.7f))
         lines.forEachIndexed { i, line ->
             Text(
@@ -472,6 +542,8 @@ private fun GuideProgram.toMediaItem(): MediaItem = MediaItem.Builder()
 
 private const val BannerMs = 5_000L
 private const val TickMs = 500L
+private const val FadeTickMs = 100L
+private val FadeOut = 3.seconds
 private const val RetryMs = 30_000L
 private val MaxWait = 5.minutes
 

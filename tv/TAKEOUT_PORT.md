@@ -318,13 +318,18 @@ player (phase 3).
   Up/Down (and Channel ±) change channel through the lineup, wrapping. A banner shows the
   channel, title, times, time left and what's next for a few seconds after tuning or a key.
   Breaks and titles that left the library show a slate with a countdown to the next program.
+  In a break with music (`Kind: "track"`, kept apart in `GuideChannel.breaks` so the grid's gaps
+  stay empty and focus never lands on them; `breakAt`), the scheduled track plays from where it
+  is now under the slate, which shows its cover, title and artist; a track cut off by the next
+  program fades out over its last 3 seconds. Break music isn't a listen: it plays in this
+  player, not `TakeoutMusicService`.
   The program stops at its slot's end even if the file runs long. OK pauses; resumed, the
   viewer is behind live until the file ends (then back to what's on) or OK jumps to live.
   Doesn't write watch progress. It reloads its guide when stale (`LiveGuide`: older than 30 min
   or less than an hour ahead).
-- **Not yet:** Open to Live TV on launch (phase 4); music breaks (phase 5). The
-  live player hasn't played a stream yet: tested only against a local http server, whose
-  redirect to the https bucket ExoPlayer won't follow.
+- **Not yet:** Open to Live TV on launch (phase 4). The live player hasn't played a stream
+  yet: tested only against a local http server, whose redirect to the https bucket ExoPlayer
+  won't follow.
 
 ## Music
 

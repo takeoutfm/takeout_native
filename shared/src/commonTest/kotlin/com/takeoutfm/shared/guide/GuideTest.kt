@@ -81,6 +81,41 @@ class GuideTest {
     }
 
     @Test
+    fun breakTracksAreKeptApartFromPrograms() {
+        val repo = TakeoutGuideRepository(TakeoutApi(session(), "test"), TakeoutUrls(session()))
+        val json = """
+            {"Time": 1762891800000, "Channels": [{"Name": "Movies", "Programs": [
+              {"Kind": "movie", "Start": "2025-11-11T20:00:00Z", "End": "2025-11-11T21:52:00Z",
+               "Title": "Film", "Location": "/api/movies/u1/location", "TargetID": 1},
+              {"Kind": "track", "Start": "2025-11-11T21:52:00Z", "End": "2025-11-11T21:56:00Z",
+               "Title": "So What", "Subtitle": "Miles Davis", "Image": "/img/cover.jpg",
+               "Location": "/api/tracks/t1/location", "TargetID": 9},
+              {"Kind": "track", "Start": "2025-11-11T21:56:00Z", "End": "2025-11-11T22:00:00Z",
+               "Title": "Blue in Green", "Subtitle": "Miles Davis",
+               "Location": "/api/tracks/t2/location", "TargetID": 10},
+              {"Kind": "movie", "Start": "2025-11-11T22:00:00Z", "End": "2025-11-11T23:40:00Z",
+               "Title": "Next", "Location": "/api/movies/u2/location", "TargetID": 2}]}]}
+        """.trimIndent()
+        val view = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            .decodeFromString(com.takeoutfm.shared.model.ApiGuideView.serializer(), json)
+        val channel = repo.toGuide(view, at("2025-11-11T20:10:00Z")).channels.single()
+        assertEquals(listOf("Film", "Next"), channel.programs.map { it.title })
+        assertEquals(listOf("So What", "Blue in Green"), channel.breaks.map { it.title })
+        val track = channel.breaks.first()
+        assertEquals(ProgramKind.Track, track.kind)
+        assertEquals("Miles Davis", track.subtitle)
+        assertEquals("$server/api/tracks/t1/location", track.videoUri)
+        assertNull(track.videoId)
+
+        // in the break: no program, but music
+        assertNull(onNow(channel, at("2025-11-11T21:57:00Z")).program)
+        val (playing, offset) = breakAt(channel, at("2025-11-11T21:57:00Z"))!!
+        assertEquals("Blue in Green", playing.title)
+        assertEquals(1.minutes, offset)
+        assertNull(breakAt(channel, at("2025-11-11T21:00:00Z")))
+    }
+
+    @Test
     fun aReservedSlotIsNamedAndNotPlayable() {
         val repo = TakeoutGuideRepository(TakeoutApi(session(), "test"), TakeoutUrls(session()))
         val json = """

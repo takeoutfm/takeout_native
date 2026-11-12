@@ -16,6 +16,9 @@ enum class ProgramKind {
 
     /** A feature's slot before its programs are chosen: [GuideProgram.title] is its name. */
     Reserved,
+
+    /** Music in a break: [GuideProgram.title] and [GuideProgram.subtitle] are title and artist. */
+    Track,
 }
 
 /** One program on a channel. The gap between its [end] and the next program's start is a break. */
@@ -44,7 +47,10 @@ data class GuideProgram(
 data class GuideChannel(
     /** Unique; a channel's identity. */
     val name: String,
+    /** Everything but break music, so the guide's gaps stay gaps. */
     val programs: List<GuideProgram>,
+    /** The music in the breaks between [programs], in start order. */
+    val breaks: List<GuideProgram> = emptyList(),
 )
 
 data class Guide(
@@ -71,6 +77,10 @@ data class OnNow(
     val next: GuideProgram?,
 )
 
+/** The break track playing on [channel] at [time] and how far into it, or null. */
+fun breakAt(channel: GuideChannel, time: Instant): Pair<GuideProgram, Duration>? =
+    channel.breaks.firstOrNull { time >= it.start && time < it.end }?.let { it to (time - it.start) }
+
 /** What [channel] shows at [time], and what comes next. */
 fun onNow(channel: GuideChannel, time: Instant): OnNow {
     val program = channel.programs.firstOrNull { time >= it.start && time < it.end }
@@ -94,7 +104,10 @@ class TakeoutGuideRepository(
         val serverNow = if (view.time > 0) Instant.fromEpochMilliseconds(view.time) else received
         return Guide(
             channels = view.channels.orEmpty().map { c ->
-                GuideChannel(c.name, c.programs.orEmpty().map { it.toProgram() }.sortedBy { it.start })
+                val (breaks, programs) = c.programs.orEmpty().map { it.toProgram() }
+                    .sortedBy { it.start }
+                    .partition { it.kind == ProgramKind.Track }
+                GuideChannel(c.name, programs, breaks)
             },
             start = view.start ?: serverNow,
             end = view.end ?: serverNow,
@@ -107,6 +120,7 @@ class TakeoutGuideRepository(
             "movie" -> ProgramKind.Movie
             "episode" -> ProgramKind.Episode
             "reserved" -> ProgramKind.Reserved
+            "track" -> ProgramKind.Track
             else -> ProgramKind.OffAir
         }
         val id = targetId?.takeIf { it > 0 }

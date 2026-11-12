@@ -13,7 +13,10 @@ fun Guide.merge(other: Guide): Guide {
         val programs = (channel(name)?.programs.orEmpty() + other.channel(name)?.programs.orEmpty())
             .distinctBy { it.start }
             .sortedBy { it.start }
-        GuideChannel(name, programs)
+        val breaks = (channel(name)?.breaks.orEmpty() + other.channel(name)?.breaks.orEmpty())
+            .distinctBy { it.start }
+            .sortedBy { it.start }
+        GuideChannel(name, programs, breaks)
     }
     return Guide(
         channels = merged,

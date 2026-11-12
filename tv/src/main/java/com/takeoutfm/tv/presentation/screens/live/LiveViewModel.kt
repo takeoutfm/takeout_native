@@ -127,13 +127,22 @@ class LiveViewModel @Inject constructor(
     val program: GuideProgram?
         get() = channel?.let { focusAt(it, maxOf(anchor, now)) }
 
-    /** Up and down: another channel at the same time. False at the top, so focus can leave. */
+    /**
+     * Up and down: another channel at the same time. The grid doesn't scroll sideways, as in most
+     * guides: a program that started earlier shows it's continuing. Only a program entirely out
+     * of view (after a break at the anchor) scrolls it. False at the top, so focus can leave.
+     */
     fun moveChannel(delta: Int): Boolean {
         val count = guide?.channels?.size ?: return false
         val to = channelIndex + delta
         if (to !in 0 until count) return false
         channelIndex = to
-        reveal()
+        val p = program
+        if (p != null && (p.end <= viewStart || p.start >= viewStart + visible)) {
+            reveal()
+        } else {
+            ensureLoaded()
+        }
         return true
     }
 

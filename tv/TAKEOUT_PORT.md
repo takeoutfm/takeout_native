@@ -299,7 +299,8 @@ player (phase 3).
   with its name. It starts at now
   and doesn't go back. The grid is one focusable that handles the D-pad itself: focus is a
   channel plus an anchor time in the ViewModel, so Up/Down land on whatever overlaps that time
-  (the next program in a break) and Left/Right step program by program, scrolling the view;
+  (the next program in a break) without scrolling sideways, as in most guides (only a program
+  entirely out of view scrolls it), and Left/Right step program by program, scrolling the view;
   Channel ± also move. OK on a program that's on tunes the live player; on a later one it opens
   the title's details (Watch Now); holding OK opens the details of either (Start Over). Up from
   the first channel goes to the day row (entering on the day shown); a day jumps to that day at

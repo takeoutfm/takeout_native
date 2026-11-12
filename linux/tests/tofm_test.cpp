@@ -9,6 +9,7 @@
 #include "Tofm.h"
 
 #include <QCoreApplication>
+#include <array>
 #include <clocale>
 #include <cstdio>
 #include <ftxui/dom/elements.hpp>
@@ -85,6 +86,18 @@ public:
         p.rows.push_back({Tofm::Row::Note, QStringLiteral("A note, not selectable.")});
         p.selected = selected;
         return t.renderPage(p, height);
+    }
+
+    /** Items [rows] (title, detail, right) on a terminal [columns] wide. */
+    Element items(const std::vector<std::array<QString, 3>> &rows, int columns)
+    {
+        t.m_size = {columns, 24};
+        Tofm::Page p;
+        for (const auto &[title, detail, right] : rows) p.rows.push_back({Tofm::Row::Item, title, detail, right});
+        p.selected = int(rows.size()); // none
+        Element shown = t.renderPage(p, int(rows.size()));
+        t.m_size = {80, 24};
+        return shown;
     }
 
     /** The visible rows of a page filtered by [filter] (headings and actions drop out). */
@@ -188,6 +201,29 @@ int main(int argc, char *argv[])
         "    2  My Cosmic Autumn Rebellion (The Inner Life as Blazin…",
         "   A note, not selectable.",
         "",
+        "",
+    }, __LINE__);
+
+    // Recently Played's secondary text: a long artist list shortened, streams and podcasts named.
+    CHECK(recentDetail("ZIRP!", "DIIV", 11, false, false) == "DIIV · 11 tracks");
+    CHECK(recentDetail("Loser", "", 2, false, false) == "2 tracks");
+    CHECK(recentDetail("Favorite Tracks", "A Perfect Circle • Beck • Gary Numan • Tool", 52, false, false)
+          == "A Perfect Circle, Beck + 2 more · 52 tracks");
+    CHECK(recentDetail("Mix", "Beck • Tool", 1, false, false) == "Beck, Tool · 1 track");
+    CHECK(recentDetail("BAGeL Radio", "BAGeL Radio", 1, false, true) == "radio");
+    CHECK(recentDetail("Groove Salad", "SomaFM", 1, false, true) == "SomaFM · radio");
+    CHECK(recentDetail("NPR Music", "", 52, true, false) == "52 episodes");
+
+    // On a wide terminal the right column follows the widest row, not the screen's edge; a
+    // long detail is cut.
+    checkLines(lines(test.items({{{"ZIRP!", "DIIV · 11 tracks", "2d ago"},
+                                  {"Odelay", "Beck · 13 tracks", "2d ago"},
+                                  {"Station", "A description far too long to show in full on any single row, really", "4d ago"}}}, 200),
+                     181, 5), {
+        "",
+        "   ZIRP!  DIIV · 11 tracks                                     2d ago",
+        "   Odelay  Beck · 13 tracks                                    2d ago",
+        "   Station  A description far too long to show in full on a…   4d ago",
         "",
     }, __LINE__);
 

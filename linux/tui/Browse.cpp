@@ -7,6 +7,8 @@
 #include "TakeoutCore.h"
 #include "Text.h"
 
+#include <ftxui/screen/string.hpp>
+
 using namespace ftxui;
 
 namespace {
@@ -189,11 +191,11 @@ Tofm::PagePtr Tofm::recentPage()
     for (const QVariant &value : entries) {
         const QVariantMap entry = value.toMap();
         const QVariantList items = entry.value("items").toList();
-        const QString creator = entry.value("creator").toString();
-        const QString tracks = items.size() == 1 ? QStringLiteral("1 track") : QStringLiteral("%1 tracks").arg(items.size());
         Row row;
         row.title = entry.value("title").toString();
-        row.detail = creator.isEmpty() || creator == row.title ? tracks : creator + " · " + tracks;
+        row.detail = recentDetail(row.title, entry.value("creator").toString(), int(items.size()),
+                                  !items.isEmpty() && items.first().toMap().value("podcast").toBool(),
+                                  entry.value("location").toString().startsWith(QStringLiteral("/api/stations/")));
         row.right = ago(entry.value("playedAt").toLongLong());
         row.activate = [this, entry, items] {
             // Played again from where it got to, as the other apps' Recently Played.
@@ -528,8 +530,46 @@ Element Tofm::renderPage(const Page &page, int height)
     scroll = std::clamp(scroll, 0, std::max(0, int(shown.size()) - height));
 
     const QStringList favorites = m_core->favoriteTracks();
+    auto width = [](const QString &text) { return text.isEmpty() ? 0 : string_width(str(text)); };
+    auto trimmedEnd = [](QString text) {
+        while (text.endsWith(' ')) text.chop(1);
+        return text;
+    };
+    auto cut = [width](const QString &text, int room) {
+        if (width(text) <= room) return text;
+        if (room <= 1) return QString();
+        QString kept = text;
+        while (!kept.isEmpty() && width(kept) > room - 1) kept.chop(1);
+        while (kept.endsWith(' ')) kept.chop(1);
+        return kept + QStringLiteral("…");
+    };
+    // Secondary text gets at most this much, so one long description doesn't set the layout.
+    constexpr int DetailMax = 48;
+    // Each row: a 3-column heart, the title, 2 spaces, the detail, then the right column and the
+    // download mark. The right column sits just after the widest row (up to the page's width), so
+    // on a wide terminal the times stay near what they belong to.
+    struct Fitted {
+        QString right, mark;
+    };
+    auto fitted = [&](const Row &row) {
+        const QString mark = downloadMark(row.etag);
+        return Fitted{row.right.isEmpty() ? QString() : "  " + row.right + " ",
+                      mark.isEmpty() ? QString() : (row.right.isEmpty() ? "  " : "") + mark + " "};
+    };
+    const int pageWidth = std::max(20, columns() - SidebarWidth - 1);
+    int listWidth = 0;
+    for (int index : shown) {
+        const Row &row = page.rows[index];
+        if (!selectable(row)) continue;
+        const Fitted f = fitted(row);
+        const int detail = row.detail.trimmed().isEmpty() ? 0 : 2 + std::min(DetailMax, width(row.detail.trimmed()));
+        listWidth = std::max(listWidth, 3 + width(trimmedEnd(row.title)) + detail + width(f.right) + width(f.mark) + 1);
+    }
+    listWidth = std::min(pageWidth, listWidth);
+
     for (int i = scroll; i < std::min(int(shown.size()), scroll + height); ++i) {
         const Row &row = page.rows[shown[i]];
+        const bool selected = i == page.selected && !m_sidebarFocused;
         Element line;
         if (row.kind == Row::Header) {
             line = text(" " + str(row.title)) | bold | color(Color::Yellow);
@@ -539,22 +579,23 @@ Element Tofm::renderPage(const Page &page, int height)
             const std::string heart = favorites.contains(row.etag) && !row.etag.isEmpty() ? "♥ " : "  ";
             Element heartMark = text(" " + heart) | size(WIDTH, EQUAL, 3);
             if (heart != "  ") heartMark = heartMark | color(Color::Red); // else selecting the row would show a red block
-            const QString mark = downloadMark(row.etag);
             // Fitted by hand: the marks always show, the title gets what's left, the detail the rest.
-            const QString right = row.right.isEmpty() ? QString() : " " + row.right + " ";
-            const QString markText = mark.isEmpty() ? QString() : mark + " ";
-            const int room = std::max(10, columns() - 19 - 3 - int(right.size()) - int(markText.size()) - 1);
-            auto cut = [](const QString &text, int width) {
-                return text.size() <= width ? text : width <= 1 ? QString() : text.left(width - 1) + QStringLiteral("…");
-            };
-            const QString titleText = cut(row.title, room);
-            const QString detailText = row.detail.isEmpty() ? QString() : cut("  " + row.detail, room - int(titleText.size()));
+            const Fitted f = fitted(row);
+            const int room = std::max(10, listWidth - 3 - width(f.right) - width(f.mark) - 1);
+            const QString titleText = cut(trimmedEnd(row.title), room);
+            const int detailRoom = std::min(DetailMax, room - width(titleText) - 2);
+            const QString detail0 = row.detail.trimmed();
+            const QString detailText = detail0.isEmpty() || detailRoom < 4 ? QString() : cut(detail0, detailRoom);
             Element title = text(str(titleText));
-            if (row.kind == Row::Action) title = title | color(Color::Cyan);
-            line = hbox({heartMark, title, text(str(detailText)) | dim, filler(), text(str(right)) | dim,
-                         text(str(markText)) | color(mark == "✗" ? Color::Red : Color::Green)});
+            title = row.kind == Row::Action ? title | color(Color::Cyan) : title | bold;
+            Element detail = detailText.isEmpty() ? text("") : text("  " + str(detailText)) | dim;
+            Element right = text(str(f.right)) | dim;
+            line = hbox({hbox({heartMark, title, detail, filler(), right,
+                               text(str(f.mark)) | color(f.mark.contains("✗") ? Color::Red : Color::Green)})
+                             | size(WIDTH, EQUAL, listWidth),
+                         filler()});
         }
-        if (i == page.selected && !m_sidebarFocused) line = line | inverted;
+        if (selected) line = line | inverted;
         lines.push_back(line);
     }
     return vbox(lines);

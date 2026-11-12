@@ -87,9 +87,11 @@ fun LiveScreen(
     onScroll: (isTopBarVisible: Boolean) -> Unit,
     viewModel: LiveViewModel = hiltViewModel(),
 ) {
+    // On each minute, so the clock and the now line turn over with it.
     LaunchedEffect(Unit) {
         while (true) {
-            delay(30_000)
+            val ms = viewModel.now.toEpochMilliseconds()
+            delay(60_000 - ms % 60_000 + 50)
             viewModel.tick()
         }
     }
@@ -253,6 +255,16 @@ private fun ProgramHeader(channel: GuideChannel?, program: GuideProgram?, now: I
                 .padding(start = 24.dp)
                 .weight(1f)
         ) {
+            val block = program?.block.orEmpty()
+            if (block.isNotEmpty()) {
+                Text(
+                    text = block,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = program?.displayTitle ?: channel?.name.orEmpty(),
                 style = MaterialTheme.typography.headlineSmall,
@@ -283,6 +295,13 @@ private fun ProgramHeader(channel: GuideChannel?, program: GuideProgram?, now: I
                 )
             }
         }
+        Text(
+            text = now.localTime(),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier
+                .align(Alignment.Top)
+                .padding(start = 24.dp),
+        )
     }
 }
 
@@ -426,9 +445,12 @@ private fun ProgramCell(
     val colors = MaterialTheme.colorScheme
     val highlighted = isFocused && gridFocused
     val shape = RoundedCornerShape(6.dp)
+    val special = program.block.isNotEmpty()
     val background = when {
         highlighted -> colors.inverseSurface
         program.kind == ProgramKind.OffAir -> colors.surfaceVariant.copy(alpha = 0.3f)
+        // a special's programs read as one event
+        special -> colors.primary.copy(alpha = 0.28f)
         else -> colors.surfaceVariant.copy(alpha = 0.6f)
     }
     val content = if (highlighted) colors.inverseOnSurface else colors.onSurface
@@ -454,7 +476,8 @@ private fun ProgramCell(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val detail = program.subtitle.takeIf { program.kind == ProgramKind.Episode }
+            val detail = program.block.ifEmpty { null }
+                ?: program.subtitle.takeIf { program.kind == ProgramKind.Episode }
                 ?: program.start.localTime()
             Text(
                 text = detail,

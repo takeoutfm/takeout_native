@@ -316,8 +316,14 @@ player (phase 3).
   `Time`), since TV clocks can be wrong.
 - **Live player** (`screens/live/LivePlayerScreen.kt`, route `LivePlayer/{channel}`): plays the
   program from where it is now, seeking to the nearest keyframe (`SeekParameters.CLOSEST_SYNC`).
-  Up/Down (and Channel ±) change channel through the lineup, wrapping. A banner shows the
-  channel, title, times, time left and what's next for a few seconds after tuning or a key.
+  Channels change from the guide, or with the remote's Channel ± (through the lineup,
+  wrapping); the D-pad doesn't surf. A banner shows the channel, title, times, time left and
+  what's next for a few seconds after tuning or a key. The controls are the video player's
+  (`VideoPlayerOverlay`, `VideoPlayerMainFrame`, the same keys less seeking): the title with
+  the channel and a Live badge, Audio and Subtitles to its right (the video player's pickers,
+  saving the language to the settings so the next program uses it; Jump to live when behind),
+  and in the seek bar's place play/pause and the program's progress between its start and
+  end times, with what's next under it.
   Breaks and titles that left the library show a slate with a countdown to the next program.
   In a break with music (`Kind: "track"`, kept apart in `GuideChannel.breaks` so the grid's gaps
   stay empty and focus never lands on them; `breakAt`), the scheduled track plays from where it

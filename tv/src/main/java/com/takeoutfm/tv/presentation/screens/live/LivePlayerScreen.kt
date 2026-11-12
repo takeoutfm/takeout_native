@@ -25,6 +25,38 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.ui.res.stringResource
+import androidx.media3.common.C
+import com.takeoutfm.media.video.TrackPicker
+import com.takeoutfm.media.video.audioTrackOptions
+import com.takeoutfm.media.video.subtitleTrackOptions
+import com.takeoutfm.shared.video.normalizeLanguage
+import com.takeoutfm.tv.R
+import com.takeoutfm.tv.data.util.StringConstants
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.TrackPickerDialog
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerControlsIcon
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerControllerText
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerMainFrame
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerMediaTitle
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerMediaTitleType
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.VideoPlayerOverlay
+import com.takeoutfm.tv.presentation.screens.videoPlayer.components.rememberVideoPlayerState
+import com.takeoutfm.tv.presentation.utils.handleDPadKeyEvents
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.tv.material3.Surface
+import androidx.tv.material3.Icon
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -133,18 +165,15 @@ fun LivePlayerScreen(
     var isBuffering by remember { mutableStateOf(true) }
     var playbackError by remember { mutableStateOf<String?>(null) }
     var ended by remember { mutableStateOf(false) }
-    // Bumped to show the banner again; it hides itself a few seconds after the last bump.
+    // Bumped to show the controls again (after tuning); they hide as the video player's do.
     var bannerKey by remember { mutableIntStateOf(0) }
-    var bannerVisible by remember { mutableStateOf(true) }
+    val controlsState = rememberVideoPlayerState(hideSeconds = 4)
     // Bumped by "jump to live" to tune the same channel again.
     var liveKey by remember { mutableIntStateOf(0) }
     var now by remember { mutableStateOf<Instant?>(null) }
+    var trackPicker by remember { mutableStateOf<TrackPicker?>(null) }
 
-    LaunchedEffect(bannerKey) {
-        bannerVisible = true
-        delay(BannerMs)
-        bannerVisible = false
-    }
+    LaunchedEffect(bannerKey) { controlsState.showControls(!paused) }
 
     DisposableEffect(exoPlayer) {
         // Close to the second is fine; starting at the nearest keyframe tunes faster.
@@ -290,47 +319,29 @@ fun LivePlayerScreen(
 
     BackHandler(onBack = onBackPressed)
 
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .focusRequester(focusRequester)
-            .onKeyEvent { event ->
-                if (event.nativeKeyEvent.action != KeyEvent.ACTION_UP) {
-                    return@onKeyEvent false
-                }
+            // the remote's channel buttons still step through the lineup
+            .onPreviewKeyEvent { event ->
+                if (event.nativeKeyEvent.action != KeyEvent.ACTION_UP) return@onPreviewKeyEvent false
                 when (event.nativeKeyEvent.keyCode) {
-                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                        viewModel.tune(-1)
-                        true
-                    }
-                    KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_UP -> {
-                        viewModel.tune(1)
-                        true
-                    }
-                    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
-                    KeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                        when {
-                            tuned !is Tuned.Playing -> bannerKey++
-                            paused -> {
-                                exoPlayer.play()
-                                bannerKey++
-                            }
-                            behind -> liveKey++
-                            else -> exoPlayer.pause()
-                        }
-                        true
-                    }
-                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        bannerKey++
-                        true
-                    }
+                    KeyEvent.KEYCODE_CHANNEL_DOWN -> { viewModel.tune(-1); true }
+                    KeyEvent.KEYCODE_CHANNEL_UP -> { viewModel.tune(1); true }
                     else -> false
                 }
             }
+            // As the video player's, without seeking: the arrows bring up the controls and OK
+            // pauses (live, then you're behind) and shows them.
+            .handleDPadKeyEvents(
+                onUp = { controlsState.showControls(!paused) },
+                onDown = { controlsState.showControls(!paused) },
+                onEnter = {
+                    if (tuned is Tuned.Playing && !paused) exoPlayer.pause()
+                    controlsState.showControls(false)
+                },
+            )
             .focusable()
     ) {
         val presentation = rememberPresentationState(exoPlayer)
@@ -361,88 +372,206 @@ fun LivePlayerScreen(
             Tuned.Tuning -> DelayedLoading(Modifier.align(Alignment.Center)) { Spinner() }
         }
 
-        AnimatedVisibility(
-            visible = bannerVisible || paused,
-            enter = fadeIn(),
-            exit = fadeOut(),
+        val focusRequester = remember { FocusRequester() }
+        VideoPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
-        ) {
-            Banner(
-                channel = channel,
-                tuned = tuned,
-                now = time,
-                paused = paused,
-                behind = behind,
-            )
+            focusRequester = focusRequester,
+            isPlaying = !paused && tuned is Tuned.Playing,
+            isControlsVisible = controlsState.isControlsVisible,
+            showControls = { controlsState.showControls(!paused) },
+            controls = {
+                LiveControls(
+                    channel = channel,
+                    tuned = tuned,
+                    now = time,
+                    paused = paused,
+                    behind = behind,
+                    focusRequester = focusRequester,
+                    onShowControls = { controlsState.showControls(!paused) },
+                    onPlayPause = {
+                        if (paused) exoPlayer.play() else exoPlayer.pause()
+                        controlsState.showControls(!paused)
+                    },
+                    onOpenTrackPicker = { trackPicker = it },
+                    onLive = { liveKey++ },
+                )
+            },
+        )
+    }
+
+    // Outside the overlay, so its hiding doesn't close the dialog. A choice is kept in the
+    // settings, as the video player's are, so the next program uses the same language.
+    trackPicker?.let { picker ->
+        val offLabel = stringResource(R.string.subtitles_off)
+        val options = remember(picker) {
+            when (picker) {
+                TrackPicker.Subtitles -> subtitleTrackOptions(exoPlayer, offLabel)
+                else -> audioTrackOptions(exoPlayer)
+            }
         }
+        TrackPickerDialog(
+            title = stringResource(if (picker == TrackPicker.Subtitles) R.string.subtitles else R.string.audio_tracks),
+            options = options,
+            emptyText = stringResource(R.string.no_tracks),
+            onSelect = { option ->
+                option.select(exoPlayer)
+                if (picker == TrackPicker.Subtitles) {
+                    viewModel.settings.setSubtitleLanguage(option.language ?: C.LANGUAGE_UNDETERMINED)
+                } else {
+                    normalizeLanguage(option.language)?.let(viewModel.settings::setAudioLanguage)
+                }
+                trackPicker = null
+            },
+            onDismissRequest = { trackPicker = null },
+        )
     }
 }
 
+/**
+ * The video player's controls for live TV: the title with the channel and a Live badge, Audio
+ * and Subtitles where the video player has them (and Jump to live when behind), and in place of
+ * the seek bar, play/pause and the program's progress between its start and end times.
+ */
 @Composable
-private fun Banner(
+private fun LiveControls(
     channel: String,
     tuned: Tuned,
     now: Instant?,
     paused: Boolean,
     behind: Boolean,
+    focusRequester: FocusRequester,
+    onShowControls: () -> Unit,
+    onPlayPause: () -> Unit,
+    onOpenTrackPicker: (TrackPicker) -> Unit,
+    onLive: () -> Unit,
 ) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))))
-            .padding(horizontal = 58.dp, vertical = 36.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+    val program = (tuned as? Tuned.Playing)?.program ?: (tuned as? Tuned.Slate)?.program
+    val next = (tuned as? Tuned.Playing)?.next ?: (tuned as? Tuned.Slate)?.next
+    val playing = tuned is Tuned.Playing
+    VideoPlayerMainFrame(
+        mediaTitle = {
+            Column {
+                Text(
+                    text = listOfNotNull(channel, program?.block?.takeIf { it.isNotEmpty() }).joinToString(" · "),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                )
+                VideoPlayerMediaTitle(
+                    title = when {
+                        program != null -> program.displayTitle
+                        next != null -> "Up next: ${next.displayTitle}"
+                        else -> channel
+                    },
+                    secondaryText = listOfNotNull(
+                        program?.subtitle?.takeIf { it.isNotEmpty() },
+                        program?.rating?.takeIf { it.isNotEmpty() },
+                    ).joinToString(" • "),
+                    tertiaryText = when {
+                        paused -> "Paused · Behind live"
+                        behind -> "Behind live"
+                        else -> ""
+                    },
+                    type = if (playing && !behind && !paused) VideoPlayerMediaTitleType.LIVE else VideoPlayerMediaTitleType.DEFAULT,
+                )
+            }
+        },
+        mediaActions = {
+            Row(
+                modifier = Modifier.padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (behind && playing) {
+                    JumpToLiveButton(onShowControls = onShowControls, onClick = onLive)
+                }
+                if (playing) {
+                    VideoPlayerControlsIcon(
+                        icon = Icons.Default.Audiotrack,
+                        isPlaying = !paused,
+                        contentDescription = StringConstants.Composable.VideoPlayerControlAudioButton,
+                        onShowControls = onShowControls,
+                        onClick = { onOpenTrackPicker(TrackPicker.Audio) }
+                    )
+                    VideoPlayerControlsIcon(
+                        icon = Icons.Default.ClosedCaption,
+                        isPlaying = !paused,
+                        contentDescription = StringConstants.Composable.VideoPlayerControlClosedCaptionsButton,
+                        onShowControls = onShowControls,
+                        onClick = { onOpenTrackPicker(TrackPicker.Subtitles) }
+                    )
+                }
+            }
+        },
+        seeker = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VideoPlayerControlsIcon(
+                        // the overlay focuses this when the controls come up (in a break too)
+                        modifier = Modifier.focusRequester(focusRequester),
+                        icon = if (paused || !playing) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        onClick = { if (playing) onPlayPause() },
+                        isPlaying = !paused,
+                        contentDescription = StringConstants.Composable.VideoPlayerControlPlayPauseButton,
+                    )
+                    if (program != null) {
+                        VideoPlayerControllerText(text = program.start.localTime())
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            val fraction = now?.let { ((it - program.start) / program.duration).toFloat() } ?: 0f
+                            ProgressBar(fraction, Modifier.fillMaxWidth())
+                        }
+                        VideoPlayerControllerText(
+                            text = program.end.localTime() +
+                                (now?.takeIf { program.kind != ProgramKind.OffAir }?.let { " · " + timeLeft(program.end - it) } ?: ""),
+                        )
+                    }
+                }
+                if (next != null && program != null) {
+                    Text(
+                        text = "Next · ${next.start.localTime()} · ${next.displayTitle}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        },
+    )
+}
+
+/**
+ * Back to what the channel is showing now, after a pause put you behind: words, not an icon,
+ * since it's live's own and only there some of the time. Sized like the icons beside it.
+ */
+@Composable
+private fun JumpToLiveButton(onShowControls: () -> Unit, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    // focused, the controls stay up, as with the icons
+    LaunchedEffect(focused) { if (focused) onShowControls() }
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.height(40.dp),
+        shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        interactionSource = interactionSource,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = channel,
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-            )
-            val status = when {
-                paused -> "Paused · Behind live"
-                behind -> "Behind live · OK to jump to live"
-                else -> null
-            }
-            if (status != null) {
-                Text(status, style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.8f))
-            }
-        }
-        val program = (tuned as? Tuned.Playing)?.program ?: (tuned as? Tuned.Slate)?.program
-        val next = (tuned as? Tuned.Playing)?.next ?: (tuned as? Tuned.Slate)?.next
-        if (program != null) {
-            Text(
-                text = program.displayTitle,
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val detail = listOfNotNull(
-                program.subtitle.takeIf { it.isNotEmpty() },
-                program.rating.takeIf { it.isNotEmpty() },
-                "${program.start.localTime()} – ${program.end.localTime()}",
-                now?.takeIf { program.kind != ProgramKind.OffAir }?.let { timeLeft(program.end - it) },
-            )
-            Text(
-                text = detail.joinToString(" · "),
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.85f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (now != null && tuned is Tuned.Playing) {
-                ProgressBar(((now - program.start) / program.duration).toFloat(), Modifier.fillMaxWidth())
-            }
-        }
-        if (next != null) {
-            Text(
-                text = "Next · ${next.start.localTime()} · ${next.displayTitle}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Row(
+            Modifier
+                .fillMaxHeight()
+                .padding(start = 12.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text("Jump to live", style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -536,7 +665,6 @@ private fun GuideProgram.toMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).build())
     .build()
 
-private const val BannerMs = 5_000L
 private const val TickMs = 500L
 private const val FadeTickMs = 100L
 private const val RetryMs = 30_000L

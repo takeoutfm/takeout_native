@@ -32,8 +32,10 @@ public:
     Renderer *createRenderer() const override;
 
     /**
-     * Plays [url] from [startSeconds], sending [authorization] ("Bearer …", or "" for none)
-     * with each request.
+     * Plays [url] from [startSeconds], sending [authorization] ("Bearer …", or "" for none).
+     * A Takeout stream URL redirects to presigned storage: that's followed once here and mpv
+     * reads storage directly (mpv would go back to Takeout for every range it reads), asking
+     * again before a seek once the URL is old, or when storage stops answering.
      */
     Q_INVOKABLE void load(const QString &url, const QString &authorization, double startSeconds);
     Q_INVOKABLE void togglePlay();
@@ -75,6 +77,12 @@ Q_SIGNALS:
 
 private:
     void onEvents();
+    /** Finds where m_url redirects, then plays that from [startSeconds] ([keepPaused]: as it was). */
+    void resolve(double startSeconds, bool keepPaused);
+    /** Has mpv play [url] from [startSeconds], with [authorization] (or none). */
+    void play(const QString &url, const QString &authorization, double startSeconds, bool keepPaused);
+    /** Whether the storage URL being played is too old to open again. */
+    bool targetStale() const;
     void tracksUpdated(const struct mpv_node *list);
 
     mpv_handle *m_mpv = nullptr;
@@ -88,4 +96,16 @@ private:
     double m_volume = 1;
     QVariantList m_audio;
     QVariantList m_subtitles;
+
+    /** The stream being played as given to load(), and its redirect's storage URL. */
+    QString m_url;
+    QString m_authorization;
+    QString m_target;
+    /** When m_target should stop being used (epoch ms). */
+    qint64 m_targetUntil = 0;
+    /** Whether a failed read was already retried with a fresh redirect. */
+    bool m_retried = false;
+    /** Bumped by each load, so a late redirect for an earlier one is dropped. */
+    int m_generation = 0;
+    class QNetworkAccessManager *m_network = nullptr;
 };

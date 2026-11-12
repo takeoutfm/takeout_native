@@ -1,6 +1,11 @@
 #include "VideoView.h"
 
+#include <QDateTime>
 #include <QDebug>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QTimeZone>
+#include <QUrlQuery>
 #include <QLocale>
 #include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
@@ -144,18 +149,104 @@ QQuickFramebufferObject::Renderer *VideoView::createRenderer() const
     return new MpvRenderer(const_cast<VideoView *>(this));
 }
 
+namespace {
+// A storage URL is used again for at most this long, and stops a minute before it says it expires.
+constexpr qint64 MaxReuseMs = 10 * 60 * 1000;
+constexpr qint64 MarginMs = 60 * 1000;
+
+/** When a presigned S3 URL stops working (epoch ms), or 0 if it doesn't say. */
+qint64 expiresAt(const QUrl &url)
+{
+    const QUrlQuery query(url);
+    const QDateTime signedAt = QDateTime::fromString(query.queryItemValue("X-Amz-Date"), "yyyyMMdd'T'HHmmss'Z'");
+    bool ok = false;
+    const qint64 seconds = query.queryItemValue("X-Amz-Expires").toLongLong(&ok);
+    if (!signedAt.isValid() || !ok) return 0;
+    QDateTime utc = signedAt;
+    utc.setTimeZone(QTimeZone::UTC);
+    return utc.toMSecsSinceEpoch() + seconds * 1000;
+}
+}
+
 void VideoView::load(const QString &url, const QString &authorization, double startSeconds)
+{
+    ++m_generation;
+    m_url = url;
+    m_authorization = authorization;
+    m_target.clear();
+    m_targetUntil = 0;
+    m_retried = false;
+    m_loading = true;
+    Q_EMIT loadingChanged();
+    // Only Takeout's streams (they have a token); a downloaded file plays as it is.
+    if (authorization.isEmpty() || !url.startsWith("http")) {
+        play(url, authorization, startSeconds, false);
+        return;
+    }
+    resolve(startSeconds, false);
+}
+
+void VideoView::resolve(double startSeconds, bool keepPaused)
+{
+    if (!m_network) m_network = new QNetworkAccessManager(this);
+    const int generation = m_generation;
+    QNetworkRequest request{QUrl(m_url)};
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+    request.setRawHeader("Authorization", m_authorization.toUtf8());
+    // only the redirect is wanted, not the file
+    request.setRawHeader("Range", "bytes=0-0");
+    request.setTransferTimeout(15000);
+    QNetworkReply *reply = m_network->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, startSeconds, keepPaused] {
+        reply->deleteLater();
+        if (generation != m_generation) return;
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QUrl location = reply->header(QNetworkRequest::LocationHeader).toUrl();
+        if (status >= 300 && status < 400 && location.isValid()) {
+            const QUrl target = QUrl(m_url).resolved(location);
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            const qint64 expires = expiresAt(target);
+            m_target = target.toString(QUrl::FullyEncoded);
+            m_targetUntil = std::min(now + MaxReuseMs, expires > 0 ? expires - MarginMs : now + MaxReuseMs);
+            // presigned: storage wants no token of Takeout's
+            play(m_target, QString(), startSeconds, keepPaused);
+        } else {
+            // not a redirect (or no answer): mpv asks Takeout itself, as before
+            m_target.clear();
+            play(m_url, m_authorization, startSeconds, keepPaused);
+        }
+    });
+}
+
+bool VideoView::targetStale() const
+{
+    return !m_target.isEmpty() && QDateTime::currentMSecsSinceEpoch() >= m_targetUntil;
+}
+
+void VideoView::play(const QString &url, const QString &authorization, double startSeconds, bool keepPaused)
 {
     const QByteArray header = authorization.isEmpty() ? QByteArray() : "Authorization: " + authorization.toUtf8();
     mpv_set_property_string(m_mpv, "http-header-fields", header.constData());
     const QByteArray target = url.toUtf8();
-    const QByteArray options = startSeconds > 0 ? "start=" + QByteArray::number(startSeconds) : QByteArray();
-    const char *args[] = {"loadfile", target.constData(), "replace", "-1", options.constData(), nullptr};
+    QByteArrayList options;
+    if (startSeconds > 0) options << "start=" + QByteArray::number(startSeconds);
+    if (keepPaused) {
+        // the same title again: keep the tracks chosen
+        for (const char *track : {"aid", "sid"}) {
+            char *value = mpv_get_property_string(m_mpv, track);
+            if (value) {
+                options << QByteArray(track) + "=" + value;
+                mpv_free(value);
+            }
+        }
+    }
+    const QByteArray joined = options.join(',');
+    const char *args[] = {"loadfile", target.constData(), "replace", "-1", joined.constData(), nullptr};
     if (int error = mpv_command(m_mpv, args); error < 0) Q_EMIT failed(QString::fromUtf8(mpv_error_string(error)));
-    int no = 0;
-    mpv_set_property(m_mpv, "pause", MPV_FORMAT_FLAG, &no);
-    m_loading = true;
-    Q_EMIT loadingChanged();
+    if (!keepPaused) {
+        int no = 0;
+        mpv_set_property(m_mpv, "pause", MPV_FORMAT_FLAG, &no);
+    }
 }
 
 void VideoView::togglePlay()
@@ -172,6 +263,11 @@ void VideoView::pause()
 
 void VideoView::seek(double seconds)
 {
+    if (targetStale()) {
+        // the storage URL may have expired: a fresh one, from there
+        resolve(std::max(0.0, seconds), true);
+        return;
+    }
     const QByteArray to = QByteArray::number(std::max(0.0, seconds));
     const char *args[] = {"seek", to.constData(), "absolute", nullptr};
     mpv_command_async(m_mpv, 0, args);
@@ -179,6 +275,10 @@ void VideoView::seek(double seconds)
 
 void VideoView::skip(double seconds)
 {
+    if (targetStale()) {
+        resolve(std::max(0.0, m_position + seconds), true);
+        return;
+    }
     const QByteArray by = QByteArray::number(seconds);
     const char *args[] = {"seek", by.constData(), "relative", nullptr};
     mpv_command_async(m_mpv, 0, args);
@@ -270,7 +370,16 @@ void VideoView::onEvents()
         case MPV_EVENT_END_FILE: {
             auto *end = static_cast<mpv_event_end_file *>(event->data);
             if (end->reason == MPV_END_FILE_REASON_EOF) Q_EMIT ended();
-            else if (end->reason == MPV_END_FILE_REASON_ERROR) Q_EMIT failed(QString::fromUtf8(mpv_error_string(end->error)));
+            else if (end->reason == MPV_END_FILE_REASON_ERROR) {
+                // Storage stopped answering (most likely its URL expired over a long pause):
+                // once, a fresh redirect from where it was.
+                if (!m_target.isEmpty() && !m_retried) {
+                    m_retried = true;
+                    resolve(m_position, true);
+                } else {
+                    Q_EMIT failed(QString::fromUtf8(mpv_error_string(end->error)));
+                }
+            }
             break;
         }
         default:

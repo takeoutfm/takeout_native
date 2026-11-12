@@ -432,7 +432,7 @@ private fun Banner(
                 overflow = TextOverflow.Ellipsis,
             )
             if (now != null && tuned is Tuned.Playing) {
-                ProgressBar(((now - program.start) / program.duration).toFloat())
+                ProgressBar(((now - program.start) / program.duration).toFloat(), Modifier.fillMaxWidth())
             }
         }
         if (next != null) {

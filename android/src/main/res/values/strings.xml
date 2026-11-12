@@ -177,8 +177,6 @@
     <string name="live_not_on">%1$s isn\'t on right now.</string>
     <string name="live_behind">Behind live</string>
     <string name="live_jump">Jump to live</string>
-    <string name="live_channel_up">Next channel</string>
-    <string name="live_channel_down">Previous channel</string>
     <string name="live_nothing_ahead">Nothing scheduled yet</string>
     <string name="live_music">Music</string>
     <string name="live_today">Today</string>
@@ -186,6 +184,12 @@
     <string name="live_watch">Watch live</string>
     <string name="live_details">Details</string>
     <string name="live_reserved_note">Programs announced the day before</string>
+    <string name="live_tracks">Audio and subtitles</string>
+    <string name="live_audio">Audio</string>
+    <string name="live_subtitles">Subtitles</string>
+    <string name="live_subtitles_off">Off</string>
+    <string name="live_no_tracks">No other tracks</string>
+    <string name="live_not_supported">Not supported on this device</string>
     <string name="starring">Starring</string>
     <string name="directing">Directing</string>
     <string name="writing">Writing</string>

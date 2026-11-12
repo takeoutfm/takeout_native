@@ -16,6 +16,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,11 +31,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +73,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
@@ -80,7 +87,11 @@ import com.takeoutfm.android.R
 import com.takeoutfm.android.ui.theme.TakeoutTheme
 import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.media.offline.TakeoutMediaCache
+import com.takeoutfm.media.video.TrackPicker
+import com.takeoutfm.media.video.applySubtitlePreference
+import com.takeoutfm.media.video.audioTrackOptions
 import com.takeoutfm.media.video.selectBestAudioTrack
+import com.takeoutfm.media.video.subtitleTrackOptions
 import com.takeoutfm.shared.guide.Guide
 import com.takeoutfm.shared.guide.GuideProgram
 import com.takeoutfm.shared.guide.LiveGuide
@@ -160,7 +171,6 @@ class LivePlayerActivity : ComponentActivity() {
                     player = player,
                     channel = channel,
                     guide = { liveGuide.get() },
-                    onTune = { delta -> step(delta) },
                     onBack = { finish() },
                 )
             }
@@ -171,15 +181,10 @@ class LivePlayerActivity : ComponentActivity() {
 
     /** In picture-in-picture: just the picture, no banner or buttons. */
     private var inPip by mutableStateOf(false)
-    private var lineup: List<String> = emptyList()
 
-    /** Moves [delta] channels through the lineup, wrapping around. */
-    private fun step(delta: Int) {
-        val names = lineup
-        if (names.isEmpty()) return
-        val index = names.indexOf(channel).coerceAtLeast(0)
-        channel = names[(index + delta).mod(names.size)]
-    }
+    /** The languages last chosen in the pickers, for the programs after (null: no choice yet). */
+    private var audioLanguage: String? = null
+    private var subtitleLanguage: String? = null
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
@@ -247,7 +252,6 @@ class LivePlayerActivity : ComponentActivity() {
         player: ExoPlayer,
         channel: String,
         guide: suspend () -> Guide,
-        onTune: (Int) -> Unit,
         onBack: () -> Unit,
     ) {
         var tuned by remember { mutableStateOf<Tuned>(Tuned.Tuning) }
@@ -257,28 +261,50 @@ class LivePlayerActivity : ComponentActivity() {
         var buffering by remember { mutableStateOf(true) }
         var error by remember { mutableStateOf<String?>(null) }
         var ended by remember { mutableStateOf(false) }
+        // Bumped to show the controls (after tuning, or pausing).
         var bannerKey by remember { mutableIntStateOf(0) }
-        var bannerVisible by remember { mutableStateOf(true) }
         var liveKey by remember { mutableIntStateOf(0) }
+        // The video player's controls (Media3's), and whether they're showing.
+        var playerView by remember { mutableStateOf<PlayerView?>(null) }
+        var controlsVisible by remember { mutableStateOf(true) }
         var now by remember { mutableStateOf<Instant?>(null) }
         val cantLoad = stringResource(R.string.live_cant_load)
         val notOn = stringResource(R.string.live_not_on, channel)
 
-        LaunchedEffect(bannerKey) {
-            bannerVisible = true
-            delay(BannerMs)
-            bannerVisible = false
-        }
+        LaunchedEffect(bannerKey) { playerView?.showController() }
 
         DisposableEffect(player) {
             var audioChosen = false
             val listener = object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     audioChosen = false
+                    // the subtitles chosen here follow to the next program, by language
+                    applySubtitlePreference(player, subtitleLanguage)
                 }
 
                 override fun onTracksChanged(tracks: Tracks) {
-                    if (!audioChosen) audioChosen = selectBestAudioTrack(player, null)
+                    if (!audioChosen) audioChosen = selectBestAudioTrack(player, audioLanguage)
+                }
+
+                // What's picked in the controls' menus, kept by language for the programs after.
+                override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) {
+                    var text = false
+                    for (o in parameters.overrides.values) {
+                        val language = o.mediaTrackGroup.getFormat(0).language ?: continue
+                        when (o.type) {
+                            C.TRACK_TYPE_AUDIO -> audioLanguage = language
+                            C.TRACK_TYPE_TEXT -> {
+                                subtitleLanguage = language
+                                text = true
+                            }
+                        }
+                    }
+                    // Off: text disabled, or only forced subtitles allowed
+                    if (!text && (C.TRACK_TYPE_TEXT in parameters.disabledTrackTypes ||
+                            parameters.ignoredTextSelectionFlags and C.SELECTION_FLAG_DEFAULT != 0)
+                    ) {
+                        subtitleLanguage = ""
+                    }
                 }
 
                 override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -322,7 +348,6 @@ class LivePlayerActivity : ComponentActivity() {
                     continue
                 }
                 current = g
-                lineup = g.channels.map { it.name }
                 val ch = g.channel(channel)
                 if (ch == null) {
                     player.stop()
@@ -389,20 +414,36 @@ class LivePlayerActivity : ComponentActivity() {
             }
         }
 
+        // Live can't seek or change speed: without those commands Media3's controls leave out
+        // the seek buttons and speed, and the time bar can't be dragged.
+        val controlled = remember(player) { LiveControlsPlayer(player) }
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                    if (bannerVisible) bannerVisible = false else bannerKey++
-                },
+                .background(Color.Black),
         ) {
+            val playing = tuned is Tuned.Playing
             AndroidView(
                 factory = { context ->
                     PlayerView(context).apply {
-                        useController = false
-                        this.player = player
+                        this.player = controlled
+                        // the same controls as the video player: play/pause in the middle, the
+                        // time bar along the bottom, subtitles and the settings gear at its right
+                        setShowSubtitleButton(true)
+                        setShowNextButton(false)
+                        setShowPreviousButton(false)
+                        setShowFastForwardButton(false)
+                        setShowRewindButton(false)
+                        setControllerVisibilityListener(
+                            PlayerView.ControllerVisibilityListener { controlsVisible = it == android.view.View.VISIBLE }
+                        )
+                        setErrorMessageProvider { e -> android.util.Pair(0, getString(R.string.cant_play_reason, e.errorCodeName)) }
+                        playerView = this
                     }
+                },
+                update = { view ->
+                    // a break or a slate has nothing to control; nor the small window
+                    view.useController = playing && !inPip
                 },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -416,58 +457,28 @@ class LivePlayerActivity : ComponentActivity() {
                 }
                 is Tuned.Failed -> Message(t.message, Modifier.align(Alignment.Center))
                 is Tuned.Playing -> {
-                    val e = error
-                    if (e != null) {
-                        Message(e, Modifier.align(Alignment.Center))
-                    } else if (buffering) {
+                    if (error == null && buffering) {
                         CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
                     }
                 }
                 Tuned.Tuning -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
             }
 
+            // What's on, at the top while the controls show (always in a break).
             AnimatedVisibility(
-                visible = (bannerVisible || paused) && !inPip,
+                visible = !inPip && (controlsVisible || !playing),
                 enter = fadeIn(),
                 exit = fadeOut(),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.align(Alignment.TopStart),
             ) {
-                Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White)
-                    }
-                    Column(Modifier.align(Alignment.CenterEnd).padding(8.dp)) {
-                        IconButton(onClick = { onTune(-1) }) {
-                            Icon(
-                                Icons.Filled.KeyboardArrowUp,
-                                contentDescription = stringResource(R.string.live_channel_down),
-                                tint = Color.White,
-                                modifier = Modifier.size(36.dp),
-                            )
-                        }
-                        IconButton(onClick = { onTune(1) }) {
-                            Icon(
-                                Icons.Filled.KeyboardArrowDown,
-                                contentDescription = stringResource(R.string.live_channel_up),
-                                tint = Color.White,
-                                modifier = Modifier.size(36.dp),
-                            )
-                        }
-                    }
-                    Banner(
-                        channel = channel,
-                        tuned = tuned,
-                        now = time,
-                        paused = paused,
-                        behind = behind,
-                        onPlayPause = {
-                            if (paused) player.play() else player.pause()
-                            bannerKey++
-                        },
-                        onLive = { liveKey++ },
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
-                }
+                LiveTitle(
+                    channel = channel,
+                    tuned = tuned,
+                    now = time,
+                    paused = paused,
+                    behind = behind,
+                    onLive = { liveKey++ },
+                )
             }
         }
     }
@@ -487,94 +498,94 @@ class LivePlayerActivity : ComponentActivity() {
     }
 }
 
+/**
+ * The channel and what's on, over the top of the picture while the controls show: the title,
+ * when it's on and how long is left, Behind live and Jump to live after a pause, and what's next.
+ */
 @Composable
-private fun Banner(
+private fun LiveTitle(
     channel: String,
     tuned: Tuned,
     now: Instant?,
     paused: Boolean,
     behind: Boolean,
-    onPlayPause: () -> Unit,
     onLive: () -> Unit,
-    modifier: Modifier,
 ) {
-    Column(
-        modifier
+    Row(
+        Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))))
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent)))
+            .safeDrawingPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            channel,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        val program = (tuned as? Tuned.Playing)?.program ?: (tuned as? Tuned.Slate)?.program
-        val next = (tuned as? Tuned.Playing)?.next ?: (tuned as? Tuned.Slate)?.next
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (tuned is Tuned.Playing) {
-                IconButton(onClick = onPlayPause) {
-                    Icon(
-                        if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
-                }
-            }
-            Column(Modifier.weight(1f)) {
-                if (program != null) {
-                    if (program.block.isNotEmpty()) {
-                        Text(program.block, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
-                    }
-                    Text(
-                        program.displayTitle,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (program.kind == ProgramKind.Episode && program.subtitle.isNotEmpty()) {
-                        Text(
-                            program.subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    val left = now?.let { if (it < program.end) " · ${timeLeft(program.end - it)}" else "" }.orEmpty()
-                    Text(
-                        "${program.start.localTime()} – ${program.end.localTime()}$left",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.8f),
-                    )
-                }
-            }
-            if (behind) {
-                FilledTonalButton(onClick = onLive) {
-                    Text(stringResource(R.string.live_jump))
-                }
-            }
-        }
-        if (program != null && now != null) {
-            LinearProgressIndicator(
-                progress = { ((now - program.start) / program.duration).toFloat().coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        if (behind) {
-            Text(stringResource(R.string.live_behind), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.8f))
-        }
-        if (next != null) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val program = (tuned as? Tuned.Playing)?.program ?: (tuned as? Tuned.Slate)?.program
+            val next = (tuned as? Tuned.Playing)?.next ?: (tuned as? Tuned.Slate)?.next
             Text(
-                stringResource(R.string.live_next, next.start.localTime(), next.displayTitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.8f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                listOfNotNull(channel, program?.block?.takeIf { it.isNotEmpty() }).joinToString(" · "),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
+            if (program != null) {
+                Text(
+                    program.displayTitle,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val left = now?.takeIf { it < program.end && program.kind != ProgramKind.OffAir }?.let { timeLeft(program.end - it) }
+                Text(
+                    listOfNotNull(
+                        program.subtitle.takeIf { program.kind == ProgramKind.Episode && it.isNotEmpty() },
+                        "${program.start.localTime()} – ${program.end.localTime()}",
+                        left,
+                        stringResource(R.string.live_behind).takeIf { behind || paused },
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (next != null && program != null) {
+                Text(
+                    stringResource(R.string.live_next, next.start.localTime(), next.displayTitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
+        if (behind && tuned is Tuned.Playing) {
+            FilledTonalButton(onClick = onLive) { Text(stringResource(R.string.live_jump)) }
+        }
+    }
+}
+
+/** The live player as Media3's controls see it: no seeking, no speed. */
+@OptIn(UnstableApi::class)
+private class LiveControlsPlayer(player: Player) : ForwardingPlayer(player) {
+    override fun getAvailableCommands(): Player.Commands =
+        super.getAvailableCommands().buildUpon().removeAll(*Blocked).build()
+
+    override fun isCommandAvailable(command: Int): Boolean =
+        command !in Blocked && super.isCommandAvailable(command)
+
+    private companion object {
+        val Blocked = intArrayOf(
+            Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+            Player.COMMAND_SEEK_BACK,
+            Player.COMMAND_SEEK_FORWARD,
+            Player.COMMAND_SEEK_TO_PREVIOUS,
+            Player.COMMAND_SEEK_TO_NEXT,
+            Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+            Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+            Player.COMMAND_SET_SPEED_AND_PITCH,
+        )
     }
 }
 

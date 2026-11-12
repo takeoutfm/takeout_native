@@ -54,7 +54,9 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.takeoutfm.shared.guide.GuideChannel
 import com.takeoutfm.shared.guide.GuideProgram
+import com.takeoutfm.shared.guide.MusicBlock
 import com.takeoutfm.shared.guide.ProgramKind
+import com.takeoutfm.shared.guide.musicBlocks
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
@@ -78,6 +80,9 @@ private val RowHeight = 64.dp
 
 /** For a feature slot whose programs aren't chosen yet. */
 private const val ReservedNote = "Programs announced the day before"
+
+/** Breaks this long show as music in the grid; shorter ones are plain gaps. */
+private val MusicBlockMin = 15.minutes
 
 /**
  * The Live tab: the channel guide. Select tunes to a program that's on now and opens the details
@@ -421,6 +426,18 @@ private fun ChannelRow(
                 .fillMaxSize()
                 .clipToBounds()
         ) {
+            for (m in musicBlocks(channel, MusicBlockMin)) {
+                if (m.end <= viewStart || m.start >= viewEnd) continue
+                val from = maxOf(m.start, viewStart)
+                val to = minOf(m.end, viewEnd)
+                MusicCell(
+                    block = m,
+                    modifier = Modifier
+                        .offset(x = (from - viewStart).width())
+                        .width((to - from).width() - 3.dp)
+                        .fillMaxHeight(),
+                )
+            }
             for (p in channel.programs) {
                 if (p.end <= viewStart || p.start >= viewEnd) continue
                 val from = maxOf(p.start, viewStart)
@@ -493,6 +510,35 @@ private fun ProgramCell(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = content.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** A long music break: shown so the gap reads as deliberate, but not focusable. */
+@Composable
+private fun MusicCell(block: MusicBlock, modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(colors.surfaceVariant.copy(alpha = 0.25f))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Column {
+            Text(
+                text = "Music",
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.onSurface.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = block.start.localTime(),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurface.copy(alpha = 0.5f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

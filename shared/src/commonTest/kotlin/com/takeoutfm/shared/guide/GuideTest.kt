@@ -113,6 +113,13 @@ class GuideTest {
         assertEquals("Blue in Green", playing.title)
         assertEquals(1.minutes, offset)
         assertNull(breakAt(channel, at("2025-11-11T21:00:00Z")))
+
+        // the two tracks are one 8 minute break: shown when breaks that long are
+        assertEquals(
+            listOf(MusicBlock(at("2025-11-11T21:52:00Z"), at("2025-11-11T22:00:00Z"))),
+            musicBlocks(channel, 8.minutes),
+        )
+        assertEquals(emptyList<MusicBlock>(), musicBlocks(channel, 15.minutes))
     }
 
     @Test

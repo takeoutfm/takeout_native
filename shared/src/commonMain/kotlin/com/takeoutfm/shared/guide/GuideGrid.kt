@@ -48,6 +48,27 @@ fun nextProgram(channel: GuideChannel, program: GuideProgram): GuideProgram? =
 fun previousProgram(channel: GuideChannel, program: GuideProgram, notBefore: Instant): GuideProgram? =
     channel.programs.lastOrNull { it.start < program.start && it.end > notBefore }
 
+/** A run of break music shown in the grid: [start] to [end], without focus or a program. */
+data class MusicBlock(val start: Instant, val end: Instant)
+
+/**
+ * The channel's music breaks at least [minLength] long, back-to-back tracks as one block. Short
+ * breaks between programs stay as plain gaps; a long one (nothing fit before a special) reads
+ * as deliberate.
+ */
+fun musicBlocks(channel: GuideChannel, minLength: Duration): List<MusicBlock> {
+    val blocks = mutableListOf<MusicBlock>()
+    for (t in channel.breaks.sortedBy { it.start }) {
+        val last = blocks.lastOrNull()
+        if (last != null && t.start <= last.end) {
+            blocks[blocks.size - 1] = last.copy(end = maxOf(last.end, t.end))
+        } else {
+            blocks += MusicBlock(t.start, t.end)
+        }
+    }
+    return blocks.filter { it.end - it.start >= minLength }
+}
+
 /** [time] rounded down to a multiple of [step] since the epoch (half hours line up with clocks). */
 fun Instant.floorTo(step: Duration): Instant {
     val ms = step.inWholeMilliseconds

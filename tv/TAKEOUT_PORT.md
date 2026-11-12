@@ -323,6 +323,9 @@ player (phase 3).
   is now under the slate, which shows its cover, title and artist; a track cut off by the next
   program fades out over its last 3 seconds. Break music isn't a listen: it plays in this
   player, not `TakeoutMusicService`.
+  In the grid, a break of 15 minutes or more (back-to-back tracks, `musicBlocks`) shows as a dim
+  "Music" cell so a long gap before a special reads as deliberate; it isn't focusable, and
+  Left/Right go past it.
   The program stops at its slot's end even if the file runs long. OK pauses; resumed, the
   viewer is behind live until the file ends (then back to what's on) or OK jumps to live.
   Doesn't write watch progress. It reloads its guide when stale (`LiveGuide`: older than 30 min

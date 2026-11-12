@@ -293,7 +293,10 @@ player (phase 3).
   and times, rating, time left if it's on) and the time in the upper right, a row of days up to the server's horizon, a half-hour time ruler, then one row per channel
   in lineup order with cells sized by length (6dp a minute) and a line at now. A special's
   programs (`Block`) are tinted and show its name under the title, so they read as one event.
-  The clock and now line move on the minute. It starts at now
+  The clock and now line move on the minute. A feature's slot before its programs are chosen
+  (`Kind: "reserved"`, `ProgramKind.Reserved`) is one cell with the feature's name and
+  description; it isn't playable, so OK does nothing there and the live player shows a slate
+  with its name. It starts at now
   and doesn't go back. The grid is one focusable that handles the D-pad itself: focus is a
   channel plus an anchor time in the ViewModel, so Up/Down land on whatever overlaps that time
   (the next program in a break) and Left/Right step program by program, scrolling the view;
@@ -319,7 +322,7 @@ player (phase 3).
   viewer is behind live until the file ends (then back to what's on) or OK jumps to live.
   Doesn't write watch progress. It reloads its guide when stale (`LiveGuide`: older than 30 min
   or less than an hour ahead).
-- **Not yet:** Open to Live TV on launch (phase 4); music breaks and features (phase 5). The
+- **Not yet:** Open to Live TV on launch (phase 4); music breaks (phase 5). The
   live player hasn't played a stream yet: tested only against a local http server, whose
   redirect to the https bucket ExoPlayer won't follow.
 

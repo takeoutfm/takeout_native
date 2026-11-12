@@ -81,6 +81,26 @@ class GuideTest {
     }
 
     @Test
+    fun aReservedSlotIsNamedAndNotPlayable() {
+        val repo = TakeoutGuideRepository(TakeoutApi(session(), "test"), TakeoutUrls(session()))
+        val json = """
+            {"Time": 1762891800000, "Channels": [{"Name": "Good Movies", "Programs": [
+              {"Kind": "reserved", "Block": "New on Friday", "Title": "New on Friday",
+               "Subtitle": "The latest movies", "Start": "2025-11-14T04:00:00Z",
+               "End": "2025-11-14T08:00:00Z"}]}]}
+        """.trimIndent()
+        val view = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            .decodeFromString(com.takeoutfm.shared.model.ApiGuideView.serializer(), json)
+        val slot = repo.toGuide(view, at("2025-11-11T20:10:00Z")).channels.single().programs.single()
+        assertEquals(ProgramKind.Reserved, slot.kind)
+        assertEquals("New on Friday", slot.title)
+        assertEquals("New on Friday", slot.block)
+        assertEquals("The latest movies", slot.subtitle)
+        assertEquals("", slot.videoUri)
+        assertNull(slot.videoId)
+    }
+
+    @Test
     fun onNowFindsTheProgramOffsetAndNext() {
         val repo = TakeoutGuideRepository(TakeoutApi(session(), "test"), TakeoutUrls(session()))
         val view = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }

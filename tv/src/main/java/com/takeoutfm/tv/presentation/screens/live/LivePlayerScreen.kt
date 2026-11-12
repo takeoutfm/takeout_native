@@ -418,6 +418,7 @@ private fun SlateCard(slate: Tuned.Slate, now: Instant?, modifier: Modifier = Mo
     val next = slate.next
     val title = when {
         slate.program?.kind == ProgramKind.OffAir -> "Off Air"
+        slate.program?.kind == ProgramKind.Reserved -> slate.program.title
         next != null -> "Up next"
         else -> "Nothing scheduled"
     }

@@ -9,7 +9,14 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
-enum class ProgramKind { Movie, Episode, OffAir }
+enum class ProgramKind {
+    Movie,
+    Episode,
+    OffAir,
+
+    /** A feature's slot before its programs are chosen: [GuideProgram.title] is its name. */
+    Reserved,
+}
 
 /** One program on a channel. The gap between its [end] and the next program's start is a break. */
 data class GuideProgram(
@@ -99,6 +106,7 @@ class TakeoutGuideRepository(
         val kind = when (kind) {
             "movie" -> ProgramKind.Movie
             "episode" -> ProgramKind.Episode
+            "reserved" -> ProgramKind.Reserved
             else -> ProgramKind.OffAir
         }
         val id = targetId?.takeIf { it > 0 }
@@ -112,7 +120,11 @@ class TakeoutGuideRepository(
             rating = rating.orEmpty(),
             imageUri = urls.absolute(image.orEmpty()),
             backdropUri = urls.absolute(background.orEmpty()),
-            videoUri = if (kind == ProgramKind.OffAir) "" else urls.absolute(location.orEmpty()),
+            videoUri = if (kind == ProgramKind.OffAir || kind == ProgramKind.Reserved) {
+                ""
+            } else {
+                urls.absolute(location.orEmpty())
+            },
             etag = etag.orEmpty(),
             videoId = when {
                 id == null -> null

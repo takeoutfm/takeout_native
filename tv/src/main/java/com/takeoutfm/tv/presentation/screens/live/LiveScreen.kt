@@ -76,6 +76,9 @@ private val MinuteWidth = 6.dp
 private val ChannelColumn = 160.dp
 private val RowHeight = 64.dp
 
+/** For a feature slot whose programs aren't chosen yet. */
+private const val ReservedNote = "Programs announced the day before"
+
 /**
  * The Live tab: the channel guide. Select tunes to a program that's on now and opens the details
  * (Watch Now, Start Over) of one that isn't; holding select opens the details of either.
@@ -249,13 +252,16 @@ private fun ProgramHeader(channel: GuideChannel?, program: GuideProgram?, now: I
                 .size(width = 238.dp, height = 134.dp)
                 .clip(JetStreamCardShape),
             placeholderKey = program?.title ?: channel?.name.orEmpty(),
+            // a feature slot has no art yet
+            fallbackText = program?.displayTitle,
         )
         Column(
             Modifier
                 .padding(start = 24.dp)
                 .weight(1f)
         ) {
-            val block = program?.block.orEmpty()
+            // a reserved slot's title is already the feature's name
+            val block = program?.block.orEmpty().takeIf { program?.kind != ProgramKind.Reserved }.orEmpty()
             if (block.isNotEmpty()) {
                 Text(
                     text = block,
@@ -272,6 +278,7 @@ private fun ProgramHeader(channel: GuideChannel?, program: GuideProgram?, now: I
                 overflow = TextOverflow.Ellipsis,
             )
             val subtitle = program?.subtitle.orEmpty()
+                .ifEmpty { if (program?.kind == ProgramKind.Reserved) ReservedNote else "" }
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
@@ -476,9 +483,12 @@ private fun ProgramCell(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val detail = program.block.ifEmpty { null }
-                ?: program.subtitle.takeIf { program.kind == ProgramKind.Episode }
-                ?: program.start.localTime()
+            val detail = when {
+                program.kind == ProgramKind.Reserved -> program.subtitle.ifEmpty { ReservedNote }
+                program.block.isNotEmpty() -> program.block
+                program.kind == ProgramKind.Episode -> program.subtitle
+                else -> program.start.localTime()
+            }
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,

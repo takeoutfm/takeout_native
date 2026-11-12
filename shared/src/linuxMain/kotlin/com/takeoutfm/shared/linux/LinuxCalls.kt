@@ -12,7 +12,9 @@ import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
 import com.takeoutfm.shared.settings.ThemeMode
+import com.takeoutfm.shared.guide.GuideLoader
 import kotlinx.coroutines.Job
+import kotlinx.datetime.Instant
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -183,6 +185,24 @@ class LinuxCalls(private val core: LinuxCore) {
             val (offset, duration) = TakeoutPodcastRepository.playedMark(core.podcasts.offset(eid), a.get("played"))
             core.progress.report(eid, offset * 1000L, duration * 1000L)
         }
+
+        // ---- Live ----
+        // The guide page: guideReload starts over from now, guideEnsure fetches what scrolls
+        // into view; each answers with everything fetched so far (null if nothing could be).
+        call("guideReload") {
+            val loader = core.guideLoader
+            if (loader.reload()) {
+                val now = loader.guide.value!!.now()
+                loader.ensure(now, now + GuideLoader.Block)
+            }
+            loader.page()
+        }
+        call("guideEnsure") { a ->
+            val loader = core.guideLoader
+            loader.ensure(Instant.fromEpochMilliseconds(a.get("fromMs")), Instant.fromEpochMilliseconds(a.get("untilMs")))
+            loader.page()
+        }
+        call("tune") { a -> core.liveGuide.get().tuneLive(a.get("channel")) }
 
         // ---- Video ----
         call("continueWatching") { core.video.continueWatching(ProgressRules.AllTime) }

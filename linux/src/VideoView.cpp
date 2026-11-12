@@ -205,6 +205,16 @@ void VideoView::setSpeed(double speed)
     mpv_set_property(m_mpv, "speed", MPV_FORMAT_DOUBLE, &speed);
 }
 
+void VideoView::setVolume(double volume)
+{
+    volume = qBound(0.0, volume, 1.0);
+    if (qAbs(volume - m_volume) < 0.001) return;
+    m_volume = volume;
+    double percent = volume * 100;
+    mpv_set_property(m_mpv, "volume", MPV_FORMAT_DOUBLE, &percent);
+    Q_EMIT volumeChanged();
+}
+
 void VideoView::stop()
 {
     const char *args[] = {"stop", nullptr};

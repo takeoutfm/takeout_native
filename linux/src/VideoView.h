@@ -20,6 +20,8 @@ class VideoView : public QQuickFramebufferObject
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
     Q_PROPERTY(double speed READ speed WRITE setSpeed NOTIFY speedChanged)
+    /** 0 to 1 (mpv's volume 0 to 100), for fading out live break music. */
+    Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged)
     /** Audio and subtitle tracks: {id, type ("audio" / "sub"), label, language, selected, …}. */
     Q_PROPERTY(QVariantList audioTracks READ audioTracks NOTIFY tracksChanged)
     Q_PROPERTY(QVariantList subtitleTracks READ subtitleTracks NOTIFY tracksChanged)
@@ -50,6 +52,8 @@ public:
     bool loading() const { return m_loading; }
     double speed() const { return m_speed; }
     void setSpeed(double speed);
+    double volume() const { return m_volume; }
+    void setVolume(double volume);
     QVariantList audioTracks() const { return m_audio; }
     QVariantList subtitleTracks() const { return m_subtitles; }
 
@@ -62,6 +66,7 @@ Q_SIGNALS:
     void playingChanged();
     void loadingChanged();
     void speedChanged();
+    void volumeChanged();
     void tracksChanged();
     /** Played to its end. */
     void ended();
@@ -80,6 +85,7 @@ private:
     bool m_playing = false;
     bool m_loading = false;
     double m_speed = 1;
+    double m_volume = 1;
     QVariantList m_audio;
     QVariantList m_subtitles;
 };

@@ -185,6 +185,24 @@ dashboard top bar, D-pad handling.
 - [ ] Native video player: audio & subtitle pickers (embedded tracks only), best audio track,
       aspect ratio kept, progress saved (with the offline cache), **picture-in-picture** (auto-enter on Home /
       leaving the app while playing, play/pause action in the PiP window).
+- [x] **Live channels** (the server's `/api/guide`, shown only when the index has `HasGuide`;
+      server design in the Go project's `CHANNELS.md`). Shared in `:shared` `guide/`: the
+      repository, `LiveGuide` (reloaded when stale), `tune` (what a live player plays now: a
+      program from its offset, break music fading out when cut off, or the up-next slate),
+      grid helpers, and `GuideLoader` (the guide in 6-hour windows fetched as they scroll into
+      view, merged, with the schedule's horizon found up front for a day row). TV: the Live
+      tab's grid and live player (`tv/TAKEOUT_PORT.md`). Phone: Home's Live type (On now list;
+      tap again for the Guide: a detail panel for the selected program with Watch live and
+      Details, a day row to the horizon, and the grid, loading as it scrolls, titles of
+      programs that began off the left edge kept in view) and `ui/live/LivePlayerActivity` (landscape; arrows change
+      channel; pause puts you behind live until the program ends or Jump to live). Linux:
+      the sidebar's Live page (On Now, and Guide as on the phone; click selects, double-click
+      tunes or opens details; the keyboard as the TV's remote: Left/Right by program, Up/Down
+      by channel at the same time without scrolling sideways, Page Up/Down by day, Home to
+      now, Enter tunes or opens details) and `qml/LivePlayer.qml` (Up/Down change
+      channel, Space pauses, L jumps to live), through the `guideReload`, `guideEnsure` and `tune` calls
+      (`linux/LiveCalls.kt`). Live playback doesn't write watch progress. Not yet: Apple and
+      Wear; picture-in-picture for the phone's live player.
 
 ### 4.5 Podcasts
 - [ ] Series grid (all / **subscribed**), subscribe / unsubscribe.

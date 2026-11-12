@@ -22,6 +22,7 @@ Kirigami.ApplicationWindow {
     readonly property bool hasPodcasts: library.hasPodcasts ?? false
     readonly property bool hasMovies: library.hasMovies ?? false
     readonly property bool hasShows: library.hasShows ?? false
+    readonly property bool hasGuide: library.hasGuide ?? false
 
     /** The video player closed: resume points and Continue Watching may have moved. */
     signal videoClosed()
@@ -34,6 +35,15 @@ Kirigami.ApplicationWindow {
     VideoPlayer {
         id: videoPlayer
         onClosedVideo: root.videoClosed()
+    }
+
+    /** Plays channel [name] live over the whole window. */
+    function playLive(name) {
+        livePlayer.play(name)
+    }
+
+    LivePlayer {
+        id: livePlayer
     }
     property string section: ""
 
@@ -208,6 +218,11 @@ Kirigami.ApplicationWindow {
                 visible: root.hasMovies || root.hasShows
                 text: KI18n.i18n("Watch"); icon.name: "video-display"
                 page: "WatchPage"
+            },
+            PageAction {
+                visible: root.hasGuide
+                text: KI18n.i18n("Live"); icon.name: "media-record"
+                page: "LivePage"
             },
             PageAction {
                 visible: root.hasMovies

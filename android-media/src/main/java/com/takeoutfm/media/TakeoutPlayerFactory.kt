@@ -1,6 +1,7 @@
 package com.takeoutfm.media
 
 import android.content.Context
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -13,6 +14,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.util.EventLogger
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.api.TakeoutSession
+import java.io.IOException
 
 /**
  * ExoPlayer set up for Takeout streams, shared by video and music playback, so stream
@@ -25,20 +27,35 @@ class TakeoutPlayerFactory(
     private val session: TakeoutSession,
     private val debugLogging: Boolean,
 ) {
-    /** Takeout streams, authorized with the media token (only for the signed-in server). */
+    /** Where Takeout's stream URLs redirect, so each file's opens after the first skip Takeout. */
+    val redirects = RedirectCache()
+
+    /**
+     * Takeout streams, authorized with the media token (only for the signed-in server). Opens
+     * go straight to the storage URL a stream redirects to while it's kept ([RedirectCache]);
+     * if that can't be found out, the stream URL is opened and its redirect followed as before.
+     */
     @OptIn(UnstableApi::class)
     val upstream: DataSource.Factory by lazy {
-        ResolvingDataSource.Factory(
+        val resolving = ResolvingDataSource.Factory(
             DefaultDataSource.Factory(context, DefaultHttpDataSource.Factory()),
             ResolvingDataSource.Resolver { dataSpec ->
-                val auth = session.mediaAuthorization(dataSpec.uri.toString())
-                if (auth != null) {
-                    dataSpec.withAdditionalHeaders(mapOf("Authorization" to auth))
+                val uri = dataSpec.uri.toString()
+                val auth = session.mediaAuthorization(uri) ?: return@Resolver dataSpec
+                val target = try {
+                    redirects.target(uri, auth)
+                } catch (e: IOException) {
+                    null
+                }
+                if (target != null) {
+                    // presigned: storage wants no token of Takeout's
+                    dataSpec.withUri(Uri.parse(target))
                 } else {
-                    dataSpec
+                    dataSpec.withAdditionalHeaders(mapOf("Authorization" to auth))
                 }
             }
         )
+        RefreshingDataSource.Factory(resolving, redirects)
     }
 
     /**

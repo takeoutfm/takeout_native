@@ -70,14 +70,12 @@ AppPage {
             Layout.fillWidth: true
             spacing: Kirigami.Units.largeSpacing * 2
 
-            Image {
+            Art {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 10
                 Layout.preferredHeight: Kirigami.Units.gridUnit * 10
                 Layout.alignment: Qt.AlignTop
-                source: page.shown?.imageUri ?? ""
+                url: page.shown?.imageUri ?? ""
                 fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
             }
             ColumnLayout {
                 Layout.fillWidth: true

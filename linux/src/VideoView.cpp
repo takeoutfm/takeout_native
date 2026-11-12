@@ -211,7 +211,9 @@ void VideoView::setVolume(double volume)
     if (qAbs(volume - m_volume) < 0.001) return;
     m_volume = volume;
     double percent = volume * 100;
-    mpv_set_property(m_mpv, "volume", MPV_FORMAT_DOUBLE, &percent);
+    // Not waiting for mpv: set while it loads a file it can block the UI thread for good (the
+    // live player sets it at every tune and through a fade). mpv copies the value.
+    mpv_set_property_async(m_mpv, 0, "volume", MPV_FORMAT_DOUBLE, &percent);
     Q_EMIT volumeChanged();
 }
 

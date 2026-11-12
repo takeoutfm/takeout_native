@@ -195,14 +195,16 @@ dashboard top bar, D-pad handling.
       tap again for the Guide: a detail panel for the selected program with Watch live and
       Details, a day row to the horizon, and the grid, loading as it scrolls, titles of
       programs that began off the left edge kept in view) and `ui/live/LivePlayerActivity` (landscape; arrows change
-      channel; pause puts you behind live until the program ends or Jump to live). Linux:
+      channel; pause puts you behind live until the program ends or Jump to live;
+      picture-in-picture on leaving the app while a channel plays, following the schedule,
+      with an up-next slate in the small window during breaks). Linux:
       the sidebar's Live page (On Now, and Guide as on the phone; click selects, double-click
       tunes or opens details; the keyboard as the TV's remote: Left/Right by program, Up/Down
       by channel at the same time without scrolling sideways, Page Up/Down by day, Home to
       now, Enter tunes or opens details) and `qml/LivePlayer.qml` (Up/Down change
       channel, Space pauses, L jumps to live), through the `guideReload`, `guideEnsure` and `tune` calls
       (`linux/LiveCalls.kt`). Live playback doesn't write watch progress. Not yet: Apple and
-      Wear; picture-in-picture for the phone's live player.
+      Wear.
 
 ### 4.5 Podcasts
 - [ ] Series grid (all / **subscribed**), subscribe / unsubscribe.

@@ -35,14 +35,11 @@ QQC2.ItemDelegate {
                 visible: cover.status !== Image.Ready
                 color: Kirigami.Theme.disabledTextColor
             }
-            Image {
+            Art {
                 id: cover
                 anchors.fill: parent
-                source: tile.album.coverUri
+                url: tile.album.coverUri
                 fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
-                sourceSize.height: height * Screen.devicePixelRatio
             }
         }
         QQC2.Label {

@@ -85,18 +85,16 @@ AppPage {
             rowSpacing: Kirigami.Units.largeSpacing
 
             // Episode art is often wide (a video still): shown whole.
-            Image {
+            Art {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 14
                 // As tall as the art at that width (square or wide), no taller than square.
                 Layout.preferredHeight: status === Image.Ready && implicitWidth > 0
                     ? Math.min(width, width * implicitHeight / implicitWidth) : width
                 Layout.alignment: Qt.AlignTop
-                source: page.episode?.imageUri || page.series?.imageUri || ""
+                url: page.episode?.imageUri || page.series?.imageUri || ""
                 fillMode: Image.PreserveAspectFit
                 horizontalAlignment: Image.AlignLeft
                 verticalAlignment: Image.AlignTop
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
             }
             ColumnLayout {
                 Layout.fillWidth: true

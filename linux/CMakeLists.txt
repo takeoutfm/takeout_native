@@ -64,6 +64,7 @@ qt_add_qml_module(takeoutfm
     URI TakeoutFM
     QML_FILES
         qml/Main.qml
+        qml/Art.qml
         qml/LivePage.qml
         qml/LivePlayer.qml
         qml/SignInPage.qml

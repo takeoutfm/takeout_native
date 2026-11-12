@@ -59,13 +59,11 @@ AppPage {
             Layout.fillWidth: true
             spacing: Kirigami.Units.largeSpacing * 2
 
-            Image {
+            Art {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 12
                 Layout.preferredHeight: Kirigami.Units.gridUnit * 12
-                source: page.shown?.coverUri ?? ""
+                url: page.shown?.coverUri ?? ""
                 fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
             }
             ColumnLayout {
                 Layout.fillWidth: true

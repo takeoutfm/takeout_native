@@ -52,9 +52,11 @@ Kirigami.Page {
             tick()
             const shown = code
             Core.call("awaitCode", {}, (signedIn, error) => {
+                // Signed in: Main has already replaced this page, so nothing of it is left to
+                // touch (reading code would fail).
+                if (signedIn) return
                 if (error?.kind === "cancelled" || code !== shown) return // replaced by a new code
                 waiting = false
-                if (signedIn) return // Main shows Home.
                 if (error) {
                     code = ""
                     problem = KI18n.i18n("Couldn't sign in. Try again.")

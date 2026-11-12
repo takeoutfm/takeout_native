@@ -154,6 +154,9 @@ Kirigami.ApplicationWindow {
         isMenu: false
         modal: !Core.signedIn || !root.wideScreen
         handleVisible: Core.signedIn && modal
+        // Kirigami opens a sidebar only when the window starts: one that becomes a sidebar
+        // later (on signing in, or widening a narrow window) would stay closed for good.
+        onModalChanged: if (!modal) open()
         enabled: Core.signedIn
         collapsible: false
         header: Kirigami.SearchField {

@@ -52,14 +52,12 @@ AppPage {
             visible: !!page.person
             spacing: Kirigami.Units.largeSpacing * 2
 
-            Image {
+            Art {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 9
                 Layout.preferredHeight: Kirigami.Units.gridUnit * 13.5
                 Layout.alignment: Qt.AlignTop
-                source: page.person?.photoUri ?? ""
+                url: page.person?.photoUri ?? ""
                 fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
                 visible: status === Image.Ready
             }
             ColumnLayout {

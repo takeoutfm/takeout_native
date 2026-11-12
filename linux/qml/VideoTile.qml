@@ -34,14 +34,11 @@ QQC2.ItemDelegate {
                 visible: poster.status !== Image.Ready
                 color: Kirigami.Theme.disabledTextColor
             }
-            Image {
+            Art {
                 id: poster
                 anchors.fill: parent
-                source: tile.wide ? (tile.card.backdropUri || tile.card.posterUri) : (tile.card.posterUri || tile.card.backdropUri)
+                url: tile.wide ? (tile.card.backdropUri || tile.card.posterUri) : (tile.card.posterUri || tile.card.backdropUri)
                 fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                sourceSize.width: width * Screen.devicePixelRatio
-                sourceSize.height: height * Screen.devicePixelRatio
             }
             // How much has been watched (Continue Watching).
             Rectangle {

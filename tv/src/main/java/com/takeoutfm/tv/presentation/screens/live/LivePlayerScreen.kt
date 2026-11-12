@@ -59,12 +59,15 @@ import androidx.tv.material3.Text
 import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.selectBestAudioTrack
 import com.takeoutfm.shared.guide.Guide
+import com.takeoutfm.shared.guide.LiveGuide
+import com.takeoutfm.shared.guide.displayTitle
+import com.takeoutfm.shared.guide.timeLeft
 import com.takeoutfm.shared.guide.GuideProgram
-import com.takeoutfm.shared.guide.OnNow
 import com.takeoutfm.shared.guide.ProgramKind
 import com.takeoutfm.shared.guide.TakeoutGuideRepository
-import com.takeoutfm.shared.guide.breakAt
-import com.takeoutfm.shared.guide.onNow
+import com.takeoutfm.shared.guide.Tune
+import com.takeoutfm.shared.guide.tune
+import com.takeoutfm.shared.guide.volume
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import com.takeoutfm.tv.presentation.common.DelayedLoading
 import com.takeoutfm.tv.presentation.common.Spinner
@@ -220,63 +223,58 @@ fun LivePlayerScreen(
                 delay(RetryMs)
                 continue
             }
-            val on: OnNow = onNow(ch, g.now())
-            val program = on.program
-            if (program != null && program.kind != ProgramKind.OffAir && program.videoUri.isNotEmpty()) {
-                tuned = Tuned.Playing(program, on.next)
-                playbackError = null
-                ended = false
-                isBuffering = true
-                exoPlayer.setMediaItem(program.toMediaItem(), on.offset.inWholeMilliseconds)
-                exoPlayer.prepare()
-                exoPlayer.playWhenReady = true
-                // Live: until the slot ends, even if the file runs long. Behind live: until the
-                // file ends, then back to whatever is on now.
-                while (!ended && (behind || g.now() < program.end)) delay(TickMs)
-                if (behind) {
-                    behind = false
-                    bannerKey++
-                    continue
+            when (val t = tune(ch, g.now())) {
+                is Tune.Program -> {
+                    val program = t.program
+                    tuned = Tuned.Playing(program, t.next)
+                    playbackError = null
+                    ended = false
+                    isBuffering = true
+                    exoPlayer.setMediaItem(program.toMediaItem(), t.offset.inWholeMilliseconds)
+                    exoPlayer.prepare()
+                    exoPlayer.playWhenReady = true
+                    // Live: until the slot ends, even if the file runs long. Behind live: until
+                    // the file ends, then back to whatever is on now.
+                    while (!ended && (behind || g.now() < program.end)) delay(TickMs)
+                    if (behind) {
+                        behind = false
+                        bannerKey++
+                        continue
+                    }
+                    exoPlayer.stop()
+                    // A file shorter than its slot leaves a gap until the slot ends.
+                    if (g.now() < program.end) {
+                        tuned = Tuned.Slate(null, t.next)
+                        delay((program.end - g.now()).coerceIn(1.seconds, MaxWait))
+                    }
                 }
-                exoPlayer.stop()
-                // A file shorter than its slot leaves a gap until the slot ends.
-                if (g.now() < program.end) {
-                    tuned = Tuned.Slate(null, on.next)
-                    delay((program.end - g.now()).coerceIn(1.seconds, MaxWait))
-                }
-            } else {
-                val music = if (program == null) breakAt(ch, g.now()) else null
-                if (music != null && music.first.videoUri.isNotEmpty()) {
+                is Tune.Music -> {
                     // Break music, joined where it is now, under the up-next slate.
-                    val (track, offset) = music
-                    tuned = Tuned.Slate(null, on.next, track)
+                    val track = t.track
+                    tuned = Tuned.Slate(null, t.next, track)
                     playbackError = null
                     ended = false
                     exoPlayer.volume = 1f
-                    exoPlayer.setMediaItem(track.toMediaItem(), offset.inWholeMilliseconds)
+                    exoPlayer.setMediaItem(track.toMediaItem(), t.offset.inWholeMilliseconds)
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
                     // The last track is cut off at the next program, so it fades out.
-                    val cut = on.next?.start == track.end
                     while (!ended && g.now() < track.end) {
-                        if (cut) {
-                            val left = track.end - g.now()
-                            exoPlayer.volume = (left / FadeOut).toFloat().coerceIn(0f, 1f)
-                        }
+                        exoPlayer.volume = t.volume(g.now())
                         delay(FadeTickMs)
                     }
                     exoPlayer.stop()
                     exoPlayer.volume = 1f
                     // a file a little shorter than its slot: quiet until the next starts
                     if (g.now() < track.end) delay((track.end - g.now()).coerceIn(Duration.ZERO, MaxWait))
-                    continue
                 }
-                exoPlayer.stop()
-                tuned = Tuned.Slate(program, on.next)
-                bannerKey++
-                val until = program?.end ?: on.next?.start
-                val wait = until?.let { it - g.now() } ?: MaxWait
-                delay(wait.coerceIn(1.seconds, MaxWait))
+                is Tune.Slate -> {
+                    exoPlayer.stop()
+                    tuned = Tuned.Slate(t.program, t.next)
+                    bannerKey++
+                    val wait = t.until?.let { it - g.now() } ?: MaxWait
+                    delay(wait.coerceIn(1.seconds, MaxWait))
+                }
             }
         }
     }
@@ -371,7 +369,6 @@ fun LivePlayerScreen(
         ) {
             Banner(
                 channel = channel,
-                number = viewModel.number(channel),
                 tuned = tuned,
                 now = time,
                 paused = paused,
@@ -384,7 +381,6 @@ fun LivePlayerScreen(
 @Composable
 private fun Banner(
     channel: String,
-    number: Int?,
     tuned: Tuned,
     now: Instant?,
     paused: Boolean,
@@ -399,7 +395,7 @@ private fun Banner(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = listOfNotNull(number?.toString(), channel).joinToString("  "),
+                text = channel,
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
             )
@@ -543,7 +539,6 @@ private fun GuideProgram.toMediaItem(): MediaItem = MediaItem.Builder()
 private const val BannerMs = 5_000L
 private const val TickMs = 500L
 private const val FadeTickMs = 100L
-private val FadeOut = 3.seconds
 private const val RetryMs = 30_000L
 private val MaxWait = 5.minutes
 
@@ -569,10 +564,6 @@ class LivePlayerViewModel @Inject constructor(
 
     /** The guide, reloaded when it gets stale. */
     suspend fun guide(): Guide = liveGuide.get().also { _current.value = it }
-
-    /** The channel's place in the lineup, from 1. */
-    fun number(name: String): Int? =
-        _current.value?.channels?.indexOfFirst { it.name == name }?.takeIf { it >= 0 }?.plus(1)
 
     /** Moves [delta] channels through the lineup, wrapping around. */
     fun tune(delta: Int) {

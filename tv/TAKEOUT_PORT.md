@@ -329,8 +329,9 @@ player (phase 3).
   Left/Right go past it.
   The program stops at its slot's end even if the file runs long. OK pauses; resumed, the
   viewer is behind live until the file ends (then back to what's on) or OK jumps to live.
-  Doesn't write watch progress. It reloads its guide when stale (`LiveGuide`: older than 30 min
-  or less than an hour ahead).
+  Doesn't write watch progress. It reloads its guide when stale (`:shared` `LiveGuide`: older
+  than 30 min or less than an hour ahead), and what it plays when is `:shared`'s `tune`, which
+  the phone and Linux live players use too.
 - **Not yet:** Open to Live TV on launch (phase 4). The live player hasn't played a stream
   yet: tested only against a local http server, whose redirect to the https bucket ExoPlayer
   won't follow.

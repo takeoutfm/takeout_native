@@ -238,4 +238,92 @@ class GuideTest {
         assertEquals(at("2025-11-11T21:30:00Z"), at("2025-11-11T21:30:00Z").floorTo(30.minutes))
         assertEquals(at("2025-11-11T18:00:00Z"), at("2025-11-11T20:10:00Z").floorTo(6.hours))
     }
+
+    @Test
+    fun tuneDecidesWhatTheLivePlayerPlays() {
+        val film = a.copy(videoUri = "a.mkv")
+        val next = b.copy(videoUri = "b.mkv")
+        val track = program("Song", "2025-11-11T21:30:00Z", "2025-11-11T21:33:00Z")
+            .copy(kind = ProgramKind.Track, videoUri = "t1")
+        val last = program("Last", "2025-11-11T21:33:00Z", "2025-11-11T21:35:00Z")
+            .copy(kind = ProgramKind.Track, videoUri = "t2")
+        val gone = c.copy(kind = ProgramKind.OffAir)
+        val x = GuideChannel("X", listOf(film, next, gone), listOf(track, last))
+
+        val playing = tune(x, at("2025-11-11T20:10:00Z")) as Tune.Program
+        assertEquals("A", playing.program.title)
+        assertEquals(10.minutes, playing.offset)
+        assertEquals("B", playing.next?.title)
+
+        // break music: the first track plays out, the last is cut off by B and fades
+        val song = tune(x, at("2025-11-11T21:31:00Z")) as Tune.Music
+        assertEquals("Song", song.track.title)
+        assertEquals(1.minutes, song.offset)
+        assertFalse(song.cut)
+        assertEquals(1f, song.volume(at("2025-11-11T21:32:59Z")))
+        val cut = tune(x, at("2025-11-11T21:34:00Z")) as Tune.Music
+        assertTrue(cut.cut)
+        assertEquals(1f, cut.volume(at("2025-11-11T21:34:00Z")))
+        assertEquals(0.5f, cut.volume(at("2025-11-11T21:34:58.500Z")))
+        assertEquals(0f, cut.volume(at("2025-11-11T21:35:00Z")))
+
+        // off air: the slate until its slot ends; before anything: until the first starts
+        val off = tune(x, at("2025-11-11T23:30:00Z")) as Tune.Slate
+        assertEquals("C", off.program?.title)
+        assertEquals(gone.end, off.until)
+        val early = tune(x, at("2025-11-11T19:00:00Z")) as Tune.Slate
+        assertNull(early.program)
+        assertEquals(film.start, early.until)
+        assertEquals("1 hr 5 min left", timeLeft(65.minutes))
+    }
+
+    @Test
+    fun loaderFetchesWindowsOnceAndFindsTheHorizon() = runTest {
+        val asked = mutableListOf<String>()
+        val horizon = "2025-11-13T00:00:00Z"
+        val engine = MockEngine { request ->
+            val start = Instant.parse(request.url.parameters["start"]!!)
+            val end = Instant.parse(request.url.parameters["end"]!!)
+            asked += "$start"
+            // the server cuts the end back to its horizon
+            val cut = minOf(end, at(horizon))
+            val body = """{"Time": 1762891800000, "Start": "$start", "End": "$cut", "Channels": [
+                {"Name": "X", "Programs": [{"Kind": "movie", "Start": "$start", "End": "${start + 1.hours}",
+                 "Title": "At $start"}]}]}"""
+            respond(body, headers = jsonHeaders)
+        }
+        val session = session()
+        val clock = fixedClock(at("2025-11-11T20:10:00Z"))
+        val repo = TakeoutGuideRepository(TakeoutApi(session, "test", engine), TakeoutUrls(session), clock)
+        val loader = GuideLoader(repo, clock)
+
+        assertTrue(loader.reload())
+        // the window with now in it, then a moment far ahead for the horizon
+        assertEquals("2025-11-11T18:00:00Z", asked.first())
+        assertEquals(at(horizon), loader.horizon.value)
+
+        asked.clear()
+        loader.ensure(at("2025-11-11T20:00:00Z"), at("2025-11-14T00:00:00Z"))
+        // the first window was fetched already; nothing past the horizon is asked for
+        assertEquals(
+            listOf("2025-11-12T00:00:00Z", "2025-11-12T06:00:00Z", "2025-11-12T12:00:00Z", "2025-11-12T18:00:00Z"),
+            asked.sorted(),
+        )
+        assertEquals(5, loader.guide.value!!.channel("X")!!.programs.size)
+        asked.clear()
+        loader.ensure(at("2025-11-11T20:00:00Z"), at("2025-11-13T00:00:00Z"))
+        assertEquals(emptyList(), asked)
+    }
+
+    @Test
+    fun guideDaysRunFromTodayToTheHorizon() {
+        val zone = kotlinx.datetime.TimeZone.of("America/Los_Angeles")
+        // 12:10 PM on the 11th, Los Angeles
+        val now = at("2025-11-11T20:10:00Z")
+        val days = guideDays(now, at("2025-11-14T03:00:00Z"), zone)
+        assertEquals(listOf("2025-11-11", "2025-11-12", "2025-11-13"), days.map { it.toString() })
+        assertEquals(now, dayAt(days[0], now, zone))
+        // the same time of day, two days on
+        assertEquals(at("2025-11-13T20:10:00Z"), dayAt(days[2], now, zone))
+    }
 }

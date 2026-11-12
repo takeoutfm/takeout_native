@@ -56,7 +56,9 @@ import com.takeoutfm.shared.guide.GuideChannel
 import com.takeoutfm.shared.guide.GuideProgram
 import com.takeoutfm.shared.guide.MusicBlock
 import com.takeoutfm.shared.guide.ProgramKind
+import com.takeoutfm.shared.guide.displayTitle
 import com.takeoutfm.shared.guide.musicBlocks
+import com.takeoutfm.shared.guide.timeLeft
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage

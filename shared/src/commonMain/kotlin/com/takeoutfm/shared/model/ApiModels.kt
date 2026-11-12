@@ -215,6 +215,8 @@ data class ApiIndexView(
     @SerialName("HasRecommendMovies") val hasRecommendMovies: Boolean? = null,
     @SerialName("HasPlaylists") val hasPlaylists: Boolean? = null,
     @SerialName("MovieGenres") val movieGenres: List<String>? = null,
+    // Unlike the flags above, a missing value means "no": older servers have no guide.
+    @SerialName("HasGuide") val hasGuide: Boolean? = null,
 )
 
 @Serializable

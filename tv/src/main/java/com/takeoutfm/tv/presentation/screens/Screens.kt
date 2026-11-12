@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.takeoutfm.tv.presentation.screens.categories.CategoryMovieListScreen
+import com.takeoutfm.tv.presentation.screens.live.LivePlayerScreen
 import com.takeoutfm.tv.presentation.screens.movies.MovieDetailsScreen
 import com.takeoutfm.tv.presentation.screens.music.album.AlbumScreen
 import com.takeoutfm.tv.presentation.screens.music.artist.ArtistScreen
@@ -40,6 +41,7 @@ enum class Screens(
 ) {
     Profile,
     Home(isTabItem = true),
+    Live(isTabItem = true),
     Genres(isTabItem = true),
     Movies(isTabItem = true),
     Shows(isTabItem = true),
@@ -49,6 +51,7 @@ enum class Screens(
     MovieDetails(listOf(MovieDetailsScreen.MovieIdBundleKey)),
     Dashboard,
     VideoPlayer(listOf(VideoPlayerScreen.MovieIdBundleKey)),
+    LivePlayer(listOf(LivePlayerScreen.ChannelBundleKey)),
     Person(listOf(PersonScreen.PersonIdBundleKey)),
     MusicHome(isMusicTab = true, tabLabel = "Home"),
     Artists(isMusicTab = true),

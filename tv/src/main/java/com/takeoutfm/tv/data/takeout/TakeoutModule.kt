@@ -9,6 +9,7 @@ import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.api.TakeoutUrls
 import com.takeoutfm.shared.db.AndroidDatabase
 import com.takeoutfm.shared.db.TakeoutDb
+import com.takeoutfm.shared.guide.TakeoutGuideRepository
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.listen.ListenReporter
@@ -118,6 +119,11 @@ object TakeoutModule {
         urls: TakeoutUrls,
         progress: TakeoutProgress,
     ): TakeoutVideoRepository = TakeoutVideoRepository(api, session, library, urls, progress)
+
+    @Provides
+    @Singleton
+    fun guide(api: TakeoutApi, urls: TakeoutUrls): TakeoutGuideRepository =
+        TakeoutGuideRepository(api, urls)
 
     @Provides
     @Singleton

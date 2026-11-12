@@ -68,6 +68,7 @@ import com.takeoutfm.tv.data.entities.Recommendation
 import com.takeoutfm.tv.data.takeout.LibraryMode
 import com.takeoutfm.tv.presentation.common.PosterGrid
 import com.takeoutfm.tv.presentation.screens.Screens
+import com.takeoutfm.tv.presentation.screens.live.LiveScreen
 import com.takeoutfm.tv.presentation.screens.categories.CategoriesScreen
 import com.takeoutfm.tv.presentation.screens.favourites.FavouritesScreen
 import com.takeoutfm.tv.presentation.screens.home.HomeScreen
@@ -112,6 +113,7 @@ fun DashboardScreen(
     openAlbum: (albumId: String) -> Unit = {},
     openPodcast: (seriesId: String) -> Unit = {},
     playMusic: (QueueRef) -> Unit = {},
+    openLivePlayer: (channel: String) -> Unit = {},
     dashboardViewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val density = LocalDensity.current
@@ -294,6 +296,7 @@ fun DashboardScreen(
             openAlbum = openAlbum,
             openPodcast = openPodcast,
             playMusic = playMusic,
+            openLivePlayer = openLivePlayer,
             startDestination = startDestination,
             updateTopBarVisibility = { isTopBarVisible = it },
             isTopBarVisible = isTopBarVisible,
@@ -333,6 +336,7 @@ private fun Body(
     openAlbum: (albumId: String) -> Unit,
     openPodcast: (seriesId: String) -> Unit,
     playMusic: (QueueRef) -> Unit,
+    openLivePlayer: (channel: String) -> Unit,
     startDestination: String,
     updateTopBarVisibility: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -368,6 +372,13 @@ private fun Body(
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible,
                 modifier = Modifier.fillMaxSize(),
+            )
+        }
+        composable(Screens.Live()) {
+            LiveScreen(
+                onChannelClick = openLivePlayer,
+                onProgramClick = openMovieDetailsScreen,
+                onScroll = updateTopBarVisibility,
             )
         }
         composable(Screens.Genres()) {

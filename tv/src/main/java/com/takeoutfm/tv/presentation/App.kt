@@ -16,6 +16,7 @@
 
 package com.takeoutfm.tv.presentation
 
+import android.net.Uri
 import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -48,6 +49,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.takeoutfm.tv.presentation.screens.Screens
+import com.takeoutfm.tv.presentation.screens.live.LivePlayerScreen
 import com.takeoutfm.tv.presentation.screens.categories.CategoryMovieListScreen
 import com.takeoutfm.tv.presentation.screens.dashboard.DashboardScreen
 import com.takeoutfm.tv.presentation.screens.login.LoginScreen
@@ -91,7 +93,7 @@ private fun AppContent(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route.orEmpty()
     // The players show the music themselves (or are video, which pauses it).
-    val showMiniPlayer = listOf(Screens.VideoPlayer, Screens.MusicPlayer, Screens.NowPlaying)
+    val showMiniPlayer = listOf(Screens.VideoPlayer, Screens.LivePlayer, Screens.MusicPlayer, Screens.NowPlaying)
         .none { route.startsWith(it.name) }
 
     // Lets the mini player send focus back to the screen's last focused card or row.
@@ -239,6 +241,9 @@ private fun AppContent(
                         playMusic = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
                         },
+                        openLivePlayer = { channel ->
+                            navController.navigate(Screens.LivePlayer.withArgs(Uri.encode(channel)))
+                        },
                         onBackPressed = onBackPressed,
                         isComingBackFromDifferentScreen = isComingBackFromDifferentScreen,
                         resetIsComingBackFromDifferentScreen = {
@@ -271,6 +276,20 @@ private fun AppContent(
                             navController.popBackStack()
                             navController.navigate(Screens.VideoPlayer.withArgs(episodeId))
                         }
+                    )
+                }
+                composable(
+                    route = Screens.LivePlayer(),
+                    arguments = listOf(
+                        navArgument(LivePlayerScreen.ChannelBundleKey) { type = NavType.StringType }
+                    )
+                ) {
+                    LivePlayerScreen(
+                        onBackPressed = {
+                            if (navController.navigateUp()) {
+                                isComingBackFromDifferentScreen = true
+                            }
+                        },
                     )
                 }
                 composable(

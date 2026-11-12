@@ -32,6 +32,8 @@ data class LibraryIndex(
     val hasPodcasts: Boolean = false,
     val hasMovies: Boolean,
     val hasShows: Boolean,
+    /** Channels are configured (/api/guide); false for servers without them. */
+    val hasGuide: Boolean = false,
     val hasRecommendations: Boolean,
     val movieGenres: List<String>,
     /** From /api/home; empty when [hasRecommendations] is false. */
@@ -103,6 +105,7 @@ class TakeoutLibrary(
                         hasPodcasts = view.hasPodcasts ?: false,
                         hasMovies = view.hasMovies ?: true,
                         hasShows = view.hasShows ?: true,
+                        hasGuide = view.hasGuide ?: false,
                         hasRecommendations = hasRecommendations,
                         movieGenres = view.movieGenres.orEmpty(),
                         recommendations = recommendations,

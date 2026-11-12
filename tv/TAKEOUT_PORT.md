@@ -97,6 +97,7 @@ directly where needed.
 | `GET /api/profiles/{peid}` | Person page (bio + movie/TV credits) |
 | `GET /api/search?q=` | Search (movies and TV episodes; series are matched in the app) |
 | `GET/POST /api/progress` | Watch progress |
+| `GET /api/guide[?start=&end=]` | Live tab and live player (channels and programs; never reused while online) |
 | `GET /api/favorite` | Favorites tab (movies + shows) |
 | `PUT/DELETE /api/favorite/movies/{imid}`, `/api/favorite/shows/{tvid}` | Favorite button |
 | `GET /img/tm/{size}/{path}` | TMDB images via the server (posters w342, backdrops w1280, stills w300, profiles w185/w342) |
@@ -279,6 +280,46 @@ paragraph at a time.
   accepts them.
 - **Remembered on the device**: the subtitle choice (Off stays off; a track sets the preferred
   subtitle language) and the audio language.
+
+### Live (channels)
+
+Server-scheduled channels (the server's `CHANNELS.md`): the guide grid (phase 4) and a live
+player (phase 3).
+
+- **Tab:** Live follows Home, shown only when `/api/index` has `HasGuide: true` (a missing flag
+  means no, unlike the others).
+- **Guide grid** (`screens/live/LiveScreen.kt`, `LiveViewModel.kt`): a header with the focused
+  program (backdrop, tagline or episode name, channel, day and times, rating, time left if it's
+  on), a row of days up to the server's horizon, a half-hour time ruler, then one row per channel
+  in lineup order with cells sized by length (6dp a minute) and a line at now. It starts at now
+  and doesn't go back. The grid is one focusable that handles the D-pad itself: focus is a
+  channel plus an anchor time in the ViewModel, so Up/Down land on whatever overlaps that time
+  (the next program in a break) and Left/Right step program by program, scrolling the view;
+  Channel ± also move. OK on a program that's on tunes the live player; on a later one it opens
+  the title's details (Watch Now); holding OK opens the details of either (Start Over). Up from
+  the first channel goes to the day row (entering on the day shown); a day jumps to that day at
+  the current time. Back from the player or a title focuses the grid again. The top bar hides
+  once focus is past the first channel.
+- **Loading:** the guide comes in 6-hour windows (`/api/guide?start&end`), fetched as the view
+  reaches them and merged (`Guide.merge`); one request far past any horizon finds where the
+  schedule ends, since the server cuts `End` back to it. Grid moves (`focusAt`, `nextProgram`,
+  `previousProgram`) are pure functions in `:shared` `guide/GuideGrid.kt`.
+- **Data:** `:shared` `guide/TakeoutGuideRepository` maps `/api/guide` to `Guide` /
+  `GuideChannel` / `GuideProgram` (ids `m-`/`e-`, which open `MovieDetails`) and the pure
+  `onNow(channel, time)`. Offsets use the server's clock (`Guide.now()`, from the response's
+  `Time`), since TV clocks can be wrong.
+- **Live player** (`screens/live/LivePlayerScreen.kt`, route `LivePlayer/{channel}`): plays the
+  program from where it is now, seeking to the nearest keyframe (`SeekParameters.CLOSEST_SYNC`).
+  Up/Down (and Channel ±) change channel through the lineup, wrapping. A banner shows the
+  channel, title, times, time left and what's next for a few seconds after tuning or a key.
+  Breaks and titles that left the library show a slate with a countdown to the next program.
+  The program stops at its slot's end even if the file runs long. OK pauses; resumed, the
+  viewer is behind live until the file ends (then back to what's on) or OK jumps to live.
+  Doesn't write watch progress. It reloads its guide when stale (`LiveGuide`: older than 30 min
+  or less than an hour ahead).
+- **Not yet:** Open to Live TV on launch (phase 4); music breaks, specials and features
+  (phase 5). The live player hasn't played a stream yet: tested only against a local http
+  server, whose redirect to the https bucket ExoPlayer won't follow.
 
 ## Music
 

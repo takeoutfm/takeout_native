@@ -7,6 +7,7 @@ import com.takeoutfm.shared.model.ApiCodeCheck
 import com.takeoutfm.shared.model.ApiArtistsView
 import com.takeoutfm.shared.model.ApiFavoriteView
 import com.takeoutfm.shared.model.ApiGenreView
+import com.takeoutfm.shared.model.ApiGuideView
 import com.takeoutfm.shared.model.ApiHomeView
 import com.takeoutfm.shared.model.ApiIndexView
 import com.takeoutfm.shared.model.ApiLink
@@ -53,6 +54,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.io.IOException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -474,6 +476,21 @@ class TakeoutApi internal constructor(
         )
     }
 
+    /**
+     * The channel guide from [start] to [end] (the server defaults to now and 3 hours on). Never
+     * reused while online: it's about the current time.
+     */
+    suspend fun guide(start: Instant? = null, end: Instant? = null): ApiGuideView {
+        val query = listOfNotNull(
+            start?.let { "start=${it.toString().encodeURLParameter()}" },
+            end?.let { "end=${it.toString().encodeURLParameter()}" },
+        ).joinToString("&")
+        return decode(
+            ApiGuideView.serializer(),
+            getText(if (query.isEmpty()) "/api/guide" else "/api/guide?$query"),
+        )
+    }
+
     /** All of the user's watch offsets. */
     suspend fun progress(): ApiOffsets =
         decode(ApiOffsets.serializer(), getText("/api/progress"))
@@ -495,6 +512,7 @@ class TakeoutApi internal constructor(
         /** Always asked for: they change as the user plays and edits. */
         private val VolatilePrefixes = listOf(
             "/api/progress", "/api/activity", "/api/favorite", "/api/playlists", "/api/search",
+            "/api/guide",
         )
 
         /** Writes after which kept responses are asked for again ([forgetKept]). */

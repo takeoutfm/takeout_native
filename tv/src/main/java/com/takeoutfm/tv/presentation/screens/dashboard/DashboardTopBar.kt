@@ -111,6 +111,8 @@ fun dashboardTabs(
     fun has(screen: Screens) = when (screen) {
         Screens.Genres, Screens.Movies -> index?.hasMovies != false
         Screens.Shows -> index?.hasShows != false
+        // Unlike the others, only once the server says it has channels.
+        Screens.Live -> index?.hasGuide == true
         else -> true
     }
     val fixed = Screens.entries.filter { it.isTabItem && has(it) }
@@ -118,7 +120,9 @@ fun dashboardTabs(
     val recommended = recommendations.mapIndexed { index, r ->
         DashboardTab(route = recommendedRoute(index), label = r.name)
     }
-    return listOf(fixed.first()) + recommended + fixed.drop(1)
+    // Live, when shown, follows Home: for someone used to TV it's the main way in.
+    val lead = fixed.takeWhile { it.route == Screens.Home() || it.route == Screens.Live() }
+    return lead + recommended + fixed.drop(lead.size)
 }
 
 private const val PROFILE_SCREEN_INDEX = -1

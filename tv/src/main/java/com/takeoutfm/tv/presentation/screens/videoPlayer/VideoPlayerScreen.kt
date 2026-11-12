@@ -367,7 +367,7 @@ private fun PlaybackErrorMessage(message: String, modifier: Modifier = Modifier)
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun PlaybackException.toUserMessage(): String {
+internal fun PlaybackException.toUserMessage(): String {
     if (this is ExoPlaybackException && type == ExoPlaybackException.TYPE_RENDERER) {
         val format = rendererFormat
         val what = listOfNotNull(

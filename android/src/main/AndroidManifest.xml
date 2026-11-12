@@ -76,6 +76,7 @@
             android:launchMode="singleTask"
             android:taskAffinity=".live"
             android:excludeFromRecents="true"
+            android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
             android:screenOrientation="sensorLandscape"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden" />

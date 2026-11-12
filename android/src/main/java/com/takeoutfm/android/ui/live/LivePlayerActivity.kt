@@ -1,8 +1,12 @@
 package com.takeoutfm.android.ui.live
 
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
@@ -65,6 +69,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
@@ -141,7 +146,12 @@ class LivePlayerActivity : ComponentActivity() {
             .also { playerFactory.addDebugLogging(it) }
         // Close to the second is fine; starting at the nearest keyframe tunes faster.
         player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
+        // Media keys, Assistant and the picture-in-picture controls reach the player.
         session = MediaSession.Builder(this, player).setId("live").build()
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) = updatePip()
+            override fun onVideoSizeChanged(videoSize: VideoSize) = updatePip()
+        })
         val first = savedInstanceState?.getString(ExtraChannel) ?: intent.getStringExtra(ExtraChannel) ?: return finish()
         channel = first
         setContent {
@@ -158,6 +168,9 @@ class LivePlayerActivity : ComponentActivity() {
     }
 
     private var channel by mutableStateOf("")
+
+    /** In picture-in-picture: just the picture, no banner or buttons. */
+    private var inPip by mutableStateOf(false)
     private var lineup: List<String> = emptyList()
 
     /** Moves [delta] channels through the lineup, wrapping around. */
@@ -173,9 +186,54 @@ class LivePlayerActivity : ComponentActivity() {
         outState.putString(ExtraChannel, channel)
     }
 
+    /** Another channel tuned from the guide while this one is open (or in picture-in-picture). */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(ExtraChannel)?.let { channel = it }
+    }
+
+    private fun pipParams(): PictureInPictureParams {
+        val size = player.videoSize
+        val ratio = if (size.width > 0 && size.height > 0) {
+            // Within what Android allows (about 2.39:1 to 1:2.39).
+            Rational(size.width, size.height).let { r ->
+                when {
+                    r.toFloat() > 2.39f -> Rational(239, 100)
+                    r.toFloat() < 1 / 2.39f -> Rational(100, 239)
+                    else -> r
+                }
+            }
+        } else {
+            Rational(16, 9)
+        }
+        return PictureInPictureParams.Builder().setAspectRatio(ratio).apply {
+            // Leaving the app while a channel plays goes picture-in-picture; break music and
+            // the slate don't need the screen.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setAutoEnterEnabled(player.isPlaying)
+        }.build()
+    }
+
+    private fun updatePip() {
+        runCatching { setPictureInPictureParams(pipParams()) }
+    }
+
+    /** Before Android 12, enter picture-in-picture by hand when the user leaves while playing. */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && player.isPlaying) {
+            runCatching { enterPictureInPictureMode(pipParams()) }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip = isInPictureInPictureMode
+    }
+
     override fun onStop() {
         super.onStop()
-        player.pause()
+        // Closed from picture-in-picture, or backgrounded without it: stop.
+        if (!isInPictureInPictureMode) player.pause()
     }
 
     override fun onDestroy() {
@@ -351,7 +409,11 @@ class LivePlayerActivity : ComponentActivity() {
 
             val time = now
             when (val t = tuned) {
-                is Tuned.Slate -> SlateCard(t, time, Modifier.align(Alignment.Center))
+                is Tuned.Slate -> if (inPip) {
+                    PipSlate(t, Modifier.align(Alignment.Center))
+                } else {
+                    SlateCard(t, time, Modifier.align(Alignment.Center))
+                }
                 is Tuned.Failed -> Message(t.message, Modifier.align(Alignment.Center))
                 is Tuned.Playing -> {
                     val e = error
@@ -365,7 +427,7 @@ class LivePlayerActivity : ComponentActivity() {
             }
 
             AnimatedVisibility(
-                visible = bannerVisible || paused,
+                visible = (bannerVisible || paused) && !inPip,
                 enter = fadeIn(),
                 exit = fadeOut(),
                 modifier = Modifier.fillMaxSize(),
@@ -513,6 +575,22 @@ private fun Banner(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/** The slate in the small picture-in-picture window: what's next. */
+@Composable
+private fun PipSlate(slate: Tuned.Slate, modifier: Modifier) {
+    val next = slate.next ?: return
+    Column(modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(stringResource(R.string.live_up_next), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+        Text(
+            next.displayTitle,
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

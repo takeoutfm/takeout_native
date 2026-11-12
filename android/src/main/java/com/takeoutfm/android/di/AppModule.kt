@@ -21,6 +21,7 @@ import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.StreamHistory
+import com.takeoutfm.shared.guide.TakeoutGuideRepository
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
@@ -112,6 +113,10 @@ object AppModule {
     @Singleton
     fun music(api: TakeoutApi, library: TakeoutLibrary, urls: TakeoutUrls): TakeoutMusicRepository =
         TakeoutMusicRepository(api, library, urls)
+
+    @Provides
+    @Singleton
+    fun guide(api: TakeoutApi, urls: TakeoutUrls): TakeoutGuideRepository = TakeoutGuideRepository(api, urls)
 
     @Provides
     @Singleton

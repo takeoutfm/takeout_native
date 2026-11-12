@@ -69,6 +69,17 @@
             android:screenOrientation="sensorLandscape"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden" />
 
+        <activity
+            android:name=".ui.live.LivePlayerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Takeout.Player"
+            android:launchMode="singleTask"
+            android:taskAffinity=".live"
+            android:excludeFromRecents="true"
+            android:resizeableActivity="true"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden" />
+
         <service
             android:name=".playback.DownloadService"
             android:exported="false"

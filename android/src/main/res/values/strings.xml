@@ -30,6 +30,7 @@
     <string name="nav_music">Music</string>
     <string name="nav_movies">Movies</string>
     <string name="nav_tv_shows">TV Shows</string>
+    <string name="nav_live">Live</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
 
@@ -166,6 +167,25 @@
     <string name="film_watched">Continue watching</string>
     <string name="film_genres">Genres</string>
     <string name="tv_all">All shows</string>
+    <string name="live_now">On now</string>
+    <string name="live_guide">Guide</string>
+    <string name="live_next">Next: %1$s · %2$s</string>
+    <string name="live_up_next">Up next</string>
+    <string name="live_starts_in">Starts in %1$s</string>
+    <string name="live_off_air">Off Air</string>
+    <string name="live_cant_load">Couldn\'t load the guide. Retrying…</string>
+    <string name="live_not_on">%1$s isn\'t on right now.</string>
+    <string name="live_behind">Behind live</string>
+    <string name="live_jump">Jump to live</string>
+    <string name="live_channel_up">Next channel</string>
+    <string name="live_channel_down">Previous channel</string>
+    <string name="live_nothing_ahead">Nothing scheduled yet</string>
+    <string name="live_music">Music</string>
+    <string name="live_today">Today</string>
+    <string name="live_tomorrow">Tomorrow</string>
+    <string name="live_watch">Watch live</string>
+    <string name="live_details">Details</string>
+    <string name="live_reserved_note">Programs announced the day before</string>
     <string name="starring">Starring</string>
     <string name="directing">Directing</string>
     <string name="writing">Writing</string>

@@ -44,6 +44,9 @@ enum class MediaType(@StringRes val title: Int, val subtypes: List<Subtype>) {
     ),
     Tv(R.string.nav_tv_shows, listOf(Subtype.TvAdded, Subtype.TvAll)),
     Podcast(R.string.nav_podcasts, listOf(Subtype.PodcastsAll, Subtype.PodcastsSubscribed)),
+
+    /** The channels (only when the server has a guide): what's on now, or the guide grid. */
+    Live(R.string.nav_live, listOf(Subtype.LiveNow, Subtype.LiveGuide)),
 }
 
 enum class Subtype(@StringRes val label: Int) {
@@ -59,6 +62,8 @@ enum class Subtype(@StringRes val label: Int) {
     TvAll(R.string.tv_all),
     PodcastsAll(R.string.podcasts_all),
     PodcastsSubscribed(R.string.podcasts_subscribed),
+    LiveNow(R.string.live_now),
+    LiveGuide(R.string.live_guide),
 }
 
 data class HomeSelection(val type: MediaType = MediaType.Music, val subtype: Subtype = Subtype.MusicAdded)
@@ -160,6 +165,8 @@ class HomeViewModel @Inject constructor(
         Subtype.TvAll -> video.shows().map { it.toTile() }
         Subtype.PodcastsAll -> podcasts.series(subscribedOnly = false).map { Tile(it.id, it.title, it.author, it.imageUri) }
         Subtype.PodcastsSubscribed -> podcasts.series(subscribedOnly = true).map { Tile(it.id, it.title, it.author, it.imageUri) }
+        // the Live screens load the guide themselves
+        Subtype.LiveNow, Subtype.LiveGuide -> emptyList()
     }
 
     private fun Album.toTile() = Tile(id, name, artist, coverUri)
@@ -167,13 +174,15 @@ class HomeViewModel @Inject constructor(
     private fun VideoCard.toTile() = Tile(id, title, "", posterUri, poster = true, progress = progress)
 
     private fun available(index: LibraryIndex?): List<MediaType> = if (index == null) {
-        MediaType.entries
+        // a guide only when the server says so
+        MediaType.entries - MediaType.Live
     } else {
         buildList {
             if (index.hasMusic) add(MediaType.Music)
             if (index.hasMovies) add(MediaType.Film)
             if (index.hasShows) add(MediaType.Tv)
             if (index.hasPodcasts) add(MediaType.Podcast)
+            if (index.hasGuide) add(MediaType.Live)
         }
     }
 }

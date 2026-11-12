@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.LiveTv
 import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Speaker
 import androidx.compose.material.icons.outlined.Tv
@@ -64,6 +66,8 @@ import com.takeoutfm.android.ui.main.MainViewModel
 import com.takeoutfm.android.ui.music.MusicNav
 import com.takeoutfm.android.ui.music.QueueKind
 import com.takeoutfm.android.ui.video.GenreGrid
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.takeoutfm.android.ui.live.LiveHome
 import com.takeoutfm.android.ui.video.VideoNav
 import kotlinx.coroutines.launch
 
@@ -137,7 +141,11 @@ fun HomeScreen(
             }
         },
     ) { padding ->
-        PullToRefreshBox(
+        if (selection.type == MediaType.Live) {
+            Box(Modifier.padding(padding)) {
+                LiveHome(grid = selection.subtype == Subtype.LiveGuide, viewModel = hiltViewModel(), videoNav = videoNav)
+            }
+        } else PullToRefreshBox(
             isRefreshing = refreshing,
             onRefresh = viewModel::reload,
             modifier = Modifier.padding(padding),
@@ -174,6 +182,7 @@ private fun MediaType.icon(selected: Boolean): ImageVector = when (this) {
     MediaType.Film -> if (selected) Icons.Filled.Movie else Icons.Outlined.Movie
     MediaType.Tv -> if (selected) Icons.Filled.Tv else Icons.Outlined.Tv
     MediaType.Podcast -> if (selected) Icons.Filled.Podcasts else Icons.Outlined.Podcasts
+    MediaType.Live -> if (selected) Icons.Filled.LiveTv else Icons.Outlined.LiveTv
 }
 
 @Composable

@@ -203,8 +203,8 @@ dashboard top bar, D-pad handling.
       by channel at the same time without scrolling sideways, Page Up/Down by day, Home to
       now, Enter tunes or opens details) and `qml/LivePlayer.qml` (Up/Down change
       channel, Space pauses, L jumps to live), through the `guideReload`, `guideEnsure` and `tune` calls
-      (`linux/LiveCalls.kt`). Live playback doesn't write watch progress. Not yet: Apple and
-      Wear.
+      (`linux/LiveCalls.kt`). Live playback doesn't write watch progress. Not yet: Apple. None
+      planned for Wear OS: video doesn't fit a watch.
 
 ### 4.5 Podcasts
 - [ ] Series grid (all / **subscribed**), subscribe / unsubscribe.

@@ -79,6 +79,10 @@ class LiveViewModel @Inject constructor(
     /** No guide after this: the server stops at its schedule horizon. */
     private var horizon by mutableStateOf<Instant?>(null)
 
+    /** When the guide was last fetched afresh, to refresh it once it's [MaxAge] old. */
+    private var fetchedAt = Instant.DISTANT_PAST
+    private var refreshing = false
+
     init {
         load()
     }
@@ -91,6 +95,7 @@ class LiveViewModel @Inject constructor(
         tick()
         anchor = now
         viewStart = now.floorTo(Step)
+        fetchedAt = Clock.System.now()
         viewModelScope.launch {
             state = if (fetch(now.floorTo(Block))) LiveState.Ready else LiveState.Error
             if (guide?.channels.isNullOrEmpty()) state = LiveState.Empty
@@ -115,10 +120,38 @@ class LiveViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Catches up with the time (on each minute, and at once when the guide comes back or the app
+     * returns): the grid's start moves to now's half hour, so a view left in the past comes back
+     * to now, focus moves off a program that has ended, and the guide is fetched afresh once it's
+     * [MaxAge] old.
+     */
     fun tick() {
         now = guide?.now() ?: Clock.System.now()
         val earliest = now.floorTo(Step)
         if (viewStart < earliest) viewStart = earliest
+        if (state == LiveState.Ready && Clock.System.now() - fetchedAt > MaxAge) refresh()
+    }
+
+    /**
+     * A fresh guide in place of the old, without the loading skeleton or losing focus: the
+     * window with now in it replaces everything fetched, and the grid's windows follow.
+     */
+    private fun refresh() {
+        if (refreshing) return
+        refreshing = true
+        viewModelScope.launch {
+            try {
+                if (fetch(now.floorTo(Block), replace = true)) {
+                    fetchedAt = Clock.System.now()
+                    val count = guide?.channels?.size ?: 0
+                    if (count > 0) channelIndex = channelIndex.coerceAtMost(count - 1)
+                    ensureLoaded()
+                }
+            } finally {
+                refreshing = false
+            }
+        }
     }
 
     val channel: GuideChannel? get() = guide?.channels?.getOrNull(channelIndex)
@@ -209,13 +242,14 @@ class LiveViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fetch(block: Instant): Boolean {
+    private suspend fun fetch(block: Instant, replace: Boolean = false): Boolean {
         loading += block
         try {
             val fresh = repository.guide(block, block + Block)
             // The server cuts the end off at its horizon.
             if (fresh.end < block + Block) horizon = fresh.end
-            guide = guide?.merge(fresh) ?: fresh
+            if (replace) loaded.clear()
+            guide = if (replace) fresh else guide?.merge(fresh) ?: fresh
             loaded += block
             return true
         } catch (e: CancellationException) {
@@ -233,5 +267,8 @@ class LiveViewModel @Inject constructor(
 
         /** How much guide each fetch asks for. */
         val Block = 6.hours
+
+        /** The guide is fetched afresh once it's this old. */
+        val MaxAge = 30.minutes
     }
 }

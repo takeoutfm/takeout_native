@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,14 +99,17 @@ fun LiveScreen(
     onScroll: (isTopBarVisible: Boolean) -> Unit,
     viewModel: LiveViewModel = hiltViewModel(),
 ) {
-    // On each minute, so the clock and the now line turn over with it.
+    // At once when the guide comes back (from the player, another tab), then on each minute,
+    // so the clock and the now line turn over with it.
     LaunchedEffect(Unit) {
         while (true) {
+            viewModel.tick()
             val ms = viewModel.now.toEpochMilliseconds()
             delay(60_000 - ms % 60_000 + 50)
-            viewModel.tick()
         }
     }
+    // back from the background, or the screen saver (the delay above doesn't count time asleep)
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.tick() }
     when (viewModel.state) {
         LiveState.Loading -> MusicHomeSkeleton(Modifier.fillMaxSize())
         LiveState.Error -> Error(Modifier.fillMaxSize(), onRetry = viewModel::load)

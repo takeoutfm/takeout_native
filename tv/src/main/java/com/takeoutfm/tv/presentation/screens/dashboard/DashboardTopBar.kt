@@ -26,7 +26,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -35,6 +38,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,13 +51,17 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
@@ -127,6 +135,9 @@ fun dashboardTabs(
 
 private const val PROFILE_SCREEN_INDEX = -1
 
+/** Widest a tab's label gets, padding included, before it ends in "…". */
+private val MaxTabLabelWidth = 240.dp
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DashboardTopBar(
@@ -177,7 +188,10 @@ fun DashboardTopBar(
                     onRouteSelection(Screens.Profile())
                 }
             )
+            // The tabs take what's left after the avatar and the logo (a weighted child is
+            // measured last), so many or long recommendation tabs can't squeeze the logo.
             Row(
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 var isTabRowFocused by remember { mutableStateOf(false) }
@@ -189,65 +203,95 @@ fun DashboardTopBar(
                     if (isTabRowFocused && focusedTabIndex >= 0) focusedTabIndex else selectedTabIndex
 
                 Spacer(modifier = Modifier.width(20.dp))
-                TabRow(
-                    modifier = Modifier
-                        .onFocusChanged {
-                            isTabRowFocused = it.isFocused || it.hasFocus
-                        },
-                    selectedTabIndex = highlightedTabIndex,
-                    indicator = { tabPositions, _ ->
-                        if (highlightedTabIndex in tabPositions.indices) {
-                            DashboardTopBarItemIndicator(
-                                currentTabPosition = tabPositions[highlightedTabIndex],
-                                anyTabFocused = isTabRowFocused,
-                                shape = JetStreamCardShape
-                            )
-                        }
+                // Where the row and its first and last tabs are, to show ‹ or › where tabs are
+                // scrolled out of sight (the TabRow keeps its scroll position to itself).
+                var rowLeft by remember { mutableFloatStateOf(0f) }
+                var rowRight by remember { mutableFloatStateOf(0f) }
+                var firstLeft by remember { mutableFloatStateOf(0f) }
+                var lastRight by remember { mutableFloatStateOf(0f) }
+                Box(
+                    modifier = Modifier.onGloballyPositioned {
+                        rowLeft = it.positionInWindow().x
+                        rowRight = rowLeft + it.size.width
                     },
-                    separator = { Spacer(modifier = Modifier) }
                 ) {
-                    tabs.forEachIndexed { index, tab ->
-                        key(index) {
-                            DisposableEffect(focus) {
-                                focus.attach(index + 1)
-                                onDispose { focus.detach(index + 1) }
+                    TabRow(
+                        modifier = Modifier
+                            .onFocusChanged {
+                                isTabRowFocused = it.isFocused || it.hasFocus
+                            },
+                        selectedTabIndex = highlightedTabIndex,
+                        indicator = { tabPositions, _ ->
+                            if (highlightedTabIndex in tabPositions.indices) {
+                                DashboardTopBarItemIndicator(
+                                    currentTabPosition = tabPositions[highlightedTabIndex],
+                                    anyTabFocused = isTabRowFocused,
+                                    shape = JetStreamCardShape
+                                )
                             }
-                            Tab(
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .focusRequester(focus[index + 1]),
-                                selected = index == highlightedTabIndex,
-                                onFocus = {
-                                    focusedTabIndex = index
-                                    onRouteSelection(tab.route)
-                                },
-                                onClick = { focusManager.moveFocus(FocusDirection.Down) },
-                            ) {
-                                if (tab.icon != null) {
-                                    Icon(
-                                        tab.icon,
-                                        modifier = Modifier.padding(4.dp),
-                                        contentDescription = StringConstants.Composable
-                                            .ContentDescription.DashboardSearchButton,
-                                        tint = LocalContentColor.current
-                                    )
-                                } else {
-                                    Text(
-                                        modifier = Modifier
-                                            .occupyScreenSize()
-                                            .padding(horizontal = 16.dp),
-                                        text = tab.label,
-                                        style = MaterialTheme.typography.titleSmall.copy(
-                                            color = LocalContentColor.current
+                        },
+                        separator = { Spacer(modifier = Modifier) }
+                    ) {
+                        tabs.forEachIndexed { index, tab ->
+                            key(index) {
+                                DisposableEffect(focus) {
+                                    focus.attach(index + 1)
+                                    onDispose { focus.detach(index + 1) }
+                                }
+                                Tab(
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .focusRequester(focus[index + 1])
+                                        .onGloballyPositioned {
+                                            // unclipped, so a tab out of sight still counts
+                                            val left = it.positionInWindow().x
+                                            if (index == 0) firstLeft = left
+                                            if (index == tabs.lastIndex) {
+                                                lastRight = left + it.size.width
+                                            }
+                                        },
+                                    selected = index == highlightedTabIndex,
+                                    onFocus = {
+                                        focusedTabIndex = index
+                                        onRouteSelection(tab.route)
+                                    },
+                                    onClick = { focusManager.moveFocus(FocusDirection.Down) },
+                                ) {
+                                    if (tab.icon != null) {
+                                        Icon(
+                                            tab.icon,
+                                            modifier = Modifier.padding(4.dp),
+                                            contentDescription = StringConstants.Composable
+                                                .ContentDescription.DashboardSearchButton,
+                                            tint = LocalContentColor.current
                                         )
-                                    )
+                                    } else {
+                                        Text(
+                                            modifier = Modifier
+                                                .occupyScreenSize()
+                                                .widthIn(max = MaxTabLabelWidth)
+                                                .padding(horizontal = 16.dp),
+                                            text = tab.label,
+                                            // a recommendation set's name comes from the server
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                color = LocalContentColor.current
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                    if (firstLeft < rowLeft - 1f) {
+                        HiddenTabs(start = true, modifier = Modifier.align(Alignment.CenterStart))
+                    }
+                    if (lastRight > rowRight + 1f) {
+                        HiddenTabs(start = false, modifier = Modifier.align(Alignment.CenterEnd))
+                    }
                 }
             }
-            Spacer(modifier = Modifier.weight(1f))
             if (canSwitchMode) {
                 ModeSwitch(
                     mode = mode,
@@ -262,6 +306,35 @@ fun DashboardTopBar(
                 )
             }
         }
+    }
+}
+
+/**
+ * An arrow over the end of the tab row where tabs are scrolled out of sight, like the guide's ‹
+ * for a program that started earlier, on a fade so it doesn't sit on top of a tab's label.
+ */
+@Composable
+private fun HiddenTabs(start: Boolean, modifier: Modifier = Modifier) {
+    val surface = MaterialTheme.colorScheme.surface
+    // solid under the arrow, fading out over the tab next to it
+    val fade = listOf(Color.Transparent, surface, surface)
+    Box(
+        modifier = modifier
+            .width(48.dp)
+            .height(32.dp)
+            .background(Brush.horizontalGradient(if (start) fade.reversed() else fade)),
+        contentAlignment = if (start) Alignment.CenterStart else Alignment.CenterEnd,
+    ) {
+        Icon(
+            if (start) {
+                Icons.AutoMirrored.Filled.KeyboardArrowLeft
+            } else {
+                Icons.AutoMirrored.Filled.KeyboardArrowRight
+            },
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
@@ -327,6 +400,8 @@ private fun JetStreamLogo(
         )
         Text(
             text = stringResource(R.string.brand_logo_text),
+            maxLines = 1,
+            softWrap = false,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
             fontFamily = LexendExa

@@ -134,7 +134,10 @@ Home · *one tab per current recommendation set* · Genres · Movies · Shows ·
 plus the profile avatar. Recommendation sets come from the server config and depend on the date
 (e.g. "Halloween Movies" in October); with none, the tab bar is the fixed set. The tab list is a
 `DashboardTab` list (fixed `Screens` tabs + recommendation tabs) with focus requesters sized to
-it. Many simultaneous sets could crowd the bar.
+it. The avatar and the TAKEOUT logo/switch keep their width and the tabs get the rest; a tab label
+ends in "…" past 240dp. When the tabs don't fit, the row scrolls with focus, and an arrow on a
+fade (‹ / ›) marks each end with tabs out of sight (from the first and last tabs' positions, since
+the `TabRow` keeps its scroll state to itself).
 The highlight pill follows the focused tab immediately, with no slide or colour fade. Landing on
 a tab still opens its page, but the pill no longer waits for that navigation (it used to, which
 left the newly focused tab dim gray until the page was built, then slid over).

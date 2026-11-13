@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -367,6 +369,7 @@ private fun GuidePage(
 }
 
 /** The selected program: art, what it is, when, and Watch live or Details. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Detail(
     selection: LiveSelection,
@@ -382,10 +385,24 @@ private fun Detail(
         ShortDetail(selection, now, on, onTune, onDetails)
         return
     }
+    val buttons = @Composable { modifier: Modifier, end: Boolean ->
+        // wrap to a second line rather than squeeze each other
+        FlowRow(
+            horizontalArrangement = if (end) Arrangement.spacedBy(8.dp, Alignment.End) else Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = modifier,
+        ) {
+            if (on && p.videoUri.isNotEmpty()) {
+                FilledTonalButton(onClick = { onTune(selection.channel) }) { Text(stringResource(R.string.live_watch)) }
+            }
+            if (p.videoId != null) {
+                OutlinedButton(onClick = { onDetails(p) }) { Text(stringResource(R.string.live_details)) }
+            }
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val art = p.backdropUri.ifEmpty { p.imageUri }
@@ -429,15 +446,12 @@ private fun Detail(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                if (on && p.videoUri.isNotEmpty()) {
-                    FilledTonalButton(onClick = { onTune(selection.channel) }) { Text(stringResource(R.string.live_watch)) }
-                }
-                if (p.videoId != null) {
-                    OutlinedButton(onClick = { onDetails(p) }) { Text(stringResource(R.string.live_details)) }
-                }
-            }
+            // wide: beside the art, under the text
+            if (wide) buttons(Modifier.padding(top = 4.dp), false)
         }
+    }
+    // narrow: under the art, at the right, where there's room for both
+    if (!wide) buttons(Modifier.fillMaxWidth().padding(top = 8.dp), true)
     }
 }
 

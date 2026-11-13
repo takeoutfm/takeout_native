@@ -93,13 +93,42 @@ AppPage {
         load()
     }
 
+    /**
+     * Keeps up with the time: the clock, a fresh guide once it's 30 minutes old, the grid's start
+     * at now's half hour (a view left in the past comes back to now), the keyboard's time not
+     * falling behind, and a chosen program that has ended giving way to what's on now on its
+     * channel.
+     */
+    function catchUp() {
+        now = Date.now() + (guide?.skewMs ?? 0)
+        if (!loading && Date.now() - fetchedAt > 30 * 60 * 1000) load()
+        gridView.catchUp()
+        anchor = Math.max(anchor, now)
+        if (chosen && chosen.program.endMs <= now) {
+            const channel = (guide?.channels ?? []).find(c => c.name === chosen.channel)
+            const p = channel ? gridView.focusAt(channel, now) : null
+            chosen = p ? {channel: channel.name, program: p} : null
+        }
+    }
+
+    // on each minute, so the clock and the now line turn over with it
     Timer {
-        interval: 30000
-        repeat: true
+        id: clock
         running: true
+        interval: 60000 - page.now % 60000 + 50
         onTriggered: {
-            page.now = Date.now() + (page.guide?.skewMs ?? 0)
-            if (!page.loading && Date.now() - page.fetchedAt > 30 * 60 * 1000) page.load()
+            page.catchUp()
+            interval = 60000 - page.now % 60000 + 50
+            restart()
+        }
+    }
+
+    // at once when the page comes back, or the app does (a timer doesn't run during suspend)
+    onVisibleChanged: if (visible) catchUp()
+    Connections {
+        target: Qt.application
+        function onStateChanged() {
+            if (Qt.application.state === Qt.ApplicationActive) page.catchUp()
         }
     }
 
@@ -341,7 +370,7 @@ AppPage {
             id: gridView
             visible: page.grid && !!page.guide
             Layout.fillWidth: true
-            /** The grid starts at the half hour it opened in and doesn't go back. */
+            /** The grid starts at now's half hour and doesn't go back ([catchUp] moves it on). */
             property real start: 0
             readonly property real end: Math.max(page.guide ? (page.guide.horizonMs || page.guide.endMs + 6 * page.hour) : 0,
                                                  start + page.hour)
@@ -371,6 +400,16 @@ AppPage {
             }
 
             onDrawFromChanged: if (page.guide) ensureVisible()
+
+            /** The past drops off: a view still ahead of now stays where it is, one in it comes to now. */
+            function catchUp() {
+                const half = Math.floor(page.now / page.halfHour) * page.halfHour
+                if (start === 0 || half <= start) return
+                const ahead = viewStart >= half
+                const x = across.contentX - xAt(half)
+                start = half
+                across.contentX = ahead ? Math.max(0, x) : 0
+            }
 
             // ---- The keyboard, as the TV's remote ----
             activeFocusOnTab: true

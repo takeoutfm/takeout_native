@@ -208,8 +208,14 @@ dashboard top bar, D-pad handling.
       the guide; laid out as `VideoPlayer.qml`, the program's progress in the seek bar's place,
       Audio, Subtitles and Full screen at the right of the buttons, the best audio track picked
       by the shared ranking; click or Space pauses, L jumps to live), through the `guideReload`, `guideEnsure` and `tune` calls
-      (`linux/LiveCalls.kt`). Live playback doesn't write watch progress. Not yet: Apple. None
-      planned for Wear OS: video doesn't fit a watch.
+      (the `guide/LiveViews.kt` types, shared with Apple). Apple (2026-11-12): the Live page in
+      the Mac/iPad sidebar and on the iPhone's Home (On Now; Guide with the detail panel, day
+      row and grid, cut-off titles kept at the left edge as on Android; ← → ↑ ↓, Home and
+      Return on the Mac) and `LivePlayerModel` on VLC (the Mac's one Live window, iOS full
+      screen; slate, break music fade, pause behind live, Jump to Live, best audio track,
+      subtitles followed by language), through `SwiftCalls.guideReload` / `guideEnsure` /
+      `tune` (`apple/README.md`). Live playback doesn't write watch progress. None planned for
+      Wear OS: video doesn't fit a watch.
 
 ### 4.5 Podcasts
 - [ ] Series grid (all / **subscribed**), subscribe / unsubscribe.

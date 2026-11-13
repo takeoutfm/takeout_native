@@ -1,19 +1,13 @@
-package com.takeoutfm.shared.linux
+package com.takeoutfm.shared.guide
 
-import com.takeoutfm.shared.guide.Guide
-import com.takeoutfm.shared.guide.GuideLoader
-import com.takeoutfm.shared.guide.GuideProgram
-import com.takeoutfm.shared.guide.MusicFade
-import com.takeoutfm.shared.guide.ProgramKind
-import com.takeoutfm.shared.guide.Tune
-import com.takeoutfm.shared.guide.musicBlocks
-import com.takeoutfm.shared.guide.timeLeft
-import com.takeoutfm.shared.guide.tune
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
-/** A guide program for QML: times in epoch milliseconds, kind in lower case. */
+/**
+ * The guide as the Linux (QML, through JSON) and Apple (Swift) apps take it: times in epoch
+ * milliseconds, kinds as lower-case strings. One program.
+ */
 @Serializable
 data class LiveProgram(
     /** movie, episode, offair, reserved or track. */
@@ -74,7 +68,7 @@ data class LiveTune(
     val lineup: List<String>,
 )
 
-internal fun GuideProgram.toLive() = LiveProgram(
+fun GuideProgram.toLive() = LiveProgram(
     kind = when (kind) {
         ProgramKind.Movie -> "movie"
         ProgramKind.Episode -> "episode"
@@ -94,7 +88,7 @@ internal fun GuideProgram.toLive() = LiveProgram(
     videoId = videoId.orEmpty(),
 )
 
-internal fun Guide.toLive() = LiveGuideView(
+fun Guide.toLive() = LiveGuideView(
     channels = channels.map { c ->
         LiveChannel(
             name = c.name,
@@ -107,11 +101,11 @@ internal fun Guide.toLive() = LiveGuideView(
     skewMs = skew.inWholeMilliseconds,
 )
 
-/** What the loader has, for QML; null before anything was fetched. */
-internal fun GuideLoader.page(): LiveGuideView? =
+/** What the loader has; null before anything was fetched. */
+fun GuideLoader.page(): LiveGuideView? =
     guide.value?.toLive()?.copy(horizonMs = horizon.value?.toEpochMilliseconds() ?: 0)
 
-internal fun Guide.tuneLive(name: String): LiveTune {
+fun Guide.tuneLive(name: String): LiveTune {
     val lineup = channels.map { it.name }
     val index = lineup.indexOf(name)
     val skewMs = skew.inWholeMilliseconds

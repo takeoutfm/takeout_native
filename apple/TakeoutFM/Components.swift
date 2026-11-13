@@ -115,6 +115,7 @@ private struct ListPage: View {
         case .favorites: FavoritesView()
         case .playlists: PlaylistList()
         case .podcasts: PodcastsView()
+        case .live: LiveView()
         case .watch: WatchView()
         case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
@@ -160,7 +161,7 @@ enum Route: Hashable {
 }
 
 enum LibraryList: Hashable {
-    case recentlyAdded, newReleases, favorites, playlists, podcasts, watch, movies, shows, downloads
+    case recentlyAdded, newReleases, favorites, playlists, podcasts, live, watch, movies, shows, downloads
 }
 
 /**

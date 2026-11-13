@@ -137,6 +137,21 @@ files.
   `TakeoutProgress` (first save 10 s in, then every 10 s, on pause and on close), so playing
   a title changes your real watch progress. Debug builds take `-playVideo e-57` (and
   `-noProgress YES` to save nothing) to test playback without the UI.
+- Live (`LiveViews.swift`, `LivePlayer.swift`; only when the library index has `hasGuide`):
+  the page is On Now or the Guide (detail panel, day row, a grid of every loaded program that
+  fetches the guide in 6-hour windows as it scrolls, `scrollPosition` telling where it is;
+  each cell measures its own place to keep a cut-off title at the left edge). It's in the
+  sidebar under Video and on the iPhone's Home under Library. `LivePlayerModel` plays a
+  channel with VLC through `StreamProxy` from where it is now, following the shared `tune`
+  (`SwiftCalls.guideReload` / `guideEnsure` / `tune`, the same `guide/LiveViews.kt` types
+  Linux gets as JSON): the program from its offset, break music fading out under the up-next
+  slate, pause behind live and Jump to Live. It writes no watch progress. The Mac has one
+  Live window (`Window` "live", retuned through `AppModel.liveRequest`), iOS a full-screen
+  cover. On iOS the video and live players share `PlayerChrome` (Apple's player layout: a
+  close button alone at the top, the transport in the middle, the titles, menus and slider or
+  live progress along the bottom, LIVE at the bar's end turning into Jump to Live); on the
+  Mac both windows have the same bottom bar. Keep the two players alike. Debug builds take `-livePage YES`, `-liveGuideGrid YES` (holds the On Now / Guide
+  switch while the app runs) and `-playLive "Action"`.
 - `WatchKt.watch(flow:onEach:)` follows a Kotlin Flow on the main thread (e.g. the session
   state); `CodeSignIn` runs the device-code sign-in.
 - Shared logic is tested on the JVM on Linux (`./gradlew :shared:testDebugUnitTest`), and the

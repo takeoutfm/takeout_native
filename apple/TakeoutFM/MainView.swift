@@ -7,7 +7,7 @@ struct MainView: View {
 
     enum Page: Hashable {
         case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio, podcasts
-        case watch, movies, shows, downloads
+        case live, watch, movies, shows, downloads
         case search(String)
 
         var title: String {
@@ -20,6 +20,7 @@ struct MainView: View {
             case .playlists: return "Playlists"
             case .radio: return "Radio"
             case .podcasts: return "Podcasts"
+            case .live: return "Live"
             case .watch: return "Watch"
             case .movies: return "Movies"
             case .shows: return "TV Shows"
@@ -38,6 +39,7 @@ struct MainView: View {
             case .playlists: return "music.note.list"
             case .radio: return "dot.radiowaves.left.and.right"
             case .podcasts: return "antenna.radiowaves.left.and.right"
+            case .live: return "dot.radiowaves.up.forward"
             case .watch: return "play.tv"
             case .movies: return "film"
             case .shows: return "tv"
@@ -52,6 +54,7 @@ struct MainView: View {
     @State private var query = ""
     @State private var showAccount = false
     @Environment(\.playVideo) private var playVideo
+    @Environment(\.playLive) private var playLive
 
     private var musicPages: [Page] {
         var pages: [Page] = [.recentlyPlayed, .recentlyAdded, .newReleases, .artists, .favorites]
@@ -62,8 +65,9 @@ struct MainView: View {
     }
 
     private var videoPages: [Page] {
-        guard model.hasMovies || model.hasShows else { return [] }
-        var pages: [Page] = [.watch]
+        var pages: [Page] = model.hasGuide ? [.live] : []
+        guard model.hasMovies || model.hasShows else { return pages }
+        pages.append(.watch)
         if model.hasMovies { pages.append(.movies) }
         if model.hasShows { pages.append(.shows) }
         return pages
@@ -143,6 +147,11 @@ struct MainView: View {
             if let id = UserDefaults.standard.string(forKey: "playVideo") {
                 playVideo(VideoPlayRequest(id: id))
             }
+            // Live: `-livePage YES` opens the page (`-liveGuideGrid YES` for the grid, which
+            // holds the On Now / Guide switch there while the app runs), `-playLive "Channel"`
+            // plays a channel.
+            if UserDefaults.standard.bool(forKey: "livePage") { page = .live }
+            if let channel = UserDefaults.standard.string(forKey: "playLive") { playLive(channel) }
         }
         #endif
         .onChange(of: page) {
@@ -186,6 +195,7 @@ struct MainView: View {
         case .playlists: PlaylistList()
         case .radio: RadioView()
         case .podcasts: PodcastsView()
+        case .live: LiveView()
         case .watch: WatchView()
         case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }

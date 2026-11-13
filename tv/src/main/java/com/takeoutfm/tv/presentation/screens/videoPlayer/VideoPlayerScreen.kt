@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -189,6 +190,10 @@ fun VideoPlayerScreenContent(
         }
     }
 
+    // The listener below outlives recompositions, so it reads the latest callbacks.
+    val currentOnBack by rememberUpdatedState(onBackPressed)
+    val currentOnPlayEpisode by rememberUpdatedState(onPlayEpisode)
+
     DisposableEffect(exoPlayer) {
         // Pick the best audio track once per title; after that the user's ♪ choice stands.
         var audioChosen = false
@@ -214,6 +219,13 @@ fun VideoPlayerScreenContent(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 isBuffering.value = playbackState == Player.STATE_BUFFERING ||
                     playbackState == Player.STATE_IDLE
+                if (playbackState == Player.STATE_ENDED) {
+                    saveProgress()
+                    // Don't leave a stopped video on screen: an episode goes on to the next
+                    // one, anything else returns to where it was played from (its details).
+                    val next = movieDetails.nextEpisodeId
+                    if (next != null) currentOnPlayEpisode(next) else currentOnBack()
+                }
             }
         }
         exoPlayer.addListener(listener)

@@ -154,8 +154,10 @@ class VideoPlayerActivity : ComponentActivity() {
         override fun onPlaybackStateChanged(state: Int) {
             if (state != Player.STATE_ENDED) return
             save()
-            // An episode ends: on to the next one, from its start.
-            details?.nextEpisodeId?.let { play(it, startOver = true) }
+            // An episode ends: on to the next one, from its start. Anything else (a movie, a
+            // series' last episode) returns to where it was played from, not a stopped video.
+            val next = details?.nextEpisodeId
+            if (next != null) play(next, startOver = true) else finish()
         }
 
         override fun onVideoSizeChanged(videoSize: VideoSize) = updatePip()

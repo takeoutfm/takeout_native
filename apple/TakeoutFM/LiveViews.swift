@@ -13,6 +13,7 @@ struct LiveView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.playLive) private var playLive
     @Environment(\.compactLayout) private var compact
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("liveGuideGrid") private var grid = false
     @State private var guide: LiveGuideView?
     @State private var failed = false
@@ -61,15 +62,26 @@ struct LiveView: View {
                     .disabled(loading)
             }
         }
+        // Runs again each time the page comes back (from Details, another page): the time is
+        // caught up at once, then on each minute, so the clock and the now line turn over with it.
         .task {
-            if guide == nil { await load() }
-            // the clock, and a fresh guide when it gets old
+            if guide == nil { await load() } else { await catchUp() }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
-                now = serverNowMs(skewMs: guide?.skewMs ?? 0)
-                if !loading && Date().timeIntervalSince(fetchedAt) > 30 * 60 { await load() }
+                let ms = serverNowMs(skewMs: guide?.skewMs ?? 0)
+                try? await Task.sleep(for: .milliseconds(60_000 - ms % 60_000 + 50))
+                await catchUp()
             }
         }
+        // back from the background (the sleep above doesn't count time spent there)
+        .onChange(of: scenePhase) {
+            if scenePhase == .active { Task { await catchUp() } }
+        }
+    }
+
+    /** The time now, and a fresh guide once it's 30 minutes old. */
+    private func catchUp() async {
+        now = serverNowMs(skewMs: guide?.skewMs ?? 0)
+        if !loading && Date().timeIntervalSince(fetchedAt) > 30 * 60 { await load() }
     }
 
     private var switchPlacement: ToolbarItemPlacement {
@@ -236,8 +248,11 @@ private struct GuideGrid: View {
         }
         .onAppear {
             anchor = now
+            catchUp()
             ensure(now, now + 12 * hourMs)
         }
+        // the page's clock moved on (each minute, or coming back to it)
+        .onChange(of: now) { catchUp() }
         #if os(macOS)
         .focusable()
         .focused($focused)
@@ -449,6 +464,27 @@ private struct GuideGrid: View {
         )
         .contentShape(Rectangle())
         .offset(x: left, y: 2)
+    }
+
+    /**
+     * Keeps the grid on the time now as it moves on: the grid starts at now's half hour (the
+     * past drops off, and a view left in it comes back to now), the keyboard's time doesn't fall
+     * behind, and a chosen program that has ended gives way to what's on now on its channel.
+     */
+    private func catchUp() {
+        let half = now / halfHourMs * halfHourMs
+        if half > start {
+            // a view still ahead of now stays where it is; one in the past goes to now
+            let ahead = scrolledTo.map { $0 >= half } ?? false
+            start = half
+            if !ahead { scrolledTo = half }
+        }
+        anchor = max(anchor, now)
+        if let c = chosen, c.program.endMs <= now {
+            chosen = guide.channels.first { $0.name == c.channel }
+                .flatMap { focusAt($0, now) }
+                .map { Selection(channel: c.channel, program: $0) }
+        }
     }
 
     // ---- Moving around (the keyboard, the day row) ----

@@ -143,7 +143,11 @@ files.
 - Live (`LiveViews.swift`, `LivePlayer.swift`; only when the library index has `hasGuide`):
   the page is On Now or the Guide (detail panel, day row, a grid of every loaded program that
   fetches the guide in 6-hour windows as it scrolls, `scrollPosition` telling where it is;
-  each cell measures its own place to keep a cut-off title at the left edge). It's in the
+  each cell measures its own place to keep a cut-off title at the left edge). It keeps up
+  with the time (`catchUp`): at once when the page comes back or the app returns from the
+  background, then on each minute, the grid's start moves to now's half hour, a view left in
+  the past comes back to now, an ended selection gives way to what's on now on its channel,
+  and the guide reloads once it's 30 minutes old. It's in the
   sidebar under Video and on the iPhone's Home under Library. `LivePlayerModel` plays a
   channel with VLC through `StreamProxy` from where it is now, following the shared `tune`
   (`SwiftCalls.guideReload` / `guideEnsure` / `tune`, the same `guide/LiveViews.kt` types

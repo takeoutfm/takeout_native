@@ -35,6 +35,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.Job
+import com.takeoutfm.shared.guide.focusAt
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -128,21 +135,40 @@ class LiveViewModel @Inject constructor(
     val selected: StateFlow<LiveSelection?> = _selected.asStateFlow()
 
     private var fetchedAt = Instant.DISTANT_PAST
+    private var loadJob: Job? = null
 
-    init {
-        viewModelScope.launch {
-            while (true) {
-                val g = guide.value
-                _state.value = _state.value.copy(now = g?.now() ?: Clock.System.now())
-                if (g == null || Clock.System.now() - fetchedAt > MaxAge) load()
-                delay(TickMs)
-            }
+    /**
+     * Keeps the page on the time while it's shown: caught up at once (each time the page comes
+     * back, from Details or the background), then on each minute, so the clock and the now line
+     * turn over with it.
+     */
+    suspend fun keepUp() {
+        while (true) {
+            catchUp()
+            val ms = (guide.value?.now() ?: Clock.System.now()).toEpochMilliseconds()
+            delay(60_000 - ms % 60_000 + 50)
         }
     }
 
-    /** Pull to refresh. */
+    /** The time now, a fresh guide once it's [MaxAge] old, and a chosen program that has ended
+     * giving way to what's on now on its channel. */
+    private fun catchUp() {
+        val g = guide.value
+        val now = g?.now() ?: Clock.System.now()
+        _state.value = _state.value.copy(now = now)
+        if (g == null || Clock.System.now() - fetchedAt > MaxAge) reload()
+        val chosen = _selected.value
+        if (g != null && chosen != null && chosen.program.end <= now) {
+            _selected.value = g.channels.firstOrNull { it.name == chosen.channel }
+                ?.let { focusAt(it, now) }
+                ?.let { LiveSelection(chosen.channel, it) }
+        }
+    }
+
+    /** Pull to refresh, or the guide is old; one load at a time. */
     fun reload() {
-        viewModelScope.launch { load() }
+        if (loadJob?.isActive == true) return
+        loadJob = viewModelScope.launch { load() }
     }
 
     private suspend fun load() {
@@ -172,7 +198,6 @@ class LiveViewModel @Inject constructor(
 
     private companion object {
         val MaxAge = 30.minutes
-        const val TickMs = 30_000L
     }
 }
 
@@ -195,6 +220,11 @@ fun LiveHome(grid: Boolean, viewModel: LiveViewModel, videoNav: VideoNav) {
     val guide by viewModel.guide.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val tune = { channel: String -> LivePlayerActivity.start(context, channel) }
+    // while the page is shown and the app is in front
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.keepUp() }
+    }
     PullToRefreshBox(
         isRefreshing = state.loading && guide != null,
         onRefresh = viewModel::reload,
@@ -316,14 +346,26 @@ private fun GuidePage(
     val selection = chosen ?: guide.channels.firstNotNullOfOrNull { c ->
         onNow(c, now).program?.let { LiveSelection(c.name, it) }
     }
-    // the grid starts at the half hour it opened in and doesn't go back
-    val start = remember { now.floorTo(30.minutes) }
+    // the grid starts at now's half hour and doesn't go back
+    var start by remember { mutableStateOf(now.floorTo(30.minutes)) }
     val end = maxOf(horizon ?: (guide.end + GuideLoader.Block), start + 1.hours)
     val horizontal = rememberScrollState()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val pxPerMinute = with(density) { MinuteWidth.toPx() }
     val viewStart = start + (horizontal.value / pxPerMinute).toDouble().minutes
+    // As the time moves on, the past drops off: a view still ahead of now stays where it is,
+    // one left in the past comes back to now.
+    LaunchedEffect(now) {
+        val half = now.floorTo(30.minutes)
+        if (half > start) {
+            val ahead = viewStart >= half
+            val shift = ((half - start).inWholeSeconds / 60f * pxPerMinute).toInt()
+            val x = if (ahead) horizontal.value - shift else 0
+            start = half
+            horizontal.scrollTo(x.coerceAtLeast(0))
+        }
+    }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     // a phone on its side: the panel gives the grid the height
     val short = LocalConfiguration.current.screenHeightDp < 480

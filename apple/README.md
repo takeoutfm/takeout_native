@@ -133,7 +133,10 @@ files.
   range VLC asks for is fetched from storage with a presigned URL from `StreamResolver` (the
   location requested with the token, redirects not followed), reused for 10 minutes and
   fetched again if storage answers 403. The bytes pass through the app on loopback; neither
-  the token nor a presigned URL reaches VLC. Progress goes through the shared
+  the token nor a presigned URL reaches VLC. Giving VLC the storage URL directly, as Android
+  and Linux now do, was tried on 2026-11-13 and VLCKit can't recover from a seek or resume
+  after the URL expires or from a network drop, without ever reporting an error: the details
+  are in `StreamProxy`'s comment. Progress goes through the shared
   `TakeoutProgress` (first save 10 s in, then every 10 s, on pause and on close), so playing
   a title changes your real watch progress. Debug builds take `-playVideo e-57` (and
   `-noProgress YES` to save nothing) to test playback without the UI.

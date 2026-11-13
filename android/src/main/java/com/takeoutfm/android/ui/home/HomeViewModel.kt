@@ -13,6 +13,7 @@ import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.settings.PlaySettings
 import com.takeoutfm.shared.video.TakeoutVideoRepository
 import com.takeoutfm.shared.video.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,25 +80,30 @@ class HomeViewModel @Inject constructor(
     private val podcasts: TakeoutPodcastRepository,
     private val session: TakeoutSession,
     private val api: TakeoutApi,
+    private val settings: PlaySettings,
 ) : ViewModel() {
     /** The media types this server's library has (all, until the index is known). */
     val types: StateFlow<List<MediaType>> = library.index
         .map { available(it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, available(library.index.value))
 
-    private val chosen = MutableStateFlow(HomeSelection())
+    private val chosen = MutableStateFlow(shown(MediaType.Music))
 
-    /** The list last shown for each type, so coming back to a type shows it again. */
-    private val lastSubtype = mutableMapOf<MediaType, Subtype>()
+    /**
+     * The list last shown for each type, so coming back to a type shows it again; saved, so it's
+     * still the one after the app is closed (Subscribed podcasts stay Subscribed).
+     */
+    private fun HomeSelection.remembered(): HomeSelection = also { settings.setHomeList(type.name, subtype.name) }
 
-    private fun HomeSelection.remembered(): HomeSelection = also { lastSubtype[type] = subtype }
-
-    private fun shown(type: MediaType) = HomeSelection(type, lastSubtype[type] ?: type.subtypes.first())
+    private fun shown(type: MediaType): HomeSelection {
+        val saved = settings.homeList(type.name)?.let { name -> type.subtypes.firstOrNull { it.name == name } }
+        return HomeSelection(type, saved ?: type.subtypes.first())
+    }
 
     /** The chosen type and subtype, kept to what the library has. */
     val selection: StateFlow<HomeSelection> = combine(chosen, types) { s, t ->
-        if (s.type in t || t.isEmpty()) s else HomeSelection(t.first(), t.first().subtypes.first())
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeSelection())
+        if (s.type in t || t.isEmpty()) s else shown(t.first())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, chosen.value)
 
     private val reloads = MutableStateFlow(0)
 

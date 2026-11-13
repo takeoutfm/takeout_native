@@ -74,6 +74,11 @@ class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
         store.putString(KEY_THEME, mode.name)
     }
 
+    /** The list Home last showed for a media type (Subscribed podcasts, say), by name; null if none. */
+    fun homeList(type: String): String? = store.getString(KEY_HOME_LIST + type)
+
+    fun setHomeList(type: String, list: String) = store.putString(KEY_HOME_LIST + type, list)
+
     private fun set(flow: MutableStateFlow<Boolean>, key: String, on: Boolean) {
         flow.value = on
         store.putString(key, on.toString())
@@ -86,5 +91,6 @@ class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
         const val KEY_THEME = "theme"
         const val KEY_MOBILE_DATA = "streamOverMobileData"
         const val KEY_REPEAT_ALL = "repeatAll"
+        const val KEY_HOME_LIST = "homeList."
     }
 }

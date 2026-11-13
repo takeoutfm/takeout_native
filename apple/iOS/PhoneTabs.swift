@@ -116,6 +116,7 @@ private struct HomeTab: View {
             if model.hasPodcasts { link("Podcasts", "antenna.radiowaves.left.and.right", .podcasts) }
             link("Recently Added", "plus.square.on.square", .recentlyAdded)
             link("New Releases", "sparkles", .newReleases)
+            if model.hasGuide { link("Live", "dot.radiowaves.up.forward", .live) }
             if model.hasMovies || model.hasShows { link("Watch", "play.tv", .watch) }
             if model.hasMovies { link("Movies", "film", .movies) }
             if model.hasShows { link("TV Shows", "tv", .shows) }

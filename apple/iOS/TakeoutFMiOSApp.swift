@@ -30,6 +30,7 @@ private struct IOSRoot: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var video: VideoPlayRequest?
+    @State private var live: LiveRequest?
 
     var body: some View {
         Group {
@@ -42,6 +43,7 @@ private struct IOSRoot: View {
             }
         }
         .environment(\.playVideo, PlayVideoAction { video = $0 })
+        .environment(\.playLive, PlayLiveAction { live = LiveRequest(channel: $0) })
         .environment(\.compactLayout, sizeClass == .compact)
         #if DEBUG
         // For testing video without the UI: `-playVideo e-57 -noProgress YES` (as on the Mac).
@@ -52,6 +54,13 @@ private struct IOSRoot: View {
         .fullScreenCover(item: $video) { request in
             VideoPlayerScreen(request: request, calls: model.calls, cache: model.cache)
                 .environmentObject(model)
+        }
+        // on a view of its own: two covers on one view can fail to present
+        .background {
+            Color.clear.fullScreenCover(item: $live) { request in
+                LivePlayerScreen(request: request, calls: model.calls)
+                    .environmentObject(model)
+            }
         }
     }
 }

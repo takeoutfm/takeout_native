@@ -5,6 +5,9 @@ import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.api.TakeoutSession
 import com.takeoutfm.shared.api.TakeoutUrls
 import com.takeoutfm.shared.db.AppleDatabase
+import com.takeoutfm.shared.guide.GuideLoader
+import com.takeoutfm.shared.guide.LiveGuide
+import com.takeoutfm.shared.guide.TakeoutGuideRepository
 import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.listen.ListenBrainzAccount
 import com.takeoutfm.shared.listen.ListenReporter
@@ -43,6 +46,13 @@ class TakeoutCore(secureStore: KeyValueStore, userAgent: String, dataDirectory: 
     val music = TakeoutMusicRepository(api, library, urls)
     val podcasts = TakeoutPodcastRepository(api, urls, progress)
     val video = TakeoutVideoRepository(api, session, library, urls, progress)
+    val guide = TakeoutGuideRepository(api, urls)
+
+    /** The guide from now on, for the live player: reloaded when it gets old or runs short. */
+    val liveGuide = LiveGuide(guide)
+
+    /** The Live page's guide: days ahead, fetched in windows as it scrolls. */
+    val guideLoader = GuideLoader(guide)
 
     init {
         // Every GET is kept for browsing offline, as on Android.

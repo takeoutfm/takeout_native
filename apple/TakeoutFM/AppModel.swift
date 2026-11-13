@@ -20,6 +20,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var hasMovies = false
     @Published private(set) var hasShows = false
     @Published private(set) var hasPodcasts = false
+    /// The server has channels (/api/guide): the Live page.
+    @Published private(set) var hasGuide = false
+    /// The channel the Mac's Live window plays (a new request each time one is picked).
+    @Published var liveRequest: LiveRequest?
     /// Recently Played, newest first.
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.
@@ -104,6 +108,7 @@ final class AppModel: ObservableObject {
                 self?.hasMovies = index?.hasMovies ?? false
                 self?.hasShows = index?.hasShows ?? false
                 self?.hasPodcasts = index?.hasPodcasts ?? false
+                self?.hasGuide = index?.hasGuide ?? false
             },
             WatchKt.watch(flow: core.history.entries) { [weak self] entries in
                 self?.recentlyPlayed = entries as? [PlayedQueue] ?? []

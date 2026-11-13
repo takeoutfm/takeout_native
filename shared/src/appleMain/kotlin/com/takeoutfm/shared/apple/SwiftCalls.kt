@@ -1,5 +1,10 @@
 package com.takeoutfm.shared.apple
 
+import com.takeoutfm.shared.guide.GuideLoader
+import com.takeoutfm.shared.guide.LiveGuideView
+import com.takeoutfm.shared.guide.LiveTune
+import com.takeoutfm.shared.guide.page
+import com.takeoutfm.shared.guide.tuneLive
 import com.takeoutfm.shared.listen.ListenBrainzUser
 import com.takeoutfm.shared.listen.ListenSession
 import com.takeoutfm.shared.music.Album
@@ -25,6 +30,7 @@ import com.takeoutfm.shared.video.VideoCard
 import com.takeoutfm.shared.video.VideoDetails
 import com.takeoutfm.shared.video.VideoSearchResults
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.Instant
 
 /**
  * The shared calls the Swift app makes. Swift sees suspend functions as `async throws`, but a
@@ -224,4 +230,32 @@ class SwiftCalls(private val core: TakeoutCore) {
     fun mediaAuthorization(url: String): String? = core.session.mediaAuthorization(url)
 
     val isSignedIn: Boolean get() = core.session.state.value.isLoggedIn
+
+    // ---- Live (as Linux's guideReload, guideEnsure and tune calls) ----
+
+    /**
+     * The Live page's guide from now: starts over, fetching the window with now in it and the
+     * next. Everything fetched so far, or null when nothing could be.
+     */
+    @Throws(Throwable::class)
+    suspend fun guideReload(): LiveGuideView? {
+        val loader = core.guideLoader
+        if (loader.reload()) {
+            val now = loader.guide.value!!.now()
+            loader.ensure(now, now + GuideLoader.Block)
+        }
+        return loader.page()
+    }
+
+    /** Fetches the guide from [fromMs] to [untilMs] (epoch ms) where it isn't yet; all of it. */
+    @Throws(Throwable::class)
+    suspend fun guideEnsure(fromMs: Long, untilMs: Long): LiveGuideView? {
+        val loader = core.guideLoader
+        loader.ensure(Instant.fromEpochMilliseconds(fromMs), Instant.fromEpochMilliseconds(untilMs))
+        return loader.page()
+    }
+
+    /** What the live player plays on [channel] now (the shared `tune`). */
+    @Throws(Throwable::class)
+    suspend fun tune(channel: String): LiveTune = core.liveGuide.get().tuneLive(channel)
 }

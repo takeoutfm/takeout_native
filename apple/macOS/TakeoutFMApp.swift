@@ -37,6 +37,13 @@ struct TakeoutFMApp: App {
             }
         }
         .defaultSize(width: 1280, height: 720)
+        // One live window: picking another channel retunes it.
+        Window("Live", id: "live") {
+            LiveWindowView(calls: model.calls)
+                .environmentObject(model)
+                .frame(minWidth: 640, minHeight: 360)
+        }
+        .defaultSize(width: 1280, height: 720)
         MenuBarExtra("TakeoutFM", systemImage: "music.note", isInserted: $showMenuBarPlayer) {
             MiniPlayerView()
                 .environmentObject(model)
@@ -63,5 +70,9 @@ private struct MacRoot: View {
             }
         }
         .environment(\.playVideo, PlayVideoAction { openWindow(id: "video", value: $0) })
+        .environment(\.playLive, PlayLiveAction {
+            model.liveRequest = LiveRequest(channel: $0)
+            openWindow(id: "live")
+        })
     }
 }

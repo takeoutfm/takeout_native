@@ -61,18 +61,7 @@ struct VideoPlayerScreen: View {
     }
 
     private var controls: some View {
-        VStack {
-            HStack {
-                Button("Done") { dismiss() }
-                    .font(.headline)
-                Spacer()
-                Text(video.details?.title ?? "").font(.headline).lineLimit(1)
-                Spacer()
-                trackMenus
-            }
-            .padding()
-            .background(LinearGradient(colors: [.black.opacity(0.7), .clear], startPoint: .top, endPoint: .bottom))
-            Spacer()
+        PlayerChrome(close: { dismiss() }) {
             HStack(spacing: 44) {
                 if let previous = video.details?.previousEpisodeId {
                     Button { video.load(VideoPlayRequest(id: previous, startOver: true)) } label: {
@@ -83,6 +72,8 @@ struct VideoPlayerScreen: View {
                 Button { video.togglePlay(); hideLater() } label: {
                     Image(systemName: video.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 44))
                 }
+                // the loading spinner takes its place, as in Apple's player
+                .opacity(video.isBuffering ? 0 : 1)
                 Button { video.jump(seconds: 10); hideLater() } label: { Image(systemName: "goforward.10").font(.title) }
                 if let next = video.details?.nextEpisodeId {
                     Button { video.load(VideoPlayRequest(id: next, startOver: true)) } label: {
@@ -90,7 +81,13 @@ struct VideoPlayerScreen: View {
                     }
                 }
             }
-            Spacer()
+        } titles: {
+            Text(video.details?.title ?? "")
+                .font(.title3.weight(.semibold))
+                .lineLimit(1)
+        } menus: {
+            trackMenus
+        } bar: {
             VStack(spacing: 4) {
                 Slider(
                     value: Binding(get: { scrubMs ?? Double(video.timeMs) }, set: { scrubMs = $0 }),
@@ -112,12 +109,7 @@ struct VideoPlayerScreen: View {
                 }
                 .font(.caption.monospacedDigit())
             }
-            .padding()
-            .background(LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .top, endPoint: .bottom))
         }
-        .foregroundStyle(.white)
-        .tint(.white)
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -136,14 +128,14 @@ struct VideoPlayerScreen: View {
                             if !track.detail.isEmpty { Text(track.detail) }
                         }
                     }
-                } label: { Image(systemName: "waveform").font(.title3) }
+                } label: { Image(systemName: "waveform") }
             }
             if !video.subtitleTracks.isEmpty {
                 Menu {
                     Picker("Subtitles", selection: Binding(get: { video.subtitleTrack }, set: { video.selectSubtitle($0) })) {
                         ForEach(video.subtitleTracks) { Text($0.name).tag($0.index) }
                     }
-                } label: { Image(systemName: "captions.bubble").font(.title3) }
+                } label: { Image(systemName: "captions.bubble") }
             }
         }
     }

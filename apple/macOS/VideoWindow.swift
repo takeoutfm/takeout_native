@@ -64,7 +64,11 @@ struct VideoPlayerView: View {
     }
 
     private var controls: some View {
-        VStack(spacing: 8) {
+        // as the Live window's bar: the title, the slider, then the buttons
+        VStack(alignment: .leading, spacing: 8) {
+            Text(video.details?.title ?? "")
+                .font(.title3.weight(.semibold))
+                .lineLimit(1)
             Slider(
                 value: Binding(
                     get: { scrubMs ?? Double(video.timeMs) },

@@ -2,12 +2,28 @@ import Foundation
 import Network
 
 /**
- * A loopback HTTP server that VLC plays Takeout videos from. VLC can't send the media token,
- * and after a redirect it keeps requesting the presigned storage URL, which expires after
- * 15 minutes (so a later seek would fail). Instead VLC asks this proxy for every range it
- * wants; the proxy gets a presigned URL from Takeout (with the token, reused for up to
- * 10 minutes, fetched again if storage refuses it) and passes the bytes through. Neither the
- * token nor a presigned URL reaches VLC.
+ * A loopback HTTP server that VLC plays Takeout videos from. VLC asks this proxy for every
+ * range it wants; the proxy gets a presigned storage URL from Takeout (with the token, reused
+ * for up to 10 minutes, fetched again if storage refuses it) and passes the bytes through.
+ * Neither the token nor a presigned URL reaches VLC.
+ *
+ * Why it's still here, when Android and Linux now give their players the storage URL directly
+ * (following /location once, asking again before a seek once the URL is old): the token isn't
+ * the reason (the app could resolve /location itself), VLC is. Tested 2026-11-13 with VLCKit
+ * 3.0.23 playing a presigned Wasabi URL directly (an open connection keeps streaming past the
+ * URL's 15 minutes; only new requests are refused):
+ * - Seek after 15 minutes: storage answered 403 to every new range; VLC retried ~44 times in
+ *   4 s, gave up on the seek and read on from the old connection. No error, and the clock
+ *   showed the seek target, so it looked fine.
+ * - Pause for 15 minutes, then play: the reconnect got 403; VLC played ~12 s of buffer, hit
+ *   end of stream and paused itself. No error and no "ended".
+ * - Wi-Fi off for 30 s: VLC never noticed the dead connection (its HTTP reader has no
+ *   timeout), played out its ~90 s buffer and froze, still "playing", for good. It did the
+ *   same with a URL only a minute old, so this isn't about expiry.
+ * Through this proxy all three played straight through: a failed request here is retried
+ * with a fresh URL and VLC never sees it. Without it the app would need Linux's re-resolve
+ * before seeks plus a watchdog that reopens at the current position whenever the clock stops
+ * while "playing" or VLC pauses by itself, with a visible gap each time.
  *
  * It listens on 127.0.0.1 only, and each video is reachable only by a random id while it's
  * registered.

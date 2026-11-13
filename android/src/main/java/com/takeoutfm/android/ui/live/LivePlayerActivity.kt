@@ -261,12 +261,15 @@ class LivePlayerActivity : ComponentActivity() {
         var buffering by remember { mutableStateOf(true) }
         var error by remember { mutableStateOf<String?>(null) }
         var ended by remember { mutableStateOf(false) }
-        // Bumped to show the controls (after tuning, or pausing).
+        // Bumped to show the controls (when a program starts, or on pausing). Only works while
+        // the controls are in use: showController() does nothing while tuning or in a break.
         var bannerKey by remember { mutableIntStateOf(0) }
         var liveKey by remember { mutableIntStateOf(0) }
         // The video player's controls (Media3's), and whether they're showing.
         var playerView by remember { mutableStateOf<PlayerView?>(null) }
-        var controlsVisible by remember { mutableStateOf(true) }
+        // Only the controls' listener sets this, and only when they show or hide: starting true,
+        // the banner stayed up for good when they hadn't shown yet.
+        var controlsVisible by remember { mutableStateOf(false) }
         var now by remember { mutableStateOf<Instant?>(null) }
         val cantLoad = stringResource(R.string.live_cant_load)
         val notOn = stringResource(R.string.live_not_on, channel)
@@ -359,6 +362,8 @@ class LivePlayerActivity : ComponentActivity() {
                     is Tune.Program -> {
                         val program = t.program
                         tuned = Tuned.Playing(program, t.next)
+                        // the controls and banner for a moment, then they hide
+                        bannerKey++
                         error = null
                         ended = false
                         buffering = true

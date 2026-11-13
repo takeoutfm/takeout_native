@@ -24,6 +24,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -98,7 +99,12 @@ fun HomeScreen(
         topBar = {
             // Six 48dp buttons leave a 360dp phone about 60dp for the title ("Mu…"): there,
             // pack them at their 40dp visual size and use the smaller title style.
-            val narrow = LocalConfiguration.current.screenWidthDp.dp < 48.dp * (types.size + 2) + TitleRoom
+            val width = LocalConfiguration.current.screenWidthDp.dp
+            val narrow = width < 48.dp * (types.size + 2) + TitleRoom
+            // Still too little for "Recently added" (a 360dp phone): Live goes in the menu.
+            val inMenu = if (narrow && width < 40.dp * (types.size + 2) + NarrowTitleRoom) {
+                types.filter { it == MediaType.Live }
+            } else emptyList()
             CompositionLocalProvider(
                 LocalMinimumInteractiveComponentSize provides if (narrow) 40.dp else 48.dp,
             ) {
@@ -116,13 +122,14 @@ fun HomeScreen(
                         }
                     },
                     actions = {
-                        types.forEach { type ->
+                        (types - inMenu.toSet()).forEach { type ->
                             val selected = type == selection.type
                             IconButton(onClick = { viewModel.select(type) }) {
                                 Icon(type.icon(selected), contentDescription = stringResource(type.title))
                             }
                         }
                         HomeMenu(
+                            types = inMenu.map { stringResource(it.title) to { viewModel.select(it) } },
                             onReload = viewModel::reload,
                             onFavoriteTracks = {
                                 nav.openQueue(QueueKind.Favorites, "", context.getString(R.string.favorite_tracks))
@@ -177,6 +184,9 @@ fun HomeScreen(
 /** What the title and subtitle ("Recently added") need beside the bar's icons. */
 private val TitleRoom = 120.dp
 
+/** The same with the smaller title style: it fits from a 384dp phone up, not on a 360dp one. */
+private val NarrowTitleRoom = 104.dp
+
 private fun MediaType.icon(selected: Boolean): ImageVector = when (this) {
     MediaType.Music -> if (selected) Icons.Filled.Speaker else Icons.Outlined.Speaker
     MediaType.Film -> if (selected) Icons.Filled.Movie else Icons.Outlined.Movie
@@ -187,6 +197,7 @@ private fun MediaType.icon(selected: Boolean): ImageVector = when (this) {
 
 @Composable
 private fun HomeMenu(
+    types: List<Pair<String, () -> Unit>>,
     onReload: () -> Unit,
     onFavoriteTracks: () -> Unit,
     onPlaylists: () -> Unit,
@@ -204,6 +215,17 @@ private fun HomeMenu(
             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_options))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            // media types with no room in the bar
+            types.forEach { (label, action) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        open = false
+                        action()
+                    },
+                )
+            }
+            if (types.isNotEmpty()) HorizontalDivider()
             listOf(
                 R.string.refresh_label to onReload,
                 R.string.recent_tracks to onRecentTracks,

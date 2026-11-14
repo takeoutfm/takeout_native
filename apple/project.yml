@@ -10,8 +10,10 @@ options:
     iOS: "17.0"
 settings:
   base:
-    MARKETING_VERSION: "3.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    # The Android apps' version (takeout.versionName / versionCode in gradle.properties); keep
+    # them the same (fdroid/publish.sh checks).
+    MARKETING_VERSION: "3.1.0-dev"
+    CURRENT_PROJECT_VERSION: "3100"
     FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
     OTHER_LDFLAGS: ["-framework", "Shared", "-lsqlite3"]
     # SQLiter's cinterop wraps SQLite functions the OS doesn't export (Windows, extension

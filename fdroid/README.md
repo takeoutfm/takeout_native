@@ -20,7 +20,9 @@ sudo apt install fdroidserver
 ## Releasing
 
 1. Raise `takeout.versionCode` and `takeout.versionName` in `gradle.properties` (one version
-   for all three apps; the code must always go up).
+   for all three apps; the code must always go up), and the same in `apple/project.yml`
+   (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`) for the Mac and iOS apps; `publish.sh`
+   stops if they differ.
 2. `fdroid/publish.sh` — builds the three release APKs, copies them into `~/fdroid/repo` as
    `<appId>-<versionName>.apk`, copies `metadata/` over and runs `fdroid update`.
 3. `fdroid/publish.sh --deploy` (or `cd ~/fdroid && fdroid deploy`) uploads it.

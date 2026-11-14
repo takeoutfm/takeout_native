@@ -28,6 +28,14 @@ command -v fdroid >/dev/null || { echo "fdroid not found (apt install fdroidserv
 sdk=$(sed -n 's/^sdk\.dir=//p' "$root/local.properties")
 tools=$(ls -d "$sdk"/build-tools/* | sort -V | tail -1)
 version=$(sed -n 's/^takeout\.versionName=//p' "$root/gradle.properties")
+code=$(sed -n 's/^takeout\.versionCode=//p' "$root/gradle.properties")
+# The Mac/iOS apps carry the same version (apple/project.yml).
+apple_version=$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)"/\1/p' "$root/apple/project.yml")
+apple_code=$(sed -n 's/^ *CURRENT_PROJECT_VERSION: *"\(.*\)"/\1/p' "$root/apple/project.yml")
+if [ "$apple_version" != "$version" ] || [ "$apple_code" != "$code" ]; then
+    echo "apple/project.yml is $apple_version ($apple_code), gradle.properties $version ($code): set MARKETING_VERSION / CURRENT_PROJECT_VERSION to match" >&2
+    exit 1
+fi
 # The build needs JDK 17 (apt's fdroidserver pulls in a newer default java).
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}
 

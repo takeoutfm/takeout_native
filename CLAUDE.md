@@ -46,6 +46,8 @@ ctest --test-dir linux/build                # C API smoke test, tofm_test (tofm'
 
 - Releases: one version for the phone, TV and watch apps (`takeout.versionCode` /
   `takeout.versionName` in `gradle.properties`), all signed with `android/key.properties`.
+  The Mac/iOS apps carry the same version (`apple/project.yml` `MARKETING_VERSION` /
+  `CURRENT_PROJECT_VERSION`); `fdroid/publish.sh` stops if they differ.
   `fdroid/publish.sh [--deploy]` publishes them to the F-Droid repo in `~/fdroid`
   (**`fdroid/README.md`**).
 

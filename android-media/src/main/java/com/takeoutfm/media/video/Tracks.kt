@@ -5,10 +5,12 @@ import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import com.takeoutfm.shared.video.audioFormat
 import com.takeoutfm.shared.video.audioTrackLabel
 import com.takeoutfm.shared.video.bestAudioTrack
+import com.takeoutfm.shared.video.normalizeLanguage
 import java.util.Locale
 
 // Video track choices for the apps' pickers: embedded audio and subtitle tracks (no
@@ -170,4 +172,53 @@ fun selectBestAudioTrack(player: Player, preferredLanguage: String?): Boolean {
             .build()
     }
     return true
+}
+
+/**
+ * Hears the audio and subtitle languages picked in Media3's own track menus (a PlayerView's
+ * settings) for the titles after: [onAudio] gets a language, [onSubtitle] a language or "" for
+ * off. What the app selects itself goes through [auto] and isn't a pick — the best audio track
+ * would otherwise become the preferred language. Add it as a listener of [player].
+ */
+class TrackPicks(
+    private val player: Player,
+    private val onAudio: (String) -> Unit,
+    private val onSubtitle: (String) -> Unit,
+) : Player.Listener {
+    private var last: TrackSelectionParameters = player.trackSelectionParameters
+    private var applying = false
+
+    /** Runs [block], which changes the player's track selection itself. */
+    fun <T> auto(block: () -> T): T {
+        applying = true
+        try {
+            return block()
+        } finally {
+            applying = false
+            last = player.trackSelectionParameters
+        }
+    }
+
+    override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) {
+        val before = last
+        last = parameters
+        if (applying || parameters == before) return
+        val audio = parameters.override(C.TRACK_TYPE_AUDIO)
+        if (audio != null && audio != before.override(C.TRACK_TYPE_AUDIO)) {
+            normalizeLanguage(audio.mediaTrackGroup.getFormat(0).language)?.let(onAudio)
+        }
+        val text = parameters.override(C.TRACK_TYPE_TEXT)
+        if (text != null && text != before.override(C.TRACK_TYPE_TEXT)) {
+            text.mediaTrackGroup.getFormat(0).language?.takeIf { it.isNotEmpty() }?.let(onSubtitle)
+        } else if (text == null && parameters.subtitlesOff() && !before.subtitlesOff()) {
+            onSubtitle("")
+        }
+    }
+
+    private fun TrackSelectionParameters.override(type: @C.TrackType Int) =
+        overrides.values.firstOrNull { it.type == type }
+
+    /** Off in Media3's menu: text disabled, or only forced subtitles allowed. */
+    private fun TrackSelectionParameters.subtitlesOff() =
+        C.TRACK_TYPE_TEXT in disabledTrackTypes || ignoredTextSelectionFlags and C.SELECTION_FLAG_DEFAULT != 0
 }

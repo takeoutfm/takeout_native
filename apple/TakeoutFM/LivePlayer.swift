@@ -85,8 +85,8 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
     private var started = false
     /** The stream registered with the proxy, while one is. */
     private var proxied: String?
-    /** The subtitle language last chosen here ("" off), for the programs after; nil: none yet. */
-    private var subtitleLanguage: String?
+    /** This program's subtitles were set as picked last (once VLC listed them). */
+    private var subtitlesChosen = false
 
     var program: LiveProgram? { tuned?.program }
     var track: LiveProgram? { tuned?.track }
@@ -182,8 +182,8 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
     func selectSubtitle(_ index: Int32) {
         player.currentVideoSubTitleIndex = index
         subtitleTrack = index
-        // followed by language to the programs after
-        subtitleLanguage = index < 0 ? "" : player.subtitleLanguages[index] ?? subtitleLanguage
+        // followed by language to the programs after (and the video player's titles)
+        player.rememberSubtitle(index)
     }
 
     /** Stops for good (the player closed). */
@@ -269,10 +269,7 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
     private func didStart() {
         started = true
         player.chooseBestAudioTrack()
-        if let language = subtitleLanguage {
-            let id = language.isEmpty ? nil : player.subtitleLanguages.first { $0.value == language }?.key
-            player.currentVideoSubTitleIndex = id ?? -1
-        }
+        subtitlesChosen = player.applySubtitlePreference()
         refreshTracks()
     }
 
@@ -315,6 +312,7 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
         // VLCKit 3 keeps saying "buffering" while it plays; a moving clock shows it started.
         if !started && player.isPlaying { didStart() }
         // Tracks can appear after the first frames (e.g. subtitles in a later cluster).
+        if started && !subtitlesChosen { subtitlesChosen = player.applySubtitlePreference() }
         if started && (audioTracks.isEmpty || subtitleTracks.isEmpty) { refreshTracks() }
     }
 }

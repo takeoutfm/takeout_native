@@ -28,9 +28,12 @@ import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerView
 import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.media.offline.TakeoutMediaCache
+import com.takeoutfm.media.video.TrackPicks
+import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.selectBestAudioTrack
 import com.takeoutfm.android.R
 import com.takeoutfm.shared.progress.TakeoutProgress
+import com.takeoutfm.shared.settings.PlaySettings
 import com.takeoutfm.shared.video.TakeoutVideoRepository
 import com.takeoutfm.shared.video.VideoDetails
 import dagger.hilt.android.AndroidEntryPoint
@@ -56,6 +59,7 @@ class VideoPlayerActivity : ComponentActivity() {
     @Inject lateinit var progress: TakeoutProgress
     @Inject lateinit var playerFactory: TakeoutPlayerFactory
     @Inject lateinit var mediaCache: TakeoutMediaCache
+    @Inject lateinit var settings: PlaySettings
 
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
@@ -64,6 +68,9 @@ class VideoPlayerActivity : ComponentActivity() {
     private var hasPlayed = false
     private var audioChosen = false
     private var saver: Job? = null
+
+    /** The languages picked in the player's menus, kept for the next titles (the live player's too). */
+    private lateinit var picks: TrackPicks
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,6 +92,8 @@ class VideoPlayerActivity : ComponentActivity() {
             .build()
             .also { playerFactory.addDebugLogging(it) }
         player.addListener(listener)
+        picks = TrackPicks(player, settings::setAudioLanguage, settings::setSubtitleLanguage)
+        player.addListener(picks)
         playerView = PlayerView(this).apply {
             player = this@VideoPlayerActivity.player
             setShowSubtitleButton(true)
@@ -129,6 +138,8 @@ class VideoPlayerActivity : ComponentActivity() {
                     .build(),
                 resumeMs,
             )
+            // subtitles in the language picked last (here or in the live player)
+            picks.auto { applySubtitlePreference(player, settings.subtitleLanguage) }
             player.prepare()
             player.play()
         }
@@ -136,7 +147,7 @@ class VideoPlayerActivity : ComponentActivity() {
 
     private val listener = object : Player.Listener {
         override fun onTracksChanged(tracks: Tracks) {
-            if (!audioChosen) audioChosen = selectBestAudioTrack(player, null)
+            if (!audioChosen) audioChosen = picks.auto { selectBestAudioTrack(player, settings.audioLanguage) }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -233,6 +244,7 @@ class VideoPlayerActivity : ComponentActivity() {
         saver?.cancel()
         session?.release()
         player.removeListener(listener)
+        player.removeListener(picks)
         player.release()
         super.onDestroy()
     }

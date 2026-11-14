@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
@@ -34,6 +35,7 @@ Kirigami.ApplicationWindow {
 
     VideoPlayer {
         id: videoPlayer
+        settings: videoSettings
         onClosedVideo: root.videoClosed()
     }
 
@@ -44,6 +46,39 @@ Kirigami.ApplicationWindow {
 
     LivePlayer {
         id: livePlayer
+        settings: videoSettings
+    }
+
+    // The video and live players' choices, one object so a pick in either is used by both.
+    Settings {
+        id: videoSettings
+        category: "video"
+        /** The last audio language picked by hand, preferred by the audio ranking. */
+        property string audioLanguage: ""
+        /** Whether subtitles were ever picked by hand; until then each title has its default. */
+        property bool subtitlesChosen: false
+        /** The last subtitle language picked ("" off). */
+        property string subtitleLanguage: ""
+
+        /** Remembers picking [track] (one of a VideoView's subtitleTracks; null: Off). */
+        function pickSubtitle(track) {
+            // a track of no language can't be found again in another title
+            if (track && !track.language) return
+            subtitlesChosen = true
+            subtitleLanguage = track ? track.language : ""
+        }
+
+        /**
+         * The subtitle track id to select from [tracks] (a new title's): 0 for off, -1 to leave
+         * mpv's choice (nothing picked yet, or none in the language picked, where its forced
+         * ones stay on).
+         */
+        function subtitleFor(tracks) {
+            if (!subtitlesChosen) return -1
+            if (subtitleLanguage === "") return 0
+            const track = tracks.find(t => t.language === subtitleLanguage)
+            return track ? track.id : -1
+        }
     }
     property string section: ""
 

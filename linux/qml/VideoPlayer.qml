@@ -47,12 +47,8 @@ QQC2.Popup {
         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
     }
 
-    Settings {
-        id: settings
-        category: "video"
-        /** The last audio language picked by hand, for the next title. */
-        property string audioLanguage: ""
-    }
+    /** Main's video settings (shared with the live player). */
+    required property Settings settings
 
     /** Plays [id] (a movie, series or episode), from its start when [startOver]. */
     function play(id, startOver) {
@@ -179,6 +175,11 @@ QQC2.Popup {
                 const tracks = audioTracks
                 const choose = !player.audioChosen
                 player.audioChosen = true
+                if (choose) {
+                    // subtitles in the language picked last
+                    const sub = settings.subtitleFor(subtitleTracks)
+                    if (sub >= 0) video.setSubtitle(sub)
+                }
                 Core.call("audioTracks", {
                     tracks: tracks.map(t => t.info),
                     preferredLanguage: settings.audioLanguage || Qt.locale().name,
@@ -328,7 +329,10 @@ QQC2.Popup {
                                     text: KI18n.i18n("Off")
                                     checkable: true
                                     checked: !video.subtitleTracks.some(t => t.selected)
-                                    onTriggered: video.setSubtitle(0)
+                                    onTriggered: {
+                                        video.setSubtitle(0)
+                                        settings.pickSubtitle(null)
+                                    }
                                 }
                                 Repeater {
                                     model: video.subtitleTracks
@@ -337,7 +341,10 @@ QQC2.Popup {
                                         text: modelData.label
                                         checkable: true
                                         checked: modelData.selected
-                                        onTriggered: video.setSubtitle(modelData.id)
+                                        onTriggered: {
+                                            video.setSubtitle(modelData.id)
+                                            settings.pickSubtitle(modelData)
+                                        }
                                     }
                                 }
                             }

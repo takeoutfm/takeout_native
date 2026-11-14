@@ -48,6 +48,8 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     private let calls: SwiftCalls
     private let cache: MediaCache
     private let player = VLCMediaPlayer()
+    /** This title's subtitles were set as picked last (once VLC listed them). */
+    private var subtitlesChosen = false
     private var hasPlayed = false
     private var savedAt = Date.distantPast
     private var loading: Task<Void, Never>?
@@ -80,6 +82,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         lengthMs = 0
         audioTracks = []
         subtitleTracks = []
+        subtitlesChosen = false
         loading = Task {
             do {
                 let d = try await calls.videoDetails(id: request.id)
@@ -137,6 +140,8 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     func selectSubtitle(_ index: Int32) {
         player.currentVideoSubTitleIndex = index
         subtitleTrack = index
+        // The language picked is used for the next titles (the live player's too).
+        player.rememberSubtitle(index)
     }
 
     /** Saves the place and stops (the window closed). */
@@ -213,7 +218,13 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         hasPlayed = true
         savedAt = Date()  // first save 10 s in, as on the phone
         chooseAudio()
+        chooseSubtitles()
         refreshTracks()
+    }
+
+    /// Subtitles in the language picked last, once VLC lists this title's (they can come late).
+    private func chooseSubtitles() {
+        if !subtitlesChosen { subtitlesChosen = player.applySubtitlePreference() }
     }
 
     /// Switches to the best audio track for this title (once; the viewer can change it).
@@ -229,6 +240,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         // moving clock is what shows playback started.
         if !hasPlayed && player.isPlaying { started() }
         // Tracks can appear after the first frames (e.g. subtitles in a later cluster).
+        if hasPlayed && !subtitlesChosen { chooseSubtitles() }
         if audioTracks.isEmpty || subtitleTracks.isEmpty { refreshTracks() }
         if Date().timeIntervalSince(savedAt) > 10 { save() }
     }
@@ -269,6 +281,34 @@ extension VLCMediaPlayer {
             languages[id] = language
         }
         return languages
+    }
+
+    private static let subtitleKey = "subtitleLanguage"
+
+    /**
+     * Remembers subtitle track [index] (-1: off) for the next titles, by language: "" for off,
+     * as on the phone, TV and Linux. A track of no language changes nothing.
+     */
+    func rememberSubtitle(_ index: Int32) {
+        let language = index < 0 ? "" : subtitleLanguages[index]
+        if let language { UserDefaults.standard.set(language, forKey: Self.subtitleKey) }
+    }
+
+    /**
+     * Selects the subtitles picked last: off, or the first track in that language. Nothing
+     * picked yet, or no track in it, leaves VLC's choice (a file's forced ones stay on).
+     * False while VLC lists no subtitle tracks yet, so it's tried again.
+     */
+    func applySubtitlePreference() -> Bool {
+        guard let language = UserDefaults.standard.string(forKey: Self.subtitleKey) else { return true }
+        if language.isEmpty {
+            currentVideoSubTitleIndex = -1
+            return true
+        }
+        let languages = subtitleLanguages
+        if languages.isEmpty { return false }
+        if let id = languages.filter({ $0.value == language }).keys.min() { currentVideoSubTitleIndex = id }
+        return true
     }
 
     /** Switches to the best audio track (the shared ranking), unless VLC already has it. */

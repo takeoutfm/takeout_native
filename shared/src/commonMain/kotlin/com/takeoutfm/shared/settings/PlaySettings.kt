@@ -79,6 +79,22 @@ class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
 
     fun setHomeList(type: String, list: String) = store.putString(KEY_HOME_LIST + type, list)
 
+    /**
+     * The language of the audio track last picked by hand in a video or live player ("en"),
+     * which the best-track ranking prefers; null if none was.
+     */
+    val audioLanguage: String? get() = store.getString(KEY_AUDIO_LANGUAGE)
+
+    fun setAudioLanguage(language: String) = store.putString(KEY_AUDIO_LANGUAGE, language)
+
+    /**
+     * The subtitles last picked in a video or live player, for the titles after: a language,
+     * "" for off, or null if never (each title has its own default).
+     */
+    val subtitleLanguage: String? get() = store.getString(KEY_SUBTITLE_LANGUAGE)
+
+    fun setSubtitleLanguage(language: String) = store.putString(KEY_SUBTITLE_LANGUAGE, language)
+
     private fun set(flow: MutableStateFlow<Boolean>, key: String, on: Boolean) {
         flow.value = on
         store.putString(key, on.toString())
@@ -92,5 +108,7 @@ class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
         const val KEY_MOBILE_DATA = "streamOverMobileData"
         const val KEY_REPEAT_ALL = "repeatAll"
         const val KEY_HOME_LIST = "homeList."
+        const val KEY_AUDIO_LANGUAGE = "audioLanguage"
+        const val KEY_SUBTITLE_LANGUAGE = "subtitleLanguage"
     }
 }

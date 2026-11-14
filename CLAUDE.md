@@ -205,6 +205,13 @@ ctest --test-dir linux/build                # C API smoke test, tofm_test (tofm'
 - Focus: request initial focus only once an item is laid out (`focusOnInitialVisibility`), never
   straight after the list exists — that crashes lazy grids.
 - Subtitles and audio are **embedded tracks only**; don't add server-side subtitles.
+- Track choices are the same in every app, video and live players alike, saved on the device and
+  shared by both players: each title gets the best audio track (the shared ranking), preferring
+  the language of the audio track last picked by hand; subtitles follow the language last
+  picked (Off stays off; nothing picked, or none in that language: the title's default). Only
+  the viewer's picks are saved, never the app's own choices. Kept in: TV `TakeoutSettings`;
+  phone `PlaySettings` via `:android-media` `TrackPicks` (Media3's menus); Mac/iOS
+  `UserDefaults` `audioLanguage` / `subtitleLanguage`; Linux `Main.qml` `videoSettings`.
 - Server limits like New Releases' count come from server config (`Film.RecentLimit`), not the app.
 
 ## Testing on devices

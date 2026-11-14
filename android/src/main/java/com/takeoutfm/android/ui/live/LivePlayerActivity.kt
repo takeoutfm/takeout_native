@@ -74,7 +74,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.ForwardingPlayer
-import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
@@ -88,6 +87,7 @@ import com.takeoutfm.android.ui.theme.TakeoutTheme
 import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.media.video.TrackPicker
+import com.takeoutfm.media.video.TrackPicks
 import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.audioTrackOptions
 import com.takeoutfm.media.video.selectBestAudioTrack
@@ -102,6 +102,7 @@ import com.takeoutfm.shared.guide.displayTitle
 import com.takeoutfm.shared.guide.timeLeft
 import com.takeoutfm.shared.guide.tune
 import com.takeoutfm.shared.guide.volume
+import com.takeoutfm.shared.settings.PlaySettings
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -134,6 +135,7 @@ class LivePlayerActivity : ComponentActivity() {
     @Inject lateinit var repository: TakeoutGuideRepository
     @Inject lateinit var playerFactory: TakeoutPlayerFactory
     @Inject lateinit var mediaCache: TakeoutMediaCache
+    @Inject lateinit var settings: PlaySettings
 
     private lateinit var player: ExoPlayer
     private var session: MediaSession? = null
@@ -182,9 +184,6 @@ class LivePlayerActivity : ComponentActivity() {
     /** In picture-in-picture: just the picture, no banner or buttons. */
     private var inPip by mutableStateOf(false)
 
-    /** The languages last chosen in the pickers, for the programs after (null: no choice yet). */
-    private var audioLanguage: String? = null
-    private var subtitleLanguage: String? = null
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
@@ -278,36 +277,18 @@ class LivePlayerActivity : ComponentActivity() {
 
         DisposableEffect(player) {
             var audioChosen = false
+            // What's picked in the controls' menus, kept by language for the programs after (and
+            // the video player's titles).
+            val picks = TrackPicks(player, settings::setAudioLanguage, settings::setSubtitleLanguage)
             val listener = object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     audioChosen = false
-                    // the subtitles chosen here follow to the next program, by language
-                    applySubtitlePreference(player, subtitleLanguage)
+                    // subtitles in the language picked last
+                    picks.auto { applySubtitlePreference(player, settings.subtitleLanguage) }
                 }
 
                 override fun onTracksChanged(tracks: Tracks) {
-                    if (!audioChosen) audioChosen = selectBestAudioTrack(player, audioLanguage)
-                }
-
-                // What's picked in the controls' menus, kept by language for the programs after.
-                override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) {
-                    var text = false
-                    for (o in parameters.overrides.values) {
-                        val language = o.mediaTrackGroup.getFormat(0).language ?: continue
-                        when (o.type) {
-                            C.TRACK_TYPE_AUDIO -> audioLanguage = language
-                            C.TRACK_TYPE_TEXT -> {
-                                subtitleLanguage = language
-                                text = true
-                            }
-                        }
-                    }
-                    // Off: text disabled, or only forced subtitles allowed
-                    if (!text && (C.TRACK_TYPE_TEXT in parameters.disabledTrackTypes ||
-                            parameters.ignoredTextSelectionFlags and C.SELECTION_FLAG_DEFAULT != 0)
-                    ) {
-                        subtitleLanguage = ""
-                    }
+                    if (!audioChosen) audioChosen = picks.auto { selectBestAudioTrack(player, settings.audioLanguage) }
                 }
 
                 override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -332,7 +313,11 @@ class LivePlayerActivity : ComponentActivity() {
                 }
             }
             player.addListener(listener)
-            onDispose { player.removeListener(listener) }
+            player.addListener(picks)
+            onDispose {
+                player.removeListener(listener)
+                player.removeListener(picks)
+            }
         }
 
         // Tunes [channel] and follows its schedule, as the TV's live player does.

@@ -28,8 +28,6 @@ QQC2.Popup {
     property var audioLabels: []
     /** The tracks audioLabels are for, so a stale answer (or a selection) is told apart. */
     property string tracksFor: ""
-    /** The subtitle language last chosen here ("" off), for the programs after; null: none yet. */
-    property var subtitleLanguage: null
     /** Bumped by each tune, so a late answer for an old one is dropped. */
     property int generation: 0
 
@@ -56,12 +54,8 @@ QQC2.Popup {
         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
     }
 
-    Settings {
-        id: settings
-        // the video player's: an audio language picked in either is used by both
-        category: "video"
-        property string audioLanguage: ""
-    }
+    /** Main's video settings (shared with the video player). */
+    required property Settings settings
 
     /** Opens the player on [name]. */
     function play(name) {
@@ -239,11 +233,9 @@ QQC2.Popup {
                 if (audioTracks.length === 0 || ids === player.tracksFor) return
                 player.tracksFor = ids
                 const tracks = audioTracks
-                // subtitles as last chosen here, by language ("" off)
-                if (player.subtitleLanguage !== null) {
-                    const sub = subtitleTracks.find(t => t.language === player.subtitleLanguage)
-                    video.setSubtitle(player.subtitleLanguage === "" || !sub ? 0 : sub.id)
-                }
+                // subtitles in the language picked last (here or in the video player)
+                const sub = settings.subtitleFor(subtitleTracks)
+                if (sub >= 0) video.setSubtitle(sub)
                 // audio: the shared ranking, in the language chosen last (here or in the video player)
                 Core.call("audioTracks", {
                     tracks: tracks.map(t => t.info),
@@ -494,7 +486,7 @@ QQC2.Popup {
                                     checked: !video.subtitleTracks.some(t => t.selected)
                                     onTriggered: {
                                         video.setSubtitle(0)
-                                        player.subtitleLanguage = ""
+                                        settings.pickSubtitle(null)
                                     }
                                 }
                                 Repeater {
@@ -506,7 +498,7 @@ QQC2.Popup {
                                         checked: modelData.selected
                                         onTriggered: {
                                             video.setSubtitle(modelData.id)
-                                            player.subtitleLanguage = modelData.language ?? ""
+                                            settings.pickSubtitle(modelData)
                                         }
                                     }
                                 }

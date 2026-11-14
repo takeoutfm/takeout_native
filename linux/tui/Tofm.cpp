@@ -30,6 +30,10 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
     QObject::connect(core, &TakeoutCore::settingsChanged, core, [this] { refreshSettings(); });
     QObject::connect(core, &TakeoutCore::listenBrainzChanged, core, [this] { refreshSettings(); });
     QObject::connect(core, &TakeoutCore::downloadsChanged, core, [this] { refreshDownloads(); });
+    QObject::connect(core, &TakeoutCore::cacheUsageChanged, core, [this] {
+        refreshDownloads();
+        refreshSettings();
+    });
     QObject::connect(core, &TakeoutCore::recentlyPlayedChanged, core, [this] {
         if (m_section == Section::Recent && m_stack.size() == 1) m_stack[0] = recentPage();
         redraw();

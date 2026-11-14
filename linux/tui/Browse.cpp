@@ -93,6 +93,7 @@ Tofm::Page *Tofm::currentPage() { return m_stack.empty() ? nullptr : m_stack.bac
 
 void Tofm::showSection(Section section)
 {
+    if (section == Section::Downloads || section == Section::Settings) m_core->call("refreshCache");
     m_section = section;
     m_stack.clear();
     m_stack.push_back(sectionPage(section));

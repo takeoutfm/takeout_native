@@ -343,10 +343,7 @@ Tofm::PagePtr Tofm::videoPage(const QVariantMap &card)
             if (kind != "Series") {
                 page.rows.push_back({Row::Action, QStringLiteral("↺ Start over"), {}, {}, {}, [this, id] { playVideo(id, true); }, {}});
                 const QString etag = d.value("etag").toString();
-                page.rows.push_back(downloadRow(etag.isEmpty() ? QStringList() : QStringList{etag}, [this, id] {
-                    m_core->call("downloadVideo", {{"id", id}});
-                    flash(QStringLiteral("Downloading…"));
-                }));
+                page.rows.push_back(downloadRow(etag.isEmpty() ? QStringList() : QStringList{etag}, [this, id] { downloadVideo(id); }));
             }
         }
         if (kind == "Episode" && !episode.value("seriesId").toString().isEmpty()) {

@@ -7,14 +7,7 @@
 #include "TakeoutCore.h"
 #include "Text.h"
 
-namespace {
-QString bytes(qint64 n)
-{
-    if (n >= qint64(1) << 30) return QStringLiteral("%1 GB").arg(double(n) / (qint64(1) << 30), 0, 'f', 1);
-    if (n >= 1 << 20) return QStringLiteral("%1 MB").arg(n >> 20);
-    return QStringLiteral("%1 KB").arg(std::max<qint64>(1, n >> 10));
-}
-}
+#include <QRegularExpression>
 
 QString Tofm::downloadMark(const QString &etag) const
 {
@@ -38,6 +31,27 @@ void Tofm::downloadCall(const QString &call, const QVariantMap &args, int only)
         if (only >= 0) args.insert("only", QVariantList{items[only]});
         m_core->call("downloadQueue", args);
         flash(QStringLiteral("Downloading ") + (only >= 0 ? items[only].toMap().value("title").toString() : queue.value("title").toString()));
+    });
+}
+
+void Tofm::downloadVideo(const QString &id)
+{
+    m_core->call("downloadVideo", {{"id", id}, {"check", true}}, [this, id](const QVariant &result, const QVariant &error) {
+        const QVariantMap r = result.toMap();
+        if (error.isValid()) return flash(QStringLiteral("Can't download that"));
+        if (r.value("started").toBool()) return flash(QStringLiteral("Downloading…"));
+        const QString need = bytes(r.value("needBytes").toLongLong());
+        // Too big for what's free, even with the cache emptied: nothing to ask.
+        if (!r.value("fits").toBool())
+            return flash(QStringLiteral("Not enough space: it needs %1, more than is free. Remove some downloads first.").arg(need));
+        const qint64 freeable = r.value("freeableBytes").toLongLong();
+        ask({freeable > 0 ? QStringLiteral("It needs %1 and would leave too little free (clearing the cache frees %2). Download anyway?")
+                                .arg(need, bytes(freeable))
+                          : QStringLiteral("It needs %1 and would leave too little free. Download anyway?").arg(need),
+             {}, false, true, [this, id](const QString &) {
+            m_core->call("downloadVideo", {{"id", id}, {"check", true}, {"anyway", true}});
+            flash(QStringLiteral("Downloading…"));
+        }});
     });
 }
 
@@ -91,9 +105,11 @@ Tofm::PagePtr Tofm::downloadsPage()
     };
     std::vector<Group> groups;
     qint64 total = 0;
+    qint64 cached = 0;
     for (const QVariant &value : m_core->downloads()) {
         const QVariantMap entry = value.toMap().value("entry").toMap();
         total += entry.value("bytes").toLongLong();
+        if (entry.value("cached").toBool()) cached += entry.value("bytes").toLongLong();
         const QString id = entry.value("group").toString();
         auto group = std::find_if(groups.begin(), groups.end(), [&](const Group &g) { return g.id == id; });
         if (group == groups.end()) {
@@ -102,15 +118,42 @@ Tofm::PagePtr Tofm::downloadsPage()
         }
         group->downloads << value;
     }
-    std::sort(groups.begin(), groups.end(), [](const Group &a, const Group &b) {
-        return a.title.compare(b.title, Qt::CaseInsensitive) < 0;
+    // The largest first, to choose from when space runs short.
+    auto size = [](const Group &g) {
+        qint64 n = 0;
+        for (const QVariant &d : g.downloads) n += d.toMap().value("entry").toMap().value("bytes").toLongLong();
+        return n;
+    };
+    std::sort(groups.begin(), groups.end(), [&](const Group &a, const Group &b) {
+        const qint64 sa = size(a), sb = size(b);
+        return sa != sb ? sa > sb : a.title.compare(b.title, Qt::CaseInsensitive) < 0;
     });
 
     if (groups.empty()) {
         page->error = QStringLiteral("Nothing downloaded. ↓ Download on an album, playlist or title, or d on an episode.");
         return page;
     }
-    page->subtitle = QStringLiteral("%1 · x: remove · R: retry").arg(bytes(total));
+    page->subtitle = (cached > 0 ? QStringLiteral("%1 downloaded · %2 cached").arg(bytes(total - cached), bytes(cached)) : bytes(total))
+                     + QStringLiteral(" · x: remove · R: retry");
+    const QVariantMap usage = m_core->cacheUsage();
+    // Downloads are never removed by themselves: say when they fill the disk.
+    if (usage.value("lowSpace").toBool())
+        page->rows.push_back({Row::Note, QStringLiteral("⚠ Your downloads leave little free space; the largest are listed first.")});
+    // Watched movies and episodes, removed only when asked.
+    QStringList watched;
+    qint64 watchedBytes = 0;
+    for (const QVariant &etag : usage.value("watched").toList()) {
+        const QVariantMap entry = m_core->downloadsByEtag().value(etag.toString()).toMap().value("entry").toMap();
+        if (entry.isEmpty()) continue;
+        watched << etag.toString();
+        watchedBytes += entry.value("bytes").toLongLong();
+    }
+    if (!watched.isEmpty()) {
+        page->rows.push_back({Row::Action, QStringLiteral("✕ Remove watched: %1 · %2").arg(watched.size()).arg(bytes(watchedBytes)),
+                              QStringLiteral("movies and episodes watched to the end"), {}, {}, [this, watched] {
+            removeDownloads(watched, QStringLiteral("%1 watched").arg(watched.size()));
+        }, {}});
+    }
     page->rows.push_back({Row::Action, QStringLiteral("✕ Remove all downloads"), {}, {}, {}, [this] {
         ask({QStringLiteral("Remove every download?"), {}, false, true, [this](const QString &) {
             m_core->call("removeAllDownloads");
@@ -140,7 +183,10 @@ Tofm::PagePtr Tofm::downloadsPage()
             const QString etag = entry.value("etag").toString();
             Row row;
             row.title = entry.value("title").toString();
-            row.detail = entry.value("artist").toString();
+            // kept by Playback Caching: may go to stay within the cache size
+            row.detail = entry.value("cached").toBool()
+                ? QStringList{QStringLiteral("cached"), entry.value("artist").toString()}.filter(QRegularExpression(".")).join(QStringLiteral(" · "))
+                : entry.value("artist").toString();
             row.etag = etag;
             if (entry.value("video").toBool()) {
                 const QString id = entry.value("group").toString();

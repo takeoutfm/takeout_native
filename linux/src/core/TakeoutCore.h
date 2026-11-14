@@ -77,6 +77,8 @@ Q_SIGNALS:
     void failed(const QString &name, const QVariantMap &error);
 
 private:
+    // tofm's screen test feeds it what the shared core would watch.
+    friend class TofmTest;
     void watch(const char *name);
     void updated(const QByteArray &name, const QVariant &value);
 

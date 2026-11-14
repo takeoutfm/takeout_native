@@ -160,6 +160,8 @@ private:
     // ---- Downloads (Downloads.cpp) ----
     PagePtr downloadsPage();
     void refreshDownloads();
+    /** Downloads movie or episode [id]: room is made first (cached tracks go), else it asks. */
+    void downloadVideo(const QString &id);
     /** Downloads the queue [call] returns: all of it, or its item [only]. */
     void downloadCall(const QString &call, const QVariantMap &args, int only = -1);
     /** "↓ Download" or "✕ Remove download" for [etags] (an album's tracks, a playlist's items). */

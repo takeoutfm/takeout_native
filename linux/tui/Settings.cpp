@@ -63,6 +63,39 @@ Tofm::PagePtr Tofm::settingsPage()
                     QStringLiteral("tells your Takeout server what you play (half a track, or 4 minutes)"), {}, {},
                     [this, reportPlays] { m_core->call("setSettings", {{"reportPlays", !reportPlays}}); }, {}});
 
+    // Playback Caching and its size (the shared purge, PLAN.md §4.11), as in the KDE app.
+    rows.push_back({Row::Header, QStringLiteral("Storage")});
+    const bool caching = settings.value("playbackCaching", false).toBool();
+    rows.push_back({Row::Action, QStringLiteral("Playback Caching: ") + onOff(caching),
+                    QStringLiteral("keeps what you play to its end, so it plays again offline"), {}, {},
+                    [this, caching] { m_core->call("setSettings", {{"playbackCaching", !caching}}); }, {}});
+    const QVariantMap usage = m_core->cacheUsage();
+    const QVariantList choices = usage.value("choices").toList();
+    const qint64 limit = usage.value("limitBytes").toLongLong();
+    int current = 0;
+    for (int i = 0; i < choices.size(); ++i)
+        if (choices[i].toMap().value("limitBytes").toLongLong() == limit) current = i;
+    if (!choices.isEmpty()) {
+        const QVariantMap choice = choices[current].toMap();
+        const QString size = choice.value("limitBytes").toLongLong() == 0
+            ? QStringLiteral("Auto (%1)").arg(bytes(choice.value("bytes").toLongLong()))
+            : bytes(choice.value("bytes").toLongLong());
+        const qint64 cached = usage.value("cachedBytes").toLongLong();
+        // Enter steps through the sizes.
+        rows.push_back({Row::Action, QStringLiteral("Cache size: ") + size,
+                        (cached > 0 ? QStringLiteral("%1 used · ").arg(bytes(cached)) : QString())
+                            + QStringLiteral("the least recently played goes first; your downloads are never removed"),
+                        {}, {}, [this, choices, current] {
+            m_core->call("setSettings", {{"cacheLimit", choices[(current + 1) % choices.size()].toMap().value("limitBytes")}});
+        }, {}});
+        if (cached > 0) {
+            rows.push_back({Row::Action, QStringLiteral("Clear cached (%1)").arg(bytes(cached)), {}, {}, {},
+                            [this] { m_core->call("clearCached"); flash(QStringLiteral("Cleared")); }, {}});
+        }
+    }
+    if (usage.value("lowSpace").toBool())
+        rows.push_back({Row::Note, QStringLiteral("⚠ Your downloads leave little free space. Remove some on the Downloads page.")});
+
     rows.push_back({Row::Header, QStringLiteral("ListenBrainz")});
     const QString listenBrainz = m_core->listenBrainzUser();
     if (!listenBrainz.isEmpty()) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <algorithm>
 #include <QStringList>
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/mouse.hpp>
@@ -41,6 +42,14 @@ inline QString recentDetail(const QString &title, const QString &creator, int it
 }
 
 /** "key what" for the hints at the bottom of a screen. */
+/** A size: "1.4 GB", "12 MB", "1 KB" at least. */
+inline QString bytes(qint64 n)
+{
+    if (n >= qint64(1) << 30) return QStringLiteral("%1 GB").arg(double(n) / (qint64(1) << 30), 0, 'f', 1);
+    if (n >= 1 << 20) return QStringLiteral("%1 MB").arg(n >> 20);
+    return QStringLiteral("%1 KB").arg(std::max<qint64>(1, n >> 10));
+}
+
 inline ftxui::Element keyHint(const std::string &key, const std::string &what)
 {
     using namespace ftxui;

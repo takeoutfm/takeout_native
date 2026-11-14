@@ -288,8 +288,9 @@ dashboard top bar, D-pad handling.
       Linux): Playback Caching filled the disk, as nothing was ever removed. Done 2026-11-14:
       phone and watch `:android-media` `offline/CachePurge`; Linux `linuxMain`
       `LinuxCachePurge` (which also brought Linux its Playback Caching: an item played to its
-      end is kept, `keepPlayed`); Mac/iOS `MediaCache.purge` (through `SwiftCalls`). Not built
-      on a Mac yet.
+      end is kept, `keepPlayed`), and `tofm` on the same core (Settings → Storage, Downloads
+      marks, the room check); Mac/iOS `MediaCache.purge` (through `SwiftCalls`). Not built on a
+      Mac yet.
       - **Origin kept**: each download entry says whether Playback Caching added it
         (`cached`) or the viewer did. Only cached ones are ever purged; downloading an album,
         playlist or podcast that holds cached items makes them explicit.

@@ -128,8 +128,22 @@ public:
     std::vector<QString> settingsRows()
     {
         std::vector<QString> titles;
-        for (const auto &row : t.settingsPage()->rows) titles.push_back(row.title);
+        // kept while looping: a temporary's rows would be freed first
+        const auto page = t.settingsPage();
+        for (const auto &row : page->rows) titles.push_back(row.title);
         return titles;
+    }
+
+    /** What the shared core would report for watch [name]. */
+    void feed(const char *name, const QVariant &value) { t.m_core->updated(name, value); }
+
+    /** The Downloads page's rows: "title | detail". */
+    std::vector<QString> downloadsRows()
+    {
+        std::vector<QString> rows;
+        const auto page = t.downloadsPage();
+        for (const auto &row : page->rows) rows.push_back(row.title + " | " + row.detail);
+        return rows;
     }
 
     /** The title as shown [elapsedMs] after the scrolling started. */
@@ -262,6 +276,37 @@ int main(int argc, char *argv[])
         CHECK(has("Album art: On"));
         CHECK(has("Video player: mpv"));
         CHECK(has("tofm 9.9 — TakeoutFM in the terminal"));
+    }
+
+    // Playback Caching's share: the cache size, Clear cached and the warning in Settings;
+    // largest first, cached marked and watched offered for removal on Downloads.
+    {
+        const qint64 gb = qint64(1) << 30;
+        auto download = [](const QString &etag, const QString &title, qint64 bytes, bool cached, bool video, const QString &group) {
+            return QVariantMap{{"state", "Done"}, {"entry", QVariantMap{
+                {"etag", etag}, {"title", title}, {"artist", video ? "" : "Wilco"}, {"bytes", bytes}, {"cached", cached},
+                {"video", video}, {"group", group}, {"groupTitle", group}}}};
+        };
+        test.feed("downloads", QVariantList{download("t1", "Jesus, Etc.", gb + gb / 2, true, false, "Yankee Hotel Foxtrot"),
+                                           download("v1", "Godzilla", 4 * gb, false, true, "Godzilla")});
+        test.feed("cacheUsage", QVariantMap{
+            {"cachedBytes", gb + gb / 2}, {"limitBytes", 0}, {"lowSpace", true}, {"watched", QVariantList{"v1"}},
+            {"choices", QVariantList{QVariantMap{{"limitBytes", 0}, {"bytes", 10 * gb}}, QVariantMap{{"limitBytes", gb}, {"bytes", gb}}}}});
+        const std::vector<QString> settings = test.settingsRows();
+        auto has = [&settings](const QString &title) { return std::find(settings.begin(), settings.end(), title) != settings.end(); };
+        CHECK(has("Playback Caching: Off"));
+        CHECK(has("Cache size: Auto (10.0 GB)"));
+        CHECK(has("Clear cached (1.5 GB)"));
+        CHECK(has("⚠ Your downloads leave little free space. Remove some on the Downloads page."));
+
+        const std::vector<QString> downloads = test.downloadsRows();
+        auto at = [&downloads](const QString &text) {
+            return int(std::find_if(downloads.begin(), downloads.end(), [&](const QString &r) { return r.startsWith(text); }) - downloads.begin());
+        };
+        CHECK(at("⚠ Your downloads leave little free space") < int(downloads.size()));
+        CHECK(at("✕ Remove watched: 1 · 4.0 GB") < int(downloads.size()));
+        CHECK(at("Godzilla |") < at("Yankee Hotel Foxtrot |")); // the largest group first
+        CHECK(at("Jesus, Etc. | cached · Wilco") < int(downloads.size()));
     }
 
     // The scrolling title: short ones stay; long ones wait 1.5 s, then move a column per 150 ms.

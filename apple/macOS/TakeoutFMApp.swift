@@ -34,6 +34,7 @@ struct TakeoutFMApp: App {
                 VideoPlayerView(request: request, calls: model.calls, cache: model.cache)
                     .environmentObject(model)
                     .frame(minWidth: 640, minHeight: 360)
+                    .notRestored()
             }
         }
         .defaultSize(width: 1280, height: 720)
@@ -42,6 +43,7 @@ struct TakeoutFMApp: App {
             LiveWindowView(calls: model.calls)
                 .environmentObject(model)
                 .frame(minWidth: 640, minHeight: 360)
+                .notRestored()
         }
         .defaultSize(width: 1280, height: 720)
         MenuBarExtra("TakeoutFM", systemImage: "music.note", isInserted: $showMenuBarPlayer) {
@@ -74,5 +76,28 @@ private struct MacRoot: View {
             model.liveRequest = LiveRequest(channel: $0)
             openWindow(id: "live")
         })
+    }
+}
+
+extension View {
+    /**
+     * Keeps macOS from reopening this view's window at the next launch: a video or Live window
+     * that was open when the app quit (or was killed) would otherwise come back and start
+     * playing, and a video playing changes the viewer's watch progress.
+     */
+    func notRestored() -> some View {
+        background(NotRestored())
+    }
+}
+
+private struct NotRestored: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { WindowWatcher() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class WindowWatcher: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.isRestorable = false
+        }
     }
 }

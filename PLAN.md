@@ -284,6 +284,39 @@ dashboard top bar, D-pad handling.
       - updates live from `Cache.Listener` span events and `DownloadManager.Listener`.
       UI: ✓ (or offline icon) on cached tracks, a progress ring while downloading, "N of M
       cached" / ✓ for albums, playlists and episodes; nothing for live streams.
+- [ ] **Cache purge** (decided 2026-11-14), the same in every app (phone, watch, Mac/iOS,
+      Linux): Playback Caching filled the disk, as nothing was ever removed.
+      - **Origin kept**: each download entry says whether Playback Caching added it
+        (`cached`) or the viewer did. Only cached ones are ever purged; downloading an album,
+        playlist or podcast that holds cached items makes them explicit.
+      - **Budget ("Auto", the default)**: the cache may use 10% of the volume, at most 10 GB,
+        and never leave less free than 2 GB or 10% of the volume, whichever is smaller; the
+        smaller budget wins. Fixed sizes
+        (1 / 2 / 5 / 10 GB) as other choices.
+      - **Order**: phone partial tracks (chunks of tracks never wholly cached) first, then
+        podcast episodes played to their end, then least recently played (last played or
+        cached). Over budget, purge to 90% of it, so it doesn't run after every track.
+      - **Explicit downloads are never purged**: when they alone pass the budget or the free
+        floor, the app warns (Downloads page / settings) instead.
+      - **Rule shared**: `:shared` `offline/CachePolicy` decides what to remove from entries
+        (etag, bytes, last used, cached, podcast finished) and the volume's size and free
+        space; each app lists its entries and removes what it returns. Runs at app start,
+        after a track is kept, and when the limit is lowered.
+      - **Settings**: the size choice under Playback Caching, with what's used, and "Clear
+        cached"; the Downloads page marks cached items.
+      - **Movies and episodes** are only ever explicit downloads (video playback never writes
+        the cache), so a 5 GB title takes room from the cache through the free floor, never
+        the other way round. Also:
+        - **Space checked before a download**: its size is known first. If it would leave
+          less than the floor free, cached entries are purged to make room; if even that
+          isn't enough, the app says so ("needs 5.2 GB, 3.1 GB can be freed") and asks
+          before going on.
+        - **Watched downloads offered for removal, never removed by themselves**: a
+          downloaded movie or episode played to its end asks "Remove download?" (in the
+          player, or as a notice after); the Downloads page has "Watched: N · 12.4 GB ·
+          Remove".
+        - **Sizes on the Downloads page**, largest first to choose from; the low-space
+          warning opens it.
 - [x] Offline playback from downloads. Mobile-data limits (streaming / downloads / artwork) are
       **not wanted** (decided 2026-10-26: the old Flutter settings are dropped).
 - [ ] JSON response cache with TTL so browsing works offline.

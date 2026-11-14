@@ -1,5 +1,6 @@
 package com.takeoutfm.wear
 
+import com.takeoutfm.media.offline.CachePurge
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var session: TakeoutSession
     @Inject lateinit var library: TakeoutLibrary
     @Inject lateinit var progress: TakeoutProgress
+    @Inject lateinit var cachePurge: CachePurge
     @Inject lateinit var listenReporter: ListenReporter
     @Inject lateinit var streamingNetwork: StreamingNetwork
 
@@ -39,6 +41,8 @@ class MainActivity : ComponentActivity() {
         if (!session.state.value.isLoggedIn) return
         lifecycleScope.launch { library.refresh(maxAgeMs = 60_000) }
         lifecycleScope.launch { progress.sync() }
+        // Playback Caching kept within its size (now, and as downloads and the limit change)
+        cachePurge.start()
         listenReporter.retry()
     }
 

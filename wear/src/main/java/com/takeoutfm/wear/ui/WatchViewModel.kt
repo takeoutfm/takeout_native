@@ -1,5 +1,9 @@
 package com.takeoutfm.wear.ui
 
+import com.takeoutfm.media.offline.CachePurge
+import com.takeoutfm.media.offline.CacheUsage
+import com.takeoutfm.shared.offline.CacheLimit
+import com.takeoutfm.shared.offline.CachePolicy
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -58,8 +62,25 @@ class WatchViewModel @Inject constructor(
     private val history: MusicHistory,
     private val player: MusicPlayer,
     private val mediaCache: TakeoutMediaCache,
+    private val purge: CachePurge,
     val settings: PlaySettings,
 ) : ViewModel() {
+    /** What Playback Caching keeps, and whether the watch is short of space. */
+    val cacheUsage: StateFlow<CacheUsage?> = purge.usage
+
+    fun limitBytes(limit: CacheLimit): Long = purge.limitBytes(limit)
+
+    /** The next cache size after the one set (Auto, 1, 2, 5, 10 GB, round again). */
+    fun nextCacheLimit() {
+        val choices = CachePolicy.Choices
+        settings.setCacheLimit(choices[(choices.indexOf(settings.cacheLimit.value) + 1) % choices.size])
+    }
+
+    fun clearCached() = purge.clearCached()
+
+    /** Recounts what's cached (a track partly played since, say). */
+    fun refreshCache() = purge.refresh()
+
     val session_: StateFlow<SessionState> = session.state
     val endpoint: String get() = session.endpoint
     val nowPlaying: StateFlow<NowPlaying> = player.state
@@ -113,7 +134,7 @@ class WatchViewModel @Inject constructor(
                 val queue = load()
                 if (queue.items.isNotEmpty()) {
                     player.play(queue)
-                    if (settings.playbackCaching.value) addDownloads(queue)
+                    if (settings.playbackCaching.value) addDownloads(queue, cached = true)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -142,9 +163,11 @@ class WatchViewModel @Inject constructor(
         }
     }
 
-    private fun addDownloads(queue: MusicQueue) {
-        mediaCache.requests(queue.items, queue.location.ifEmpty { queue.title }, queue.title)
-            .filter { it.id !in mediaCache.items.value }
+    /** Downloads [queue]: Playback Caching's ([cached], which the purge may remove), or the viewer's. */
+    private fun addDownloads(queue: MusicQueue, cached: Boolean = false) {
+        mediaCache.requests(queue.items, queue.location.ifEmpty { queue.title }, queue.title, cached)
+            // what's there already, unless the viewer now downloads what was only cached
+            .filter { request -> mediaCache.items.value[request.id].let { it == null || (!cached && it.info.cached) } }
             .forEach { DownloadService.sendAddDownload(context, com.takeoutfm.wear.playback.DownloadService::class.java, it, false) }
     }
 

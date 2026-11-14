@@ -1,5 +1,7 @@
 package com.takeoutfm.android.ui.video
 
+import androidx.media3.exoplayer.offline.DownloadService
+import com.takeoutfm.shared.util.formatBytes
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
@@ -168,7 +170,10 @@ class VideoPlayerActivity : ComponentActivity() {
             // An episode ends: on to the next one, from its start. Anything else (a movie, a
             // series' last episode) returns to where it was played from, not a stopped video.
             val next = details?.nextEpisodeId
-            if (next != null) play(next, startOver = true) else finish()
+            when {
+                next != null -> play(next, startOver = true)
+                else -> offerRemoval { finish() }
+            }
         }
 
         override fun onVideoSizeChanged(videoSize: VideoSize) = updatePip()
@@ -176,6 +181,25 @@ class VideoPlayerActivity : ComponentActivity() {
         override fun onPlayerError(error: PlaybackException) {
             saver?.cancel()
         }
+    }
+
+    /**
+     * A downloaded title watched to its end: asks whether to remove the download (never removed
+     * by itself), then [then]. Not between episodes; the Downloads page lists what's watched.
+     */
+    private fun offerRemoval(then: () -> Unit) {
+        val d = details
+        val download = d?.let { mediaCache.items.value[it.etag] }
+        if (d == null || download == null || download.info.cached || isInPictureInPictureMode) return then()
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.remove_watched_title)
+            .setMessage(getString(R.string.remove_watched, download.info.title, formatBytes(download.bytes)))
+            .setPositiveButton(R.string.remove_download) { _, _ ->
+                DownloadService.sendRemoveDownload(this, com.takeoutfm.android.playback.DownloadService::class.java, d.etag, false)
+            }
+            .setNegativeButton(R.string.keep_download, null)
+            .setOnDismissListener { then() }
+            .show()
     }
 
     private fun startSaving() {

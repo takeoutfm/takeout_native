@@ -226,9 +226,29 @@
     <string name="delete_all_question">Delete every download? This frees %1$s.</string>
     <string name="delete">Delete</string>
     <string name="downloads_used">%1$s on this device</string>
+    <string name="downloads_used_cached">%1$s downloaded · %2$s cached</string>
+    <string name="cached">Cached</string>
+    <string name="space_question_title">Not enough space</string>
+    <string name="space_question">This needs %1$s, and would leave too little free: clearing the cache frees only %2$s. Remove some downloads first, or download it anyway.</string>
+    <string name="space_question_nothing_cached">This needs %1$s, and would leave too little free on this device. Remove some downloads first, or download it anyway.</string>
+    <string name="space_no_room">This needs %1$s, more than this device has free. Remove some downloads first.</string>
+    <string name="download_anyway">Download anyway</string>
+    <string name="remove_watched_title">Remove download?</string>
+    <string name="remove_watched">You watched %1$s to the end. Remove its download to free %2$s?</string>
+    <string name="remove_download">Remove</string>
+    <string name="keep_download">Keep</string>
+    <string name="watched_downloads">Watched: %1$d · %2$s</string>
+    <string name="low_space_downloads">Your downloads leave little free space on this device; the largest are listed first.</string>
     <string name="no_downloads">Download albums, playlists and podcast episodes to play them offline.</string>
     <string name="setting_auto_cache_title">Playback Caching</string>
     <string name="setting_auto_cache_subtitle">Keep what you play on this device, so it plays again offline</string>
+    <string name="setting_cache_size_title">Cache size</string>
+    <string name="setting_cache_size_subtitle">%1$s. The least recently played goes first; your downloads are never removed.</string>
+    <string name="setting_cache_size_used">%1$s · %2$s used</string>
+    <string name="setting_cache_size_auto">Auto (%1$s)</string>
+    <string name="setting_cache_clear">Clear cached (%1$s)</string>
+    <string name="low_space_title">Little space left</string>
+    <string name="low_space_subtitle">Your downloads leave little free space on this device. Remove some on the Downloads page.</string>
 
     <!-- Link -->
     <string name="link_label">Link</string>

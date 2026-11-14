@@ -56,7 +56,7 @@ internal class PlayedDownloads(
         if (!cache.isWriting || etag.isEmpty() || etag in cache.items.value || !cache.isCached(etag)) return
         val played = media.historyId?.let(history::find)
         val group = played?.let { it.location.ifEmpty { it.title } }.orEmpty()
-        val request = cache.requests(listOf(media.toQueueItem()), group, played?.title.orEmpty())
+        val request = cache.requests(listOf(media.toQueueItem()), group, played?.title.orEmpty(), cached = true)
             .firstOrNull() ?: return
         try {
             DownloadService.sendAddDownload(context, service, request, false)

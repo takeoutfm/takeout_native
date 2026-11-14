@@ -1,5 +1,17 @@
 package com.takeoutfm.android.ui.settings
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
+import com.takeoutfm.media.offline.CachePurge
+import com.takeoutfm.media.offline.CacheUsage
+import com.takeoutfm.shared.offline.CacheLimit
+import com.takeoutfm.shared.offline.CachePolicy
+import com.takeoutfm.shared.util.formatBytes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -70,8 +82,19 @@ import kotlinx.coroutines.launch
 class SettingsViewModel @Inject constructor(
     val settings: PlaySettings,
     private val listenBrainz: ListenBrainzAccount,
+    private val purge: CachePurge,
     session: TakeoutSession,
 ) : ViewModel() {
+    /** What Playback Caching keeps, and whether the device is short of space. */
+    val cacheUsage: StateFlow<CacheUsage?> = purge.usage
+
+    fun limitBytes(limit: CacheLimit): Long = purge.limitBytes(limit)
+
+    fun clearCached() = purge.clearCached()
+
+    /** Recounts what's cached (a track partly played since, say). */
+    fun refreshCache() = purge.refresh()
+
     val endpoint: String = session.endpoint
 
     /** Who's signed in to the server (/api/me); null until it says, or if it can't. */
@@ -177,6 +200,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 checked = playbackCaching,
                 onChange = viewModel.settings::setPlaybackCaching,
             )
+            CacheSize(viewModel)
             SwitchItem(
                 icon = Icons.Filled.Timeline,
                 title = stringResource(R.string.setting_track_activity_title),
@@ -201,6 +225,76 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 ListenBrainzConnect(viewModel)
             }
         }
+    }
+}
+
+/**
+ * Playback Caching's size (Auto or a fixed one), what it keeps now, Clear cached, and a warning
+ * when the viewer's downloads leave little free (they're never removed by themselves).
+ */
+@Composable
+private fun CacheSize(viewModel: SettingsViewModel) {
+    val limit by viewModel.settings.cacheLimit.collectAsStateWithLifecycle()
+    val usage by viewModel.cacheUsage.collectAsStateWithLifecycle()
+    var choosing by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { viewModel.refreshCache() }
+    @Composable
+    fun label(l: CacheLimit) = when (l) {
+        CacheLimit.Auto -> stringResource(R.string.setting_cache_size_auto, formatBytes(viewModel.limitBytes(l)))
+        is CacheLimit.Fixed -> formatBytes(l.bytes)
+    }
+    ListItem(
+        modifier = Modifier.clickable { choosing = true },
+        leadingContent = { Icon(Icons.Filled.Storage, contentDescription = null) },
+        headlineContent = { Text(stringResource(R.string.setting_cache_size_title)) },
+        supportingContent = {
+            val used = usage?.cachedBytes ?: 0L
+            // formatBytes says "1 KB" at least, so nothing cached says nothing
+            val size = if (used > 0) stringResource(R.string.setting_cache_size_used, label(limit), formatBytes(used)) else label(limit)
+            Text(stringResource(R.string.setting_cache_size_subtitle, size))
+        },
+    )
+    val cached = usage?.cachedBytes ?: 0L
+    if (cached > 0) {
+        OutlinedButton(
+            onClick = viewModel::clearCached,
+            modifier = Modifier.padding(start = 72.dp, bottom = 8.dp),
+        ) { Text(stringResource(R.string.setting_cache_clear, formatBytes(cached))) }
+    }
+    if (usage?.lowSpace == true) {
+        ListItem(
+            leadingContent = { Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            headlineContent = { Text(stringResource(R.string.low_space_title)) },
+            supportingContent = { Text(stringResource(R.string.low_space_subtitle)) },
+        )
+    }
+    if (choosing) {
+        AlertDialog(
+            onDismissRequest = { choosing = false },
+            title = { Text(stringResource(R.string.setting_cache_size_title)) },
+            text = {
+                Column {
+                    CachePolicy.Choices.forEach { choice ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.settings.setCacheLimit(choice)
+                                    choosing = false
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = choice == limit, onClick = null)
+                            Text(label(choice), Modifier.padding(start = 12.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { choosing = false }) { Text(stringResource(android.R.string.cancel)) }
+            },
+        )
     }
 }
 

@@ -90,4 +90,39 @@ class CachePolicyTest {
         assertEquals(0, plan.budgetBytes)
         assertTrue(plan.lowSpace)
     }
+
+    @Test
+    fun aDownloadThatFitsNeedsNothingRemoved() {
+        val plan = CachePolicy.makeRoom(listOf(entry("a", 1 * gb)), 64 * gb, 20 * gb, 5 * gb)
+        assertEquals(emptyList(), plan.remove)
+        assertTrue(plan.enough)
+    }
+
+    @Test
+    fun cachedEntriesGoToMakeRoomForAMovie() {
+        // 5 GB movie, 4 GB free, 2 GB floor: 3 GB must go, oldest first
+        val entries = (1..5).map { entry("t$it", 1 * gb, lastUsedMs = it.toLong()) } + entry("download", 10 * gb, cached = false)
+        val plan = CachePolicy.makeRoom(entries, 64 * gb, 4 * gb, 5 * gb)
+        assertEquals(listOf("t1", "t2", "t3"), plan.remove)
+        assertTrue(plan.enough)
+        assertEquals(5 * gb, plan.freeableBytes)
+    }
+
+    @Test
+    fun notEnoughEvenWithTheCacheEmptiedRemovesNothingAndSaysSo() {
+        val plan = CachePolicy.makeRoom(listOf(entry("a", 1 * gb)), 64 * gb, 3 * gb, 5 * gb)
+        assertEquals(emptyList(), plan.remove)
+        assertFalse(plan.enough)
+        assertEquals(1 * gb, plan.freeableBytes)
+    }
+
+    @Test
+    fun tooBigEvenUnderTheFloorDoesNotFit() {
+        // 4.5 GB on a device with 680 MB free and nothing cached
+        assertFalse(CachePolicy.makeRoom(emptyList(), 6 * gb, 680 * mb, 4608 * mb).fits)
+        // 3 GB needed, 2.5 GB free + 1 GB cached: fits, though under the floor
+        val plan = CachePolicy.makeRoom(listOf(entry("a", 1 * gb)), 64 * gb, 2560 * mb, 3 * gb)
+        assertFalse(plan.enough)
+        assertTrue(plan.fits)
+    }
 }

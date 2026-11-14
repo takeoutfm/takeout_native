@@ -110,7 +110,10 @@ ctest --test-dir linux/build                # C API smoke test, tofm_test (tofm'
   `adb shell "am start -a com.takeoutfm.action.PLAY_ARTIST -e artist 'Beck' -n com.takeoutfm.android.debug/com.takeoutfm.android.MainActivity"`.
 - Offline: `:android-media` `offline/TakeoutMediaCache` (cache keyed by ETag; playback reads it,
   writes only with Playback Caching on; Media3 downloads into the same cache) and
-  `TakeoutDownloadService` (the app's `playback/DownloadService`). Offline browsing: the shared
+  `TakeoutDownloadService` (the app's `playback/DownloadService`). `offline/CachePurge` keeps
+  Playback Caching within Settings → Cache size (the shared `offline/CachePolicy`, PLAN.md
+  §4.11): only entries marked `DownloadInfo.cached` (and partly streamed tracks) are removed,
+  never the viewer's downloads; video downloads first get room (`makeRoom`) or ask. Offline browsing: the shared
   `api/DbResponseCache` (set as `TakeoutApi.responseCache` in `AppModule`) answers GETs that
   can't reach the server with the last response, and reuses recent library responses (an hour;
   podcast episode lists 15 min; never progress, activity, favorites, playlists, search) until

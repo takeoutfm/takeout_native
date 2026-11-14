@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.settings
 
+import com.takeoutfm.shared.offline.CacheLimit
 import com.takeoutfm.shared.store.KeyValueStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +57,18 @@ class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
 
     fun setStreamOverMobileData(on: Boolean) = set(_mobileData, KEY_MOBILE_DATA, on)
 
+    private val _cacheLimit = MutableStateFlow(
+        store.getString(KEY_CACHE_LIMIT)?.toLongOrNull()?.let { CacheLimit.Fixed(it) } ?: CacheLimit.Auto
+    )
+
+    /** How much Playback Caching may keep before the least useful goes (`CachePolicy`). */
+    val cacheLimit: StateFlow<CacheLimit> = _cacheLimit.asStateFlow()
+
+    fun setCacheLimit(limit: CacheLimit) {
+        _cacheLimit.value = limit
+        store.putString(KEY_CACHE_LIMIT, if (limit is CacheLimit.Fixed) limit.bytes.toString() else "auto")
+    }
+
     private val _repeatAll = flag(KEY_REPEAT_ALL, false)
 
     override val repeatAll: StateFlow<Boolean> = _repeatAll.asStateFlow()
@@ -109,6 +122,7 @@ class PlaySettings(private val store: KeyValueStore) : RepeatSetting {
         const val KEY_REPEAT_ALL = "repeatAll"
         const val KEY_HOME_LIST = "homeList."
         const val KEY_AUDIO_LANGUAGE = "audioLanguage"
+        const val KEY_CACHE_LIMIT = "cacheLimit"
         const val KEY_SUBTITLE_LANGUAGE = "subtitleLanguage"
     }
 }

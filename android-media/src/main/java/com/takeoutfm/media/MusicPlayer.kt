@@ -53,6 +53,9 @@ data class NowPlaying(
     val streamTitle: String? = null,
 ) {
     val current: QueueItem? get() = items.getOrNull(index)
+
+    /** The current item's ETag and the next one's (which the player may already read ahead). */
+    val loadedEtags: Set<String> get() = listOfNotNull(current, items.getOrNull(index + 1)).map { it.etag }.filter { it.isNotEmpty() }.toSet()
     val hasQueue: Boolean get() = items.isNotEmpty()
 }
 

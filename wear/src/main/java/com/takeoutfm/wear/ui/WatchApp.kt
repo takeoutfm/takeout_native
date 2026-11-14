@@ -1,5 +1,9 @@
 package com.takeoutfm.wear.ui
 
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Warning
+import com.takeoutfm.shared.offline.CacheLimit
+import com.takeoutfm.shared.util.formatBytes
 import android.content.Context
 import android.media.AudioManager
 import android.widget.Toast
@@ -323,16 +327,25 @@ private fun Pages(vm: WatchViewModel) {
         }
         composable("downloads") {
             val downloads by vm.downloads.collectAsStateWithLifecycle()
+            val usage by vm.cacheUsage.collectAsStateWithLifecycle()
             val list = downloads.values.sortedWith(compareBy({ it.info.groupTitle }, { it.item.title }))
             ListPage(stringResource(R.string.downloads)) {
                 if (list.isEmpty()) item { Text(stringResource(R.string.nothing_here)) }
+                if (usage?.lowSpace == true) {
+                    item { Entry(stringResource(R.string.low_space), onClick = {}, secondary = stringResource(R.string.low_space_detail), icon = Icons.Filled.Warning) }
+                }
                 items(list.size) { i ->
                     val d = list[i]
                     val status = d.status
                     Entry(
                         d.item.title,
                         onClick = { vm.playDownloads(list.map { it.item }, i); nav.navigate("player") },
-                        secondary = if (status is CacheStatus.Partial) "${stringResource(R.string.downloading)} ${status.percent}%" else d.info.groupTitle,
+                        secondary = when {
+                            status is CacheStatus.Partial -> "${stringResource(R.string.downloading)} ${status.percent}%"
+                            // kept by Playback Caching: may go to stay within the cache size
+                            d.info.cached -> "${stringResource(R.string.cached)} · ${d.info.groupTitle}"
+                            else -> d.info.groupTitle
+                        },
                         imageUri = d.item.imageUri,
                     )
                 }
@@ -475,6 +488,9 @@ private fun Settings(vm: WatchViewModel) {
     val reportPlays by vm.settings.reportPlays.collectAsStateWithLifecycle()
     val caching by vm.settings.playbackCaching.collectAsStateWithLifecycle()
     val mobileData by vm.settings.streamOverMobileData.collectAsStateWithLifecycle()
+    val limit by vm.settings.cacheLimit.collectAsStateWithLifecycle()
+    val usage by vm.cacheUsage.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.refreshCache() }
     val session by vm.session_.collectAsStateWithLifecycle()
     ListPage(stringResource(R.string.settings)) {
         item {
@@ -485,6 +501,34 @@ private fun Settings(vm: WatchViewModel) {
                 toggleControl = { Switch(checked = caching) },
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        item {
+            // Tapping steps through the sizes.
+            val size = when (val l = limit) {
+                CacheLimit.Auto -> stringResource(R.string.cache_size_auto, formatBytes(vm.limitBytes(l)))
+                is CacheLimit.Fixed -> formatBytes(l.bytes)
+            }
+            Entry(
+                stringResource(R.string.cache_size),
+                onClick = vm::nextCacheLimit,
+                secondary = (usage?.cachedBytes ?: 0L).let { used ->
+                    if (used > 0) stringResource(R.string.cache_size_used, size, formatBytes(used)) else size
+                },
+                icon = Icons.Filled.Storage,
+            )
+        }
+        if ((usage?.cachedBytes ?: 0L) > 0) {
+            item { Entry(stringResource(R.string.clear_cached), onClick = vm::clearCached, icon = Icons.Filled.DeleteSweep) }
+        }
+        if (usage?.lowSpace == true) {
+            item {
+                Entry(
+                    stringResource(R.string.low_space),
+                    onClick = {},
+                    secondary = stringResource(R.string.low_space_detail),
+                    icon = Icons.Filled.Warning,
+                )
+            }
         }
         item {
             ToggleChip(

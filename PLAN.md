@@ -285,7 +285,8 @@ dashboard top bar, D-pad handling.
       UI: ✓ (or offline icon) on cached tracks, a progress ring while downloading, "N of M
       cached" / ✓ for albums, playlists and episodes; nothing for live streams.
 - [ ] **Cache purge** (decided 2026-11-14), the same in every app (phone, watch, Mac/iOS,
-      Linux): Playback Caching filled the disk, as nothing was ever removed.
+      Linux): Playback Caching filled the disk, as nothing was ever removed. **Phone and
+      watch done** (`:android-media` `offline/CachePurge`, 2026-11-14); Mac/iOS and Linux to do.
       - **Origin kept**: each download entry says whether Playback Caching added it
         (`cached`) or the viewer did. Only cached ones are ever purged; downloading an album,
         playlist or podcast that holds cached items makes them explicit.

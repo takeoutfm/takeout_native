@@ -42,6 +42,21 @@ data class CachePlan(
     val lowSpace: Boolean,
 )
 
+/** What a download of a known size needs first. */
+data class RoomPlan(
+    /** Cached entries to remove first, in order. */
+    val remove: List<String>,
+    /** With those removed there's room: it leaves [CachePolicy.minFreeBytes] free. */
+    val enough: Boolean,
+    /** What removing every cached entry could free (for "needs 5.2 GB, 3.1 GB can be freed"). */
+    val freeableBytes: Long,
+    /**
+     * It fits at all with the cache emptied (if only by going under the floor): when false
+     * there's nothing to ask, it can't be downloaded.
+     */
+    val fits: Boolean = true,
+)
+
 /**
  * The cache purge every app runs (PLAN.md §4.11): Playback Caching's entries are kept within a
  * budget, the least useful first to go; the viewer's own downloads are never removed.
@@ -57,6 +72,9 @@ object CachePolicy {
     const val MinFreeBytes = 2L * GB
     const val MinFreeShare = 0.10
     const val Slack = 0.90
+
+    /** The sizes every app offers: Auto, then 1, 2, 5 and 10 GB. */
+    val Choices: List<CacheLimit> = listOf(CacheLimit.Auto) + listOf(1L, 2L, 5L, 10L).map { CacheLimit.Fixed(it * GB) }
 
     /** The space always left free on a volume of [totalBytes]: 2 GB or 10% of it, the smaller. */
     fun minFreeBytes(totalBytes: Long): Long = minOf(MinFreeBytes, (totalBytes * MinFreeShare).toLong())
@@ -83,11 +101,7 @@ object CachePolicy {
         var kept = cachedBytes
         if (cachedBytes > budget) {
             val target = (budget * Slack).toLong()
-            val order = cached.sortedWith(
-                compareByDescending<CacheEntry> { it.partial }
-                    .thenByDescending { it.finishedPodcast }
-                    .thenBy { it.lastUsedMs }
-            )
+            val order = cached.sortedWith(Order)
             for (entry in order) {
                 if (kept <= target) break
                 remove += entry.etag
@@ -102,6 +116,34 @@ object CachePolicy {
             lowSpace = roomBytes < 0,
         )
     }
+
+    /**
+     * Room for a download of [needBytes] (a movie, say), which should still leave
+     * [minFreeBytes] free: cached entries go, in the purge's order, until it would; if even all
+     * of them aren't enough, [RoomPlan.enough] is false and the app asks before going on.
+     */
+    fun makeRoom(entries: List<CacheEntry>, totalBytes: Long, freeBytes: Long, needBytes: Long): RoomPlan {
+        val cached = entries.filter { it.cached }.sortedWith(Order)
+        val freeable = cached.sumOf { it.bytes }
+        val short = needBytes + minFreeBytes(totalBytes) - freeBytes
+        if (short <= 0) return RoomPlan(emptyList(), enough = true, freeableBytes = freeable)
+        if (freeable < short) {
+            return RoomPlan(emptyList(), enough = false, freeableBytes = freeable, fits = needBytes <= freeBytes + freeable)
+        }
+        val remove = mutableListOf<String>()
+        var freed = 0L
+        for (entry in cached) {
+            if (freed >= short) break
+            remove += entry.etag
+            freed += entry.bytes
+        }
+        return RoomPlan(remove, enough = true, freeableBytes = freeable)
+    }
+
+    /** Which cached entries go first: partial tracks, finished episodes, then the least recently used. */
+    private val Order = compareByDescending<CacheEntry> { it.partial }
+        .thenByDescending { it.finishedPodcast }
+        .thenBy { it.lastUsedMs }
 }
 
 private const val GB = 1024L * 1024 * 1024

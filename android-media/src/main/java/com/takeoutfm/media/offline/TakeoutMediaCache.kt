@@ -10,7 +10,8 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.NoOpCacheEvictor
+import androidx.media3.datasource.cache.CacheEvictor
+import androidx.media3.datasource.cache.CacheSpan
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
@@ -45,6 +46,11 @@ data class DownloadInfo(
     val groupTitle: String = "",
     /** For a movie or TV episode: its id ("m-…", "e-…"), which the video player opens. */
     val videoId: String = "",
+    /**
+     * Kept by Playback Caching, not downloaded by the viewer: [CachePurge] may remove it.
+     * Downloads from before this was kept count as the viewer's.
+     */
+    val cached: Boolean = false,
 )
 
 /** A download as the app shows it. */
@@ -59,8 +65,9 @@ data class DownloadedItem(
  * Music, podcast audio and downloaded videos on the device: one Media3 [SimpleCache] keyed by
  * the file's ETag (stream URLs redirect to expiring signed URLs, so URLs can't be keys), filled
  * by music playback while [cachingEnabled] says so ("Playback Caching"; off, nothing is written
- * but cached tracks still play from here) and by downloads. Nothing is evicted; removing
- * downloads frees space. Live streams are never cached (they have no length), and video
+ * but cached tracks still play from here) and by downloads. Media3 evicts nothing: [CachePurge]
+ * keeps what Playback Caching added within its budget, and the viewer's downloads stay until
+ * removed. Live streams are never cached (they have no length), and video
  * playback only reads ([videoDataSourceFactory]).
  */
 @OptIn(UnstableApi::class)
@@ -73,7 +80,10 @@ class TakeoutMediaCache(
     private val json = Json { ignoreUnknownKeys = true }
     private val database = StandaloneDatabaseProvider(context)
 
-    val cache: Cache = SimpleCache(File(context.filesDir, "media"), NoOpCacheEvictor(), database)
+    /** Where the cache keeps its files (for the volume's size and free space). */
+    val directory = File(context.filesDir, "media")
+
+    val cache: Cache = SimpleCache(directory, TouchingEvictor(), database)
 
     // No FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS: ExoPlayer's progressive requests never
     // set a length, so it would bypass the cache for all playback. Live streams stay out anyway:
@@ -103,6 +113,11 @@ class TakeoutMediaCache(
     /** Every download by ETag, updated as they progress. */
     val items: StateFlow<Map<String, DownloadedItem>> = _items.asStateFlow()
 
+    private val _ready = MutableStateFlow(false)
+
+    /** [items] has been read from the download index (until then, downloads look missing). */
+    val ready: StateFlow<Boolean> = _ready.asStateFlow()
+
     init {
         downloads.addListener(object : DownloadManager.Listener {
             override fun onDownloadChanged(manager: DownloadManager, download: Download, finalException: Exception?) {
@@ -119,10 +134,14 @@ class TakeoutMediaCache(
         if (downloads.isInitialized) reload()
     }
 
-    /** The requests to add [items] (with ETags) as part of [group]; send them with the download service. */
-    fun requests(items: List<QueueItem>, group: String, groupTitle: String): List<DownloadRequest> =
+    /**
+     * The requests to add [items] (with ETags) as part of [group]; send them with the download
+     * service. [cached]: for Playback Caching, which [CachePurge] may remove; else the viewer's
+     * own (which also makes any of them already cached the viewer's).
+     */
+    fun requests(items: List<QueueItem>, group: String, groupTitle: String, cached: Boolean = false): List<DownloadRequest> =
         items.filter { it.etag.isNotEmpty() && it.uri.isNotEmpty() }.map { item ->
-            val info = DownloadInfo(item.title, item.artist, item.album, item.imageUri, item.podcast, group, groupTitle)
+            val info = DownloadInfo(item.title, item.artist, item.album, item.imageUri, item.podcast, group, groupTitle, cached = cached)
             DownloadRequest.Builder(item.etag, Uri.parse(item.uri))
                 .setCustomCacheKey(item.etag)
                 .setData(json.encodeToString(DownloadInfo.serializer(), info).toByteArray())
@@ -169,6 +188,7 @@ class TakeoutMediaCache(
             }
         }
         _items.value = all
+        _ready.value = true
     }
 
     private fun Download.toItem(): DownloadedItem? {
@@ -222,4 +242,19 @@ class TakeoutMediaCache(
         override fun getResponseHeaders(): Map<String, List<String>> = current.responseHeaders
         override fun close() = current.close()
     }
+}
+
+/**
+ * Evicts nothing (that's [CachePurge]'s), but has the cache note when each file is read, so
+ * the least recently played can go first. With the database the cache keeps, a touch is a
+ * row update, not a file rename.
+ */
+@OptIn(UnstableApi::class)
+private class TouchingEvictor : CacheEvictor {
+    override fun requiresCacheSpanTouches() = true
+    override fun onCacheInitialized() = Unit
+    override fun onStartFile(cache: Cache, key: String, position: Long, length: Long) = Unit
+    override fun onSpanAdded(cache: Cache, span: CacheSpan) = Unit
+    override fun onSpanRemoved(cache: Cache, span: CacheSpan) = Unit
+    override fun onSpanTouched(cache: Cache, oldSpan: CacheSpan, newSpan: CacheSpan) = Unit
 }

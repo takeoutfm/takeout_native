@@ -1,5 +1,9 @@
 package com.takeoutfm.android.di
 
+import com.takeoutfm.media.offline.CachePurge
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
 import android.content.Context
 import android.os.Build
 import com.takeoutfm.media.MusicPlayer
@@ -147,6 +151,12 @@ object AppModule {
         playerFactory: TakeoutPlayerFactory,
         settings: PlaySettings,
     ): TakeoutMediaCache = TakeoutMediaCache(context, playerFactory.upstream) { settings.playbackCaching.value }
+
+    /** Keeps Playback Caching within its size; started by MainActivity. */
+    @Provides
+    @Singleton
+    fun cachePurge(media: TakeoutMediaCache, settings: PlaySettings, progress: TakeoutProgress, player: MusicPlayer): CachePurge =
+        CachePurge(media, settings.cacheLimit, progress, { player.state.value.loadedEtags }, CoroutineScope(SupervisorJob() + Dispatchers.Default))
 
     /** What Android Auto browses. */
     @Provides

@@ -1,5 +1,8 @@
 package com.takeoutfm.android.ui.music
 
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,18 +47,22 @@ import com.takeoutfm.android.ui.video.VideoPlayerActivity
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * Downloads: what's on the device, by the album, playlist or podcast it came with; each group
- * plays offline and can be deleted, or everything at once ("frees N").
+ * Downloads: what's on the device, by the album, playlist or podcast it came with, the largest
+ * first; each group plays offline and can be deleted, or everything at once ("frees N"). What
+ * Playback Caching kept is marked Cached (it may be removed to stay within the cache size); a
+ * warning shows when the viewer's downloads leave little space.
  */
 @Composable
 fun DownloadsScreen(main: MainViewModel, nav: MusicNav) {
     val downloads by main.downloads.collectAsStateWithLifecycle()
+    val usage by main.cacheUsage.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { main.refreshCacheUsage() }
     val context = LocalContext.current
     var confirmAll by remember { mutableStateOf(false) }
     val groups = downloads.values
         .groupBy { it.info.group.ifEmpty { it.item.album } }
         .values
-        .sortedBy { it.first().info.groupTitle.ifEmpty { it.first().item.album }.lowercase() }
+        .sortedByDescending { group -> group.sumOf { it.bytes } }
     val total = downloads.values.sumOf { it.bytes }
     MusicPage(
         title = stringResource(R.string.downloads),
@@ -74,11 +81,40 @@ fun DownloadsScreen(main: MainViewModel, nav: MusicNav) {
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item {
+                val cached = downloads.values.filter { it.info.cached }.sumOf { it.bytes }
                 Text(
-                    stringResource(R.string.downloads_used, formatBytes(total)),
+                    if (cached > 0) {
+                        stringResource(R.string.downloads_used_cached, formatBytes(total - cached), formatBytes(cached))
+                    } else {
+                        stringResource(R.string.downloads_used, formatBytes(total))
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
+            }
+            val watched = usage?.watched.orEmpty().mapNotNull { downloads[it] }
+            if (watched.isNotEmpty()) {
+                item {
+                    // Watched movies and episodes, removed only when asked.
+                    ListItem(
+                        leadingContent = { Icon(Icons.Filled.Done, contentDescription = null) },
+                        headlineContent = { Text(stringResource(R.string.watched_downloads, watched.size, formatBytes(watched.sumOf { it.bytes }))) },
+                        trailingContent = {
+                            TextButton(onClick = { main.removeDownloads(watched.map { it.item.etag }) }) {
+                                Text(stringResource(R.string.remove_download))
+                            }
+                        },
+                    )
+                }
+            }
+            if (usage?.lowSpace == true) {
+                item {
+                    ListItem(
+                        leadingContent = { Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                        headlineContent = { Text(stringResource(R.string.low_space_title)) },
+                        supportingContent = { Text(stringResource(R.string.low_space_downloads)) },
+                    )
+                }
             }
             groups.forEach { group -> groupItems(group, main, context) }
             item { Spacer(Modifier.height(96.dp)) }
@@ -121,7 +157,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.groupItems(
             supportingContent = {
                 Text(
                     when (val s = d.status) {
-                        CacheStatus.Cached -> listOf(d.item.artist, formatBytes(d.bytes)).filter { it.isNotEmpty() }.joinToString(" · ")
+                        CacheStatus.Cached -> listOf(
+                            if (d.info.cached) stringResource(R.string.cached) else "",
+                            d.item.artist,
+                            formatBytes(d.bytes),
+                        ).filter { it.isNotEmpty() }.joinToString(" · ")
                         is CacheStatus.Partial -> stringResource(R.string.downloading) + " ${s.percent}%"
                     },
                     maxLines = 1,

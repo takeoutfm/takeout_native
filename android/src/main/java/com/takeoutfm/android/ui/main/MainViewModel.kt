@@ -1,5 +1,7 @@
 package com.takeoutfm.android.ui.main
 
+import com.takeoutfm.media.offline.CachePurge
+import com.takeoutfm.media.offline.CacheUsage
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.media3.exoplayer.offline.DownloadService
@@ -50,6 +52,7 @@ enum class ArtistType { All, Favorite }
 class MainViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mediaCache: TakeoutMediaCache,
+    private val purge: CachePurge,
     private val player: MusicPlayer,
     private val music: TakeoutMusicRepository,
     private val history: MusicHistory,
@@ -62,6 +65,12 @@ class MainViewModel @Inject constructor(
 
     /** Tracks on the device (downloaded or downloading), by ETag. */
     val downloads: StateFlow<Map<String, DownloadedItem>> = mediaCache.items
+
+    /** What Playback Caching keeps and the viewer downloaded, and whether space is short. */
+    val cacheUsage: StateFlow<CacheUsage?> = purge.usage
+
+    /** Recounts the store (and what's been watched) for the Downloads page. */
+    fun refreshCacheUsage() = purge.refresh()
 
     private val _messages = MutableSharedFlow<Int>(extraBufferCapacity = 4)
     val messages: SharedFlow<Int> = _messages.asSharedFlow()
@@ -231,9 +240,41 @@ class MainViewModel @Inject constructor(
         queue.copy(items = listOfNotNull(queue.items.getOrNull(index)))
     }
 
-    /** Downloads a movie's or episode's file, to play offline in the video player. */
-    fun downloadVideo(details: VideoDetails) {
+    /** A video download that wouldn't leave enough free even with the cache emptied. */
+    data class SpaceQuestion(val details: VideoDetails, val needBytes: Long, val freeableBytes: Long, val fits: Boolean)
+
+    private val _spaceQuestion = MutableStateFlow<SpaceQuestion?>(null)
+
+    /** Asks whether to download anyway ([answerSpace]); null when there's nothing to ask. */
+    val spaceQuestion: StateFlow<SpaceQuestion?> = _spaceQuestion.asStateFlow()
+
+    /**
+     * Downloads a movie's or episode's file, to play offline in the video player. A file of known
+     * size first gets room: cached tracks go if needed; if even that isn't enough, it asks
+     * ([spaceQuestion]) unless [anyway].
+     */
+    fun downloadVideo(details: VideoDetails, anyway: Boolean = false) {
         if (details.etag.isEmpty() || details.videoUri.isEmpty() || details.etag in mediaCache.items.value) return
+        viewModelScope.launch {
+            if (!anyway && details.size > 0) {
+                val room = purge.makeRoom(details.size)
+                if (!room.enough) {
+                    _spaceQuestion.value = SpaceQuestion(details, details.size, room.freeableBytes, room.fits)
+                    return@launch
+                }
+            }
+            startVideoDownload(details)
+        }
+    }
+
+    /** The answer to [spaceQuestion]: download it anyway, or not. */
+    fun answerSpace(download: Boolean) {
+        val question = _spaceQuestion.value ?: return
+        _spaceQuestion.value = null
+        if (download) downloadVideo(question.details, anyway = true)
+    }
+
+    private fun startVideoDownload(details: VideoDetails) {
         val episode = details.episode
         val request = mediaCache.videoRequest(
             etag = details.etag,
@@ -272,8 +313,9 @@ class MainViewModel @Inject constructor(
 
     private fun addDownloads(queue: MusicQueue, notify: Boolean) {
         val group = queue.location.ifEmpty { queue.title }
+        // what's there already, unless only Playback Caching kept it: now it's the viewer's
         val requests = mediaCache.requests(queue.items, group, queue.title)
-            .filter { it.id !in mediaCache.items.value }
+            .filter { request -> mediaCache.items.value[request.id].let { it == null || it.info.cached } }
         requests.forEach {
             DownloadService.sendAddDownload(context, com.takeoutfm.android.playback.DownloadService::class.java, it, false)
         }

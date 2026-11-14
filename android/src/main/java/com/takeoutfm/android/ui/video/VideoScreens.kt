@@ -1,5 +1,7 @@
 package com.takeoutfm.android.ui.video
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -190,6 +192,7 @@ fun VideoScreen(main: MainViewModel, nav: VideoNav, viewModel: VideoViewModel = 
             LoadingOrEmpty(state is Load.Loading, stringResource(R.string.cant_load), Modifier.padding(padding))
             return@MusicPage
         }
+        SpaceQuestion(main)
         val play = { startOver: Boolean ->
             // A series plays its next episode (by the series page's pick).
             VideoPlayerActivity.start(context, details.id, startOver)
@@ -540,4 +543,37 @@ fun GenreScreen(nav: VideoNav, viewModel: GenreViewModel = hiltViewModel()) {
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = padding.calculateTopPadding() + 12.dp, bottom = 96.dp),
         )
     }
+}
+
+/** "Needs 5.2 GB; 3.1 GB can be freed": a video download that won't fit, asked before going on. */
+@Composable
+private fun SpaceQuestion(main: MainViewModel) {
+    val question by main.spaceQuestion.collectAsStateWithLifecycle()
+    val q = question ?: return
+    AlertDialog(
+        onDismissRequest = { main.answerSpace(false) },
+        title = { Text(stringResource(R.string.space_question_title)) },
+        text = {
+            Text(
+                when {
+                    // too big for what's free, even with the cache emptied: nothing to ask
+                    !q.fits -> stringResource(R.string.space_no_room, formatBytes(q.needBytes))
+                    q.freeableBytes > 0 -> stringResource(R.string.space_question, formatBytes(q.needBytes), formatBytes(q.freeableBytes))
+                    else -> stringResource(R.string.space_question_nothing_cached, formatBytes(q.needBytes))
+                }
+            )
+        },
+        confirmButton = {
+            if (q.fits) {
+                TextButton(onClick = { main.answerSpace(true) }) { Text(stringResource(R.string.download_anyway)) }
+            } else {
+                TextButton(onClick = { main.answerSpace(false) }) { Text(stringResource(android.R.string.ok)) }
+            }
+        },
+        dismissButton = if (q.fits) {
+            { TextButton(onClick = { main.answerSpace(false) }) { Text(stringResource(R.string.cancel)) } }
+        } else {
+            null
+        },
+    )
 }

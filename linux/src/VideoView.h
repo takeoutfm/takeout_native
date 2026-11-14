@@ -103,6 +103,11 @@ private:
     QString m_target;
     /** When m_target should stop being used (epoch ms). */
     qint64 m_targetUntil = 0;
+    /**
+     * mpv's playlist entry for the latest loadfile, from its reply; -1 until then. End events
+     * of earlier files (one replaced while it was still opening) are ignored.
+     */
+    qint64 m_entry = -1;
     /** Whether a failed read was already retried with a fresh redirect. */
     bool m_retried = false;
     /** Bumped by each load, so a late redirect for an earlier one is dropped. */

@@ -121,6 +121,9 @@ VideoView::VideoView(QQuickItem *parent)
              {"terminal", "no"}, {"input-default-bindings", "no"}, {"ytdl", "no"}, {"cache", "yes"},
              // Subtitles only when picked; the file's default (forced) ones still show.
              {"sid", "auto"}, {"audio-client-name", "TakeoutFM"},
+             // A song's cover art (live break music) would be a video frame that mpv waits to
+             // have drawn before playing: the live player hides this item then, so it never was.
+             {"audio-display", "no"},
              {"user-agent", "TakeoutFM-Linux/" PROJECT_VERSION}})
         mpv_set_option_string(m_mpv, name, value);
     if (mpv_initialize(m_mpv) < 0) qWarning() << "mpv didn't start";
@@ -225,40 +228,45 @@ bool VideoView::targetStale() const
 
 void VideoView::play(const QString &url, const QString &authorization, double startSeconds, bool keepPaused)
 {
+    // Every call here is async: mpv answers a blocking one only once its core is free, which
+    // can wait on the video output, which waits on this (UI) thread to schedule a frame — the
+    // window froze for good (switching a live channel from a program to its break music).
+    // mpv runs async requests in order and copies their arguments.
     const QByteArray header = authorization.isEmpty() ? QByteArray() : "Authorization: " + authorization.toUtf8();
-    mpv_set_property_string(m_mpv, "http-header-fields", header.constData());
+    const char *headerValue = header.constData();
+    mpv_set_property_async(m_mpv, 0, "http-header-fields", MPV_FORMAT_STRING, &headerValue);
     const QByteArray target = url.toUtf8();
     QByteArrayList options;
     if (startSeconds > 0) options << "start=" + QByteArray::number(startSeconds);
     if (keepPaused) {
         // the same title again: keep the tracks chosen
-        for (const char *track : {"aid", "sid"}) {
-            char *value = mpv_get_property_string(m_mpv, track);
-            if (value) {
-                options << QByteArray(track) + "=" + value;
-                mpv_free(value);
-            }
-        }
+        for (const QVariant &track : std::as_const(m_audio))
+            if (track.toMap().value("selected").toBool()) options << "aid=" + QByteArray::number(track.toMap().value("id").toInt());
+        QByteArray sid = "no";
+        for (const QVariant &track : std::as_const(m_subtitles))
+            if (track.toMap().value("selected").toBool()) sid = QByteArray::number(track.toMap().value("id").toInt());
+        options << "sid=" + sid;
     }
     const QByteArray joined = options.join(',');
     const char *args[] = {"loadfile", target.constData(), "replace", "-1", joined.constData(), nullptr};
-    if (int error = mpv_command(m_mpv, args); error < 0) Q_EMIT failed(QString::fromUtf8(mpv_error_string(error)));
+    m_entry = -1;
+    mpv_command_async(m_mpv, quint64(m_generation), args);
     if (!keepPaused) {
         int no = 0;
-        mpv_set_property(m_mpv, "pause", MPV_FORMAT_FLAG, &no);
+        mpv_set_property_async(m_mpv, 0, "pause", MPV_FORMAT_FLAG, &no);
     }
 }
 
 void VideoView::togglePlay()
 {
     int pause = m_paused ? 0 : 1;
-    mpv_set_property(m_mpv, "pause", MPV_FORMAT_FLAG, &pause);
+    mpv_set_property_async(m_mpv, 0, "pause", MPV_FORMAT_FLAG, &pause);
 }
 
 void VideoView::pause()
 {
     int pause = 1;
-    mpv_set_property(m_mpv, "pause", MPV_FORMAT_FLAG, &pause);
+    mpv_set_property_async(m_mpv, 0, "pause", MPV_FORMAT_FLAG, &pause);
 }
 
 void VideoView::seek(double seconds)
@@ -287,22 +295,23 @@ void VideoView::skip(double seconds)
 void VideoView::setAudio(int id)
 {
     int64_t value = id;
-    mpv_set_property(m_mpv, "aid", MPV_FORMAT_INT64, &value);
+    mpv_set_property_async(m_mpv, 0, "aid", MPV_FORMAT_INT64, &value);
 }
 
 void VideoView::setSubtitle(int id)
 {
     if (id <= 0) {
-        mpv_set_property_string(m_mpv, "sid", "no");
+        const char *no = "no";
+        mpv_set_property_async(m_mpv, 0, "sid", MPV_FORMAT_STRING, &no);
     } else {
         int64_t value = id;
-        mpv_set_property(m_mpv, "sid", MPV_FORMAT_INT64, &value);
+        mpv_set_property_async(m_mpv, 0, "sid", MPV_FORMAT_INT64, &value);
     }
 }
 
 void VideoView::setSpeed(double speed)
 {
-    mpv_set_property(m_mpv, "speed", MPV_FORMAT_DOUBLE, &speed);
+    mpv_set_property_async(m_mpv, 0, "speed", MPV_FORMAT_DOUBLE, &speed);
 }
 
 void VideoView::setVolume(double volume)
@@ -311,16 +320,16 @@ void VideoView::setVolume(double volume)
     if (qAbs(volume - m_volume) < 0.001) return;
     m_volume = volume;
     double percent = volume * 100;
-    // Not waiting for mpv: set while it loads a file it can block the UI thread for good (the
-    // live player sets it at every tune and through a fade). mpv copies the value.
+    // Not waiting for mpv (see play()): the live player sets it at every tune and through a fade.
     mpv_set_property_async(m_mpv, 0, "volume", MPV_FORMAT_DOUBLE, &percent);
     Q_EMIT volumeChanged();
 }
 
 void VideoView::stop()
 {
+    // async, as in play(): the live player stops between programs
     const char *args[] = {"stop", nullptr};
-    mpv_command(m_mpv, args);
+    mpv_command_async(m_mpv, 0, args);
 }
 
 void VideoView::onEvents()
@@ -361,6 +370,17 @@ void VideoView::onEvents()
             }
             break;
         }
+        case MPV_EVENT_COMMAND_REPLY: {
+            // a loadfile's answer, sent with its load's generation (the latest one's counts)
+            if (event->reply_userdata == 0 || event->reply_userdata != quint64(m_generation)) break;
+            if (event->error < 0) {
+                Q_EMIT failed(QString::fromUtf8(mpv_error_string(event->error)));
+            } else {
+                const mpv_node *id = field(static_cast<mpv_event_command *>(event->data)->result, "playlist_entry_id");
+                if (id && id->format == MPV_FORMAT_INT64) m_entry = id->u.int64;
+            }
+            break;
+        }
         case MPV_EVENT_PLAYBACK_RESTART:
             if (m_loading) {
                 m_loading = false;
@@ -369,6 +389,9 @@ void VideoView::onEvents()
             break;
         case MPV_EVENT_END_FILE: {
             auto *end = static_cast<mpv_event_end_file *>(event->data);
+            // an earlier file (the live player tuned again while it was opening): not this one's
+            // end, and retrying it would play this one from the earlier one's position
+            if (end->playlist_entry_id != m_entry) break;
             if (end->reason == MPV_END_FILE_REASON_EOF) Q_EMIT ended();
             else if (end->reason == MPV_END_FILE_REASON_ERROR) {
                 // Storage stopped answering (most likely its URL expired over a long pause):

@@ -173,7 +173,17 @@ QQC2.Popup {
     Timer {
         id: retune
         // Behind live, the program plays on until its file ends.
-        onTriggered: if (!(player.behind && player.playingProgram)) player.tune()
+        onTriggered: {
+            // A Timer can fire a second or so early (it's coarse): tuning then reloads what's
+            // ending, only to replace it a moment later.
+            const left = (player.tuned?.untilMs ?? 0) - player.serverNow()
+            if (left > 0 && left < 5000) {
+                interval = left + 20
+                restart()
+            } else if (!(player.behind && player.playingProgram)) {
+                player.tune()
+            }
+        }
     }
     Timer {
         // the clock, and break music fading out

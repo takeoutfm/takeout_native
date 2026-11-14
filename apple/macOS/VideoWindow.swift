@@ -18,6 +18,7 @@ struct VideoPlayerView: View {
     let request: VideoPlayRequest
     @EnvironmentObject private var model: AppModel
     @StateObject private var video: VideoPlayerModel
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var showControls = true
     @State private var hideTask: Task<Void, Never>?
     @State private var scrubMs: Double?
@@ -56,6 +57,8 @@ struct VideoPlayerView: View {
         .onKeyPress(.rightArrow) { video.jump(seconds: 10); poke(); return .handled }
         .onKeyPress("f") { toggleFullScreen(); return .handled }
         .offerWatchedRemoval(video, cache: model.cache)
+        // the title ended (no next episode): the window closes
+        .onChange(of: video.finished) { if video.finished { dismissWindow(id: "video", value: request) } }
         .onAppear {
             model.player.pause()
             video.load(request)

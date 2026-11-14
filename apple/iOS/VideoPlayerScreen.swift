@@ -59,6 +59,8 @@ struct VideoPlayerScreen: View {
         }
         .onDisappear { video.close() }
         .offerWatchedRemoval(video, cache: model.cache)
+        // the title ended (no next episode): back to where it was played from
+        .onChange(of: video.finished) { if video.finished { dismiss() } }
     }
 
     private var controls: some View {

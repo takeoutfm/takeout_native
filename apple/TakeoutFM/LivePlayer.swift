@@ -203,6 +203,13 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
         retune = Task {
             try? await Task.sleep(for: .milliseconds(delay))
             guard !Task.isCancelled else { return }
+            // Woken a little early (the sleep and the server's clock drift apart): tuning now
+            // would reload what's ending, only to replace it a moment later. As on Linux.
+            if let until = tuned?.untilMs, case let left = until - serverNowMs(skewMs: tuned?.skewMs ?? 0),
+               left > 0 && left < 5000 {
+                wait(ms: left + 20)
+                return
+            }
             // Behind live, the program plays on until its file ends.
             if !(behind && playingProgram) { tune() }
         }

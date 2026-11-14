@@ -31,7 +31,15 @@ struct MediaTrack: Identifiable, Hashable {
 final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate {
     @Published private(set) var details: VideoDetails?
     /// A downloaded title watched to its end: the player asks whether to remove its download.
-    @Published var watchedDownload: MediaCache.Entry?
+    @Published var watchedDownload: MediaCache.Entry? {
+        // the question answered: the player leaves (the title has ended)
+        didSet { if oldValue != nil && watchedDownload == nil { finished = true } }
+    }
+    /**
+     * A movie or a series' last episode played to its end: the player leaves, back to where it
+     * was played from (as on the phone and TV), rather than staying on a stopped picture.
+     */
+    @Published private(set) var finished = false
     @Published private(set) var failure: String?
     @Published private(set) var isPlaying = false
     @Published private(set) var isBuffering = true
@@ -78,6 +86,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         loading?.cancel()
         details = nil
         failure = nil
+        finished = false
         hasPlayed = false
         isBuffering = true
         timeMs = 0
@@ -210,8 +219,10 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
             if let next = details?.nextEpisodeId {
                 load(VideoPlayRequest(id: next, startOver: true))
             } else if let etag = details?.etag, let entry = cache.entries[etag], entry.isDone, !entry.isCached {
-                // watched to its end: offered for removal (never removed by itself)
+                // watched to its end: offered for removal (never removed by itself), then leaves
                 watchedDownload = entry
+            } else {
+                finished = true
             }
         case .error:
             NSLog("VLC error playing \(details?.id ?? "?")")

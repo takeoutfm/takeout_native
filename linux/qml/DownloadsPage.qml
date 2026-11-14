@@ -5,13 +5,23 @@ import org.kde.kirigami as Kirigami
 import TakeoutFM
 import org.kde.ki18n
 
-/** Everything downloaded, by the album, playlist, podcast or title it came with. */
+/**
+ * Everything downloaded, by the album, playlist, podcast or title it came with, the largest
+ * first. What Playback Caching kept is marked Cached (it may go to stay within the cache size);
+ * watched videos are offered for removal, and a warning shows when downloads fill the disk.
+ */
 AppPage {
     id: page
 
     title: KI18n.i18n("Downloads")
 
     readonly property real usedBytes: Core.downloads.reduce((sum, d) => sum + (d.state === "Done" ? d.entry.bytes : 0), 0)
+    readonly property real cachedBytes: Core.downloads.reduce((sum, d) => sum + (d.state === "Done" && d.entry.cached ? d.entry.bytes : 0), 0)
+    /** Downloaded movies and episodes watched to their end (the core's count). */
+    readonly property var watched: (Core.cacheUsage.watched ?? []).map(etag => Core.downloadsByEtag[etag]).filter(d => d)
+
+    // what's been watched since
+    Component.onCompleted: Core.call("refreshCache")
 
     /** [{id, title, downloads}], by title; each group's downloads by title. */
     readonly property var groups: {
@@ -22,7 +32,8 @@ AppPage {
         }
         const list = Object.values(byGroup)
         for (const g of list) g.downloads.sort((a, b) => a.entry.title.localeCompare(b.entry.title))
-        return list.sort((a, b) => a.title.localeCompare(b.title))
+        const size = g => g.downloads.reduce((s, d) => s + d.entry.bytes, 0)
+        return list.sort((a, b) => size(b) - size(a) || a.title.localeCompare(b.title))
     }
 
     /** Music and episodes play as their group's downloaded items; videos in the player. */
@@ -44,10 +55,12 @@ AppPage {
 
     actions: [
         Kirigami.Action {
+            visible: page.usedBytes > 0
             displayComponent: QQC2.Label {
-                text: KI18n.i18n("Uses %1", applicationWindow().formatBytes(page.usedBytes))
+                text: page.cachedBytes > 0
+                    ? KI18n.i18n("%1 downloaded · %2 cached", applicationWindow().formatBytes(page.usedBytes - page.cachedBytes), applicationWindow().formatBytes(page.cachedBytes))
+                    : KI18n.i18n("Uses %1", applicationWindow().formatBytes(page.usedBytes))
                 opacity: 0.7
-                visible: page.usedBytes > 0
             }
         },
         Kirigami.Action {
@@ -68,6 +81,26 @@ AppPage {
             icon.name: "download"
             text: KI18n.i18n("No downloads")
             explanation: KI18n.i18n("Download albums, playlists, episodes and videos to play them offline.")
+        }
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            visible: Core.cacheUsage.lowSpace === true
+            type: Kirigami.MessageType.Warning
+            text: KI18n.i18n("Your downloads leave little free space on this computer; the largest are listed first.")
+        }
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            visible: page.watched.length > 0
+            type: Kirigami.MessageType.Information
+            text: KI18n.i18np("Watched: 1 video · %2", "Watched: %1 videos · %2", page.watched.length,
+                              applicationWindow().formatBytes(page.watched.reduce((s, d) => s + d.entry.bytes, 0)))
+            actions: Kirigami.Action {
+                text: KI18n.i18n("Remove")
+                icon.name: "edit-delete-remove"
+                onTriggered: Core.call("removeDownloads", {etags: page.watched.map(d => d.entry.etag)})
+            }
         }
 
         Repeater {
@@ -101,7 +134,7 @@ AppPage {
                         id: row
                         required property var modelData
                         title: modelData.entry.title
-                        subtitle: [modelData.entry.artist, modelData.entry.album]
+                        subtitle: [modelData.entry.cached ? KI18n.i18n("Cached") : "", modelData.entry.artist, modelData.entry.album]
                             .filter(s => s.length > 0 && s !== modelData.entry.title).join(" · ")
                         imageUri: modelData.entry.imageUri
                         etag: modelData.entry.etag

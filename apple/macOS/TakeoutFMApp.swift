@@ -51,7 +51,7 @@ struct TakeoutFMApp: App {
         }
         .menuBarExtraStyle(.window)
         Settings {
-            SettingsView().environmentObject(model)
+            SettingsView().environmentObject(model).environmentObject(model.cache)
         }
     }
 }

@@ -299,10 +299,11 @@ final class AudioPlayer: ObservableObject {
     private func keepIfCaching() {
         guard calls.playbackCaching, let item = current, !item.etag.isEmpty, !isLive,
               cache.localURL(item.etag) == nil, cache.status[item.etag] == nil else { return }
+        // Marked cached: kept within the cache size, unlike the viewer's downloads.
         if let queue {
-            cache.download(queue, only: [item])
+            cache.download(queue, only: [item], cached: true)
         } else {
-            cache.download([item], group: "title:\(queueTitle)", groupTitle: queueTitle)
+            cache.download([item], group: "title:\(queueTitle)", groupTitle: queueTitle, cached: true)
         }
     }
 
@@ -311,6 +312,8 @@ final class AudioPlayer: ObservableObject {
         streamTitle = nil
         isLive = false
         listens.track(item: current)
+        // played again: the most recently used, for the cache purge's order
+        if let etag = current?.etag { cache.touch(etag) }
         loadArtwork()
         updateNowPlaying()
     }

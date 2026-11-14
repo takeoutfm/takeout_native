@@ -190,7 +190,7 @@ AppPage {
                 onClicked: {
                     if (download?.state === "Done") Core.call("removeDownloads", {etags: [page.details.etag]})
                     else if (download?.state === "Failed") Core.call("retryDownload", {etag: page.details.etag})
-                    else Core.call("downloadVideo", {id: page.videoId})
+                    else page.download(false)
                 }
             }
         }
@@ -276,5 +276,43 @@ AppPage {
         }
 
         VideoFlow { title: KI18n.i18n("More Like This"); cards: page.details?.similar ?? []; limit: 12 }
+    }
+
+    /**
+     * Downloads the title: first room is made (cached tracks go); if there still isn't enough,
+     * [space] asks, unless [anyway].
+     */
+    function download(anyway) {
+        const id = page.videoId
+        Core.call("downloadVideo", {id: id, check: true, anyway: anyway}, (result) => {
+            if (result && !result.started && id === page.videoId) {
+                space.result = result
+                space.open()
+            }
+        })
+    }
+
+    // "Needs 5.2 GB; clearing the cache frees only 3.1 GB": asked before going on.
+    Kirigami.PromptDialog {
+        id: space
+        property var result: ({})
+        title: KI18n.i18n("Not enough space")
+        subtitle: !result.fits
+            ? KI18n.i18n("This needs %1, more than this computer has free. Remove some downloads first.", applicationWindow().formatBytes(result.needBytes ?? 0))
+            : (result.freeableBytes ?? 0) > 0
+                ? KI18n.i18n("This needs %1, and would leave too little free: clearing the cache frees only %2. Remove some downloads first, or download it anyway.",
+                             applicationWindow().formatBytes(result.needBytes ?? 0), applicationWindow().formatBytes(result.freeableBytes))
+                : KI18n.i18n("This needs %1, and would leave too little free on this computer. Remove some downloads first, or download it anyway.",
+                             applicationWindow().formatBytes(result.needBytes ?? 0))
+        standardButtons: result.fits ? Kirigami.Dialog.Cancel : Kirigami.Dialog.Ok
+        customFooterActions: result.fits ? [space.anyway] : []
+        readonly property Kirigami.Action anyway: Kirigami.Action {
+            text: KI18n.i18n("Download Anyway")
+            icon.name: "download"
+            onTriggered: {
+                space.close()
+                page.download(true)
+            }
+        }
     }
 }

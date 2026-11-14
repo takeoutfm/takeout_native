@@ -25,6 +25,12 @@ class TakeoutCore : public QObject
     /** Downloads ({entry, state, fraction, path}), and the same keyed by ETag. */
     Q_PROPERTY(QVariantList downloads READ downloads NOTIFY downloadsChanged)
     Q_PROPERTY(QVariantMap downloadsByEtag READ downloadsByEtag NOTIFY downloadsChanged)
+    /**
+     * Playback Caching's share of the downloads and the device's space: {cachedBytes,
+     * downloadedBytes, budgetBytes, lowSpace, watched, limitBytes (0 Auto), choices}; empty
+     * before the first count.
+     */
+    Q_PROPERTY(QVariantMap cacheUsage READ cacheUsage NOTIFY cacheUsageChanged)
 
 public:
     explicit TakeoutCore(QObject *parent = nullptr);
@@ -55,6 +61,7 @@ public:
     QString listenBrainzUser() const { return m_listenBrainzUser; }
     QVariantList downloads() const { return m_downloads; }
     QVariantMap downloadsByEtag() const { return m_downloadsByEtag; }
+    QVariantMap cacheUsage() const { return m_cacheUsage; }
     /** The downloaded file for [etag], or "" when it isn't wholly here. */
     Q_INVOKABLE QString localFile(const QString &etag) const;
 
@@ -66,6 +73,7 @@ Q_SIGNALS:
     void recentlyPlayedChanged();
     void listenBrainzChanged();
     void downloadsChanged();
+    void cacheUsageChanged();
     void failed(const QString &name, const QVariantMap &error);
 
 private:
@@ -84,4 +92,5 @@ private:
     QString m_listenBrainzUser;
     QVariantList m_downloads;
     QVariantMap m_downloadsByEtag;
+    QVariantMap m_cacheUsage;
 };

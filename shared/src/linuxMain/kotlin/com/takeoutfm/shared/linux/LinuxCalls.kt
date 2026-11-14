@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.linux
 
+import com.takeoutfm.shared.offline.CacheLimit
 import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.listen.ListenSession
@@ -93,6 +94,7 @@ class LinuxCalls(private val core: LinuxCore) {
         "recentlyPlayed" -> core.history.entries.encoded()
         "listenBrainz" -> core.listenBrainz.user.encoded()
         "downloads" -> core.downloads.downloads.map { it.values.toList() }.encoded()
+        "cacheUsage" -> core.cachePurge.usage.encoded()
         "settings" -> combine(
             core.settings.reportPlays, core.settings.submitListens,
             core.settings.playbackCaching, core.settings.theme, core.settings.repeatAll, ::Settings,
@@ -240,7 +242,12 @@ class LinuxCalls(private val core: LinuxCore) {
         action("clearRecentlyPlayed") { core.history.clear() }
         action("retryListens") { core.listenReporter.retry() }
         // What the player is doing, for ListenSession (see there).
-        action("listenTrack") { a -> listen { track(a.get<QueueItem?>("item", null)) } }
+        action("listenTrack") { a ->
+            val item = a.get<QueueItem?>("item", null)
+            core.playingEtag = item?.etag
+            item?.etag?.let(core.downloads::touch)
+            listen { track(item) }
+        }
         action("listenPlaying") { a -> listen { playing(a.get("playing"), a.get("durationMs", 0L)) } }
         action("listenTick") { a -> listen { tick(a.get("durationMs", 0L)) } }
         action("listenStreamTitle") { a -> listen { streamTitle(a.get("title")) } }
@@ -254,8 +261,35 @@ class LinuxCalls(private val core: LinuxCore) {
         action("downloadQueue") { a ->
             core.downloads.download(a.get<MusicQueue>("queue"), a.get<List<QueueItem>?>("only", null))
         }
-        /** A movie or episode, by id. */
-        action("downloadVideo") { a -> core.downloads.download(core.video.details(a.get("id"))) }
+        /**
+         * A movie or episode, by id. With [check] (and not [anyway]), a file of known size first
+         * gets room (cached tracks go); if even that isn't enough it isn't started, and the answer
+         * says so, for the app to ask.
+         */
+        call("downloadVideo") { a ->
+            val details = core.video.details(a.get("id"))
+            if (a.get("check", false) && !a.get("anyway", false) && details.size > 0) {
+                val room = core.cachePurge.makeRoom(details.size)
+                if (!room.enough) return@call VideoDownload(false, details.size, room.freeableBytes, room.fits)
+            }
+            core.downloads.download(details)
+            VideoDownload(true)
+        }
+        /**
+         * Playback Caching: an item played to its end is downloaded (if it's on), marked cached,
+         * grouped with the queue it played in (Recently Played's [historyId], else [queueTitle]).
+         */
+        action("keepPlayed") { a ->
+            if (!core.settings.playbackCaching.value) return@action
+            val item = a.get<QueueItem>("item")
+            if (item.etag.isEmpty() || core.downloads.downloads.value.containsKey(item.etag)) return@action
+            val played = a.get<String?>("historyId", null)?.let(core.history::find)
+            val title = played?.title ?: a.get("queueTitle", "")
+            val group = played?.location?.ifEmpty { null } ?: "title:$title"
+            core.downloads.download(listOf(item), group, title, cached = true)
+        }
+        action("clearCached") { core.cachePurge.clearCached() }
+        action("refreshCache") { core.cachePurge.refresh() }
         action("retryDownload") { a -> core.downloads.retry(a.get("etag")) }
         action("removeDownloads") { a -> core.downloads.remove(a.get<List<String>>("etags")) }
         action("removeAllDownloads") { core.downloads.removeAll() }
@@ -267,6 +301,8 @@ class LinuxCalls(private val core: LinuxCore) {
             a.get<Boolean?>("playbackCaching", null)?.let(core.settings::setPlaybackCaching)
             a.get<ThemeMode?>("theme", null)?.let(core.settings::setTheme)
             a.get<Boolean?>("repeatAll", null)?.let(core.settings::setRepeatAll)
+            // 0 for Auto
+            a.get<Long?>("cacheLimit", null)?.let { core.settings.setCacheLimit(if (it > 0) CacheLimit.Fixed(it) else CacheLimit.Auto) }
         }
         call("connectListenBrainz") { a -> core.listenBrainz.connect(a.get("token")) }
         action("disconnectListenBrainz") { core.listenBrainz.disconnect() }

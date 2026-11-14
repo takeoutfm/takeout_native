@@ -91,6 +91,7 @@ private struct HomeTab: View {
                 SettingsView()
                     .navigationTitle("Settings")
                     .toolbar { Button("Done") { showSettings = false } }
+                    .environmentObject(model.cache)
             }
         }
     }

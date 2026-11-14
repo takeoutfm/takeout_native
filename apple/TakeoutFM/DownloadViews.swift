@@ -53,7 +53,11 @@ struct DownloadBadge: View {
     }
 }
 
-/** Everything downloaded, by the album, playlist, podcast or title it came with. */
+/**
+ * Everything downloaded, by the album, playlist, podcast or title it came with, the largest
+ * first. What Playback Caching kept is marked Cached (it may go to stay within the cache size);
+ * watched videos are offered for removal, and a warning shows when downloads fill the disk.
+ */
 struct DownloadsView: View {
     @EnvironmentObject private var cache: MediaCache
     @EnvironmentObject private var player: AudioPlayer
@@ -69,8 +73,16 @@ struct DownloadsView: View {
     private var groups: [DownloadGroup] {
         Dictionary(grouping: cache.entries.values, by: \.group)
             .map { DownloadGroup(id: $0.key, title: $0.value.first?.groupTitle ?? "", entries: $0.value.sorted { $0.title < $1.title }) }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            .sorted { a, b in
+                let (sa, sb) = (a.entries.reduce(0) { $0 + $1.bytes }, b.entries.reduce(0) { $0 + $1.bytes })
+                return sa != sb ? sa > sb : a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+            }
     }
+
+    private var cachedBytes: Int64 { cache.entries.values.filter { $0.isDone && $0.isCached }.reduce(0) { $0 + $1.bytes } }
+
+    /// Downloaded movies and episodes watched to their end (the latest purge's count).
+    private var watched: [MediaCache.Entry] { cache.usage.watched.compactMap { cache.entries[$0] } }
 
     var body: some View {
         Group {
@@ -79,6 +91,18 @@ struct DownloadsView: View {
                                        description: Text("Download albums, playlists, episodes and videos to play them offline."))
             } else {
                 List {
+                    if cache.usage.lowSpace {
+                        Label("Your downloads leave little free space; the largest are listed first.", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                    }
+                    if !watched.isEmpty {
+                        HStack {
+                            Label("Watched: \(watched.count) · \(formatBytes(watched.reduce(0) { $0 + $1.bytes }))", systemImage: "checkmark.circle")
+                            Spacer()
+                            Button("Remove") { cache.remove(watched.map(\.etag)) }
+                                .buttonStyle(.borderless)
+                        }
+                    }
                     ForEach(groups) { group in
                         Section {
                             ForEach(group.entries) { entry in row(entry, in: group) }
@@ -98,10 +122,14 @@ struct DownloadsView: View {
         }
         .navigationTitle("Downloads")
         .toolbar {
-            Text("Uses \(formatBytes(cache.usedBytes))").foregroundStyle(.secondary)
+            Text(cachedBytes > 0
+                 ? "\(formatBytes(cache.usedBytes - cachedBytes)) downloaded · \(formatBytes(cachedBytes)) cached"
+                 : "Uses \(formatBytes(cache.usedBytes))").foregroundStyle(.secondary)
             Button("Remove All") { confirmRemoveAll = true }
                 .disabled(cache.entries.isEmpty)
         }
+        // what's been watched since
+        .onAppear { cache.purge() }
         .confirmationDialog("Remove all downloads?", isPresented: $confirmRemoveAll) {
             Button("Remove All (frees \(formatBytes(cache.usedBytes)))", role: .destructive) { cache.removeAll() }
         }
@@ -113,7 +141,8 @@ struct DownloadsView: View {
                 .frame(width: entry.video ? 64 : 36, height: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.title).lineLimit(1)
-                let detail = [entry.artist, entry.album].filter { !$0.isEmpty && $0 != entry.title }.joined(separator: " · ")
+                let detail = [entry.isCached ? "Cached" : "", entry.artist, entry.album]
+                    .filter { !$0.isEmpty && $0 != entry.title }.joined(separator: " · ")
                 if !detail.isEmpty {
                     Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
@@ -150,5 +179,21 @@ struct DownloadsView: View {
         player.play(MusicQueue(title: group.title, creator: "", imageUri: items.first?.imageUri ?? "",
                                items: items, startIndex: 0, startPositionMs: 0, location: ""),
                     from: start)
+    }
+}
+
+extension View {
+    /// "Remove download?" when [video] ends a downloaded title (never removed by itself).
+    func offerWatchedRemoval(_ video: VideoPlayerModel, cache: MediaCache) -> some View {
+        alert(
+            "Remove Download?",
+            isPresented: Binding(get: { video.watchedDownload != nil }, set: { if !$0 { video.watchedDownload = nil } }),
+            presenting: video.watchedDownload
+        ) { entry in
+            Button("Remove", role: .destructive) { cache.remove([entry.etag]) }
+            Button("Keep", role: .cancel) {}
+        } message: { entry in
+            Text("You watched \(entry.title) to the end. Remove its download to free \(formatBytes(entry.bytes))?")
+        }
     }
 }

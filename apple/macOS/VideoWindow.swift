@@ -55,6 +55,7 @@ struct VideoPlayerView: View {
         .onKeyPress(.leftArrow) { video.jump(seconds: -10); poke(); return .handled }
         .onKeyPress(.rightArrow) { video.jump(seconds: 10); poke(); return .handled }
         .onKeyPress("f") { toggleFullScreen(); return .handled }
+        .offerWatchedRemoval(video, cache: model.cache)
         .onAppear {
             model.player.pause()
             video.load(request)

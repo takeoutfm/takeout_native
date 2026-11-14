@@ -41,6 +41,7 @@ struct SettingsView: View {
                 Text("Keeps tracks and episodes you play to the end, so they play offline (they're listed in Downloads). Each is fetched once more to keep it; radio streams aren't kept.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                CacheSize()
             }
             Section("ListenBrainz") {
                 if let user = model.listenBrainzUser {
@@ -89,6 +90,35 @@ struct SettingsView: View {
                 NSLog("ListenBrainz connect failed: \(error)")
                 refused = true
             }
+        }
+    }
+}
+
+/**
+ * Playback Caching's size (Auto or a fixed one), what it keeps, Clear Cached, and a warning when
+ * the viewer's own downloads (never removed by themselves) leave little free; as on the phone.
+ */
+private struct CacheSize: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var cache: MediaCache
+
+    var body: some View {
+        Picker("Cache Size", selection: $model.cacheLimitBytes) {
+            ForEach(model.calls.cacheChoices.map { $0.int64Value }, id: \.self) { choice in
+                Text(choice == 0 ? "Auto (\(formatBytes(cache.limitBytes(0))))" : formatBytes(choice)).tag(choice)
+            }
+        }
+        Text(cache.usage.cachedBytes > 0
+             ? "\(formatBytes(cache.usage.cachedBytes)) used. The least recently played goes first; your downloads are never removed."
+             : "The least recently played goes first; your downloads are never removed.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        if cache.usage.cachedBytes > 0 {
+            Button("Clear Cached (\(formatBytes(cache.usage.cachedBytes)))") { cache.purge(clear: true) }
+        }
+        if cache.usage.lowSpace {
+            Label("Your downloads leave little free space. Remove some in Downloads.", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
         }
     }
 }

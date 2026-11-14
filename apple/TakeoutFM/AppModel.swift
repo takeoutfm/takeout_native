@@ -36,6 +36,13 @@ final class AppModel: ObservableObject {
     @Published var playbackCaching: Bool {
         didSet { calls.playbackCaching = playbackCaching }
     }
+    /// Playback Caching's size: 0 for Auto, else bytes (the shared setting).
+    @Published var cacheLimitBytes: Int64 {
+        didSet {
+            calls.cacheLimitBytes = cacheLimitBytes
+            cache.purge()
+        }
+    }
     /// Submit listens to ListenBrainz, when connected.
     @Published var submitListens: Bool {
         didSet { calls.submitListens = submitListens }
@@ -78,12 +85,17 @@ final class AppModel: ObservableObject {
             dataDirectory: support.path
         )
         calls = SwiftCalls(core: core)
-        cache = MediaCache(calls: calls, directory: support)
-        player = AudioPlayer(calls: calls, cache: cache)
+        let cache = MediaCache(calls: calls, directory: support)
+        let player = AudioPlayer(calls: calls, cache: cache)
+        // The purge leaves what's playing.
+        cache.playing = { [weak player] in player?.current?.etag }
+        self.cache = cache
+        self.player = player
         signedIn = calls.isSignedIn
         reportPlays = calls.reportPlays
         submitListens = calls.submitListens
         playbackCaching = calls.playbackCaching
+        cacheLimitBytes = calls.cacheLimitBytes
         theme = calls.theme
         watches = [
             WatchKt.watch(flow: core.session.state) { [weak self] state in

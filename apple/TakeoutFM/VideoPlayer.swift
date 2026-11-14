@@ -30,6 +30,8 @@ struct MediaTrack: Identifiable, Hashable {
 @MainActor
 final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate {
     @Published private(set) var details: VideoDetails?
+    /// A downloaded title watched to its end: the player asks whether to remove its download.
+    @Published var watchedDownload: MediaCache.Entry?
     @Published private(set) var failure: String?
     @Published private(set) var isPlaying = false
     @Published private(set) var isBuffering = true
@@ -205,7 +207,12 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         case .ended:
             save()
             // An episode ends: on to the next one, from its start.
-            if let next = details?.nextEpisodeId { load(VideoPlayRequest(id: next, startOver: true)) }
+            if let next = details?.nextEpisodeId {
+                load(VideoPlayRequest(id: next, startOver: true))
+            } else if let etag = details?.etag, let entry = cache.entries[etag], entry.isDone, !entry.isCached {
+                // watched to its end: offered for removal (never removed by itself)
+                watchedDownload = entry
+            }
         case .error:
             NSLog("VLC error playing \(details?.id ?? "?")")
             failure = "Couldn't play this."

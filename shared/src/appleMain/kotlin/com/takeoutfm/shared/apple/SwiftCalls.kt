@@ -1,5 +1,11 @@
 package com.takeoutfm.shared.apple
 
+import kotlin.coroutines.cancellation.CancellationException
+import com.takeoutfm.shared.offline.RoomPlan
+import com.takeoutfm.shared.offline.CachePolicy
+import com.takeoutfm.shared.offline.CachePlan
+import com.takeoutfm.shared.offline.CacheLimit
+import com.takeoutfm.shared.offline.CacheEntry
 import com.takeoutfm.shared.guide.GuideLoader
 import com.takeoutfm.shared.guide.LiveGuideView
 import com.takeoutfm.shared.guide.LiveTune
@@ -204,6 +210,47 @@ class SwiftCalls(private val core: TakeoutCore) {
     var playbackCaching: Boolean
         get() = core.settings.playbackCaching.value
         set(value) = core.settings.setPlaybackCaching(value)
+
+    // ---- Cache size (Playback Caching's purge, PLAN.md §4.11; MediaCache runs it) ----
+
+    /** The cache size set: 0 for Auto, else bytes. */
+    var cacheLimitBytes: Long
+        get() = (core.settings.cacheLimit.value as? CacheLimit.Fixed)?.bytes ?: 0
+        set(value) = core.settings.setCacheLimit(if (value > 0) CacheLimit.Fixed(value) else CacheLimit.Auto)
+
+    /** The sizes to choose from: 0 for Auto, then bytes. */
+    val cacheChoices: List<Long> get() = CachePolicy.Choices.map { (it as? CacheLimit.Fixed)?.bytes ?: 0 }
+
+    /** What size [limitBytes] (0 Auto) comes to on a volume of [totalBytes]. */
+    fun cacheLimitFor(limitBytes: Long, totalBytes: Long): Long =
+        CachePolicy.limitBytes(if (limitBytes > 0) CacheLimit.Fixed(limitBytes) else CacheLimit.Auto, totalBytes)
+
+    /** What to purge from [entries] (all the downloads) at the cache size set. */
+    fun cachePlan(entries: List<CacheEntry>, totalBytes: Long, freeBytes: Long): CachePlan =
+        CachePolicy.plan(entries, core.settings.cacheLimit.value, totalBytes, freeBytes)
+
+    /** Room for a download of [needBytes] (a movie): cached entries to remove first, or not enough. */
+    fun cacheRoom(entries: List<CacheEntry>, totalBytes: Long, freeBytes: Long, needBytes: Long): RoomPlan =
+        CachePolicy.makeRoom(entries, totalBytes, freeBytes, needBytes)
+
+    /**
+     * Which of [episodes] (podcast GUIDs) and [videos] (ETags) were played to their end, by
+     * the progress the server and this device have; empty when it can't be had.
+     */
+    @Throws(Throwable::class)
+    suspend fun finishedEtags(episodes: List<String>, videos: List<String>): List<String> {
+        if (episodes.isEmpty() && videos.isEmpty()) return emptyList()
+        val latest = try {
+            core.progress.latest()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return emptyList()
+        }
+        fun finished(etags: List<String>, endPercent: Int) =
+            etags.filter { latest[it]?.let { o -> ProgressRules.isFinished(o, endPercent) } == true }
+        return finished(episodes, ProgressRules.PodcastEndPercent) + finished(videos, ProgressRules.VideoEndPercent)
+    }
 
     /** Submit listens to ListenBrainz (when an account is connected). */
     var submitListens: Boolean

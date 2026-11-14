@@ -52,7 +52,7 @@ bool TakeoutCore::start(const QString &dataDir, const QString &userAgent, const 
         secrets.empty() ? nullptr : secrets.c_str(),
         [](void *, const char *json) { SecretStore::save(app, json); }, nullptr);
     if (status != 0) return false;
-    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads", "listenBrainz"}) watch(name);
+    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads", "cacheUsage", "listenBrainz"}) watch(name);
     return true;
 }
 
@@ -100,6 +100,9 @@ void TakeoutCore::updated(const QByteArray &name, const QVariant &value)
         for (const QVariant &download : std::as_const(m_downloads))
             m_downloadsByEtag.insert(download.toMap().value("entry").toMap().value("etag").toString(), download);
         Q_EMIT downloadsChanged();
+    } else if (name == "cacheUsage") {
+        m_cacheUsage = value.toMap();
+        Q_EMIT cacheUsageChanged();
     }
 }
 

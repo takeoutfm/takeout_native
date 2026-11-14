@@ -30,6 +30,9 @@ AppPage {
         })
     }
 
+    // what's cached now (a track played since, say)
+    Component.onCompleted: Core.call("refreshCache")
+
     ColumnLayout {
         spacing: 0
 
@@ -61,6 +64,50 @@ AppPage {
                 description: KI18n.i18n("Tells your Takeout server what you listen to (half a track, or 4 minutes), for its Activity and stats.")
                 checked: Core.settings.reportPlays ?? true
                 onToggled: Core.call("setSettings", {reportPlays: checked})
+            }
+        }
+
+        // Playback Caching and its size (the shared purge, PLAN.md §4.11), as on the phone.
+        FormCard.FormHeader { title: KI18n.i18n("Storage") }
+        FormCard.FormCard {
+            id: storage
+            readonly property var usage: Core.cacheUsage
+            readonly property var choices: usage.choices ?? []
+            FormCard.FormSwitchDelegate {
+                text: KI18n.i18n("Playback caching")
+                description: KI18n.i18n("Keeps what you play to its end on this computer, so it plays again offline.")
+                checked: Core.settings.playbackCaching ?? false
+                onToggled: Core.call("setSettings", {playbackCaching: checked})
+            }
+            FormCard.FormDelegateSeparator {}
+            FormCard.FormComboBoxDelegate {
+                id: cacheSize
+                text: KI18n.i18n("Cache size")
+                description: (storage.usage.cachedBytes ?? 0) > 0
+                    ? KI18n.i18n("%1 used. The least recently played goes first; your downloads are never removed.", applicationWindow().formatBytes(storage.usage.cachedBytes))
+                    : KI18n.i18n("The least recently played goes first; your downloads are never removed.")
+                model: storage.choices.map(c => c.limitBytes === 0
+                    ? KI18n.i18n("Auto (%1)", applicationWindow().formatBytes(c.bytes))
+                    : applicationWindow().formatBytes(c.bytes))
+                currentIndex: Math.max(0, storage.choices.findIndex(c => c.limitBytes === (storage.usage.limitBytes ?? 0)))
+                onActivated: index => Core.call("setSettings", {cacheLimit: storage.choices[index].limitBytes})
+            }
+            FormCard.FormDelegateSeparator { visible: clearCached.visible }
+            FormCard.FormButtonDelegate {
+                id: clearCached
+                visible: (storage.usage.cachedBytes ?? 0) > 0
+                text: KI18n.i18n("Clear Cached (%1)", applicationWindow().formatBytes(storage.usage.cachedBytes ?? 0))
+                icon.name: "edit-clear-all"
+                onClicked: Core.call("clearCached")
+            }
+            FormCard.FormDelegateSeparator { visible: lowSpace.visible }
+            // The viewer's downloads are never removed by themselves: say so when they fill it.
+            FormCard.FormTextDelegate {
+                id: lowSpace
+                visible: storage.usage.lowSpace === true
+                icon.name: "dialog-warning"
+                text: KI18n.i18n("Little space left")
+                description: KI18n.i18n("Your downloads leave little free space on this computer. Remove some on the Downloads page.")
             }
         }
 

@@ -57,6 +57,12 @@ class LinuxCore internal constructor(
     val podcasts = TakeoutPodcastRepository(api, urls, progress)
     val video = TakeoutVideoRepository(api, session, library, urls, progress)
     val downloads = MediaDownloads(dataDirectory, session, userAgent, engine)
+
+    /** What the player has on now (its ETag), from its reports: the purge leaves it. */
+    var playingEtag: String? = null
+
+    /** Keeps Playback Caching's downloads within Settings → Cache size. */
+    val cachePurge = LinuxCachePurge(downloads, settings.cacheLimit, progress) { playingEtag }
     val guide = TakeoutGuideRepository(api, urls)
 
     /** The guide from now on, for the live player: reloaded when it gets old or runs short. */
@@ -68,5 +74,6 @@ class LinuxCore internal constructor(
     init {
         // Every GET is kept for browsing offline, as on Android.
         api.responseCache = DbResponseCache(db, session)
+        cachePurge.start()
     }
 }

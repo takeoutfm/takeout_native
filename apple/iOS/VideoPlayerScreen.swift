@@ -58,6 +58,7 @@ struct VideoPlayerScreen: View {
             hideLater()
         }
         .onDisappear { video.close() }
+        .offerWatchedRemoval(video, cache: model.cache)
     }
 
     private var controls: some View {

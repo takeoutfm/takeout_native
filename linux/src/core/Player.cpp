@@ -448,6 +448,9 @@ void Player::ended(qint64 entryId)
         const QVariantMap item = m_items.at(i).toMap();
         if (item.value("podcast").toBool() && m_duration > 0)
             report("reportProgress", {{"etag", text(item, "etag")}, {"positionMs", durationMs()}, {"durationMs", durationMs()}});
+        // Playback Caching (the core checks it's on): kept, with the queue it played in.
+        if (!text(item, "etag").isEmpty() && m_core->localFile(text(item, "etag")).isEmpty())
+            report("keepPlayed", {{"item", item}, {"historyId", m_historyId}, {"queueTitle", m_queueTitle}});
         break;
     }
 }

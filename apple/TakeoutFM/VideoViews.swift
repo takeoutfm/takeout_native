@@ -150,6 +150,8 @@ private struct VideoPage: View {
     @State private var resumeMs: Int64 = 0
     @State private var favorite: Bool
     @State private var season: Int32
+    /// A download that didn't fit, asked about ("needs 5.2 GB…").
+    @State private var noRoom: MediaCache.Room?
 
     init(details: VideoDetails) {
         self.details = details
@@ -212,6 +214,22 @@ private struct VideoPage: View {
             guard details.kind != .series, !details.etag.isEmpty else { return }
             resumeMs = (try? await model.calls.resumePositionMs(etag: details.etag))?.int64Value ?? 0
         }
+        .alert("Not Enough Space", isPresented: Binding(get: { noRoom != nil }, set: { if !$0 { noRoom = nil } }), presenting: noRoom) { room in
+            if room.fits {
+                Button("Download Anyway") { cache.downloadVideo(details, anyway: true) }
+                Button("Cancel", role: .cancel) {}
+            } else {
+                Button("OK", role: .cancel) {}
+            }
+        } message: { room in
+            if !room.fits {
+                Text("This needs \(formatBytes(room.needBytes)), more than this device has free. Remove some downloads first.")
+            } else if room.freeableBytes > 0 {
+                Text("This needs \(formatBytes(room.needBytes)), and would leave too little free: clearing the cache frees only \(formatBytes(room.freeableBytes)). Remove some downloads first, or download it anyway.")
+            } else {
+                Text("This needs \(formatBytes(room.needBytes)), and would leave too little free. Remove some downloads first, or download it anyway.")
+            }
+        }
     }
 
     private var meta: String {
@@ -249,7 +267,11 @@ private struct VideoPage: View {
                 }
             }
             if details.kind != .series && !details.etag.isEmpty && !details.videoUri.isEmpty {
-                DownloadButton(etags: [details.etag]) { cache.downloadVideo(details) }
+                DownloadButton(etags: [details.etag]) {
+                    // room first (cached tracks go); not enough even then: ask
+                    let room = cache.downloadVideo(details)
+                    if !room.enough { noRoom = room }
+                }
             }
             if let path = details.favoritePath {
                 Button { toggleFavorite(path) } label: { Image(systemName: favorite ? "heart.fill" : "heart") }

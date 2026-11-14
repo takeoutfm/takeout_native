@@ -66,6 +66,13 @@ data class DownloadEntry(
     /** In the media directory, once it's all here. */
     val fileName: String? = null,
     val bytes: Long = 0,
+    /**
+     * Kept by Playback Caching, not downloaded by the viewer: the purge may remove it.
+     * Entries from before this was kept count as the viewer's.
+     */
+    val cached: Boolean = false,
+    /** When it was last played, or downloaded if never played since (epoch ms). */
+    val lastUsedMs: Long = 0,
 )
 
 @Serializable
@@ -89,7 +96,8 @@ data class Download(
  * until removed; playback reads them first, so they play offline; live streams (no ETag) are
  * never kept. A download asks Takeout for its presigned URL with the media token, then fetches
  * that without it (storage refuses a second kind of authorization); two at a time. Downloads
- * interrupted when the app quit start again.
+ * interrupted when the app quit start again. Playback Caching's ([DownloadEntry.cached]) are
+ * kept within a size by [LinuxCachePurge]; the viewer's stay until removed.
  */
 class MediaDownloads internal constructor(
     directory: String,
@@ -126,6 +134,9 @@ class MediaDownloads internal constructor(
         _downloads.value.values.filter { it.state == DownloadState.Queued }.forEach { start(it.entry.etag) }
     }
 
+    /** Where the files are (for the volume's size and free space). */
+    val directory: String get() = media
+
     /** The downloaded file for [etag], if it's wholly here. */
     fun localPath(etag: String): String? = _downloads.value[etag]?.takeIf { it.state == DownloadState.Done }?.path
 
@@ -133,16 +144,27 @@ class MediaDownloads internal constructor(
     fun download(queue: MusicQueue, only: List<QueueItem>? = null) =
         download(only ?: queue.items, queue.location.ifEmpty { "title:${queue.title}" }, queue.title)
 
-    /** Downloads [items] (a queue's tracks or episodes) as part of [group]. */
-    fun download(items: List<QueueItem>, group: String, groupTitle: String) {
+    /**
+     * Downloads [items] (a queue's tracks or episodes) as part of [group]: for Playback Caching
+     * when [cached] (the purge may remove them), else the viewer's own, which also makes any of
+     * them already cached the viewer's.
+     */
+    fun download(items: List<QueueItem>, group: String, groupTitle: String, cached: Boolean = false) {
         add(
             items.filter { it.etag.isNotEmpty() }.map {
                 DownloadEntry(
                     etag = it.etag, title = it.title, artist = it.artist, album = it.album, imageUri = it.imageUri,
-                    podcast = it.podcast, location = it.uri, group = group, groupTitle = groupTitle,
+                    podcast = it.podcast, location = it.uri, group = group, groupTitle = groupTitle, cached = cached,
                 )
             },
         )
+    }
+
+    /** [etag] is playing: it's the most recently used (for the purge's order). */
+    fun touch(etag: String) {
+        val download = _downloads.value[etag]?.takeIf { it.state == DownloadState.Done } ?: return
+        set(download.copy(entry = download.entry.copy(lastUsedMs = nowMs())))
+        save()
     }
 
     /** Downloads a movie or episode. */
@@ -177,6 +199,14 @@ class MediaDownloads internal constructor(
     fun removeAll() = remove(_downloads.value.keys.toList())
 
     private fun add(entries: List<DownloadEntry>) {
+        // Only cached until now, downloaded by the viewer now: theirs, never purged.
+        val claimed = entries.filter { !it.cached && _downloads.value[it.etag]?.entry?.cached == true }
+        if (claimed.isNotEmpty()) {
+            _downloads.update { all ->
+                all + claimed.mapNotNull { e -> all[e.etag]?.let { e.etag to it.copy(entry = it.entry.copy(cached = false)) } }
+            }
+            save()
+        }
         val added = entries.filter { entry ->
             val existing = _downloads.value[entry.etag]
             existing == null || existing.state == DownloadState.Failed
@@ -231,7 +261,7 @@ class MediaDownloads internal constructor(
                             .takeIf { it.isNotEmpty() && it.length <= 5 && it.all(Char::isLetterOrDigit) } ?: "media"
                         val name = "${safeName(entry.etag)}.$extension"
                         rename(partial, "$media/$name")
-                        val done = entry.copy(fileName = name, bytes = bytes)
+                        val done = (_downloads.value[entry.etag]?.entry ?: entry).copy(fileName = name, bytes = bytes, lastUsedMs = nowMs())
                         if (_downloads.value.containsKey(entry.etag)) {
                             // Saved before it's announced, so whoever sees it done finds it in the index.
                             val finished = Download(done, DownloadState.Done, 1f, "$media/$name")
@@ -299,3 +329,6 @@ class MediaDownloads internal constructor(
         const val IndexKey = "entries"
     }
 }
+
+/** Now, in epoch ms. */
+internal fun nowMs(): Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()

@@ -284,9 +284,12 @@ dashboard top bar, D-pad handling.
       - updates live from `Cache.Listener` span events and `DownloadManager.Listener`.
       UI: ✓ (or offline icon) on cached tracks, a progress ring while downloading, "N of M
       cached" / ✓ for albums, playlists and episodes; nothing for live streams.
-- [ ] **Cache purge** (decided 2026-11-14), the same in every app (phone, watch, Mac/iOS,
-      Linux): Playback Caching filled the disk, as nothing was ever removed. **Phone and
-      watch done** (`:android-media` `offline/CachePurge`, 2026-11-14); Mac/iOS and Linux to do.
+- [x] **Cache purge** (decided 2026-11-14), the same in every app (phone, watch, Mac/iOS,
+      Linux): Playback Caching filled the disk, as nothing was ever removed. Done 2026-11-14:
+      phone and watch `:android-media` `offline/CachePurge`; Linux `linuxMain`
+      `LinuxCachePurge` (which also brought Linux its Playback Caching: an item played to its
+      end is kept, `keepPlayed`); Mac/iOS `MediaCache.purge` (through `SwiftCalls`). Not built
+      on a Mac yet.
       - **Origin kept**: each download entry says whether Playback Caching added it
         (`cached`) or the viewer did. Only cached ones are ever purged; downloading an album,
         playlist or podcast that holds cached items makes them explicit.

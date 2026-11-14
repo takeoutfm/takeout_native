@@ -192,8 +192,19 @@ QQC2.Popup {
             onEnded: {
                 player.save()
                 // An episode ends: on to the next one, from its start.
-                if (player.details?.nextEpisodeId) player.start(player.details.nextEpisodeId, true)
-                else player.finish()
+                if (player.details?.nextEpisodeId) {
+                    player.start(player.details.nextEpisodeId, true)
+                } else {
+                    // A download watched to its end: offered for removal, never removed by itself.
+                    const d = Core.downloadsByEtag[player.details?.etag ?? ""]
+                    player.finish()
+                    if (d?.state === "Done" && !d.entry.cached) {
+                        applicationWindow().showPassiveNotification(
+                            KI18n.i18n("Watched %1 (%2 downloaded)", d.entry.title, applicationWindow().formatBytes(d.entry.bytes)),
+                            "long", KI18n.i18n("Remove Download"),
+                            () => Core.call("removeDownloads", {etags: [d.entry.etag]}))
+                    }
+                }
             }
             onFailed: (message) => applicationWindow().showPassiveNotification(KI18n.i18n("Can't play this: %1", message))
         }

@@ -41,6 +41,8 @@ gaps, collected in `PLAN.md`. The old feature checklists and phase log: `git sho
 |---|---|
 | **Architecture**: modules, the shared core, each platform | [design/architecture.md](design/architecture.md) |
 | The phone and TV apps: where things are | [design/android-apps.md](design/android-apps.md) |
+| The TV app: every screen's behaviour, its code, its own open items | [design/tv.md](design/tv.md) |
+| The server API, as the apps use it | [design/server-api.md](design/server-api.md) |
 | Sign-in and session | [design/sign-in.md](design/sign-in.md) |
 | Library and browsing | [design/library.md](design/library.md) |
 | Music playback | [design/music-playback.md](design/music-playback.md) |

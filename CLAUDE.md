@@ -11,7 +11,7 @@ Mac/iOS, Linux (KDE) and a terminal client, on one Kotlin Multiplatform core.
   its requirements file, status table included, in the same commit.** Read the area's
   requirements and design before changing it.
 - **`PLAN.md`**: the roadmap: where each app stands and the gaps between apps.
-- Per platform: `tv/TAKEOUT_PORT.md` (the TV's screens; read before larger TV changes),
+- Per platform: `docs/design/tv.md` (the TV's screens; read before larger TV changes),
   `apple/README.md` (building the Apple apps), `fdroid/README.md` (publishing).
 
 Licensed GPL-3.0-or-later (`COPYING`; notices in `LICENSES.md`); the Takeout server is

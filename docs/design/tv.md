@@ -1,18 +1,9 @@
-# Takeout TV (JetStream-based)
+# The TV app — design
 
 An Android TV app for the Takeout media server, built on Google's **JetStreamCompose** sample
 (Compose for TV, Hilt, Media3/ExoPlayer, Coil). The old Leanback/Fragments app
 (Google's Leanback `ReferenceAppKotlin` sample adapted for Takeout) is used only as a reference for the Takeout server
 API, its icon/banner assets, and screen ideas.
-
-## Status (2026-10-19)
-
-Runs on a **Chromecast with Google TV** (Android 14, release build) and on an Android TV
-(Google TV, API 34) emulator, against `https://takeout.fm`. Sign-in, browsing, playback,
-resume, Continue Watching, episodes, audio/subtitle tracks, person pages, poster grids,
-recommendation tabs and favorites all work; the user is testing day-to-day use on the TV.
-
-All work is committed on `master` (no remote yet). See [Progress](#progress) for the history.
 
 ## How it fits together
 
@@ -84,27 +75,7 @@ directly where needed.
   placeholder, which is why playback first failed).
 
 ### Server API used
-| Endpoint | Used for |
-|---|---|
-| `GET /api/code`, `POST /api/code` | Device-code sign-in (approve at `<server>/link`) |
-| `GET /api/token` | Refresh tokens (on 401) |
-| `GET /api/index` | Library index: which tabs/requests apply, `MovieGenres` for Genres |
-| `GET /api/home` | Home rows and recommendation sets (`RecommendMovies`) |
-| `GET /api/movies`, `/api/movies/{id}` | Movies tab (and ETag → movie for progress), movie details (`Location`, `ETag`, `IsFavorite`) |
-| `GET /api/movie-genres/{name}` | Genre pages |
-| `GET /api/tv` | Every series and episode (with ETags); used to match episode progress |
-| `GET /api/tv/series`, `/api/tv/series/{id}`, `/api/tv/episodes/{id}` | Shows tab, series details + episodes (`IsFavorite`), episode stream |
-| `GET /api/profiles/{peid}` | Person page (bio + movie/TV credits) |
-| `GET /api/search?q=` | Search (movies and TV episodes; series are matched in the app) |
-| `GET/POST /api/progress` | Watch progress |
-| `GET /api/guide[?start=&end=]` | Live tab and live player (channels and programs; never reused while online) |
-| `GET /api/favorite` | Favorites tab (movies + shows) |
-| `PUT/DELETE /api/favorite/movies/{imid}`, `/api/favorite/shows/{tvid}` | Favorite button |
-| `GET /img/tm/{size}/{path}` | TMDB images via the server (posters w342, backdrops w1280, stills w300, profiles w185/w342) |
-| `Location` URLs (`/api/movies/{uuid}/location`, ...) | Streams; redirect to the media file |
-
-Auth: API calls use the **access token**; streams use the **media token**, attached only to
-URLs on the signed-in server (`TakeoutSession.mediaAuthorization`).
+The video endpoints, the music ones and auth: [server-api.md](server-api.md).
 
 ## Screens
 
@@ -350,7 +321,7 @@ player (phase 3).
 The server's music library alongside video. Phases 0–3 are built (see **Built so far** below);
 the rest of this section is the plan for what's next.
 
-### Built so far (phases 1–3)
+### Music screens and playback
 - **Mode switch**: with `HasMusic`, the TAKEOUT logo is a focusable switch — ▶ TAKEOUT ⇄ in
   video, ♪ TAKEOUT ⇄ in music. Selecting it swaps the tab set and opens that mode's first tab;
   the mode is saved (`TakeoutSettings.mode`) and the app starts in it. A library without music
@@ -528,20 +499,7 @@ are, the few shared pieces move into their own classes first.
 **Unchanged**: the package name, video screens, `MovieRepository`, and the CLAUDE.md rules
 (server access only in `data/`, no main-thread sorting, initial focus only after layout).
 
-### Phases
-Each step is its own commit(s), checked on the emulator and TV.
-0. **Shared refactors** (above), with video re-checked for no change. **Done.**
-1. **Browse**: music API models and repository methods, the mode switch, Music Home (Recently
-   Added, New Releases), Artists, artist and album pages; Play starts a minimal in-screen
-   queue. **Done.**
-2. **Player**: `MediaSessionService`, `MediaController` wiring, mini player, Now Playing, audio
-   focus with video. **Done.**
-3. **More sources**: Favorites (artists, tracks, add/remove), Radio, Playlists, and the local
-   Recently Played history on Music Home. **Done.**
-4. **Polish**: banner, mini player ✕, live streams, play reporting and Music settings — **done**
-   (below); music search still to do.
-
-### Built in phase 4
+### Banner, live streams, play reporting
 - **Music Home banner**: like video Home's, the newest releases (`/api/home` `NewReleases`,
   else `AddedReleases`; up to 8) over their artist's background (from the cached `/api/artists`
   list, matched by artist name), cover beside "New release · album · artist · year", Play when
@@ -621,96 +579,30 @@ Each step is its own commit(s), checked on the emulator and TV.
 - Not done: a Continue Listening row on Music Home, podcasts in Search (the TV always streams,
   so no downloads).
 
-## Progress
+## Open on the TV
 
-| Commit | Change |
-|---|---|
-| `0548968` | Initial import of the JetStream-based port; builds first time |
-| `e51d9f6` | Playback fixed (real ID to the player); 10 s seeks; "Play" label |
-| `2931b8f` | Watch progress resume/sync, season/episode browser, playback error overlay, Takeout branding |
-| `883d733` | Embedded audio track and subtitle selection; subtitle rendering |
-| `2ff9a10` | Cast photos; fixed-width row cards |
-| `e89bb81` | Start over button next to Resume |
-| `e372eb5` | Person page from Cast & Crew |
-| `29bee73` | Movies and Shows tabs as A–Z poster grids |
-| `cfe586b` | Categories → Genres, list from `/api/index`; genre pages use PosterGrid |
-| `260a4e7` | Genre pages sorted A–Z |
-| `ce4ef78` | A top bar tab per recommendation set |
-| `3c2a2c6` | Design doc rewrite |
-| `9b4f7dd` | Favorites tab from `/api/favorite` |
-| `a66daf2` | Favorite button on details |
-| `b11363f` | Continue Watching row on Home + window setting |
-| `451cb38` | Hide empty details sections; doc update |
-| `ef71d11` | Next-episode Play, search shows/episodes, speed picker, remembered subtitles, Profile trim, Try again errors, A–Z fix, unit tests |
-| `154ddc5` | Search: submit from any keyboard, keep the query, all words must match |
-| `fdeaf31` | Whole recommendation set on Home, no Top 10 numbering |
-| `919d314`, `9168ea4` | Hide empty Screenplay/Music; shown credits share the row |
-| `51be799` | Budget/Revenue as dollars |
-| `780465b` | Unsupported tracks shown greyed out; debug EventLogger |
-| `0a687f9` | Start on the best playable audio track |
-| `60b3e29` | Tagline in the player |
-| `23d6bfb` | Previous/next episode buttons; playlist/repeat removed |
-| `f1afaef` | Skeleton loading screens, player spinner |
-| `f8a2862` | ANR fix on the TV (sorting off the main thread, cheaper A–Z keys, shared requests) |
-| `94b78fb` | "Favorites" spelling |
-| `5e2a14c` | Library index drives tabs and requests, saved and refreshed; genre focus crash fix |
-| `a918af3` | Focus returns to the opened tile/poster |
-| `98b9a84` | Outlined button borders match the button shape |
-| `cc05ad5` | Keep the screen on while playing |
+The gaps it shares with other apps are in `PLAN.md`; these are the TV's own:
 
-## Known gaps / next steps
-- No Android TV Watch Next row or home-screen channels (proposed as a separate task), and no
-  Cast Connect (needs a Cast receiver app first).
-- `versionCode` is still 1 and release builds are signed with the debug key, so it can't install
-  as an update over the old Leanback app (version 403, different key).
-- Next episode doesn't auto-play when one ends.
+- No Android TV Watch Next row or home-screen channels, and no Cast Connect (needs a Cast
+  receiver app first).
+- Search covers video only (no music or podcasts).
 - Playback speed resets to Normal for each title.
-- Each stream start hits `/location` ~3 times (see Player); could follow the redirect once.
-- Hiding tabs: tested with a library that has movies but no shows (no Shows tab; launch, device-code
-  sign-in and D-pad into the top bar work). It used to crash with "FocusRequester is not
-  initialized" because the tab requesters were rebuilt when the tab count changed; `TopBarFocus`
-  now keeps them stable and only hands out ones whose tab is on screen. A library without movies
-  is still untested.
-- Music search isn't there yet (search is video-only); podcasts aren't in search either.
-- Not verified end to end: a real ListenBrainz connect and submission (tested with an invalid
-  token only) and Takeout activity reporting (settings left off during testing).
 - The mini player covers part of the last visible row on long pages (grids, details); it could
   hide while the content under it has focus, or move into the top bar.
-- No chapters: Media3 (1.6) ignores MKV/MP4 chapter markers and the server doesn't store them.
-  Plan: the server reads them at scan time (`ffprobe -show_chapters`) and returns
-  `Chapters: [{Title, Start}]`; the player then shows ticks on the seek bar and a Chapters picker.
+- A library without movies hasn't been tried (one without shows has).
+- Not verified end to end: a real ListenBrainz connect and submission, and Track Activity
+  reporting.
+- No chapters: Media3 ignores MKV/MP4 chapter markers and the server doesn't store them. Plan:
+  the server reads them at scan time (`ffprobe -show_chapters`) and returns
+  `Chapters: [{Title, Start}]`; the player shows ticks on the seek bar and a Chapters picker.
 
-## Testing notes
-- Unit tests: `./gradlew :tv:testDebugUnitTest` (JUnit 4; Continue Watching window and
-  "in progress"/"finished" rules, best audio track ranking, dollar formatting, directors first in Cast & Crew,
-  top bar focus requesters).
-- **Use the release build on real TVs**; the debug build is much slower there. Problems that only
-  show on the TV (e.g. the Movies tab ANR) don't reproduce on an emulator running on a laptop.
+## Running and testing
+
+Commands and devices are in `CLAUDE.md` (always the **release** build on a real TV). Also:
+
+- Unit tests (`./gradlew :tv:testDebugUnitTest`, JUnit 4): Continue Watching's window and the
+  in-progress / finished rules, the best audio track, dollar formatting, directors first in
+  Cast & Crew, top bar focus requesters.
 - Debug builds log every title's tracks, decoder support and errors to logcat (`EventLogger`).
-- The Chromecast connects over wireless debugging; its port changes whenever wireless debugging
-  is toggled, so reconnect (`adb connect` / pairing) after it drops.
-- The emulator can't decode 10-bit HEVC (e.g. Superman 2025, The Phoenician Scheme); those show
-  the error overlay there but should play on real Google TV hardware.
-- H.264 titles that play on the emulator: Breaking Bad episodes (multiple audio/subtitle tracks),
-  Godzilla (1954).
-
-## Build and run
-Open this folder in Android Studio (JDK 17), sync, and run the `tv` configuration on an
-Android TV emulator (API 28+). From the command line (with `local.properties` pointing at the
-SDK):
-
-```
-emulator -avd <android-tv-avd> &
-./gradlew :tv:installDebug
-adb shell monkey -p com.takeoutfm.tv -c android.intent.category.LEANBACK_LAUNCHER 1
-```
-
-On a real TV, install the release build (minified, with the baseline profile); with several
-devices connected, add `-s <device>`. `installDebug` installs on every connected device.
-
-```
-./gradlew :tv:assembleRelease
-adb install -r tv/build/outputs/apk/release/tv-release.apk
-```
-
-On the emulator, a server on the host machine is `http://10.0.2.2:<port>` (cleartext is allowed).
+- On the emulator, a server on the host machine is `http://10.0.2.2:<port>` (cleartext is
+  allowed).

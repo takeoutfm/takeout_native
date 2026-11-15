@@ -3,7 +3,7 @@
 Where things are in the phone and TV apps (the watch follows the phone's pattern in `wear/`).
 The shared core and `:android-media` are in [architecture.md](architecture.md); each area's
 design has the details per platform. The TV's screens and their behaviour:
-`tv/TAKEOUT_PORT.md`.
+[tv.md](tv.md).
 
 ## Phone (`android/src/main/java/com/takeoutfm/android/`)
 
@@ -126,8 +126,8 @@ design has the details per platform. The TV's screens and their behaviour:
 - **Music:** a separate half of the app, switched with the TAKEOUT logo (`LibraryMode` in
   `TakeoutSettings`). Data in `:shared` `music/` (`TakeoutMusicRepository`, entities; ids
   `ar-`/`al-`/`t-`) and `MusicHistory` (Recently Played); screens in
-  `presentation/screens/music/`. Music types are deliberately not `Movie`; the plan for the
-  remaining phases is in `TAKEOUT_PORT.md` → Music.
+  `presentation/screens/music/`. Music types are deliberately not `Movie`; the TV's music screens are
+  in [tv.md](tv.md) → Music.
 - **Music playback:** `playback/MusicService` (the TV's Hilt subclass of `:android-media`'s
   `TakeoutMusicService`, a background `MediaSessionService`) plays; the UI only talks to
   `MusicPlayer` (`:android-media`, a `MediaController` singleton with `NowPlaying` state),

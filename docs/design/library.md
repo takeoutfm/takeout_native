@@ -21,7 +21,7 @@ Requirements: [../requirements/library.md](../requirements/library.md).
 | App | Screens |
 |---|---|
 | Phone | `ui/home/` (media bar over `TileGrid`), `ui/music/`, `ui/video/`, `ui/main/TabHost` routes |
-| TV | `presentation/screens/` (JetStream's, mapped by `TakeoutMovieRepository`; music in `screens/music/`); `tv/TAKEOUT_PORT.md` |
+| TV | `presentation/screens/` (JetStream's, mapped by `TakeoutMovieRepository`; music in `screens/music/`); [tv.md](tv.md) |
 | Watch | `WatchApp` pages |
 | Mac/iOS | `TakeoutFM/*Views.swift` |
 | Linux | `qml/*Page.qml` |

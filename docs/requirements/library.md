@@ -62,4 +62,4 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-14 activity | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 
-Not done anywhere: the artist page's Want List and Tracks Like This (in `PLAN.md` §4.3).
+Not done anywhere: the artist page's Want List and Tracks Like This.

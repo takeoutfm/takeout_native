@@ -1,6 +1,6 @@
 # 016 — What the native apps include
 
-**Date:** October 2026 (PLAN.md §7) · **Status:** accepted
+**Date:** October 2026 (PLAN.md §7, as of commit 4bce83c) · **Status:** accepted
 
 ## Decision
 

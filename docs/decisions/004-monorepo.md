@@ -1,6 +1,6 @@
 # 004 — One repository for every app
 
-**Date:** October 2026 (PLAN.md §2.3, §7) · **Status:** accepted
+**Date:** October 2026 (PLAN.md §2.3, §7, as of commit 4bce83c) · **Status:** accepted
 
 ## Context
 

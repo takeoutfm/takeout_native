@@ -10,4 +10,4 @@ to start songs sooner.)
 
 ## Ruled out
 
-- **Carrying the Flutter app's settings over**: not wanted (PLAN.md §4.11, 2026-10-26).
+- **Carrying the Flutter app's settings over**: not wanted (PLAN.md §4.11 as of commit 4bce83c, 2026-10-26).

@@ -3,8 +3,8 @@
 Native SwiftUI apps for the Mac and for iPhone / iPad on top of the Kotlin shared core
 (`:shared`), linked as the static `Shared` framework. Music plays with AVFoundation (FLAC, MP3
 and M4A; the media token goes in the Authorization header); video (MKV with embedded audio and
-subtitle tracks, which AVFoundation can't open) with VLCKit (MobileVLCKit on iOS). Plan and
-status: `PLAN.md` → Apple.
+subtitle tracks, which AVFoundation can't open) with VLCKit (MobileVLCKit on iOS). Status and
+what's open: `PLAN.md`; what the apps must do: `docs/`.
 
 - `TakeoutFM/`: shared by both apps — `AppModel`, the player, stream proxy, downloads,
   listens, and almost every page.

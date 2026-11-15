@@ -1,6 +1,6 @@
 # 005 — SQLDelight for the shared database
 
-**Date:** October 2026 (PLAN.md §7.9) · **Status:** accepted
+**Date:** October 2026 (PLAN.md §7.9, as of commit 4bce83c) · **Status:** accepted
 
 ## Context
 

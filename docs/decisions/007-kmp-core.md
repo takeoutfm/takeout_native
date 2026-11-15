@@ -1,6 +1,6 @@
 # 007 — A Kotlin Multiplatform core; UI and playback native per platform
 
-**Date:** October 2026 (PLAN.md §2.2) · **Status:** accepted
+**Date:** October 2026 (PLAN.md §2.2, as of commit 4bce83c) · **Status:** accepted
 
 ## Context
 

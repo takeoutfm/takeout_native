@@ -10,7 +10,7 @@ What the apps must do, how they're built, and why. The apps: **phone** (`:androi
 | [`design/`](design/) | How it's built: where code and data live, how the pieces talk, per platform | the code's structure changes |
 | [`decisions/`](decisions/) | One record per decision: the context, the choice, what it ruled out | a choice is made that someone could later question |
 
-[`PLAN.md`](../PLAN.md) is the roadmap (phases, what's open) and links here.
+[`PLAN.md`](../PLAN.md) is the roadmap: where each app stands and the gaps between apps.
 [`CLAUDE.md`](../CLAUDE.md) is the guide for working in the repository (commands, devices,
 rules learned the hard way).
 
@@ -31,14 +31,16 @@ rules learned the hard way).
 | Settings | [requirements/settings.md](requirements/settings.md) |
 | Platform integration | [requirements/platform-integration.md](requirements/platform-integration.md) |
 
-Every area of `PLAN.md` §4 is here now; its checklists stay there as history. The status
-tables were settled against the code on 2026-11-14; ❌ and ⚠️ cells are the open gaps.
+The status tables were settled against the code on 2026-11-14; ❌ and ⚠️ cells are the open
+gaps, collected in `PLAN.md`. The old feature checklists and phase log: `git show
+4bce83c:PLAN.md`.
 
 ## Design
 
 | Area | File |
 |---|---|
 | **Architecture**: modules, the shared core, each platform | [design/architecture.md](design/architecture.md) |
+| The phone and TV apps: where things are | [design/android-apps.md](design/android-apps.md) |
 | Sign-in and session | [design/sign-in.md](design/sign-in.md) |
 | Library and browsing | [design/library.md](design/library.md) |
 | Music playback | [design/music-playback.md](design/music-playback.md) |

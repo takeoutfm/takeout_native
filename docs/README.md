@@ -31,8 +31,8 @@ rules learned the hard way).
 | Settings | [requirements/settings.md](requirements/settings.md) |
 | Platform integration | [requirements/platform-integration.md](requirements/platform-integration.md) |
 
-Every area of `PLAN.md` §4 is here now; its checklists stay there as history. Rows marked
-"not checked" in the status tables are the next thing to settle, app by app.
+Every area of `PLAN.md` §4 is here now; its checklists stay there as history. The status
+tables were settled against the code on 2026-11-14; ❌ and ⚠️ cells are the open gaps.
 
 ## Design
 

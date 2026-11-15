@@ -38,12 +38,12 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 |---|---|---|---|---|
 | LIVE-1–4 guide | ✅ | ✅ | ✅ | ✅ |
 | LIVE-5 tuning, break music, slate | ✅ | ✅ | ✅ | ✅ |
-| LIVE-6 never early | ⚠️ not checked | ⚠️ not checked | ⚠️ not checked | ✅ |
-| LIVE-7 music under a hidden video | ⚠️ not checked | ⚠️ not checked | ⚠️ not checked | ✅ |
+| LIVE-6 never early | ✅ waits until the end | ✅ | ✅ | ✅ |
+| LIVE-7 music under a hidden video | ✅ Media3 plays audio without a surface | ✅ | ✅ VLC the same | ✅ |
 | LIVE-8 behind live, Jump to Live | ✅ | ✅ | ✅ | ✅ |
 | LIVE-10 track choices | ✅ | ✅ | 🔨 subtitles | ✅ |
-| LIVE-12 never freezes | ✅ | ✅ | ⚠️ not checked | ✅ |
+| LIVE-12 never freezes | ✅ | ✅ | ⚠️ VLCKit's stop is synchronous; no hang seen | ✅ |
 | LIVE-13 picture-in-picture | ✅ | — | ❌ | — |
 
-None on the watch or in tofm. LIVE-6 and LIVE-7 were found on Linux (2026-11-14); the other
-players should be checked for the same.
+None on the watch or in tofm. LIVE-6 and LIVE-7 were found on Linux (2026-11-14); the others
+hold by how they wait (until the slot's end) and by their engines.

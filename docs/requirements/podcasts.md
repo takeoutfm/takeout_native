@@ -19,7 +19,7 @@ Series, episodes, subscriptions and episode progress. Design: [../design/podcast
 
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
-| POD-1 subscribed, subscribe | ✅ | ✅ | ⚠️ not checked | ✅ | ✅ | ✅ |
+| POD-1 subscribed, subscribe | ✅ | ✅ | ⚠️ lists the subscribed (all if none); can't subscribe | ✅ | ✅ | ✅ |
 | POD-2/3 episodes, playing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | POD-4 progress | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | POD-6 downloads | ✅ | — streams only | ✅ | ✅ | ✅ | ✅ |

@@ -19,6 +19,6 @@ Stations and live streams. Design: [../design/radio.md](../design/radio.md).
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
 | RADIO-1/2 stations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| RADIO-3/4 streams | ✅ | ⚠️ not checked | ⚠️ not checked | ✅ | ✅ | ✅ |
+| RADIO-3/4 streams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-5 Stream History kept | ✅ | ✅ (shared service) | ✅ | ❌ | ✅ | ✅ (shared player) |
 | RADIO-5 Stream History listed | ✅ | ❌ | ✅ | — | ❌ | ❌ |

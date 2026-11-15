@@ -50,8 +50,11 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
 | LIB-1/2 index | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LIB-3 recommendation lists | ✅ | ✅ tabs | — | ❌ | ❌ | ❌ |
 | LIB-4–7 music browsing | ✅ | ✅ | ⚠️ albums, artists, playlists only | ✅ | ✅ | ✅ |
 | LIB-6 favorite artist | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| LIB-8 favorite tracks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LIB-8 favorite artists list | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
 | LIB-12 search | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
@@ -59,5 +62,4 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-14 activity | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 
-LIB-3 and LIB-8 are not yet checked app by app. Not done anywhere: the artist page's Want
-List and Tracks Like This (in `PLAN.md` §4.3).
+Not done anywhere: the artist page's Want List and Tracks Like This (in `PLAN.md` §4.3).

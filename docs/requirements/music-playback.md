@@ -42,8 +42,10 @@ Radio streams and podcasts: [radio.md](radio.md), [podcasts.md](podcasts.md).
 | PLAY-1/2 queues, shuffle | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | PLAY-3 downloads first | ✅ | — streams only | ✅ | ✅ | ✅ | ✅ |
 | PLAY-4 play next, add to queue | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| PLAY-5 repeat | ✅ | ⚠️ not checked | ⚠️ not checked | ✅ | ✅ | ✅ |
+| PLAY-5 repeat | ✅ | ✅ | ⚠️ the saved setting applies; no control on the watch | ✅ | ✅ | ✅ |
 | PLAY-7/8 Recently Played | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PLAY-6 music pauses for video | ✅ audio focus | ✅ audio focus | — | ✅ | ✅ | ✅ |
+| PLAY-9 Now Playing controls | ✅ | ✅ | ⚠️ previous, play/pause, next | ✅ | ⚠️ no back 10 s / ahead 30 s | ✅ (keys `[` `]`) |
+| PLAY-10 small player | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (the bar) |
 | PLAY-11 system controls | ✅ media session, Android Auto | ✅ media session | ✅ tile, complication | ✅ | ✅ MPRIS | ✅ MPRIS (`tofm`) |
-
-PLAY-6, 9, 10 and 12 are not yet checked app by app.
+| PLAY-12 says why a track can't play | ✅ | ✅ | ❌ | ❌ logged only | ❌ logged only | ❌ |

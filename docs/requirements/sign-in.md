@@ -35,10 +35,12 @@ How an app signs in to a Takeout server, keeps the session and signs out. Design
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
 | SIGN-1/2 device code | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SIGN-4 last server, else takeout.fm | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SIGN-5 says when it can't reach the server | ✅ | ✅ | ✅ | ⚠️ one message for any failure | ✅ | ✅ |
 | SIGN-3 password and passcode | ✅ | — | — | — | — | — |
 | SIGN-6 secure store | ✅ encrypted prefs | ✅ encrypted prefs | ✅ encrypted prefs | ✅ Keychain | ✅ Secret Service | ✅ Secret Service (own item) |
 | SIGN-7/8 tokens | ✅ shared core | ✅ | ✅ | ✅ | ✅ | ✅ |
 | SIGN-9 Connected as | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SIGN-10 asks before signing out | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | SIGN-11 Link | ✅ | — | — | ❌ | ❌ | ❌ |
 
-SIGN-4, 5 and 10 are not yet checked app by app.

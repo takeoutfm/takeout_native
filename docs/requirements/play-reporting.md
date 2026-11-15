@@ -38,5 +38,3 @@ What the apps tell the Takeout server and ListenBrainz about what's played. Desi
 | LISTEN-6 retry queue | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LISTEN-8 token without typing | — | ✅ QR page | ❌ | — | — | — |
 
-LISTEN-2 and LISTEN-5 per app are from the shared code, not yet checked by playing radio on
-each.

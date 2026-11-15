@@ -75,6 +75,14 @@ Q_SIGNALS:
     void downloadsChanged();
     void cacheUsageChanged();
     void failed(const QString &name, const QVariantMap &error);
+    /**
+     * The computer woke from sleep (logind's PrepareForSleep(false)): whatever follows the clock
+     * catches up now, rather than polling to notice the time jumped.
+     */
+    void woke();
+
+private Q_SLOTS:
+    void prepareForSleep(bool sleeping);
 
 private:
     // tofm's screen test feeds it what the shared core would watch.

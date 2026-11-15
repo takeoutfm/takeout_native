@@ -126,8 +126,11 @@ ctest --test-dir linux/build                # C API smoke test, http_host_test, 
   players).
 - Linux `VideoView`: every mpv call from the UI thread must be async — a blocking one can wait
   on the video output, which waits on the UI thread to draw, and the window freezes.
-- QML `Timer`s are coarse (up to 5% early): never act on "the time has come" without checking
-  the clock.
+- Avoid timers where an event exists (the user prefers it): `Core.woke` (logind) for sleep,
+  visibility and activation for a page coming back. A timer that must stay should run only
+  while needed and `repeat` (a one-shot that re-arms itself stops for good if one tick goes
+  wrong: the Live guide stayed on yesterday). QML `Timer`s are coarse (up to 5% early): never
+  act on "the time has come" without checking the clock.
 - Swift's synthesized `Codable` fails on a missing key: a field added to a saved JSON type
   must be optional, or every existing file stops decoding.
 - C++ range-for over a member of a temporary (`for (x : f()->rows)`) uses freed memory; keep

@@ -111,20 +111,31 @@ AppPage {
         }
     }
 
-    // on each minute, so the clock and the now line turn over with it
+    /** Milliseconds to the next minute (and a little), when the clock and the now line turn over. */
+    function toNextMinute() { return 60000 - now % 60000 + 50 }
+
+    // Only while the page can be seen: once a minute, at the minute. Caught up at once when it
+    // starts (the page shown again, the window back from minimized) and when the computer wakes;
+    // repeating, so a tick that goes wrong can't stop it (the one-shot one it replaces, which
+    // re-armed itself, stopped for good overnight and left the guide on yesterday).
     Timer {
         id: clock
-        running: true
-        interval: 60000 - page.now % 60000 + 50
-        onTriggered: {
+        repeat: true
+        running: page.visible && applicationWindow().visibility !== Window.Minimized
+        interval: 60000
+        onRunningChanged: if (running) tick()
+        onTriggered: tick()
+        function tick() {
             page.catchUp()
-            interval = 60000 - page.now % 60000 + 50
-            restart()
+            interval = page.toNextMinute()
         }
     }
+    Connections {
+        target: Core
+        function onWoke() { page.catchUp() }
+    }
 
-    // at once when the page comes back, or the app does (a timer doesn't run during suspend)
-    onVisibleChanged: if (visible) catchUp()
+    // and when the app is brought back
     Connections {
         target: Qt.application
         function onStateChanged() {

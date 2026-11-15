@@ -5,6 +5,7 @@
 #include "takeout.h"
 
 #include <QCoreApplication>
+#include <QDBusConnection>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPointer>
@@ -32,6 +33,15 @@ struct Watcher {
 TakeoutCore::TakeoutCore(QObject *parent)
     : QObject(parent)
 {
+    // Sleep and wake, from logind (no logind, as in some containers: never says it woke).
+    QDBusConnection::systemBus().connect(QStringLiteral("org.freedesktop.login1"), QStringLiteral("/org/freedesktop/login1"),
+                                         QStringLiteral("org.freedesktop.login1.Manager"), QStringLiteral("PrepareForSleep"),
+                                         this, SLOT(prepareForSleep(bool)));
+}
+
+void TakeoutCore::prepareForSleep(bool sleeping)
+{
+    if (!sleeping) Q_EMIT woke();
 }
 
 TakeoutCore::~TakeoutCore()

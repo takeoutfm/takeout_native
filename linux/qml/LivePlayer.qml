@@ -164,6 +164,12 @@ QQC2.Popup {
         return p.kind === "offair" ? KI18n.i18n("Off Air") : p.title
     }
 
+    // The computer woke: the schedule moved on while it slept, so tune to what's on now (unless
+    // watching behind live, which plays on).
+    Connections {
+        target: Core
+        function onWoke() { if (player.opened && !player.behind) player.tune() }
+    }
     Timer {
         id: retune
         // Behind live, the program plays on until its file ends.

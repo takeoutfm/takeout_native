@@ -10,7 +10,9 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 - **LIVE-3** The Guide: channels by time, loaded in windows as it scrolls, a day row up to the
   end of the schedule, titles of programs that began off the left edge kept in view, a detail
   panel for the selected program (Watch live, Details).
-- **LIVE-4** The guide keeps up with the time: it's fetched again when old or running short.
+- **LIVE-4** The guide keeps up with the time: it's fetched again when old or running short,
+  and catches up at once when the computer wakes from sleep or the page is shown again (a guide
+  left open overnight must show today, not yesterday).
 
 ## Tuning
 
@@ -37,6 +39,7 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 | Rule | Phone | TV | Mac/iOS | Linux |
 |---|---|---|---|---|
 | LIVE-1–4 guide | ✅ | ✅ | ✅ | ✅ |
+| LIVE-4 catches up after sleep | — | — | ⚠️ not checked | ✅ on wake (logind); not yet seen on a real wake |
 | LIVE-5 tuning, break music, slate | ✅ | ✅ | ✅ | ✅ |
 | LIVE-6 never early | ✅ waits until the end | ✅ | ✅ | ✅ |
 | LIVE-7 music under a hidden video | ✅ Media3 plays audio without a surface | ✅ | ✅ VLC the same | ✅ |

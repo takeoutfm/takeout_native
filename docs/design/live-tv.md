@@ -21,4 +21,4 @@ Requirements: [../requirements/live-tv.md](../requirements/live-tv.md).
 | Phone | Home's Live type (`ui/live/LiveScreens`) | `ui/live/LivePlayerActivity` (landscape; Media3's controls through a player without seek or speed) |
 | TV | the Live tab (`screens/live/`) | `LivePlayerScreen` |
 | Mac/iOS | `LiveViews.swift` | `LivePlayer.swift` `LivePlayerModel` on VLC |
-| Linux | `qml/LivePage.qml` | `qml/LivePlayer.qml` on `VideoView`: retunes at the slot's end (a coarse QML `Timer` can fire up to 5% early, so it waits out the rest); `VideoView` keeps mpv off the UI thread and skips cover art (`audio-display=no`) |
+| Linux | `qml/LivePage.qml`: a minute tick only while the page is visible and the window not minimized; catches up on `Core.woke` (logind's `PrepareForSleep`, from `TakeoutCore`) and on activation | `qml/LivePlayer.qml` on `VideoView`: retunes on `Core.woke`; retunes at the slot's end (a coarse QML `Timer` can fire up to 5% early, so it waits out the rest); `VideoView` keeps mpv off the UI thread and skips cover art (`audio-display=no`) |

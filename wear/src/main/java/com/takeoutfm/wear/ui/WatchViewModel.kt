@@ -84,6 +84,9 @@ class WatchViewModel @Inject constructor(
     val session_: StateFlow<SessionState> = session.state
     val endpoint: String get() = session.endpoint
     val nowPlaying: StateFlow<NowPlaying> = player.state
+
+    /** Where the track is; read while playing only as long as a screen collects it. */
+    val positionMs: StateFlow<Long> = player.positionMs
     val recent: StateFlow<List<PlayedQueue>> = history.entries
     val downloads: StateFlow<Map<String, DownloadedItem>> = mediaCache.items
 

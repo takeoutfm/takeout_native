@@ -236,8 +236,9 @@ private fun NowPlayingContent(
                         modifier = Modifier.padding(top = 24.dp),
                     )
                 } else {
+                    val positionMs by player.positionMs.collectAsStateWithLifecycle()
                     SeekBar(
-                        positionMs = state.positionMs,
+                        positionMs = positionMs,
                         durationMs = state.durationMs,
                         onSeek = player::seekBy,
                         modifier = Modifier

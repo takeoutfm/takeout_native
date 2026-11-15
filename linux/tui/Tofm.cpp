@@ -52,9 +52,9 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
         redraw();
     });
     // Scrolling titles move a few times a second; nothing else needs frames.
+    // Only while a title is scrolling (render() starts and stops it): idle, nothing redraws.
     m_marqueeTick.setInterval(150);
     QObject::connect(&m_marqueeTick, &QTimer::timeout, core, [this] { redraw(); });
-    m_marqueeTick.start();
     m_marqueeStart = QDateTime::currentDateTimeUtc();
     m_flashTimer.setSingleShot(true);
     m_flashTimer.setInterval(3000);
@@ -243,6 +243,7 @@ bool Tofm::onEvent(const Event &event)
 
 Element Tofm::render()
 {
+    m_marqueeScrolling = false; // marquee() says while drawing
     Element body;
     switch (m_screenState) {
     case Screen::Starting: body = text("Starting…") | dim | center | flex; break;
@@ -252,6 +253,12 @@ Element Tofm::render()
     }
     Element right = text(m_core->signedIn() ? str(m_core->endpoint()) + " " : "") | dim;
     if (!m_flash.isEmpty()) right = text(str(m_flash) + " ") | color(Color::Yellow);
+    if (m_marqueeScrolling && !m_marqueeTick.isActive()) {
+        m_marqueeStart = QDateTime::currentDateTimeUtc(); // a title starts scrolling: from its start
+        m_marqueeTick.start();
+    } else if (!m_marqueeScrolling && m_marqueeTick.isActive()) {
+        m_marqueeTick.stop();
+    }
     return vbox({
         hbox({text(" tofm ") | bold | inverted, filler(), right}),
         body,

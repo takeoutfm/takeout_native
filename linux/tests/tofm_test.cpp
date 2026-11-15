@@ -153,6 +153,14 @@ public:
         return t.marquee(text, width);
     }
 
+    /** Whether drawing [text] in [width] needs the marquee's ticker (only a title that scrolls). */
+    bool scrolls(const QString &text, int width)
+    {
+        t.m_marqueeScrolling = false;
+        t.marquee(text, width);
+        return t.m_marqueeScrolling;
+    }
+
     Element bar() { return t.renderBar(); }
 
 private:
@@ -311,6 +319,9 @@ int main(int argc, char *argv[])
 
     // The scrolling title: short ones stay; long ones wait 1.5 s, then move a column per 150 ms.
     CHECK(test.marquee("Vein of Stars", 20, 5000) == "Vein of Stars");
+    // the ticker runs only for a title that scrolls
+    CHECK(!test.scrolls("Vein of Stars", 20));
+    CHECK(test.scrolls("Yoshimi Battles the Pink Robots", 10));
     CHECK(test.marquee("Yoshimi Battles the Pink Robots", 10, 0) == "Yoshimi Ba");
     CHECK(test.marquee("Yoshimi Battles the Pink Robots", 10, 1400) == "Yoshimi Ba");
     CHECK(test.marquee("Yoshimi Battles the Pink Robots", 10, 1500 + 3 * 150 + 10) == "himi Battl");

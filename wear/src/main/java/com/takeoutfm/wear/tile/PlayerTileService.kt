@@ -1,5 +1,6 @@
 package com.takeoutfm.wear.tile
 
+import kotlinx.coroutines.flow.first
 import android.content.ComponentName
 import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ColorBuilders.argb
@@ -49,9 +50,12 @@ class PlayerTileService : TileService() {
         val toggled = request.currentState.lastClickableId == ToggleId
         if (toggled) {
             player.playPause()
+            // WatchApp updates the tile when play/pause changes; if it doesn't change (the tap
+            // didn't take), show the truth instead of the guess below.
+            val before = state.playWhenReady
             scope.launch {
-                delay(1_500)
-                getUpdater(this@PlayerTileService).requestUpdate(PlayerTileService::class.java)
+                withTimeoutOrNull(3_000) { player.state.first { it.playWhenReady != before } }
+                    ?: getUpdater(this@PlayerTileService).requestUpdate(PlayerTileService::class.java)
             }
         }
         val item = state.current

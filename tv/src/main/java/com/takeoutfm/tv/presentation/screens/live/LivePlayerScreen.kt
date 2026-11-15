@@ -1,5 +1,9 @@
 package com.takeoutfm.tv.presentation.screens.live
 
+import com.takeoutfm.shared.guide.MusicFade
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -264,7 +268,7 @@ fun LivePlayerScreen(
                     exoPlayer.playWhenReady = true
                     // Live: until the slot ends, even if the file runs long. Behind live: until
                     // the file ends, then back to whatever is on now.
-                    while (!ended && (behind || g.now() < program.end)) delay(TickMs)
+                    untilProgramDone(g, program.end, { ended }, { behind })
                     if (behind) {
                         behind = false
                         bannerKey++
@@ -288,10 +292,7 @@ fun LivePlayerScreen(
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
                     // The last track is cut off at the next program, so it fades out.
-                    while (!ended && g.now() < track.end) {
-                        exoPlayer.volume = t.volume(g.now())
-                        delay(FadeTickMs)
-                    }
+                    untilMusicDone(g, t, { ended }) { exoPlayer.volume = it }
                     exoPlayer.stop()
                     exoPlayer.volume = 1f
                     // a file a little shorter than its slot: quiet until the next starts
@@ -308,12 +309,15 @@ fun LivePlayerScreen(
         }
     }
 
-    // The banner's times and the slate's countdown.
-    LaunchedEffect(guide) {
+    // The banner's times and the slate's countdown: each second only while one shows (the
+    // controls are up, or a break); the time is still taken whenever that changes.
+    val showsTime = controlsState.isControlsVisible || tuned !is Tuned.Playing
+    LaunchedEffect(guide, showsTime) {
         val g = guide ?: return@LaunchedEffect
-        while (true) {
-            now = g.now()
+        now = g.now()
+        while (showsTime) {
             delay(1_000)
+            now = g.now()
         }
     }
 
@@ -665,7 +669,6 @@ private fun GuideProgram.toMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).build())
     .build()
 
-private const val TickMs = 500L
 private const val FadeTickMs = 100L
 private const val RetryMs = 30_000L
 private val MaxWait = 5.minutes
@@ -699,5 +702,39 @@ class LivePlayerViewModel @Inject constructor(
         if (channels.isEmpty()) return
         val index = channels.indexOfFirst { it.name == _channel.value }.coerceAtLeast(0)
         _channel.value = channels[(index + delta).mod(channels.size)].name
+    }
+}
+
+/**
+ * Waits until a program should stop: its file [ended], or (live) its slot ends at [end]; while
+ * [behind] live, only the file's end counts. Woken by those changes and the slot's end, not
+ * polled.
+ */
+private suspend fun untilProgramDone(g: Guide, end: Instant, ended: () -> Boolean, behind: () -> Boolean) {
+    while (!ended()) {
+        if (behind()) {
+            snapshotFlow { ended() || !behind() }.first { it }
+            continue
+        }
+        val left = end - g.now()
+        if (left <= Duration.ZERO) return
+        withTimeoutOrNull(left.coerceAtMost(MaxWait)) { snapshotFlow { ended() || behind() }.first { it } }
+    }
+}
+
+/**
+ * Plays break music [t] to its end, fading out over the last few seconds when the next program
+ * cuts it off: asleep until the fade starts (or the file [ended]), stepping the volume only then.
+ */
+private suspend fun untilMusicDone(g: Guide, t: Tune.Music, ended: () -> Boolean, setVolume: (Float) -> Unit) {
+    val fadeFrom = if (t.cut) t.track.end - MusicFade else t.track.end
+    while (!ended()) {
+        val left = fadeFrom - g.now()
+        if (left <= Duration.ZERO) break
+        withTimeoutOrNull(left.coerceAtMost(MaxWait)) { snapshotFlow { ended() }.first { it } }
+    }
+    while (!ended() && g.now() < t.track.end) {
+        setVolume(t.volume(g.now()))
+        delay(FadeTickMs)
     }
 }

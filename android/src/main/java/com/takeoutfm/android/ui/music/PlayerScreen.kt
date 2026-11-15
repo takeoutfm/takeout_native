@@ -228,10 +228,11 @@ private fun PlayPause(playing: NowPlaying, main: MainViewModel) {
 /** Position slider; dragging previews the time, letting go seeks. */
 @Composable
 private fun SeekBar(playing: NowPlaying, main: MainViewModel) {
+    val positionMs by main.positionMs.collectAsStateWithLifecycle()
     val duration = playing.durationMs.coerceAtLeast(1)
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
-    val fraction = if (dragging) dragValue else (playing.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val fraction = if (dragging) dragValue else (positionMs.toFloat() / duration).coerceIn(0f, 1f)
     Column(Modifier.padding(top = 16.dp)) {
         Slider(
             value = fraction,
@@ -288,11 +289,12 @@ private fun QueueSheet(playing: NowPlaying, onPlay: (Int) -> Unit, onDismiss: ()
 @Composable
 fun MiniPlayer(playing: NowPlaying, main: MainViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val item = playing.current ?: return
+    val positionMs by main.positionMs.collectAsStateWithLifecycle()
     Surface(modifier.fillMaxWidth(), tonalElevation = 3.dp) {
         Column {
             if (!playing.isLive && playing.durationMs > 0) {
                 LinearProgressIndicator(
-                    progress = { (playing.positionMs.toFloat() / playing.durationMs).coerceIn(0f, 1f) },
+                    progress = { (positionMs.toFloat() / playing.durationMs).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

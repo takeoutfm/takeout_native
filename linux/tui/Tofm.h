@@ -184,6 +184,8 @@ private:
     /** Plays movie / series / episode [id] in mpv, from where it was left unless [startOver]. */
     void playVideo(const QString &id, bool startOver);
     void videoEvent(const QByteArray &line);
+    /** Connects to mpv's control socket, if it's there yet. */
+    void connectVideo();
     void saveVideoProgress();
     void videoClosed();
     Row albumRow(const QVariantMap &album, bool showArtist);
@@ -216,6 +218,8 @@ private:
     QTimer m_countdown;
     QTimer m_marqueeTick;
     QDateTime m_marqueeStart;
+    /** A title drawn this frame is too long and scrolls: the ticker runs only then. */
+    mutable bool m_marqueeScrolling = false;
 
     Screen m_screenState = Screen::Starting;
     QString m_flash;
@@ -258,5 +262,7 @@ private:
         QByteArray pending;
     } m_video;
     QTimer m_videoSave;
-    QTimer m_videoConnect;
+    /** Watches the runtime folder for mpv's control socket while it starts. */
+    class QFileSystemWatcher *m_videoWatch = nullptr;
+    bool m_videoConnecting = false;
 };

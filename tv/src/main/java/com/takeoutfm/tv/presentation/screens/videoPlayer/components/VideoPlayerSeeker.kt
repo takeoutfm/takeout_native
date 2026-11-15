@@ -16,6 +16,8 @@
 
 package com.takeoutfm.tv.presentation.screens.videoPlayer.components
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
@@ -56,9 +58,23 @@ fun VideoPlayerSeeker(
     var currentPositionMs by remember(player) { mutableLongStateOf(0L) }
     val currentPosition = currentPositionMs.milliseconds
 
-    // TODO: Update in a more thoughtful manner
-    LaunchedEffect(Unit) {
-        while (true) {
+    // The position changes by itself only while playing: read then (this seek bar is only
+    // there while the controls show), and at once on each of the player's events (a seek, a
+    // pause), never while paused.
+    var playing by remember(player) { mutableStateOf(player.isPlaying) }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                currentPositionMs = player.currentPosition
+                playing = player.isPlaying
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
+    LaunchedEffect(player, playing) {
+        currentPositionMs = player.currentPosition
+        while (playing) {
             delay(300)
             currentPositionMs = player.currentPosition
         }

@@ -1,5 +1,6 @@
 package com.takeoutfm.tv.presentation.utils
 
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -62,9 +63,9 @@ fun RestoreRememberedFocus(memory: FocusMemory) {
         withTimeoutOrNull(RestoreTimeoutMillis) {
             snapshotFlow { memory.isAttached }.first { it }
         } ?: return@LaunchedEffect
-        // The item is composed; it may not be placed until the next frame.
+        // The item is composed; it may not be placed until the next frame: try at each one.
         withTimeoutOrNull(RestoreTimeoutMillis) {
-            while (!memory.requester.requestFocusOrFalse()) delay(16)
+            while (!memory.requester.requestFocusOrFalse()) withFrameNanos { }
         }
     }
 }

@@ -393,6 +393,7 @@ private fun Home(vm: WatchViewModel, go: (String) -> Unit) {
 @Composable
 private fun Player(vm: WatchViewModel) {
     val playing by vm.nowPlaying.collectAsStateWithLifecycle()
+    val positionMs by vm.positionMs.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     // Rotary input goes to the focused screen; this takes focus once the nav host makes the
@@ -416,7 +417,7 @@ private fun Player(vm: WatchViewModel) {
         ) {
             if (!playing.isLive && playing.durationMs > 0) {
                 CircularProgressIndicator(
-                    progress = (playing.positionMs.toFloat() / playing.durationMs).coerceIn(0f, 1f),
+                    progress = (positionMs.toFloat() / playing.durationMs).coerceIn(0f, 1f),
                     modifier = Modifier.fillMaxSize().padding(2.dp),
                     startAngle = 300f,
                     endAngle = 240f,

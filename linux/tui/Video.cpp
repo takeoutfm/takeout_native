@@ -14,6 +14,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QFileSystemWatcher>
 #include <QLocalSocket>
 #include <QProcess>
 #include <QStandardPaths>
@@ -115,40 +116,17 @@ void Tofm::playVideo(const QString &id, bool startOver)
             }
             m_player->pause();
             flash(QStringLiteral("Playing in mpv: ") + title);
-            // mpv reads the config at start; it needn't stay around.
-            const QString config = m_video.configFile;
-            QTimer::singleShot(5000, m_core, [config] { if (!config.isEmpty()) QFile::remove(config); });
 
-            // Its control socket appears once it's up.
-            m_videoConnect.setInterval(250);
-            QObject::disconnect(&m_videoConnect, nullptr, nullptr, nullptr);
-            QObject::connect(&m_videoConnect, &QTimer::timeout, m_core, [this] {
-                if (!m_video.process || m_video.socket) return m_videoConnect.stop();
-                auto *socket = new QLocalSocket;
-                socket->connectToServer(m_video.socketPath);
-                if (!socket->waitForConnected(100)) {
-                    delete socket;
-                    return;
-                }
-                m_videoConnect.stop();
-                m_video.socket = socket;
-                QObject::connect(socket, &QLocalSocket::readyRead, m_core, [this] {
-                    if (!m_video.socket) return;
-                    m_video.pending += m_video.socket->readAll();
-                    qsizetype end;
-                    while ((end = m_video.pending.indexOf('\n')) >= 0) {
-                        videoEvent(m_video.pending.left(end));
-                        m_video.pending.remove(0, end + 1);
-                    }
-                });
-                socket->write("{\"command\":[\"observe_property\",1,\"time-pos\"]}\n"
-                              "{\"command\":[\"observe_property\",2,\"duration\"]}\n");
-            });
-            m_videoConnect.start();
+            // Its control socket appears in the runtime folder once it's up: connect then (the
+            // watcher says when the folder changes; no polling).
+            delete m_videoWatch;
+            m_videoWatch = new QFileSystemWatcher({dir});
+            QObject::connect(m_videoWatch, &QFileSystemWatcher::directoryChanged, m_core, [this] { connectVideo(); });
+            connectVideo();
+            // Saved every 10 s while playing (started when mpv says it plays), and on pause.
             m_videoSave.setInterval(10000);
             QObject::disconnect(&m_videoSave, nullptr, nullptr, nullptr);
             QObject::connect(&m_videoSave, &QTimer::timeout, m_core, [this] { saveVideoProgress(); });
-            m_videoSave.start();
             redraw();
         };
         auto from = [this, local, uri, launch](double seconds) {
@@ -162,11 +140,55 @@ void Tofm::playVideo(const QString &id, bool startOver)
     });
 }
 
+void Tofm::connectVideo()
+{
+    if (!m_video.process || m_video.socket || m_videoConnecting || !QFile::exists(m_video.socketPath)) return;
+    m_videoConnecting = true;
+    auto *socket = new QLocalSocket;
+    QObject::connect(socket, &QLocalSocket::errorOccurred, m_core, [this, socket] {
+        // not listening yet: the next change in the folder tries again
+        m_videoConnecting = false;
+        socket->deleteLater();
+    });
+    QObject::connect(socket, &QLocalSocket::connected, m_core, [this, socket] {
+        m_videoConnecting = false;
+        if (!m_video.process) return socket->deleteLater();
+        m_video.socket = socket;
+        delete m_videoWatch;
+        m_videoWatch = nullptr;
+        // mpv read its config (the token) before opening this socket: it needn't stay around.
+        if (!m_video.configFile.isEmpty()) QFile::remove(m_video.configFile);
+        QObject::connect(socket, &QLocalSocket::readyRead, m_core, [this] {
+            if (!m_video.socket) return;
+            m_video.pending += m_video.socket->readAll();
+            qsizetype end;
+            while ((end = m_video.pending.indexOf('\n')) >= 0) {
+                videoEvent(m_video.pending.left(end));
+                m_video.pending.remove(0, end + 1);
+            }
+        });
+        socket->write("{\"command\":[\"observe_property\",1,\"time-pos\"]}\n"
+                      "{\"command\":[\"observe_property\",2,\"duration\"]}\n"
+                      "{\"command\":[\"observe_property\",3,\"pause\"]}\n");
+    });
+    socket->connectToServer(m_video.socketPath);
+}
+
 void Tofm::videoEvent(const QByteArray &line)
 {
     const QJsonObject event = QJsonDocument::fromJson(line).object();
     if (event.value("event").toString() != "property-change") return;
     const QString name = event.value("name").toString();
+    if (name == "pause") {
+        // saved every 10 s only while it plays; at once on pausing
+        if (event.value("data").toBool()) {
+            m_videoSave.stop();
+            saveVideoProgress();
+        } else {
+            m_videoSave.start();
+        }
+        return;
+    }
     const double value = event.value("data").toDouble(-1);
     if (value < 0) return;
     if (name == "time-pos") m_video.position = value;
@@ -182,7 +204,9 @@ void Tofm::saveVideoProgress()
 
 void Tofm::videoClosed()
 {
-    m_videoConnect.stop();
+    delete m_videoWatch;
+    m_videoWatch = nullptr;
+    m_videoConnecting = false;
     m_videoSave.stop();
     saveVideoProgress();
     if (m_video.position > 0 && m_video.duration > 0)

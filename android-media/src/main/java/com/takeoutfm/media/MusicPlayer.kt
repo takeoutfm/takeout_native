@@ -22,13 +22,15 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -42,7 +44,7 @@ data class NowPlaying(
     val isPlaying: Boolean = false,
     /** Buffering or about to play (so play/pause shows "pause"). */
     val playWhenReady: Boolean = false,
-    val positionMs: Long = 0,
+    /** The track's length; where it is, which changes by itself, is [MusicPlayer.positionMs]. */
     val durationMs: Long = 0,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     /** Why the current track can't play, or null. */
@@ -73,12 +75,35 @@ class MusicPlayer(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val connectLock = Mutex()
     private var controller: MediaController? = null
-    private var ticker: Job? = null
 
     private val _state = MutableStateFlow(NowPlaying())
+
+    /** What's playing; changes with the player's events (never polled, so following it costs nothing). */
     val state: StateFlow<NowPlaying> = _state.asStateFlow()
 
+    private val _positionMs = MutableStateFlow(0L)
+
+    /**
+     * Where the track is. It changes by itself while playing, with no event, so it's read
+     * every half second, but only while playing and something collects this (a Now Playing
+     * screen or progress ring on view); otherwise it's taken at each player event.
+     */
+    val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
+
     init {
+        scope.launch {
+            combine(
+                _state.map { it.isPlaying }.distinctUntilChanged(),
+                _positionMs.subscriptionCount.map { it > 0 }.distinctUntilChanged(),
+            ) { playing, watched -> playing && watched }
+                .distinctUntilChanged()
+                .collectLatest { poll ->
+                    while (poll) {
+                        controller?.let { _positionMs.value = it.currentPosition }
+                        delay(500)
+                    }
+                }
+        }
         // Signing out stops the music (its streams belong to the old session).
         scope.launch {
             session.state.collect { if (!it.isLoggedIn) stop() }
@@ -195,29 +220,10 @@ class MusicPlayer(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _state.value = _state.value.copy(error = null)
             }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) startTicker(player = c) else ticker?.cancel()
-            }
         })
         controller = c
         update(c)
-        if (c.isPlaying) startTicker(c)
         c
-    }
-
-    /** Position only changes by itself, so poll it while playing. */
-    private fun startTicker(player: Player) {
-        ticker?.cancel()
-        ticker = scope.launch {
-            while (isActive) {
-                _state.value = _state.value.copy(
-                    positionMs = player.currentPosition,
-                    durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L,
-                )
-                delay(500)
-            }
-        }
     }
 
     private fun update(player: Player) {
@@ -229,6 +235,7 @@ class MusicPlayer(
         val streamTitle = player.currentMediaItem?.mediaMetadata?.extras
             ?.getString(StreamTitleKey)
             ?.takeIf { isLive && it.isNotBlank() }
+        _positionMs.value = player.currentPosition
         _state.value = _state.value.copy(
             isLive = isLive,
             streamTitle = streamTitle,
@@ -236,7 +243,6 @@ class MusicPlayer(
             index = player.currentMediaItemIndex.coerceAtLeast(0),
             isPlaying = player.isPlaying,
             playWhenReady = player.playWhenReady,
-            positionMs = player.currentPosition,
             durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L,
             repeatMode = player.repeatMode,
         )

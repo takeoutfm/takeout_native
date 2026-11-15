@@ -1,5 +1,9 @@
 package com.takeoutfm.android.ui.live
 
+import com.takeoutfm.shared.guide.MusicFade
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
@@ -356,7 +360,7 @@ class LivePlayerActivity : ComponentActivity() {
                         player.setMediaItem(program.toMediaItem(), t.offset.inWholeMilliseconds)
                         player.prepare()
                         player.playWhenReady = true
-                        while (!ended && (behind || g.now() < program.end)) delay(TickMs)
+                        untilProgramDone(g, program.end, { ended }, { behind })
                         if (behind) {
                             behind = false
                             bannerKey++
@@ -376,10 +380,7 @@ class LivePlayerActivity : ComponentActivity() {
                         player.setMediaItem(t.track.toMediaItem(), t.offset.inWholeMilliseconds)
                         player.prepare()
                         player.playWhenReady = true
-                        while (!ended && g.now() < t.track.end) {
-                            player.volume = t.volume(g.now())
-                            delay(FadeTickMs)
-                        }
+                        untilMusicDone(g, t, { ended }) { player.volume = it }
                         player.stop()
                         player.volume = 1f
                         if (g.now() < t.track.end) delay((t.track.end - g.now()).coerceIn(Duration.ZERO, MaxWait))
@@ -395,12 +396,15 @@ class LivePlayerActivity : ComponentActivity() {
             }
         }
 
-        // The banner's times and the slate's countdown.
-        LaunchedEffect(current) {
+        // The banner's times and the slate's countdown: each second only while one shows (the
+        // controls are up, or a break); the time is still taken whenever that changes.
+        val showsTime = controlsVisible || tuned !is Tuned.Playing
+        LaunchedEffect(current, showsTime) {
             val g = current ?: return@LaunchedEffect
-            while (true) {
-                now = g.now()
+            now = g.now()
+            while (showsTime) {
                 delay(1_000)
+                now = g.now()
             }
         }
 
@@ -476,10 +480,7 @@ class LivePlayerActivity : ComponentActivity() {
     companion object {
         private const val ExtraChannel = "channel"
         private const val BannerMs = 5_000L
-        private const val TickMs = 500L
-        private const val FadeTickMs = 100L
         private const val RetryMs = 30_000L
-        private val MaxWait = 5.minutes
 
         /** Opens the live player on [channel]. */
         fun start(context: Context, channel: String) {
@@ -670,3 +671,43 @@ private fun GuideProgram.toMediaItem(): MediaItem = MediaItem.Builder()
     .setUri(videoUri)
     .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).build())
     .build()
+
+/**
+ * Waits until a program should stop: its file [ended], or (live) its slot ends at [end]; while
+ * [behind] live, only the file's end counts. Woken by those changes and the slot's end, not
+ * polled.
+ */
+private suspend fun untilProgramDone(g: Guide, end: Instant, ended: () -> Boolean, behind: () -> Boolean) {
+    while (!ended()) {
+        if (behind()) {
+            snapshotFlow { ended() || !behind() }.first { it }
+            continue
+        }
+        val left = end - g.now()
+        if (left <= Duration.ZERO) return
+        withTimeoutOrNull(left.coerceAtMost(MaxWait)) { snapshotFlow { ended() || behind() }.first { it } }
+    }
+}
+
+/**
+ * Plays break music [t] to its end, fading out over the last few seconds when the next program
+ * cuts it off: asleep until the fade starts (or the file [ended]), stepping the volume only then.
+ */
+private suspend fun untilMusicDone(g: Guide, t: Tune.Music, ended: () -> Boolean, setVolume: (Float) -> Unit) {
+    val fadeFrom = if (t.cut) t.track.end - MusicFade else t.track.end
+    while (!ended()) {
+        val left = fadeFrom - g.now()
+        if (left <= Duration.ZERO) break
+        withTimeoutOrNull(left.coerceAtMost(MaxWait)) { snapshotFlow { ended() }.first { it } }
+    }
+    while (!ended() && g.now() < t.track.end) {
+        setVolume(t.volume(g.now()))
+        delay(FadeTickMs)
+    }
+}
+
+/** How often the volume steps during a fade. */
+private const val FadeTickMs = 100L
+
+/** The longest wait before looking again (the schedule may have changed meanwhile). */
+private val MaxWait = 5.minutes

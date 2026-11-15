@@ -186,8 +186,10 @@ QQC2.Popup {
         }
     }
     Timer {
-        // the clock, and break music fading out
-        interval: 100
+        // The clock (times and progress, each second), and break music fading out (smoothly:
+        // ten times a second, only for the fade, from a second before it starts).
+        interval: player.tuned?.kind === "music" && player.tuned.fadeFromMs > 0
+                  && player.now >= player.tuned.fadeFromMs - 1000 ? 100 : 1000
         repeat: true
         running: player.opened
         onTriggered: {

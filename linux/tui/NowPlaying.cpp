@@ -19,6 +19,7 @@ QString Tofm::marquee(const QString &text, int width) const
 {
     const QList<uint> chars = text.toUcs4();
     if (width <= 0 || chars.size() <= width) return text;
+    m_marqueeScrolling = true;
     // As the other apps: wait at the start, then slide at about 7 columns a second with a
     // second copy following after a gap, and repeat.
     constexpr int Gap = 6;

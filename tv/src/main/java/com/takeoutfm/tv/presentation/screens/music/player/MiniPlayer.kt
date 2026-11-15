@@ -1,5 +1,6 @@
 package com.takeoutfm.tv.presentation.screens.music.player
 
+import androidx.compose.runtime.withFrameNanos
 import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
@@ -78,7 +79,8 @@ fun MiniPlayer(
         if (!hasFocus) return@LaunchedEffect
         if (SystemClock.uptimeMillis() - lastNavigationKeyAt() < MovedInWindowMs) return@LaunchedEffect
         withTimeoutOrNull(FallenInRetryMs) {
-            while (!isContentFocusable()) delay(100)
+            // at each frame, until the page can take it
+            while (!isContentFocusable()) withFrameNanos { }
         }
     }
     Surface(

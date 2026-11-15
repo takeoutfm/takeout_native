@@ -60,6 +60,9 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
     val nowPlaying: StateFlow<NowPlaying> = player.state
 
+    /** Where the track is; read while playing only as long as a screen collects it. */
+    val positionMs: StateFlow<Long> = player.positionMs
+
     /** ETags of favorite tracks, for ♥ buttons. */
     val favoriteEtags: StateFlow<Set<String>> = music.favoriteTrackEtags
 

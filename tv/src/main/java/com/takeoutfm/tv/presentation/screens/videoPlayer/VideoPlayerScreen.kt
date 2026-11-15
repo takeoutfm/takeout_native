@@ -183,10 +183,12 @@ fun VideoPlayerScreenContent(
         exoPlayer.prepare()
     }
 
-    LaunchedEffect(exoPlayer) {
-        while (true) {
+    // Saved every so often only while it plays (pausing and ending save at once, below).
+    val playingNow = isPlayingState.value
+    LaunchedEffect(exoPlayer, playingNow) {
+        while (playingNow) {
             delay(ProgressSaveIntervalMs)
-            if (exoPlayer.isPlaying) saveProgress()
+            saveProgress()
         }
     }
 

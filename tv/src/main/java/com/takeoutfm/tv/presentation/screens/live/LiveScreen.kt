@@ -1,5 +1,6 @@
 package com.takeoutfm.tv.presentation.screens.live
 
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -148,9 +149,10 @@ private fun GuideGrid(
     // Back from the player or a title: focus the grid again, not the day row.
     LaunchedEffect(Unit) {
         if (viewModel.gridHadFocus) {
+            // at each frame until the grid is placed (about half a second at most)
             repeat(30) {
                 if (runCatching { gridFocus.requestFocus() }.isSuccess) return@LaunchedEffect
-                delay(16)
+                withFrameNanos { }
             }
         }
     }

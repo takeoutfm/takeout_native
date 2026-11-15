@@ -149,6 +149,7 @@ dashboard top bar, D-pad handling.
 ## 4. Feature checklist (Flutter app → native)
 
 ### 4.1 Sign-in and account
+Requirements now in [docs/requirements/sign-in.md](docs/requirements/sign-in.md); this checklist is history.
 - [ ] Login with **host, user, password and optional passcode** (2FA).
 - [ ] **Device-code sign-in** (TV app's flow) as an alternative.
 - [ ] **Link code**: link another device (the Flutter "Link" page) — enter the code shown on a
@@ -221,11 +222,13 @@ dashboard top bar, D-pad handling.
       Wear OS: video doesn't fit a watch.
 
 ### 4.5 Podcasts
+Requirements now in [docs/requirements/podcasts.md](docs/requirements/podcasts.md); this checklist is history.
 - [ ] Series grid (all / **subscribed**), subscribe / unsubscribe.
 - [ ] Series details, episode list with progress ("N min left", Complete), episode details.
 - [ ] Download / delete episodes; resume position (offsets).
 
 ### 4.6 Radio
+Requirements now in [docs/requirements/radio.md](docs/requirements/radio.md); this checklist is history.
 - [ ] Stations by type: **Genres, Decades, Other, Streams** (live), recently used first.
 - [ ] Live player: stream title from ICY ("Now: Artist – Title" → title/artist lines),
       **Stream History** of songs heard.
@@ -244,6 +247,7 @@ dashboard top bar, D-pad handling.
 - [ ] Voice search (in-app recognizer, as TV) and **Assistant "play X on Takeout"**.
 
 ### 4.9 Activity, history and stats
+Recently Played and play reporting now in [docs/requirements/music-playback.md](docs/requirements/music-playback.md) and [docs/requirements/play-reporting.md](docs/requirements/play-reporting.md).
 - [ ] **Activity**: track stats by period (Recent, Last/This Week, Last/This Month, …) for
       artists, releases, tracks, with counts.
 - [ ] Recent Tracks (server history).
@@ -251,6 +255,7 @@ dashboard top bar, D-pad handling.
       delete history.
 
 ### 4.10 Player
+Requirements now in [docs/requirements/music-playback.md](docs/requirements/music-playback.md); this checklist is history.
 - [ ] Now Playing: large cover, **cover-derived background colour** (Palette) or artist
       background, title/artist/album, seek bar, **previous · −10 s · play/pause · +30 s · next**,
       repeat, queue sheet (swipe up), favorite.

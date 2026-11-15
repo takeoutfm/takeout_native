@@ -18,18 +18,27 @@ rules learned the hard way).
 
 | Area | File |
 |---|---|
+| Sign-in and session | [requirements/sign-in.md](requirements/sign-in.md) |
+| Music playback and the queue | [requirements/music-playback.md](requirements/music-playback.md) |
+| Radio | [requirements/radio.md](requirements/radio.md) |
+| Podcasts | [requirements/podcasts.md](requirements/podcasts.md) |
+| Play reporting: Track Activity and ListenBrainz | [requirements/play-reporting.md](requirements/play-reporting.md) |
 | Downloads, Playback Caching and the cache purge | [requirements/downloads-and-cache.md](requirements/downloads-and-cache.md) |
 | Video audio and subtitle track choices | [requirements/video-tracks.md](requirements/video-tracks.md) |
 
-Still in `PLAN.md` §4, to move here an area at a time: sign-in and session; library and
-browsing; music playback and the queue; radio; podcasts; video playback; live TV; play
-reporting (Track Activity, ListenBrainz); settings; platform integration (MPRIS, Android
-Auto, tiles, voice).
+Still in `PLAN.md` §4, to move here an area at a time: library and browsing (navigation,
+search, playlists, favorites, activity); video playback (the rest of it); live TV; settings;
+platform integration (voice, Android Auto's tree, tiles).
 
 ## Design
 
 | Area | File |
 |---|---|
+| Sign-in and session | [design/sign-in.md](design/sign-in.md) |
+| Music playback | [design/music-playback.md](design/music-playback.md) |
+| Radio | [design/radio.md](design/radio.md) |
+| Podcasts | [design/podcasts.md](design/podcasts.md) |
+| Play reporting | [design/play-reporting.md](design/play-reporting.md) |
 | Downloads and the cache, per platform | [design/downloads-and-cache.md](design/downloads-and-cache.md) |
 | Video track choices, per platform | [design/video-tracks.md](design/video-tracks.md) |
 

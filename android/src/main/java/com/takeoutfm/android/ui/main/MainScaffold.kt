@@ -180,7 +180,6 @@ private fun NavHostController.popToRoot(): Boolean {
 private fun PlayPauseFab(visible: Boolean, mainViewModel: MainViewModel, modifier: Modifier) {
     val playing by mainViewModel.nowPlaying.collectAsStateWithLifecycle()
     if (!visible || !playing.hasQueue) return
-    val positionMs by mainViewModel.positionMs.collectAsStateWithLifecycle()
     Box(modifier, contentAlignment = Alignment.Center) {
         FloatingActionButton(onClick = mainViewModel::togglePlay) {
             Icon(
@@ -189,6 +188,8 @@ private fun PlayPauseFab(visible: Boolean, mainViewModel: MainViewModel, modifie
             )
         }
         if (!playing.isLive && playing.durationMs > 0) {
+            // Asked for only here: a live stream has no ring, and nothing polls the position for it.
+            val positionMs by mainViewModel.positionMs.collectAsStateWithLifecycle()
             CircularProgressIndicator(
                 progress = { (positionMs.toFloat() / playing.durationMs).coerceIn(0f, 1f) },
                 modifier = Modifier.size(52.dp),

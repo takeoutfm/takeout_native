@@ -289,10 +289,11 @@ private fun QueueSheet(playing: NowPlaying, onPlay: (Int) -> Unit, onDismiss: ()
 @Composable
 fun MiniPlayer(playing: NowPlaying, main: MainViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val item = playing.current ?: return
-    val positionMs by main.positionMs.collectAsStateWithLifecycle()
     Surface(modifier.fillMaxWidth(), tonalElevation = 3.dp) {
         Column {
             if (!playing.isLive && playing.durationMs > 0) {
+                // Asked for only here: a live stream has no bar, and nothing polls the position for it.
+                val positionMs by main.positionMs.collectAsStateWithLifecycle()
                 LinearProgressIndicator(
                     progress = { (positionMs.toFloat() / playing.durationMs).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),

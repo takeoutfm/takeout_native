@@ -158,6 +158,7 @@ Requirements now in [docs/requirements/sign-in.md](docs/requirements/sign-in.md)
 - [ ] About (version, source link).
 
 ### 4.2 Navigation and home
+Requirements now in [docs/requirements/library.md](docs/requirements/library.md); this checklist is history.
 - [ ] Bottom navigation: **Home · Artists · Recent · Radio · Now Playing** (icons only, as now).
 - [ ] Per-tab back stacks; re-tapping the current tab pops to its root; **repeated Home taps
       cycle the media type** (music → movies → TV → podcasts), **repeated Artists taps cycle the
@@ -169,6 +170,7 @@ Requirements now in [docs/requirements/sign-in.md](docs/requirements/sign-in.md)
 - [ ] Floating play/pause button (hidden on Now Playing), kept as in the Flutter app.
 
 ### 4.3 Music
+Requirements now in [docs/requirements/library.md](docs/requirements/library.md); this checklist is history.
 - [ ] Home grids: Recently Added, New Releases (cover grid with title/artist).
 - [ ] All artists (A–Z) with artist-type cycling.
 - [ ] Artist page: header with artwork, Shuffle / Popular / Radio, releases, singles, popular
@@ -181,6 +183,7 @@ Requirements now in [docs/requirements/sign-in.md](docs/requirements/sign-in.md)
 - [ ] Favorites: tracks, artists, **favorite artist tracks** playlist.
 
 ### 4.4 Movies and TV
+Requirements now in [docs/requirements/video-playback.md](docs/requirements/video-playback.md), [video-tracks.md](docs/requirements/video-tracks.md), [live-tv.md](docs/requirements/live-tv.md); this checklist is history.
 - [ ] Movies grid (added / new / recommended), genres grid and genre pages.
 - [ ] Movie details: cast & crew (directors first, as TV), related, **Resume / Play from start**,
       progress "N min left".
@@ -238,10 +241,12 @@ Requirements now in [docs/requirements/radio.md](docs/requirements/radio.md); th
       (and there's no delete); needs that server change first.
 
 ### 4.7 Playlists
+Requirements now in [docs/requirements/library.md](docs/requirements/library.md); this checklist is history.
 - [ ] Playlists list; **create**, **add to playlist**, delete, open (spiff details).
 - [ ] **Sync Playlist** (offline copy).
 
 ### 4.8 Search
+Requirements now in [docs/requirements/library.md](docs/requirements/library.md), [platform-integration.md](docs/requirements/platform-integration.md); this checklist is history.
 - [ ] Search across artists, releases, tracks, stations, movies, series, episodes.
 - [ ] Query syntax help: `text`, `artist:name`, `guitar:person` (role search).
 - [ ] Voice search (in-app recognizer, as TV) and **Assistant "play X on Takeout"**.
@@ -302,10 +307,12 @@ Requirements now in [docs/requirements/music-playback.md](docs/requirements/musi
 - [ ] Offline progress + listen queues (from TV).
 
 ### 4.12 Settings
+Requirements now in [docs/requirements/settings.md](docs/requirements/settings.md); this checklist is history.
 - [ ] Playback caching; Track Activity (report plays to Takeout); ListenBrainz token +
       enable (paste on phone; validate).
 
 ### 4.13 Platform integration
+Requirements now in [docs/requirements/platform-integration.md](docs/requirements/platform-integration.md); this checklist is history.
 - [ ] **Android Auto**: browse music, podcasts, radio (recent stations first), search.
 - [ ] **Assistant / intents**: `MEDIA_PLAY_FROM_SEARCH` and the app actions the Flutter app
       declares — PLAY_ARTIST, PLAY_ARTIST_SONG, PLAY_ARTIST_ALBUM, PLAY_ARTIST_RADIO,

@@ -19,28 +19,36 @@ rules learned the hard way).
 | Area | File |
 |---|---|
 | Sign-in and session | [requirements/sign-in.md](requirements/sign-in.md) |
+| Library and browsing | [requirements/library.md](requirements/library.md) |
 | Music playback and the queue | [requirements/music-playback.md](requirements/music-playback.md) |
 | Radio | [requirements/radio.md](requirements/radio.md) |
 | Podcasts | [requirements/podcasts.md](requirements/podcasts.md) |
-| Play reporting: Track Activity and ListenBrainz | [requirements/play-reporting.md](requirements/play-reporting.md) |
-| Downloads, Playback Caching and the cache purge | [requirements/downloads-and-cache.md](requirements/downloads-and-cache.md) |
+| Video playback | [requirements/video-playback.md](requirements/video-playback.md) |
 | Video audio and subtitle track choices | [requirements/video-tracks.md](requirements/video-tracks.md) |
+| Live TV | [requirements/live-tv.md](requirements/live-tv.md) |
+| Downloads, Playback Caching and the cache purge | [requirements/downloads-and-cache.md](requirements/downloads-and-cache.md) |
+| Play reporting: Track Activity and ListenBrainz | [requirements/play-reporting.md](requirements/play-reporting.md) |
+| Settings | [requirements/settings.md](requirements/settings.md) |
+| Platform integration | [requirements/platform-integration.md](requirements/platform-integration.md) |
 
-Still in `PLAN.md` §4, to move here an area at a time: library and browsing (navigation,
-search, playlists, favorites, activity); video playback (the rest of it); live TV; settings;
-platform integration (voice, Android Auto's tree, tiles).
+Every area of `PLAN.md` §4 is here now; its checklists stay there as history. Rows marked
+"not checked" in the status tables are the next thing to settle, app by app.
 
 ## Design
 
 | Area | File |
 |---|---|
 | Sign-in and session | [design/sign-in.md](design/sign-in.md) |
+| Library and browsing | [design/library.md](design/library.md) |
 | Music playback | [design/music-playback.md](design/music-playback.md) |
 | Radio | [design/radio.md](design/radio.md) |
 | Podcasts | [design/podcasts.md](design/podcasts.md) |
+| Video playback | [design/video-playback.md](design/video-playback.md) |
+| Video track choices | [design/video-tracks.md](design/video-tracks.md) |
+| Live TV | [design/live-tv.md](design/live-tv.md) |
+| Downloads and the cache | [design/downloads-and-cache.md](design/downloads-and-cache.md) |
 | Play reporting | [design/play-reporting.md](design/play-reporting.md) |
-| Downloads and the cache, per platform | [design/downloads-and-cache.md](design/downloads-and-cache.md) |
-| Video track choices, per platform | [design/video-tracks.md](design/video-tracks.md) |
+| Platform integration | [design/platform-integration.md](design/platform-integration.md) |
 
 ## Decisions
 

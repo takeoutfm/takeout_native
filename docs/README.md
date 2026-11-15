@@ -38,6 +38,7 @@ tables were settled against the code on 2026-11-14; ❌ and ⚠️ cells are the
 
 | Area | File |
 |---|---|
+| **Architecture**: modules, the shared core, each platform | [design/architecture.md](design/architecture.md) |
 | Sign-in and session | [design/sign-in.md](design/sign-in.md) |
 | Library and browsing | [design/library.md](design/library.md) |
 | Music playback | [design/music-playback.md](design/music-playback.md) |
@@ -57,6 +58,19 @@ tables were settled against the code on 2026-11-14; ❌ and ⚠️ cells are the
 | [001](decisions/001-cache-budget.md) | The cache's size: Auto is 10% of the volume, at most 10 GB, with a free-space floor |
 | [002](decisions/002-downloads-never-purged.md) | The viewer's own downloads are never purged; the app warns instead |
 | [003](decisions/003-track-choices-by-language.md) | Track choices are remembered by language only, and shared by the video and live players |
+| [004](decisions/004-monorepo.md) | One repository for every app |
+| [005](decisions/005-sqldelight.md) | SQLDelight for the shared database |
+| [006](decisions/006-linux-native.md) | Linux: Qt and Kirigami on the Kotlin/Native core, mpv for playback |
+| [007](decisions/007-kmp-core.md) | A Kotlin Multiplatform core; UI and playback native per platform |
+| [008](decisions/008-app-ids.md) | New app ids, installed beside the Flutter apps |
+| [009](decisions/009-playback-cache.md) | Android caches playback in Media3's cache, keyed by ETag |
+| [010](decisions/010-no-mobile-data-limits.md) | No mobile-data limits |
+| [011](decisions/011-embedded-subtitles-only.md) | Embedded audio and subtitle tracks only |
+| [012](decisions/012-tofm.md) | tofm: separate from the KDE app, video in mpv, covers as characters |
+| [013](decisions/013-phone-media3-menus.md) | The phone keeps Media3's own player menus |
+| [014](decisions/014-iphone-design.md) | iPhone: iPhone conventions on Android's structure |
+| [015](decisions/015-apple-stream-proxy.md) | Apple video streams through a local proxy |
+| [016](decisions/016-scope.md) | What the native apps include |
 
 ## Conventions
 

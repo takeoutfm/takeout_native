@@ -286,7 +286,7 @@ AppPage {
         const id = page.videoId
         Core.call("downloadVideo", {id: id, check: true, anyway: anyway}, (result) => {
             if (result && !result.started && id === page.videoId) {
-                space.result = result
+                space.need = result
                 space.open()
             }
         })
@@ -295,17 +295,17 @@ AppPage {
     // "Needs 5.2 GB; clearing the cache frees only 3.1 GB": asked before going on.
     Kirigami.PromptDialog {
         id: space
-        property var result: ({})
+        property var need: ({})
         title: KI18n.i18n("Not enough space")
-        subtitle: !result.fits
-            ? KI18n.i18n("This needs %1, more than this computer has free. Remove some downloads first.", applicationWindow().formatBytes(result.needBytes ?? 0))
-            : (result.freeableBytes ?? 0) > 0
+        subtitle: !need.fits
+            ? KI18n.i18n("This needs %1, more than this computer has free. Remove some downloads first.", applicationWindow().formatBytes(need.needBytes ?? 0))
+            : (need.freeableBytes ?? 0) > 0
                 ? KI18n.i18n("This needs %1, and would leave too little free: clearing the cache frees only %2. Remove some downloads first, or download it anyway.",
-                             applicationWindow().formatBytes(result.needBytes ?? 0), applicationWindow().formatBytes(result.freeableBytes))
+                             applicationWindow().formatBytes(need.needBytes ?? 0), applicationWindow().formatBytes(need.freeableBytes))
                 : KI18n.i18n("This needs %1, and would leave too little free on this computer. Remove some downloads first, or download it anyway.",
-                             applicationWindow().formatBytes(result.needBytes ?? 0))
-        standardButtons: result.fits ? Kirigami.Dialog.Cancel : Kirigami.Dialog.Ok
-        customFooterActions: result.fits ? [space.anyway] : []
+                             applicationWindow().formatBytes(need.needBytes ?? 0))
+        standardButtons: need.fits ? Kirigami.Dialog.Cancel : Kirigami.Dialog.Ok
+        customFooterActions: need.fits ? [space.anyway] : []
         readonly property Kirigami.Action anyway: Kirigami.Action {
             text: KI18n.i18n("Download Anyway")
             icon.name: "download"

@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
                      KAboutLicense::GPL_V3, i18n("© 2026 defsub"));
     about.setOrganizationDomain("takeoutfm.com");
     about.setDesktopFileName(QStringLiteral("com.takeoutfm.linux"));
-    about.setHomepage(QStringLiteral("https://takeout.fm"));
+    about.setHomepage(QStringLiteral("https://takeoutfm.com/"));
     // Not KDE's tracker (the default): Report a Bug and crash reports go to the project's issues.
     about.setBugAddress(QByteArrayLiteral("https://gitlab.com/takeoutfm/takeout_native/-/issues"));
     about.addAuthor(QStringLiteral("defsub"));

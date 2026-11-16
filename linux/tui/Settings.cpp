@@ -150,7 +150,7 @@ Tofm::PagePtr Tofm::settingsPage()
 
     rows.push_back({Row::Header, QStringLiteral("About")});
     rows.push_back({Row::Note, QStringLiteral("tofm %1 — TakeoutFM in the terminal").arg(QCoreApplication::applicationVersion())});
-    rows.push_back({Row::Note, QStringLiteral("GPL-3.0-or-later · https://takeout.fm")});
+    rows.push_back({Row::Note, QStringLiteral("GPL-3.0-or-later · https://takeoutfm.com")});
     rows.push_back({Row::Note, QStringLiteral("Log: ~/.local/state/tofm/tofm.log")});
 
     for (int i = 0; i < int(rows.size()); ++i) {

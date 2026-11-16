@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: TakeoutFM
-Source: https://takeout.fm
+Source: https://takeoutfm.com/
 
 Files: *
 Copyright: 2026 defsub

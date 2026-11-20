@@ -28,7 +28,8 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
   Continue Watching.
 - **LIB-10** A title: facts, cast and crew (directors first), Play / Resume / Start over,
   "N min left", related titles; a series' seasons and episodes.
-- **LIB-11** A person: what they starred in, directed and wrote.
+- **LIB-11** A person: their photo (TMDB `profile_path`; a person icon when there is none),
+  life and biography, then what they starred in, directed and wrote.
 
 ## Search, playlists, activity
 

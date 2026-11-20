@@ -52,13 +52,27 @@ AppPage {
             visible: !!page.person
             spacing: Kirigami.Units.largeSpacing * 2
 
-            Art {
+            // Always laid out: Art loads only once it has a size, so hiding it until it had
+            // loaded meant it never did. The person icon shows while loading or with no photo.
+            Kirigami.ShadowedRectangle {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 9
                 Layout.preferredHeight: Kirigami.Units.gridUnit * 13.5
                 Layout.alignment: Qt.AlignTop
-                url: page.person?.photoUri ?? ""
-                fillMode: Image.PreserveAspectCrop
-                visible: status === Image.Ready
+                color: Kirigami.Theme.alternateBackgroundColor
+                radius: Kirigami.Units.cornerRadius
+                Kirigami.Icon {
+                    anchors.centerIn: parent
+                    width: parent.width / 2
+                    height: width
+                    source: "user-identity"
+                    visible: photo.status !== Image.Ready
+                    color: Kirigami.Theme.disabledTextColor
+                }
+                Art {
+                    id: photo
+                    anchors.fill: parent
+                    url: page.person?.photoUri ?? ""
+                }
             }
             ColumnLayout {
                 Layout.fillWidth: true

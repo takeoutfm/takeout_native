@@ -282,15 +282,16 @@ class SwiftCalls(private val core: TakeoutCore) {
 
     /**
      * The Live page's guide from now: starts over, fetching the window with now in it and the
-     * next. Everything fetched so far, or null when nothing could be.
+     * next. Everything fetched so far, or null when the reload failed: not the guide from before,
+     * which would look fetched (woken before the network, yesterday's stayed up 30 minutes), so the
+     * page keeps what it shows and tries again.
      */
     @Throws(Throwable::class)
     suspend fun guideReload(): LiveGuideView? {
         val loader = core.guideLoader
-        if (loader.reload()) {
-            val now = loader.guide.value!!.now()
-            loader.ensure(now, now + GuideLoader.Block)
-        }
+        if (!loader.reload()) return null
+        val now = loader.guide.value!!.now()
+        loader.ensure(now, now + GuideLoader.Block)
         return loader.page()
     }
 

@@ -316,6 +316,42 @@ class GuideTest {
     }
 
     @Test
+    fun wokenOfflineTheGuideKeepsTheServersClock() = runTest {
+        // Browsed tomorrow morning at 20:29, slept, woke at 09:10 before the Wi-Fi was back: the
+        // reload was answered from last night's kept copy, and its Time set the guide 12 hours back.
+        var now = at("2026-11-17T04:29:00Z")
+        var online = true
+        val engine = MockEngine { request ->
+            if (!online) throw kotlinx.io.IOException("offline")
+            val start = request.url.parameters["start"]!!
+            val end = request.url.parameters["end"]!!
+            respond("""{"Time": ${now.toEpochMilliseconds()}, "Start": "$start", "End": "$end", "Channels": []}""",
+                headers = jsonHeaders)
+        }
+        val kept = HashMap<String, com.takeoutfm.shared.api.ResponseCache.Kept>()
+        val session = session()
+        val api = TakeoutApi(session, "test", engine).apply {
+            responseCache = object : com.takeoutfm.shared.api.ResponseCache {
+                override fun get(key: String) = kept[key]
+                override fun put(key: String, body: String) {
+                    kept[key] = com.takeoutfm.shared.api.ResponseCache.Kept(body, now.toEpochMilliseconds())
+                }
+            }
+        }
+        val clock = object : Clock { override fun now() = now }
+        val loader = GuideLoader(TakeoutGuideRepository(api, TakeoutUrls(session), clock), clock)
+        assertTrue(loader.reload())
+        loader.ensure(now, at("2026-11-17T18:00:00Z"))
+        assertEquals(0.seconds, loader.guide.value!!.skew)
+
+        now = at("2026-11-17T17:10:00Z")
+        online = false
+        val reloaded = loader.reload()
+        assertEquals(0.seconds, loader.guide.value!!.skew)
+        assertFalse(reloaded) // a failed reload: the guide it had stays, and it's tried again
+    }
+
+    @Test
     fun guideDaysRunFromTodayToTheHorizon() {
         val zone = kotlinx.datetime.TimeZone.of("America/Los_Angeles")
         // 12:10 PM on the 11th, Los Angeles

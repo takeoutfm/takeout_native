@@ -12,7 +12,10 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
   panel for the selected program (Watch live, Details).
 - **LIVE-4** The guide keeps up with the time: it's fetched again when old or running short,
   and catches up at once when the computer wakes from sleep or the page is shown again (a guide
-  left open overnight must show today, not yesterday).
+  left open overnight must show today, not yesterday). The guide is never answered from a kept
+  copy: its server time would set the clock back to when it was kept (woken before the network
+  was back, the guide ran 15 hours behind). A fetch that fails leaves the guide the app has, and
+  counts as not fetched: it's tried again a minute later, not 30 minutes later.
 
 ## Tuning
 
@@ -39,7 +42,7 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 | Rule | Phone | TV | Mac/iOS | Linux |
 |---|---|---|---|---|
 | LIVE-1–4 guide | ✅ | ✅ | ✅ | ✅ |
-| LIVE-4 catches up after sleep | — | — | ⚠️ not checked | ✅ on wake (logind); not yet seen on a real wake |
+| LIVE-4 catches up after sleep | — | — | ⚠️ not checked | ✅ on wake (logind); a wake before the network ran behind (a kept copy), then sat on the old guide (a failed reload counted as fetched): both fixed, not yet seen on a real wake |
 | LIVE-5 tuning, break music, slate | ✅ | ✅ | ✅ | ✅ |
 | LIVE-6 never early | ✅ waits until the end | ✅ | ✅ | ✅ |
 | LIVE-7 music under a hidden video | ✅ Media3 plays audio without a surface | ✅ | ✅ VLC the same | ✅ |

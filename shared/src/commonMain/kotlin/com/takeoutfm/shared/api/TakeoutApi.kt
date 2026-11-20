@@ -478,7 +478,10 @@ class TakeoutApi internal constructor(
 
     /**
      * The channel guide from [start] to [end] (the server defaults to now and 3 hours on). Never
-     * reused while online: it's about the current time.
+     * kept, not even for offline: its `Time` sets the app's idea of the server's clock, and a
+     * kept answer's is as old as the answer. Woken before the network was back, the guide was
+     * answered from last night's and ran 12 hours behind. A failed fetch leaves the guide the
+     * app already has.
      */
     suspend fun guide(start: Instant? = null, end: Instant? = null): ApiGuideView {
         val query = listOfNotNull(
@@ -487,7 +490,7 @@ class TakeoutApi internal constructor(
         ).joinToString("&")
         return decode(
             ApiGuideView.serializer(),
-            getText(if (query.isEmpty()) "/api/guide" else "/api/guide?$query"),
+            authed(if (query.isEmpty()) "/api/guide" else "/api/guide?$query"),
         )
     }
 
@@ -512,7 +515,6 @@ class TakeoutApi internal constructor(
         /** Always asked for: they change as the user plays and edits. */
         private val VolatilePrefixes = listOf(
             "/api/progress", "/api/activity", "/api/favorite", "/api/playlists", "/api/search",
-            "/api/guide",
         )
 
         /** Writes after which kept responses are asked for again ([forgetKept]). */

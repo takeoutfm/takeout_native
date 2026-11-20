@@ -193,12 +193,14 @@ class LinuxCalls(private val core: LinuxCore) {
         // ---- Live ----
         // The guide page: guideReload starts over from now, guideEnsure fetches what scrolls
         // into view; each answers with everything fetched so far (null if nothing could be).
+        // A reload that fails answers null, not the guide from before: the page keeps what it
+        // shows and tries again a minute later. (Answered with the old guide, a reload woken
+        // before the network looked fetched, and yesterday's guide stayed up for 30 minutes.)
         call("guideReload") {
             val loader = core.guideLoader
-            if (loader.reload()) {
-                val now = loader.guide.value!!.now()
-                loader.ensure(now, now + GuideLoader.Block)
-            }
+            if (!loader.reload()) return@call null
+            val now = loader.guide.value!!.now()
+            loader.ensure(now, now + GuideLoader.Block)
             loader.page()
         }
         call("guideEnsure") { a ->

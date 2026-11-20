@@ -142,6 +142,27 @@ class TakeoutApiTest {
     }
 
     @Test
+    fun theGuideIsNeverAnsweredFromTheResponseCache() = runTest {
+        // Its Time sets the server's clock: last night's answer, kept, ran the guide 12 hours behind.
+        var online = true
+        val engine = MockEngine {
+            if (!online) throw kotlinx.io.IOException("offline")
+            respond("""{"Time":1762891800000,"Channels":[]}""", headers = jsonHeaders)
+        }
+        val kept = HashMap<String, ResponseCache.Kept>()
+        val api = TakeoutApi(session(), "test", engine).apply {
+            responseCache = object : ResponseCache {
+                override fun get(key: String) = kept[key]
+                override fun put(key: String, body: String) { kept[key] = ResponseCache.Kept(body, 0) }
+            }
+        }
+        assertEquals(1762891800000, api.guide().time)
+        assertTrue(kept.isEmpty())
+        online = false
+        assertFailsWith<kotlinx.io.IOException> { api.guide() }
+    }
+
+    @Test
     fun recentLibraryResponsesAreReusedUntilForgottenOrAnEdit() = runTest {
         var gets = 0
         val engine = MockEngine { request ->

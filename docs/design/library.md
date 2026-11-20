@@ -16,7 +16,8 @@ Requirements: [../requirements/library.md](../requirements/library.md).
   ANR doing it).
 - Offline: `api/ResponseCache.kt` `DbResponseCache`, set as `TakeoutApi.responseCache` by every app but the TV,
   answers a GET that can't reach the server with the last response and reuses recent library
-  responses; `TakeoutApi.forgetKept` drops them after an edit or Reload.
+  responses; `TakeoutApi.forgetKept` drops them after an edit or Reload. The guide is never
+  kept (`TakeoutApi.guide`): its `Time` is the app's idea of the server's clock.
 
 | App | Screens |
 |---|---|

@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import MediaPlayer
 import Shared
+import SwiftUI
 
 /**
  * Music playback: an AVQueuePlayer over the queue's streams (FLAC, MP3 and M4A play natively;
@@ -34,8 +35,10 @@ final class AudioPlayer: ObservableObject {
     enum RepeatMode { case off, all, one }
     @Published private(set) var index = 0
     @Published private(set) var isPlaying = false
-    @Published private(set) var position: Double = 0
-    @Published private(set) var duration: Double = 0
+    /** Where the playing item is, and its length: watched only by the views that show them. */
+    let progress = PlaybackProgress()
+    var position: Double { progress.position }
+    var duration: Double { progress.duration }
     /// A live stream (no end): the bar shows its current song instead of a seek bar.
     @Published private(set) var isLive = false {
         didSet {
@@ -357,12 +360,16 @@ final class AudioPlayer: ObservableObject {
     private var durationMs: Int64 { Int64(duration * 1000) }
 
     private func tick(_ time: CMTime) {
-        position = time.seconds.isFinite ? time.seconds : 0
         let d = player.currentItem?.duration ?? .zero
         // Every item's duration is "indefinite" until it has loaded; only a ready one that still
-        // has none is a live stream.
-        isLive = player.currentItem?.status == .readyToPlay && d.isIndefinite
-        duration = d.seconds.isFinite ? d.seconds : 0
+        // has none is a live stream. (Set only when it changes: each set redraws every view
+        // watching the player, twice a second.)
+        let live = player.currentItem?.status == .readyToPlay && d.isIndefinite
+        if live != isLive { isLive = live }
+        progress.update(
+            position: time.seconds.isFinite ? time.seconds : 0,
+            duration: d.seconds.isFinite ? d.seconds : 0
+        )
         listens.tick(durationMs: durationMs)
         #if DEBUG
         // For testing what happens at a track's end without playing it all: `-seekNearEnd YES`.
@@ -447,4 +454,28 @@ private final class MetadataReceiver: NSObject, AVPlayerItemMetadataOutputPushDe
             if let title = try? await item.load(.stringValue), !title.isEmpty { onTitle(title) }
         }
     }
+}
+
+/**
+ * The playing item's position and length, kept apart from `AudioPlayer`: they change twice a
+ * second while playing, and in the player every view watching it (whole lists among them)
+ * would redraw each time. Only the seek bars watch this (`WithProgress`).
+ */
+@MainActor
+final class PlaybackProgress: ObservableObject {
+    @Published private(set) var position: Double = 0
+    @Published private(set) var duration: Double = 0
+
+    fileprivate func update(position: Double, duration: Double) {
+        if position != self.position { self.position = position }
+        if duration != self.duration { self.duration = duration }
+    }
+}
+
+/** [content] redrawn as the playing item's position moves, without the views around it. */
+struct WithProgress<Content: View>: View {
+    @ObservedObject var progress: PlaybackProgress
+    @ViewBuilder let content: (PlaybackProgress) -> Content
+
+    var body: some View { content(progress) }
 }

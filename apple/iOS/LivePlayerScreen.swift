@@ -12,6 +12,9 @@ struct LivePlayerScreen: View {
     let request: LiveRequest
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    /** The app went to the background (it comes back through inactive, not straight from it). */
+    @State private var wasInBackground = false
     @StateObject private var live: LivePlayerModel
     @State private var showControls = true
     @State private var hideTask: Task<Void, Never>?
@@ -52,6 +55,19 @@ struct LivePlayerScreen: View {
             hideLater()
         }
         .onDisappear { live.close() }
+        // the clock ticks only while the controls or the slate show it
+        .onChange(of: showControls || !live.isPlaying || live.showSlate, initial: true) { _, shown in
+            live.showsClock = shown
+        }
+        // back from the background: what's on now (what played on meanwhile is gone by)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                wasInBackground = true
+            } else if phase == .active && wasInBackground {
+                wasInBackground = false
+                live.resumeLive()
+            }
+        }
     }
 
     private var controls: some View {

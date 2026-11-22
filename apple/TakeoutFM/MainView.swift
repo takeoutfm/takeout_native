@@ -7,7 +7,7 @@ struct MainView: View {
 
     enum Page: Hashable {
         case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio, podcasts
-        case live, watch, movies, shows, downloads
+        case live, watch, movies, shows, downloads, nowPlaying
         case search(String)
 
         var title: String {
@@ -25,6 +25,7 @@ struct MainView: View {
             case .movies: return "Movies"
             case .shows: return "TV Shows"
             case .downloads: return "Downloads"
+            case .nowPlaying: return "Now Playing"
             case .search(let query): return query
             }
         }
@@ -44,12 +45,15 @@ struct MainView: View {
             case .movies: return "film"
             case .shows: return "tv"
             case .downloads: return "arrow.down.circle"
+            case .nowPlaying: return "play.circle"
             case .search: return "magnifyingglass"
             }
         }
     }
 
     @State private var page: Page? = .recentlyPlayed
+    /// Where Now Playing was opened from, for closing it (⌘L again, or Esc).
+    @State private var beforeNowPlaying: Page?
     @State private var path: [Route] = []
     @State private var query = ""
     @State private var showAccount = false
@@ -97,6 +101,7 @@ struct MainView: View {
                     }
                 }
                 Section("On This Mac") {
+                    Label(Page.nowPlaying.title, systemImage: Page.nowPlaying.icon).tag(Page.nowPlaying)
                     Label(Page.downloads.title, systemImage: Page.downloads.icon).tag(Page.downloads)
                 }
             }
@@ -155,20 +160,25 @@ struct MainView: View {
         }
         #endif
         .onChange(of: page) {
+            // Now Playing is a page here: the bar, ⌘L and the sidebar all agree on whether it's open.
+            if model.showNowPlaying != (page == .nowPlaying) { model.showNowPlaying = page == .nowPlaying }
             // After the sidebar's selection callback: changing the stack inside it re-enters
             // the sidebar's table (AppKit warns, and says it will assert).
             guard !path.isEmpty else { return }
             DispatchQueue.main.async { path = [] }
         }
-        .safeAreaInset(edge: .bottom) {
-            if !model.showNowPlaying { NowPlayingBar() }
-        }
-        .overlay {
-            if model.showNowPlaying {
-                NowPlayingView().transition(.move(edge: .bottom))
+        .onChange(of: model.showNowPlaying) {
+            // opened from the bar or ⌘L: the page; closed (⌘L again, Esc): back where it was
+            if model.showNowPlaying, page != .nowPlaying {
+                beforeNowPlaying = page
+                page = .nowPlaying
+            } else if !model.showNowPlaying, page == .nowPlaying {
+                page = beforeNowPlaying ?? .recentlyPlayed
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: model.showNowPlaying)
+        .safeAreaInset(edge: .bottom) {
+            if page != .nowPlaying { NowPlayingBar() }
+        }
         .overlay(alignment: .bottom) {
             if let message = model.message {
                 Text(message)
@@ -200,7 +210,9 @@ struct MainView: View {
         case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
         case .downloads: DownloadsView()
+        case .nowPlaying: NowPlayingView(asPage: true).navigationTitle("Now Playing")
         case .search(let query): SearchView(query: query)
         }
     }
 }
+

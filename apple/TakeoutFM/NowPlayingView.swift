@@ -6,9 +6,11 @@ import Shared
  * artist's background); title, artist and album; the seek bar; previous · −10 s · play/pause ·
  * +30 s · next; repeat, ♥, AirPlay and the queue (a column beside it when the window is wide).
  * Swiping the cover skips. A live stream shows LIVE, the song on air (its ICY title) and
- * play/stop only. Esc closes it (on iPhone it's a card, swiped down to close).
+ * play/stop only. On the iPhone it's a card (swiped down, or the chevron, to close); on the Mac
+ * and iPad a sidebar page ([asPage]), where Esc goes back to the page it was opened from.
  */
 struct NowPlayingView: View {
+    var asPage = false
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: AudioPlayer
     @State private var showQueue = false
@@ -82,6 +84,9 @@ struct NowPlayingView: View {
                 .keyboardShortcut(.cancelAction)
                 .help("Close Now Playing (Esc)")
                 .padding(20)
+                // a page has the sidebar to leave by; Esc still goes back
+                .opacity(asPage ? 0 : 1)
+                .accessibilityHidden(asPage)
             }
         }
     }
@@ -161,10 +166,16 @@ struct NowPlayingView: View {
 
     /// Dragging previews the time; letting go seeks.
     private var seekBar: some View {
+        WithProgress(progress: player.progress) { p in
+            seekBar(p)
+        }
+    }
+
+    private func seekBar(_ p: PlaybackProgress) -> some View {
         VStack(spacing: 4) {
             Slider(
-                value: Binding(get: { scrub ?? player.position }, set: { scrub = $0 }),
-                in: 0...max(player.duration, 1),
+                value: Binding(get: { scrub ?? p.position }, set: { scrub = $0 }),
+                in: 0...max(p.duration, 1),
                 onEditingChanged: { editing in
                     if !editing, let s = scrub {
                         player.seek(to: s)
@@ -172,11 +183,11 @@ struct NowPlayingView: View {
                     }
                 }
             )
-            .disabled(player.duration <= 0)
+            .disabled(p.duration <= 0)
             HStack {
-                Text(time(scrub ?? player.position))
+                Text(time(scrub ?? p.position))
                 Spacer()
-                Text(player.duration > 0 ? time(player.duration) : "")
+                Text(p.duration > 0 ? time(p.duration) : "")
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)

@@ -60,6 +60,14 @@ struct LiveWindowView: View {
             live.close()
             model.liveRequest = nil
         }
+        // the clock ticks only while the controls or the slate show it
+        .onChange(of: showControls || !live.isPlaying || live.showSlate, initial: true) { _, shown in
+            live.showsClock = shown
+        }
+        // after sleep, what's on now (what played on meanwhile is gone by)
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in
+            live.resumeLive()
+        }
     }
 
     /** As the video window's bar: the titles, the program's progress (LIVE at its end), the buttons. */

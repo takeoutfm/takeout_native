@@ -27,7 +27,7 @@ were left, synced); search from the toolbar; album, artist and playlist pages wi
 playing for streams), the menu's Playback commands and the system's Now Playing (media keys,
 Control Center); Movies and TV pages, and a VLCKit video window (audio and subtitle tracks,
 resume, saved progress, next episode). Downloads (albums, playlists, favorites, episodes, movies and TV episodes; they play
-offline) with a Downloads page. A full Now Playing screen (⌘L) with the queue, Play Next / Add to Queue on tracks, repeat, a
+offline) with a Downloads page. A full Now Playing screen (⌘L; a sidebar page under On This Mac, so the bar, ⌘L and Esc open and close it) with the queue, Play Next / Add to Queue on tracks, repeat, a
 menu bar player, and Settings for the theme (System / Light / Dark), the menu bar
 item, Track Activity and ListenBrainz. Plays are reported to the server's activity (Settings →
 Track Activity, on by default as in the other apps), so playing music here changes your real
@@ -152,7 +152,13 @@ files.
   channel with VLC through `StreamProxy` from where it is now, following the shared `tune`
   (`SwiftCalls.guideReload` / `guideEnsure` / `tune`, the same `guide/LiveViews.kt` types
   Linux gets as JSON): the program from its offset, break music fading out under the up-next
-  slate, pause behind live and Jump to Live. It writes no watch progress. The Mac has one
+  slate, pause behind live and Jump to Live. It writes no watch progress. Its clock ticks once
+  a second only while the controls or the slate show it (each program or song waits for its
+  own end; the fade runs only during its last seconds), and after the Mac wakes or the iOS app
+  comes back from the background it tunes to what's on now (unless watching behind live).
+  Music's position lives in `AudioPlayer.progress` (`PlaybackProgress`, read through
+  `WithProgress`), so only the seek bars redraw twice a second, not every view watching the
+  player. The Mac has one
   Live window (`Window` "live", retuned through `AppModel.liveRequest`), iOS a full-screen
   cover. On iOS the video and live players share `PlayerChrome` (Apple's player layout: a
   close button alone at the top, the transport in the middle, the titles, menus and slider or

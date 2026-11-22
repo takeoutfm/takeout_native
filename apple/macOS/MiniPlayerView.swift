@@ -29,11 +29,13 @@ struct MiniPlayerView: View {
                         }
                     }
                 } else {
-                    Slider(
-                        value: Binding(get: { player.position }, set: { player.seek(to: $0) }),
-                        in: 0...max(player.duration, 1)
-                    )
-                    .controlSize(.small)
+                    WithProgress(progress: player.progress) { p in
+                        Slider(
+                            value: Binding(get: { p.position }, set: { player.seek(to: $0) }),
+                            in: 0...max(p.duration, 1)
+                        )
+                        .controlSize(.small)
+                    }
                     HStack(spacing: 28) {
                         Button { player.previous() } label: { Image(systemName: "backward.fill") }
                         Button { player.togglePlay() } label: {

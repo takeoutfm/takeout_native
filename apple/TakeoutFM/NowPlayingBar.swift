@@ -48,12 +48,14 @@ struct NowPlayingBar: View {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").font(.title2)
                     }
                     Button { player.next() } label: { Image(systemName: "forward.fill") }
-                    Slider(
-                        value: Binding(get: { player.position }, set: { player.seek(to: $0) }),
-                        in: 0...max(player.duration, 1)
-                    )
-                    Text(format(player.position) + " / " + format(player.duration))
-                        .monospacedDigit().foregroundStyle(.secondary)
+                    WithProgress(progress: player.progress) { p in
+                        Slider(
+                            value: Binding(get: { p.position }, set: { player.seek(to: $0) }),
+                            in: 0...max(p.duration, 1)
+                        )
+                        Text(format(p.position) + " / " + format(p.duration))
+                            .monospacedDigit().foregroundStyle(.secondary)
+                    }
                 }
                 RoutePicker()
                 Button { showQueue.toggle() } label: { Image(systemName: "list.bullet") }

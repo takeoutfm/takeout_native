@@ -81,7 +81,18 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
     /** Bumped by each tune, so a late answer for an old one is dropped. */
     private var generation = 0
     private var retune: Task<Void, Never>?
+    /** The clock for what's drawn (once a second), only while it's shown (`showsClock`). */
     private var clock: Timer?
+    /** Break music fading out: runs only from the fade's start to the music's end. */
+    private var fade: Task<Void, Never>?
+
+    /**
+     * Whether something shows the time (the controls, or the slate's countdown): the clock
+     * ticks only then. Programmes and songs don't need it: each waits for its own end.
+     */
+    var showsClock = false {
+        didSet { if showsClock != oldValue { updateClock() } }
+    }
     private var started = false
     /** The stream registered with the proxy, while one is. */
     private var proxied: String?
@@ -113,11 +124,15 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
     /** Plays [name] from what's on now. */
     func play(_ name: String) {
         channel = name
-        if clock == nil {
-            clock = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.tick() }
-            }
-        }
+        tune()
+    }
+
+    /**
+     * Back after the Mac slept or the app was in the background: what played on meanwhile is
+     * gone by, so tune to what's on now (unless watching behind live, which stays put).
+     */
+    func resumeLive() {
+        guard tuned != nil, !(behind && playingProgram) else { return }
         tune()
     }
 
@@ -144,6 +159,8 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
             tuned = answer
             fileEnded = false
             now = serverNowMs(skewMs: answer.skewMs)
+            updateClock()
+            scheduleFade(answer)
             switch answer.kind {
             case "program", "music":
                 guard let p = answer.kind == "program" ? answer.program : answer.track else { return }
@@ -190,6 +207,7 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
     func close() {
         generation += 1
         retune?.cancel()
+        fade?.cancel()
         clock?.invalidate()
         clock = nil
         stop()
@@ -255,13 +273,42 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
         subtitleTracks = []
     }
 
-    /** The clock, and break music fading out. */
+    /** Starts or stops the once-a-second clock as something shows it. */
+    private func updateClock() {
+        if showsClock, tuned != nil {
+            guard clock == nil else { return }
+            tick()
+            clock = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.tick() }
+            }
+        } else {
+            clock?.invalidate()
+            clock = nil
+        }
+    }
+
     private func tick() {
         guard let tuned else { return }
         now = serverNowMs(skewMs: tuned.skewMs)
-        if tuned.kind == "music", tuned.fadeFromMs > 0, now >= tuned.fadeFromMs {
-            let left = Double(tuned.untilMs - now) / Double(max(tuned.untilMs - tuned.fadeFromMs, 1))
-            player.audio?.volume = Int32(max(0, min(1, left)) * 100)
+    }
+
+    /**
+     * Break music cut off by the next program fades out over its last seconds: waits for the
+     * fade's start, then lowers the volume every 100 ms until the music's end.
+     */
+    private func scheduleFade(_ tune: LiveTune) {
+        fade?.cancel()
+        guard tune.kind == "music", tune.fadeFromMs > 0 else { return }
+        fade = Task {
+            let wait = tune.fadeFromMs - serverNowMs(skewMs: tune.skewMs)
+            if wait > 0 { try? await Task.sleep(for: .milliseconds(wait)) }
+            while !Task.isCancelled {
+                let n = serverNowMs(skewMs: tune.skewMs)
+                let left = Double(tune.untilMs - n) / Double(max(tune.untilMs - tune.fadeFromMs, 1))
+                player.audio?.volume = Int32(max(0, min(1, left)) * 100)
+                if n >= tune.untilMs { break }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
         }
     }
 

@@ -27,7 +27,8 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 - **LIVE-7** Break music plays even when the video is hidden: a song's cover art must not hold
   up its audio.
 - **LIVE-8** Pause puts the viewer **behind live**: the program plays on from there until it
-  ends; Jump to Live tunes again.
+  ends; Jump to Live tunes again. Back from sleep or the background, a viewer at live is
+  tuned to what's on now (what played on meanwhile is gone by); one behind live stays put.
 - **LIVE-9** Channels change from the guide while playing; the channel, program and what's
   next show over the picture.
 - **LIVE-10** Audio and subtitles follow the viewer's choices ([video-tracks.md](video-tracks.md)).
@@ -47,6 +48,7 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 | LIVE-6 never early | ✅ waits until the end | ✅ | ✅ | ✅ |
 | LIVE-7 music under a hidden video | ✅ Media3 plays audio without a surface | ✅ | ✅ VLC the same | ✅ |
 | LIVE-8 behind live, Jump to Live | ✅ | ✅ | ✅ | ✅ |
+| LIVE-8 retunes after sleep or the background | ⚠️ not checked | ⚠️ not checked | ⚠️ on wake (Mac), back from the background (iOS); not yet seen on a real wake | ⚠️ not checked |
 | LIVE-10 track choices | ✅ | ✅ | 🔨 subtitles | ✅ |
 | LIVE-12 never freezes | ✅ | ✅ | ⚠️ VLCKit's stop is synchronous; no hang seen | ✅ |
 | LIVE-13 picture-in-picture | ✅ | — | ❌ | — |

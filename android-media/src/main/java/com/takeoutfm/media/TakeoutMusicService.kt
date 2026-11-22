@@ -141,7 +141,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        session = MediaLibrarySession.Builder(this, player, LibraryCallback())
+        // The system controls show a stream's song, not just the station (StreamTitlePlayer).
+        session = MediaLibrarySession.Builder(this, StreamTitlePlayer(player), LibraryCallback())
             .setId("music")
             .setSessionActivity(openApp)
             .build()
@@ -211,7 +212,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                     .setMediaMetadata(
                         item.mediaMetadata.buildUpon()
                             .setExtras(extras)
-                            // Shown by the system's now-playing controls.
+                            // Changes the combined metadata, so the session hears of
+                            // it and StreamTitlePlayer shows the song.
                             .setSubtitle(title)
                             .build()
                     )

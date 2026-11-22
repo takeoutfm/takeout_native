@@ -7,7 +7,9 @@ Stations and live streams. Design: [../design/radio.md](../design/radio.md).
   other (**PLAY-1**).
 - **RADIO-3** A live stream has no length: no seeking, no skipping; the player shows it's
   live, and play/pause only.
-- **RADIO-4** A stream's song (its ICY title, "Artist - Title") shows as title and artist.
+- **RADIO-4** A stream's song (its ICY title, "Artist - Title") shows as title and artist,
+  in the player and in the system's controls (notification, lock screen, Android Auto), with
+  the station beside it.
 - **RADIO-5** Songs heard on streams are kept on the device (**Stream History**) and listed
   with Recently Played; they count as listens for ListenBrainz (**LISTEN-2**).
 - **RADIO-6** Live streams are never downloaded or cached (**DL-2**).

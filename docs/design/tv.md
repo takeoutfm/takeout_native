@@ -114,6 +114,10 @@ a tab still opens its page, but the pill no longer waits for that navigation (it
 left the newly focused tab dim gray until the page was built, then slid over).
 
 ### Home
+The featured carousel's title is one full-width line; the description is up to two lines, as
+wide as it can be while stopping 32 dp short of the indicator dots at the bottom right (measured,
+so it follows the number of dots).
+
 Featured carousel = new releases (8) · **Continue Watching** · Recently Added row ·
 **first recommendation set** (titled with its name, e.g. "Halloween Movies", every movie A–Z on
 wide backdrop cards; hidden when there are no recommendations) · New Releases row. New Releases

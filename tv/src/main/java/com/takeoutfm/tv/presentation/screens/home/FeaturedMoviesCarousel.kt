@@ -35,12 +35,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -55,6 +57,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Carousel
@@ -91,6 +95,8 @@ fun FeaturedMoviesCarousel(
 ) {
     val carouselState = rememberSaveable(saver = CarouselSaver) { CarouselState(0) }
     var isCarouselFocused by remember { mutableStateOf(false) }
+    // The indicator's width with its margins, so the description can stop just short of it.
+    var indicatorWidthPx by remember { mutableIntStateOf(0) }
     val alpha = if (isCarouselFocused) {
         1f
     } else {
@@ -123,7 +129,8 @@ fun FeaturedMoviesCarousel(
         carouselIndicator = {
             CarouselIndicator(
                 itemCount = movies.size,
-                activeItemIndex = carouselState.activeItemIndex
+                activeItemIndex = carouselState.activeItemIndex,
+                modifier = Modifier.onSizeChanged { indicatorWidthPx = it.width }
             )
         },
         contentTransformStartToEnd = fadeIn(tween(durationMillis = 1000))
@@ -138,6 +145,7 @@ fun FeaturedMoviesCarousel(
             CarouselItemForeground(
                 movie = movie,
                 isCarouselFocused = isCarouselFocused,
+                indicatorWidthPx = indicatorWidthPx,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -175,8 +183,13 @@ private fun BoxScope.CarouselIndicator(
 private fun CarouselItemForeground(
     movie: Movie,
     modifier: Modifier = Modifier,
-    isCarouselFocused: Boolean = false
+    isCarouselFocused: Boolean = false,
+    indicatorWidthPx: Int = 0,
 ) {
+    // The indicator's width includes its 32 dp margin on each side; the column already has 32 dp
+    // at the end, so this leaves a 32 dp gap between the description and the dots.
+    val descriptionEnd = with(LocalDensity.current) { indicatorWidthPx.toDp() - 32.dp }
+        .coerceAtLeast(0.dp)
     Box(
         modifier = modifier,
         contentAlignment = Alignment.BottomStart
@@ -210,8 +223,10 @@ private fun CarouselItemForeground(
                         blurRadius = 2f
                     )
                 ),
-                maxLines = 1,
-                modifier = Modifier.padding(top = 8.dp)
+                // Up to two lines, stopping short of the indicator dots at the bottom right.
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 8.dp, end = descriptionEnd)
             )
             AnimatedVisibility(
                 visible = isCarouselFocused,

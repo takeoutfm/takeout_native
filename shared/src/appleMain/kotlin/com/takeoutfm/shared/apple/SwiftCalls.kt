@@ -25,6 +25,8 @@ import com.takeoutfm.shared.music.MusicSearchResults
 import com.takeoutfm.shared.music.PlayedQueue
 import com.takeoutfm.shared.music.StationGroup
 import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.model.ApiOffset
+import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.PodcastDetails
 import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.PodcastSeries
@@ -47,6 +49,16 @@ import kotlinx.datetime.Instant
 class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun refreshLibrary() = core.library.refresh(maxAgeMs = 60_000)
+
+    /**
+     * Pull to refresh / Reload (LIB-15): kept responses are asked for again and the library
+     * index is fetched afresh, as the phone's Reload does.
+     */
+    @Throws(Throwable::class)
+    suspend fun reload() {
+        core.api.forgetKept()
+        core.library.refresh()
+    }
 
     @Throws(Throwable::class)
     suspend fun recentlyAdded(): List<Album> = core.music.recentlyAdded().first()
@@ -100,6 +112,13 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun playlistQueue(playlistId: String): MusicQueue = core.music.playlistQueue(playlistId)
 
+    /** A new, empty playlist named [name] (trimmed). */
+    @Throws(Throwable::class)
+    suspend fun createPlaylist(name: String): MusicPlaylist = core.music.createPlaylist(name)
+
+    @Throws(Throwable::class)
+    suspend fun deletePlaylist(playlistId: String) = core.music.deletePlaylist(playlistId)
+
     @Throws(Throwable::class)
     suspend fun favorites(): MusicFavorites = core.music.favorites()
 
@@ -131,6 +150,9 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun episodesQueue(title: String, imageUri: String, episodes: List<PodcastEpisode>, startIndex: Int): MusicQueue =
         core.podcasts.episodesQueue(title, imageUri, episodes, startIndex)
+
+    /** Where an episode stands, from its offset in `TakeoutProgress.offsets` (none: not started). */
+    fun episodeProgress(offset: ApiOffset?): EpisodeProgress = TakeoutPodcastRepository.episodeProgress(offset)
 
     /** Marks the episode with GUID [eid] played (Complete) or not played. */
     @Throws(Throwable::class)

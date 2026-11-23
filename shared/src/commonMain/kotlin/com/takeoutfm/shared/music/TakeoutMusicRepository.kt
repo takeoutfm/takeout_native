@@ -8,6 +8,7 @@ import com.takeoutfm.shared.model.ApiPlaylist
 import com.takeoutfm.shared.model.ApiRelease
 import com.takeoutfm.shared.model.ApiStation
 import com.takeoutfm.shared.model.ApiTrack
+import com.takeoutfm.shared.util.EditedState
 import com.takeoutfm.shared.util.listFlow
 import com.takeoutfm.shared.util.sortedByTitle
 import kotlinx.coroutines.async
@@ -177,10 +178,26 @@ class TakeoutMusicRepository(
         }
     }
 
-    suspend fun playlists(): List<MusicPlaylist> =
-        api.playlists().playlists.orEmpty()
-            .sortedByTitle { it.name }
-            .map { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
+    private val playlistsState = EditedState<List<MusicPlaylist>?>(null)
+
+    /**
+     * The user's playlists A–Z as last loaded ([playlists]), kept up to date by every edit made
+     * through this repository: pages that show them observe this rather than reloading after an
+     * edit, wherever it was made. Null until first loaded.
+     */
+    val currentPlaylists: StateFlow<List<MusicPlaylist>?> = playlistsState.flow
+
+    /** Loads the user's playlists A–Z, and makes them [currentPlaylists] (unless an edit overlapped). */
+    suspend fun playlists(): List<MusicPlaylist> = playlistsState.load(
+        fetch = {
+            api.playlists().playlists.orEmpty()
+                .map { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
+                .sortedPlaylists()
+        },
+        toState = { it },
+    )
+
+    private fun List<MusicPlaylist>.sortedPlaylists() = sortedByTitle { it.name }
 
     // ---- Activity ----
 
@@ -234,19 +251,40 @@ class TakeoutMusicRepository(
 
     // ---- Playlist editing ----
 
-    suspend fun createPlaylist(name: String): MusicPlaylist =
-        api.createPlaylist(name.trim()).let { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
+    // Each edit updates [currentPlaylists] once the server has made it.
 
-    suspend fun addTrackToPlaylist(playlistId: String, trackId: String) =
+    suspend fun createPlaylist(name: String): MusicPlaylist = playlistsState.edit {
+        val created = api.createPlaylist(name.trim()).let { MusicPlaylist("$PlaylistPrefix${it.id}", it.name, it.trackCount) }
+        playlistsState.update { list -> list?.let { (it + created).sortedPlaylists() } }
+        created
+    }
+
+    suspend fun addTrackToPlaylist(playlistId: String, trackId: String) = playlistsState.edit {
         api.addToPlaylist(numericId(playlistId, PlaylistPrefix), "/music/tracks/${numericId(trackId, TrackPrefix)}")
+        changeTrackCount(playlistId) { it + 1 }
+    }
 
-    suspend fun addAlbumToPlaylist(playlistId: String, albumId: String) =
+    /** The album's tracks: how many only the server knows, so the playlists load again. */
+    suspend fun addAlbumToPlaylist(playlistId: String, albumId: String) = playlistsState.edit {
         api.addToPlaylist(numericId(playlistId, PlaylistPrefix), "/music/releases/${numericId(albumId, AlbumPrefix)}/tracks")
+        if (playlistsState.value != null) runCatching { playlists() }
+        Unit
+    }
 
-    suspend fun removeFromPlaylist(playlistId: String, index: Int) =
+    suspend fun removeFromPlaylist(playlistId: String, index: Int) = playlistsState.edit {
         api.removeFromPlaylist(numericId(playlistId, PlaylistPrefix), index)
+        changeTrackCount(playlistId) { maxOf(0, it - 1) }
+    }
 
-    suspend fun deletePlaylist(playlistId: String) = api.deletePlaylist(numericId(playlistId, PlaylistPrefix))
+    suspend fun deletePlaylist(playlistId: String) = playlistsState.edit {
+        api.deletePlaylist(numericId(playlistId, PlaylistPrefix))
+        playlistsState.update { list -> list?.filter { it.id != playlistId } }
+    }
+
+    private fun changeTrackCount(playlistId: String, change: (Int) -> Int) =
+        playlistsState.update { list ->
+            list?.map { if (it.id == playlistId) it.copy(trackCount = change(it.trackCount)) else it }
+        }
 
     /** What a server search ref (see [TakeoutApi.resolveRef]) plays, titled [title]. */
     suspend fun refQueue(ref: String, title: String): MusicQueue =

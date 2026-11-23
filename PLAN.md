@@ -45,8 +45,8 @@ would notice. Fixing one updates its status table in the same commit.
 | Playback speed | Mac/iOS | VIDEO-8 |
 | Leave the player when a film ends | Mac/iOS | VIDEO-6 |
 | Back 10 s / ahead 30 s in Now Playing | Linux (watch: only previous, play, next) | PLAY-9 |
-| Playlists: create, add | TV, watch, Mac/iOS, tofm | LIB-13 |
-| Playlists: remove a track, delete | all but the phone | LIB-13 |
+| Playlists: create, add | TV, watch, tofm; Mac/iOS can't add | LIB-13 |
+| Playlists: remove a track, delete | all but the phone; Mac/iOS can delete | LIB-13 |
 | Search | watch; the TV searches video only | LIB-12 |
 | Favorite an artist; the favorite artists list | most apps | LIB-6, LIB-8 |
 | Activity (play stats) | all but the phone | LIB-14 |
@@ -60,6 +60,22 @@ would notice. Fixing one updates its status table in the same commit.
 | Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
 | Picture-in-picture for live TV | Mac/iOS | LIVE-13 |
+
+In the code (decision 017: pages observe the shared state, no reload counters or "changed"
+signals; done on Mac/iOS, these need the Linux machine):
+
+- **Phone playlists**: `MainViewModel._playlistsChanged`, read by `remember(changed)` in
+  `SearchScreens.kt`. Collect `music.currentPlaylists`; the edits already update it.
+- **Phone and TV podcast pages**: each loads its own subscriptions and episode progress.
+  Collect `podcasts.subscribedSeries` and `progress.offsets` (`episodeProgress(offset)` gives
+  "N min left" / Played).
+- **TV Continue Watching**: `HomeScreenViewModel.refreshes` reloads it when Home is shown again
+  after watching. Recompute it from `progress.offsets`.
+- **Linux podcast pages**: `PodcastPage.qml` and `PodcastEpisodePage.qml` reload the whole page
+  whenever playback pauses (`onPlayingChanged`). Watch `offsets` and `subscribedSeries` through
+  `takeout_watch` instead, as Mac/iOS do.
+- **Linux Favorites** (minor): `FavoritesPage.qml` reloads the page on
+  `favoriteTrackEtags`; fine while that flow holds only ETags.
 
 Waiting on the server: custom radio stations (RADIO-7; no `POST /api/radio`, no delete). Not
 done anywhere: the artist page's Want List and Tracks Like This.

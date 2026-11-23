@@ -75,6 +75,7 @@ gaps, collected in `PLAN.md`. The old feature checklists and phase log: `git sho
 | [014](decisions/014-iphone-design.md) | iPhone: iPhone conventions on Android's structure |
 | [015](decisions/015-apple-stream-proxy.md) | Apple video streams through a local proxy |
 | [016](decisions/016-scope.md) | What the native apps include |
+| [017](decisions/017-shared-state-flows.md) | Shared server state is a StateFlow in the core, kept current by its edits |
 
 ## Conventions
 

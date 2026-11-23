@@ -8,9 +8,14 @@ import com.takeoutfm.shared.model.ApiPodcastSeries
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.util.EditedState
 import com.takeoutfm.shared.util.sortedByTitle
 import com.takeoutfm.shared.video.ProgressSource
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -68,21 +73,45 @@ class TakeoutPodcastRepository(
     private val urls: TakeoutUrls,
     private val progress: ProgressSource,
 ) {
+    private val subscribed = EditedState<List<PodcastSeries>?>(null)
+
+    /**
+     * The subscribed podcasts A–Z as last loaded ([series], [details]), kept current by
+     * [setSubscribed]: pages observe this rather than reloading after a change (decision 017).
+     * Null until first loaded.
+     */
+    val subscribedSeries: StateFlow<List<PodcastSeries>?> = subscribed.flow
+
+    /** Every podcast loaded so far, by id: what [setSubscribed] adds to [subscribedSeries]. */
+    private val seen = MutableStateFlow<Map<String, PodcastSeries>>(emptyMap())
+
     /** Every podcast on the server (A–Z), or only the subscribed ones. */
     suspend fun series(subscribedOnly: Boolean): List<PodcastSeries> {
-        val view = if (subscribedOnly) api.subscribedPodcasts() else api.podcasts()
-        return view.series.orEmpty().sortedByTitle { it.title }.map { it.toSeries() }
+        if (!subscribedOnly) {
+            return api.podcasts().series.orEmpty().map { it.toSeries() }.sortedSeries().also { remember(it) }
+        }
+        // the subscriptions as the server has them, unless a change overlapped this load
+        return subscribed.load(
+            fetch = { api.subscribedPodcasts().series.orEmpty().map { it.toSeries() }.sortedSeries().also { remember(it) } },
+            toState = { it },
+        )
     }
+
+    private fun List<PodcastSeries>.sortedSeries() = sortedByTitle { it.title }
+
+    private fun remember(series: List<PodcastSeries>) = seen.update { it + series.associateBy { s -> s.id } }
 
     suspend fun details(seriesId: String): PodcastDetails {
         val id = numericId(seriesId, SeriesPrefix)
         val view = api.podcastSeries(id)
-        val subscribed = orNull { api.subscribedPodcasts().series.orEmpty().any { it.id == id } } ?: false
+        val subscribedList = orNull { series(subscribedOnly = true) }
         val offsets = orNull { progress.latest() }.orEmpty()
         val title = view.series.title
+        val series = view.series.toSeries()
+        remember(listOf(series))
         return PodcastDetails(
-            series = view.series.toSeries(),
-            subscribed = subscribed,
+            series = series,
+            subscribed = subscribedList?.any { it.id == seriesId } ?: false,
             episodes = view.episodes.orEmpty().map { it.toEpisode(title, offsets[it.eid]) },
         )
     }
@@ -90,8 +119,28 @@ class TakeoutPodcastRepository(
     /** The saved position of the episode with GUID [eid], or null. */
     suspend fun offset(eid: String): ApiOffset? = orNull { progress.latest()[eid] }
 
-    suspend fun setSubscribed(seriesId: String, subscribed: Boolean) =
-        api.setSubscribed(numericId(seriesId, SeriesPrefix), subscribed)
+    /** Updates [subscribedSeries] right away; reverted if the server refuses. */
+    suspend fun setSubscribed(seriesId: String, subscribe: Boolean) = subscribed.edit {
+        val before = subscribed.value
+        val series = seen.value[seriesId]
+        subscribed.update { list ->
+            when {
+                list == null -> null
+                !subscribe -> list.filter { it.id != seriesId }
+                series == null || list.any { it.id == seriesId } -> list
+                else -> (list + series).sortedSeries()
+            }
+        }
+        try {
+            api.setSubscribed(numericId(seriesId, SeriesPrefix), subscribe)
+        } catch (e: Exception) {
+            subscribed.set(before)
+            throw e
+        }
+        // a podcast never loaded here: only the server has it
+        if (subscribe && series == null && before != null) orNull { series(subscribedOnly = true) }
+        Unit
+    }
 
     /**
      * [episodes] from [startIndex] as a queue (newest first, as listed), starting where the

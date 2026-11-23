@@ -60,7 +60,7 @@ struct PhoneTabs: View {
 private struct HomeTab: View {
     @EnvironmentObject private var model: AppModel
     @State private var showSettings = false
-    @State private var version = 0
+    @State private var rows: Rows?
 
     private struct Rows {
         var recentlyAdded: [Album] = []
@@ -70,22 +70,12 @@ private struct HomeTab: View {
     }
 
     var body: some View {
-        // Again when the library index arrives (at launch it can come just after): it says
-        // whether there's video for the Continue Watching and New Films rows.
-        Loaded(id: "\(version)/\(model.hasMovies || model.hasShows)", keepContent: true, load: load) { rows in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 28) {
-                    AlbumRow(title: "Recently Added", albums: rows.recentlyAdded)
-                    AlbumRow(title: "New Releases", albums: rows.newReleases)
-                    VideoRow(title: "Continue Watching", cards: rows.continueWatching, wide: true)
-                    VideoRow(title: "New Films", cards: rows.newVideo)
-                    library
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-            }
-            .refreshable { version += 1 }
+        Group {
+            if let rows { page(rows) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
+        // Each time Home is shown, and again when the library index arrives (at launch it can
+        // come just after): it says whether there's video for Continue Watching and New Films.
+        .task(id: model.hasMovies || model.hasShows) { rows = await load() }
         .navigationTitle("Home")
         .toolbar {
             Button { showSettings = true } label: { Image(systemName: "gearshape") }
@@ -100,8 +90,27 @@ private struct HomeTab: View {
         }
     }
 
+    private func page(_ rows: Rows) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 28) {
+                AlbumRow(title: "Recently Added", albums: rows.recentlyAdded)
+                AlbumRow(title: "New Releases", albums: rows.newReleases)
+                VideoRow(title: "Continue Watching", cards: rows.continueWatching, wide: true)
+                VideoRow(title: "New Films", cards: rows.newVideo)
+                library
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+        // The spinner stays until the rows are back (LIB-15: nothing kept is reused).
+        .refreshable {
+            try? await model.calls.reload()
+            self.rows = await load()
+        }
+    }
+
     /// Each row is extra: one failing (say, no video on the server) leaves the others.
-    private func load() async throws -> Rows {
+    private func load() async -> Rows {
         let calls = model.calls
         let video = model.hasMovies || model.hasShows
         async let added = (try? await calls.recentlyAdded()) ?? []

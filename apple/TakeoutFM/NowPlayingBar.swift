@@ -55,6 +55,7 @@ struct NowPlayingBar: View {
                         )
                         Text(format(p.position) + " / " + format(p.duration))
                             .monospacedDigit().foregroundStyle(.secondary)
+                            .lineLimit(1).fixedSize()
                     }
                 }
                 RoutePicker()

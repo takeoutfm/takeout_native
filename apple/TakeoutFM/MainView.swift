@@ -135,9 +135,16 @@ struct MainView: View {
                 }
             }
         } detail: {
+            // The bar is each page's own inset, inside the stack: one around the split view or
+            // the stack doesn't reach the pages' scroll views, and it covered their last rows.
             NavigationStack(path: $path) {
                 pageView(page ?? .recentlyPlayed)
-                    .navigationDestination(for: Route.self) { RouteView(route: $0) }
+                    .safeAreaInset(edge: .bottom) {
+                        if page != .nowPlaying { NowPlayingBar() }
+                    }
+                    .navigationDestination(for: Route.self) {
+                        RouteView(route: $0).safeAreaInset(edge: .bottom) { NowPlayingBar() }
+                    }
             }
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Artists, albums, tracks")
@@ -175,9 +182,6 @@ struct MainView: View {
             } else if !model.showNowPlaying, page == .nowPlaying {
                 page = beforeNowPlaying ?? .recentlyPlayed
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if page != .nowPlaying { NowPlayingBar() }
         }
         .overlay(alignment: .bottom) {
             if let message = model.message {

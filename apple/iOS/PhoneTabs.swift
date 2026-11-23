@@ -41,11 +41,15 @@ struct PhoneTabs: View {
     }
 
     private func tab<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        // The mini player is each page's own inset, inside the stack: one around the stack
+        // doesn't reach the pages' scroll views, and it covered their last rows.
         NavigationStack {
             content()
-                .navigationDestination(for: Route.self) { RouteView(route: $0) }
+                .safeAreaInset(edge: .bottom) { MiniPlayer() }
+                .navigationDestination(for: Route.self) {
+                    RouteView(route: $0).safeAreaInset(edge: .bottom) { MiniPlayer() }
+                }
         }
-        .safeAreaInset(edge: .bottom) { MiniPlayer() }
     }
 }
 

@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +62,7 @@ import com.takeoutfm.tv.presentation.common.TileRow
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
 import com.takeoutfm.tv.presentation.screens.music.common.MusicButton
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
+import com.takeoutfm.tv.presentation.screens.music.common.TrackMenuDialog
 import com.takeoutfm.tv.presentation.screens.music.player.QueueRef
 import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 import com.takeoutfm.tv.presentation.utils.FocusMemory
@@ -124,6 +126,8 @@ private fun ArtistContent(
     onPlay: (QueueRef) -> Unit,
 ) {
     val artistId = details.artist.id
+    var menuTrack by remember { mutableStateOf<Track?>(null) }
+    menuTrack?.let { TrackMenuDialog(it, onDismissRequest = { menuTrack = null }) }
     LazyColumn(
         contentPadding = PaddingValues(bottom = 108.dp),
         modifier = Modifier.fillMaxSize(),
@@ -145,6 +149,7 @@ private fun ArtistContent(
                     focusMemory.lastKey.value = null
                     onPlay(QueueRef.Artist(artistId, ArtistMix.Popular, index))
                 },
+                onTrackLongPressed = { menuTrack = it },
             )
         }
         albumRow(R.string.music_albums, details.albums, focusMemory, onAlbumClick)
@@ -206,13 +211,17 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumRow(
     }
 }
 
-/** Tracks as cover cards (the track title under the focused one); selecting plays from it. */
+/**
+ * Tracks as cover cards (the track title under the focused one); selecting plays from it, a
+ * long press opens its menu.
+ */
 @Composable
 fun TrackRow(
     title: String,
     tracks: List<Track>,
     focusMemory: FocusMemory?,
     onTrackClick: (index: Int) -> Unit,
+    onTrackLongPressed: (Track) -> Unit,
 ) {
     TileRow(
         items = tracks,
@@ -231,6 +240,7 @@ fun TrackRow(
         title = title,
         titleStyle = MaterialTheme.typography.titleMedium,
         onItemSelected = { track -> onTrackClick(tracks.indexOf(track)) },
+        onItemLongPressed = onTrackLongPressed,
         focusMemory = focusMemory,
     )
 }

@@ -74,15 +74,17 @@ fun MusicMessage(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** A track as a list line: small cover, title, and artist · album. */
+/** A track as a list line: small cover, title, and artist · album; a long press for its menu. */
 @Composable
 fun MusicTrackRow(
     track: Track,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         shape = ClickableSurfaceDefaults.shape(JetStreamButtonShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         colors = ClickableSurfaceDefaults.colors(

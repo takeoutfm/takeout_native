@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +60,7 @@ import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
 import com.takeoutfm.tv.presentation.screens.music.common.MusicButton
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
+import com.takeoutfm.tv.presentation.screens.music.common.TrackMenuDialog
 import com.takeoutfm.tv.presentation.screens.music.home.AlbumRow
 import com.takeoutfm.tv.presentation.screens.music.player.QueueRef
 import com.takeoutfm.tv.presentation.theme.JetStreamButtonShape
@@ -121,6 +123,8 @@ private fun AlbumContent(
 ) {
     val albumId = details.album.id
     val childPadding = rememberChildPadding()
+    var menuTrack by remember { mutableStateOf<Track?>(null) }
+    menuTrack?.let { TrackMenuDialog(it, onDismissRequest = { menuTrack = null }) }
     LazyColumn(
         contentPadding = PaddingValues(bottom = 108.dp),
         modifier = Modifier.fillMaxSize(),
@@ -150,6 +154,7 @@ private fun AlbumContent(
                     track = track,
                     showArtist = track.artist != details.album.artist,
                     onClick = { onPlay(QueueRef.Album(albumId, index)) },
+                    onLongClick = { menuTrack = track },
                     modifier = Modifier
                         .rememberFocus(focusMemory, track.id)
                         .returnFocusTarget(),
@@ -174,10 +179,12 @@ private fun TrackListItem(
     track: Track,
     showArtist: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         shape = ClickableSurfaceDefaults.shape(JetStreamButtonShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         colors = ClickableSurfaceDefaults.colors(

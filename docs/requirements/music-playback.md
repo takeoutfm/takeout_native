@@ -41,7 +41,7 @@ Radio streams and podcasts: [radio.md](radio.md), [podcasts.md](podcasts.md).
 |---|---|---|---|---|---|---|
 | PLAY-1/2 queues, shuffle | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | PLAY-3 downloads first | ✅ | — streams only | ✅ | ✅ | ✅ | ✅ |
-| PLAY-4 play next, add to queue | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| PLAY-4 play next, add to queue | ✅ | ✅ long press on a track | ❌ | ✅ | ✅ | ✅ |
 | PLAY-5 repeat | ✅ | ✅ | ⚠️ the saved setting applies; no control on the watch | ✅ | ✅ | ✅ |
 | PLAY-7/8 Recently Played | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | PLAY-6 music pauses for video | ✅ audio focus | ✅ audio focus | — | ✅ | ✅ | ✅ |

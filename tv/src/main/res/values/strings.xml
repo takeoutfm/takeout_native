@@ -155,6 +155,11 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="podcast_played">Played</string>
     <string name="podcast_minutes_left">%1$d min left</string>
     <string name="music_up_next">Up next: %1$s · %2$s</string>
+    <string name="music_play_next">Play Next</string>
+    <string name="music_add_to_queue">Add to Queue</string>
+    <string name="music_playing_next">Playing next</string>
+    <string name="music_added_to_queue">Added to the queue</string>
+    <string name="music_cant_queue">Couldn\'t add that track</string>
     <string name="music_cant_play">Can\'t play this track (%1$s)</string>
     <plurals name="music_track_count">
         <item quantity="one">%1$d track</item>

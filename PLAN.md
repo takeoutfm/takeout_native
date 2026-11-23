@@ -40,7 +40,7 @@ would notice. Fixing one updates its status table in the same commit.
 |---|---|---|
 | Say why a track can't play | Mac/iOS, Linux, tofm, watch | PLAY-12 |
 | Ask before signing out | phone, TV, watch, Mac/iOS | SIGN-10 |
-| Play next / add to queue | TV, watch | PLAY-4 |
+| Play next / add to queue | watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Playback speed | Mac/iOS | VIDEO-8 |
 | Leave the player when a film ends | Mac/iOS | VIDEO-6 |

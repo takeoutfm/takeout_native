@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,7 @@ import com.takeoutfm.tv.R
 import com.takeoutfm.shared.music.Artist
 import com.takeoutfm.shared.music.MusicFavorites
 import com.takeoutfm.shared.music.TakeoutMusicRepository
+import com.takeoutfm.shared.music.Track
 import com.takeoutfm.tv.presentation.common.Error
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton
@@ -33,6 +36,7 @@ import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
 import com.takeoutfm.tv.presentation.screens.music.common.MusicMessage
 import com.takeoutfm.tv.presentation.screens.music.common.MusicTabColumn
 import com.takeoutfm.tv.presentation.screens.music.common.MusicTrackRow
+import com.takeoutfm.tv.presentation.screens.music.common.TrackMenuDialog
 import com.takeoutfm.tv.presentation.screens.music.player.QueueRef
 import com.takeoutfm.tv.presentation.utils.RestoreRememberedFocus
 import com.takeoutfm.tv.presentation.utils.rememberFocus
@@ -85,6 +89,8 @@ private fun FavoritesContent(
     val childPadding = rememberChildPadding()
     val focusMemory = rememberFocusMemory(viewModel.focusedKey)
     RestoreRememberedFocus(focusMemory)
+    var menuTrack by remember { mutableStateOf<Track?>(null) }
+    menuTrack?.let { TrackMenuDialog(it, onDismissRequest = { menuTrack = null }) }
     MusicTabColumn(onScroll = onScroll, isTopBarVisible = isTopBarVisible) {
         if (favorites.tracks.isNotEmpty()) item(key = "play-all") {
             MusicButton(
@@ -134,6 +140,7 @@ private fun FavoritesContent(
                 MusicTrackRow(
                     track = track,
                     onClick = { onPlay(QueueRef.Favorites(index)) },
+                    onLongClick = { menuTrack = track },
                     modifier = Modifier
                         .padding(horizontal = childPadding.start)
                         .rememberFocus(focusMemory, "fav-${track.id}"),

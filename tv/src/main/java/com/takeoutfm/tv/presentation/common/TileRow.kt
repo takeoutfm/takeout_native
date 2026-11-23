@@ -64,6 +64,8 @@ fun <T> TileRow(
     showItemTitle: Boolean = true,
     onItemSelected: (T) -> Unit = {},
     onItemFocused: (T) -> Unit = {},
+    /** A long press on a card (e.g. a track's menu); none when null. */
+    onItemLongPressed: ((T) -> Unit)? = null,
     /** Remembers the focused card across leaving the screen (see [rememberFocus]). */
     focusMemory: FocusMemory? = null,
 ) {
@@ -122,6 +124,7 @@ fun <T> TileRow(
                             onItemSelected(it)
                         },
                         onItemFocused = onItemFocused,
+                        onItemLongPressed = onItemLongPressed,
                     )
                 }
             }
@@ -140,12 +143,14 @@ private fun <T> TileRowItem(
     showItemTitle: Boolean,
     onItemSelected: (T) -> Unit,
     onItemFocused: (T) -> Unit,
+    onItemLongPressed: ((T) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
     MovieCard(
         onClick = { onItemSelected(item) },
+        onLongClick = onItemLongPressed?.let { { it(item) } },
         title = {
             if (showItemTitle) {
                 TileTitle(text = itemTitle(item), isFocused = isFocused)

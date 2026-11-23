@@ -379,6 +379,12 @@ the rest of this section is the plan for what's next.
   text list (number, title, artist; a small cover per row only when the queue mixes albums),
   opened on the playing track (marked with an equalizer icon). Selecting a track plays it and
   closes the panel; Back closes it; focus returns to the Queue button.
+- **Play Next / Add to Queue** (PLAY-4): a long press (hold Select) on a track (album and
+  favorites track lists, the artist's Popular cards) opens `TrackMenuDialog`
+  (`music/common/TrackMenu.kt`): the track's title, artist · album, and the two buttons. Either
+  puts the track alone (the first item of its track queue) after the playing one or at the end;
+  with nothing queued it starts playing. A toast says which. Playlists play whole and have no
+  track list on the TV, so no menu there.
 - **Mini player**: a card in the bottom-right corner of every screen except the players (cover,
   track, artist → Now Playing; play/pause button), while anything is queued. Reached with the
   D-pad like any other control (Down from the bottom row).

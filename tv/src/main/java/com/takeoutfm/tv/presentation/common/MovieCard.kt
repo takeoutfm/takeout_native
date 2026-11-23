@@ -32,6 +32,7 @@ import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 fun MovieCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     title: @Composable () -> Unit = {},
     image: @Composable BoxScope.() -> Unit,
 ) {
@@ -41,6 +42,7 @@ fun MovieCard(
         imageCard = {
             Surface(
                 onClick = onClick,
+                onLongClick = onLongClick,
                 shape = ClickableSurfaceDefaults.shape(JetStreamCardShape),
                 border = ClickableSurfaceDefaults.border(
                     focusedBorder = Border(

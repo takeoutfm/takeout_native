@@ -57,6 +57,7 @@ struct MainView: View {
     @State private var path: [Route] = []
     @State private var query = ""
     @State private var showAccount = false
+    @State private var confirmSignOut = false
     @Environment(\.playVideo) private var playVideo
     @Environment(\.playLive) private var playLive
 
@@ -124,9 +125,9 @@ struct MainView: View {
                                 accountRow("Connected as", user).padding(.top, 8)
                             }
                             Divider().padding(.vertical, 8)
-                            Button("Sign Out") {
+                            Button("Sign Out…") {
                                 showAccount = false
-                                model.signOut()
+                                confirmSignOut = true
                             }
                         }
                         .padding()
@@ -148,6 +149,12 @@ struct MainView: View {
             }
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Artists, albums, tracks")
+        // Asks first (SIGN-10); on the window, not the popover, which closes as it opens.
+        .confirmationDialog("Sign out?", isPresented: $confirmSignOut) {
+            Button("Sign Out", role: .destructive) { model.signOut() }
+        } message: {
+            Text("Recently Played on this Mac is cleared too.")
+        }
         .onSubmit(of: .search) {
             let q = query.trimmingCharacters(in: .whitespaces)
             guard !q.isEmpty else { return }

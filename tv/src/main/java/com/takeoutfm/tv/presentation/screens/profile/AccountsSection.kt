@@ -61,6 +61,7 @@ class AccountViewModel @Inject constructor(
 fun AccountsSection(viewModel: AccountViewModel = hiltViewModel()) {
     val childPadding = rememberChildPadding()
     val session by viewModel.state.collectAsStateWithLifecycle()
+    var confirmSignOut by remember { mutableStateOf(false) }
     val items = listOf(
         // The server, then who's signed in to it (/api/me), as ListenBrainz shows its account.
         AccountsSectionData(
@@ -74,7 +75,7 @@ fun AccountsSection(viewModel: AccountViewModel = hiltViewModel()) {
         AccountsSectionData(
             title = "Sign out",
             value = "Sign out of Takeout on this device",
-            onClick = viewModel::signOut,
+            onClick = { confirmSignOut = true },
         ),
     )
     LazyVerticalGrid(
@@ -90,5 +91,13 @@ fun AccountsSection(viewModel: AccountViewModel = hiltViewModel()) {
                 )
             }
         }
+    )
+    AccountsSectionSignOutDialog(
+        showDialog = confirmSignOut,
+        onConfirm = {
+            confirmSignOut = false
+            viewModel.signOut()
+        },
+        onDismissRequest = { confirmSignOut = false },
     )
 }

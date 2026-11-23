@@ -27,7 +27,7 @@ The phase-by-phase log of how each app was built (2026-10-25 to 2026-11-14) is i
 | Phone (`:android`) | Released (F-Droid repository, with the TV and watch: one version) | the gaps below |
 | TV (`:tv`) | Released | the gaps below; `docs/design/tv.md` lists its own open items |
 | Watch (`:wear`) | Released | not yet checked: downloads and offline play, the complication; downloads aren't limited to Wi-Fi |
-| Mac/iOS (`apple/`) | In progress | build and check the cache purge and track choices (written on Linux, not yet compiled); iPad check; downloads, radio and podcasts on the iPhone; a real device (needs a team); lock screen and Control Center, picture-in-picture, Siri; CarPlay not started |
+| Mac/iOS (`apple/`) | In progress | build and check the cache purge, track choices and the sign-out confirmation (written on Linux, not yet compiled); iPad check; downloads, radio and podcasts on the iPhone; a real device (needs a team); lock screen and Control Center, picture-in-picture, Siri; CarPlay not started |
 | Linux, KDE (`linux/`) | Working, packaged as debs | Flatpak (KDE runtime 6.x, an mpv module) |
 | tofm (`linux/tui/`) | Working, packaged as a deb | the gaps below |
 
@@ -39,7 +39,6 @@ would notice. Fixing one updates its status table in the same commit.
 | Gap | Apps missing it | Rule |
 |---|---|---|
 | Say why a track can't play | Mac/iOS, Linux, tofm, watch | PLAY-12 |
-| Ask before signing out | phone, TV, watch, Mac/iOS | SIGN-10 |
 | Play next / add to queue | watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Playback speed | Mac/iOS | VIDEO-8 |

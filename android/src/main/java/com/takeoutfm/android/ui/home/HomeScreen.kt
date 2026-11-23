@@ -92,6 +92,7 @@ fun HomeScreen(
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var about by remember { mutableStateOf(false) }
+    var signOut by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Scaffold(
@@ -141,7 +142,7 @@ fun HomeScreen(
                             onLink = onLink,
                             onSettings = onSettings,
                             onAbout = { about = true },
-                            onLogout = viewModel::logout,
+                            onLogout = { signOut = true },
                         )
                     },
                 )
@@ -179,6 +180,13 @@ fun HomeScreen(
         }
     }
     if (about) AboutDialog(onDismiss = { about = false })
+    if (signOut) SignOutDialog(
+        onConfirm = {
+            signOut = false
+            viewModel.logout()
+        },
+        onDismiss = { signOut = false },
+    )
 }
 
 /** What the title and subtitle ("Recently added") need beside the bar's icons. */
@@ -248,6 +256,18 @@ private fun HomeMenu(
             }
         }
     }
+}
+
+/** Asks before signing out (SIGN-10). */
+@Composable
+private fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.sign_out_title)) },
+        text = { Text(stringResource(R.string.sign_out_detail)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.sign_out)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable

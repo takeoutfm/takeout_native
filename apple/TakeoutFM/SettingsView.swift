@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var token = ""
     @State private var connecting = false
     @State private var refused = false
+    @State private var confirmSignOut = false
 
     var body: some View {
         Form {
@@ -18,7 +19,7 @@ struct SettingsView: View {
                 if let user = model.serverUser {
                     LabeledContent("Connected as", value: user)
                 }
-                Button("Sign Out", role: .destructive) { model.signOut() }
+                Button("Sign Out…", role: .destructive) { confirmSignOut = true }
             }
             #endif
             Section("Appearance") {
@@ -68,6 +69,14 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(iOS)
+        // Asks first (SIGN-10).
+        .confirmationDialog("Sign out?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            Button("Sign Out", role: .destructive) { model.signOut() }
+        } message: {
+            Text("Recently Played on this device is cleared too.")
+        }
+        #endif
         #if os(macOS)
         .frame(width: 480)
         .fixedSize()

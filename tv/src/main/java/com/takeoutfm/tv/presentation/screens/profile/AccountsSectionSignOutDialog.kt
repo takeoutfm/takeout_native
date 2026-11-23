@@ -34,9 +34,11 @@ import com.takeoutfm.tv.tvmaterial.StandardDialog
     ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class,
     ExperimentalTvMaterial3Api::class
 )
+/** Asks before signing out (SIGN-10); Cancel has focus, so a stray press keeps the sign-in. */
 @Composable
-fun AccountsSectionDeleteDialog(
+fun AccountsSectionSignOutDialog(
     showDialog: Boolean,
+    onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -47,23 +49,23 @@ fun AccountsSectionDeleteDialog(
         confirmButton = {
             AccountsSectionDialogButton(
                 modifier = Modifier.padding(start = 8.dp),
-                text = stringResource(R.string.yes_delete_account),
-                shouldRequestFocus = true,
-                onClick = onDismissRequest
+                text = stringResource(R.string.sign_out),
+                shouldRequestFocus = false,
+                onClick = onConfirm
             )
         },
         dismissButton = {
             AccountsSectionDialogButton(
                 modifier = Modifier.padding(end = 8.dp),
-                text = stringResource(R.string.no_keep_it),
-                shouldRequestFocus = false,
+                text = stringResource(R.string.cancel),
+                shouldRequestFocus = true,
                 onClick = onDismissRequest
             )
         },
         title = {
             Text(
                 modifier = Modifier.padding(start = 8.dp),
-                text = stringResource(R.string.delete_account_dialog_title),
+                text = stringResource(R.string.sign_out_title),
                 color = MaterialTheme.colorScheme.surface,
                 style = MaterialTheme.typography.headlineSmall
             )
@@ -71,7 +73,7 @@ fun AccountsSectionDeleteDialog(
         text = {
             Text(
                 modifier = Modifier.padding(horizontal = 8.dp),
-                text = stringResource(R.string.delete_account_dialog_text),
+                text = stringResource(R.string.sign_out_detail),
                 color = MaterialTheme.colorScheme.surface,
                 style = MaterialTheme.typography.bodyMedium
             )

@@ -47,7 +47,10 @@
     <string name="refresh_label">Reload</string>
     <string name="settings_label">Settings</string>
     <string name="about_label">About</string>
-    <string name="logout_label">Logout</string>
+    <string name="logout_label">Sign out…</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_title">Sign out?</string>
+    <string name="sign_out_detail">Recently Played on this device is cleared too.</string>
     <string name="more_options">More options</string>
     <string name="nothing_here">Nothing here yet</string>
     <string name="cant_load">Couldn\'t load this. Pull down to try again.</string>

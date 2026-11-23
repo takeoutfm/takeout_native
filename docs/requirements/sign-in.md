@@ -41,6 +41,6 @@ How an app signs in to a Takeout server, keeps the session and signs out. Design
 | SIGN-6 secure store | ✅ encrypted prefs | ✅ encrypted prefs | ✅ encrypted prefs | ✅ Keychain | ✅ Secret Service | ✅ Secret Service (own item) |
 | SIGN-7/8 tokens | ✅ shared core | ✅ | ✅ | ✅ | ✅ | ✅ |
 | SIGN-9 Connected as | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SIGN-10 asks before signing out | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| SIGN-10 asks before signing out | ✅ | ✅ | ✅ | ✅ (not yet built on a Mac) | ✅ | ✅ |
 | SIGN-11 Link | ✅ | — | — | ❌ | ❌ | ❌ |
 

@@ -1,5 +1,7 @@
 package com.takeoutfm.wear.ui
 
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Warning
 import com.takeoutfm.shared.offline.CacheLimit
@@ -77,6 +79,7 @@ import androidx.wear.compose.material.Switch
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.ToggleChip
+import androidx.wear.compose.material.dialog.Alert
 import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
 import androidx.wear.compose.foundation.rememberActiveFocusRequester
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
@@ -354,7 +357,13 @@ private fun Pages(vm: WatchViewModel) {
                 }
             }
         }
-        composable("settings") { Settings(vm) }
+        composable("settings") { Settings(vm, onSignOut = { nav.navigate("signOut") }) }
+        composable("signOut") {
+            SignOut(
+                onConfirm = vm::signOut,
+                onCancel = { nav.popBackStack() },
+            )
+        }
     }
 }
 
@@ -486,7 +495,7 @@ private fun Player(vm: WatchViewModel) {
 }
 
 @Composable
-private fun Settings(vm: WatchViewModel) {
+private fun Settings(vm: WatchViewModel, onSignOut: () -> Unit) {
     val reportPlays by vm.settings.reportPlays.collectAsStateWithLifecycle()
     val caching by vm.settings.playbackCaching.collectAsStateWithLifecycle()
     val mobileData by vm.settings.streamOverMobileData.collectAsStateWithLifecycle()
@@ -559,7 +568,31 @@ private fun Settings(vm: WatchViewModel) {
                     ?: stringResource(R.string.server),
             )
         }
-        item { Entry(stringResource(R.string.sign_out), onClick = vm::signOut, icon = Icons.Filled.Logout) }
+        item { Entry(stringResource(R.string.sign_out), onClick = onSignOut, icon = Icons.Filled.Logout) }
         item { Text(stringResource(R.string.version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.caption3) }
+    }
+}
+
+/** Asks before signing out (SIGN-10); swiping away cancels. */
+@Composable
+private fun SignOut(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    Alert(
+        title = { Text(stringResource(R.string.sign_out_title), textAlign = TextAlign.Center) },
+        negativeButton = {
+            Button(onClick = onCancel, colors = ButtonDefaults.secondaryButtonColors()) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+            }
+        },
+        positiveButton = {
+            Button(onClick = onConfirm) {
+                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.sign_out))
+            }
+        },
+    ) {
+        Text(
+            stringResource(R.string.sign_out_detail),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.body2,
+        )
     }
 }

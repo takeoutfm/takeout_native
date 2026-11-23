@@ -171,6 +171,10 @@ library), A–Z.
   30:33"): the most recently watched episode if unfinished, else the one after it; with no
   progress (or after the finale) S1E1. Specials only play when there are no regular seasons.
 - Long titles step down a size and wrap to two lines; credits wrap to three, with "…".
+- The description is two lines with "…". When it's cut, up from the buttons highlights it and
+  OK opens the whole text in a dialog, scrollable a paragraph at a time (`FullTextDialog`, shared
+  with the person page's bio); text that fits can't take focus. Focus entering the header (the
+  page opening, or up from the rows) still goes to Play.
 - A failed load shows "Couldn't load this" with a focused **Try again** (details, player and
   person pages).
 - **♡ Add to favorites** / **♥ Favorite**: an outlined button after those, from the view's

@@ -17,12 +17,14 @@
 package com.takeoutfm.tv.presentation.screens.movies
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,12 +40,19 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -68,11 +77,13 @@ import coil.request.ImageRequest
 import com.takeoutfm.tv.R
 import com.takeoutfm.tv.data.entities.MovieDetails
 import com.takeoutfm.tv.data.util.StringConstants
+import com.takeoutfm.tv.presentation.common.ExpandableText
+import com.takeoutfm.tv.presentation.common.FullTextDialog
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
 import com.takeoutfm.tv.presentation.theme.JetStreamButtonShape
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MovieDetails(
     movieDetails: MovieDetails,
@@ -86,6 +97,8 @@ fun MovieDetails(
     val childPadding = rememberChildPadding()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val coroutineScope = rememberCoroutineScope()
+    val playFocus = remember { FocusRequester() }
+    var showFullDescription by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -98,7 +111,14 @@ fun MovieDetails(
             modifier = Modifier.fillMaxSize()
         )
 
-        Column(modifier = Modifier.fillMaxWidth(0.55f)) {
+        // Focus coming into the header (the screen opening, or up from the rows below) goes to
+        // Play, not to the description above it; up from the buttons still reaches that.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.55f)
+                .focusProperties { enter = { playFocus } }
+                .focusGroup()
+        ) {
             Spacer(modifier = Modifier.height(108.dp))
             Column(
                 modifier = Modifier.padding(start = childPadding.start)
@@ -108,7 +128,10 @@ fun MovieDetails(
                 Column(
                     modifier = Modifier.alpha(0.75f)
                 ) {
-                    MovieDescription(description = movieDetails.description)
+                    MovieDescription(
+                        description = movieDetails.description,
+                        onClick = { showFullDescription = true },
+                    )
                     DotSeparatedRow(
                         modifier = Modifier.padding(top = 20.dp),
                         texts = listOf(
@@ -138,7 +161,7 @@ fun MovieDetails(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     WatchTrailerButton(
-                        modifier = bringIntoViewOnFocus,
+                        modifier = bringIntoViewOnFocus.focusRequester(playFocus),
                         resumePositionMs = resumePositionMs,
                         playTarget = movieDetails.playTarget,
                         goToMoviePlayer = { goToMoviePlayer(false) }
@@ -164,6 +187,13 @@ fun MovieDetails(
                 }
             }
         }
+    }
+    if (showFullDescription) {
+        FullTextDialog(
+            title = movieDetails.name,
+            text = movieDetails.description,
+            onDismissRequest = { showFullDescription = false }
+        )
     }
 }
 
@@ -320,16 +350,17 @@ private fun DirectorScreenplayMusicRow(
 /** "—" is the repository's placeholder for "no names". */
 private fun hasCredit(value: String) = value.isNotBlank() && value != "—"
 
+/**
+ * Two lines with an ellipsis. When it's cut, up from the buttons focuses it and selecting it
+ * shows all of it. Its focus padding hangs outside the column, so the text lines up with the title.
+ */
 @Composable
-private fun MovieDescription(description: String) {
-    Text(
+private fun MovieDescription(description: String, onClick: () -> Unit) {
+    ExpandableText(
         text = description,
-        style = MaterialTheme.typography.titleSmall.copy(
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Normal
-        ),
-        modifier = Modifier.padding(top = 8.dp),
-        maxLines = 2
+        maxLines = 2,
+        onClick = onClick,
+        modifier = Modifier.offset(x = (-8).dp),
     )
 }
 

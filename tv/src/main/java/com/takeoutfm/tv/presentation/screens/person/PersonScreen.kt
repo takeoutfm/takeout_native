@@ -50,6 +50,8 @@ import com.takeoutfm.tv.R
 import com.takeoutfm.tv.data.entities.Movie
 import com.takeoutfm.tv.data.entities.PersonDetails
 import com.takeoutfm.tv.presentation.common.Error
+import com.takeoutfm.tv.presentation.common.ExpandableText
+import com.takeoutfm.tv.presentation.common.FullTextDialog
 import com.takeoutfm.tv.presentation.common.MoviesRow
 import com.takeoutfm.tv.presentation.common.PersonSkeleton
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
@@ -124,7 +126,7 @@ private fun PersonDetailsContent(
         LaunchedEffect(Unit) { initialFocus.requestFocus() }
     }
     if (showFullBio) {
-        FullBioDialog(person = person, onDismissRequest = { showFullBio = false })
+        FullTextDialog(title = person.name, text = person.bio, onDismissRequest = { showFullBio = false })
     }
 }
 
@@ -169,98 +171,21 @@ private fun PersonHeader(
                 )
             }
             if (person.bio.isNotEmpty()) {
-                // Focusable so the page opens on the header; selecting it shows the whole bio.
-                Surface(
+                // Always focusable so the page opens on the header; selecting it shows the whole bio.
+                ExpandableText(
+                    text = person.bio,
+                    maxLines = 8,
                     onClick = onBioClick,
-                    shape = ClickableSurfaceDefaults.shape(JetStreamCardShape),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = Color.Transparent,
-                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        focusedContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                    alwaysFocusable = true,
+                    textModifier = Modifier.alpha(0.85f),
                     modifier = Modifier
                         .padding(top = 8.dp)
                         .focusRequester(bioFocusRequester)
-                ) {
-                    Text(
-                        text = person.bio,
-                        style = BioTextStyle(),
-                        maxLines = 8,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .alpha(0.85f)
-                    )
-                }
+                )
             }
         }
     }
 }
-
-/** The whole bio, one focusable paragraph at a time so the D-pad scrolls through it. */
-@Composable
-private fun FullBioDialog(person: PersonDetails, onDismissRequest: () -> Unit) {
-    val paragraphs = remember(person.bio) {
-        person.bio.split(Regex("\\n\\s*\\n")).map { it.trim() }.filter { it.isNotEmpty() }
-    }
-    val first = remember { FocusRequester() }
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            shape = JetStreamCardShape,
-            colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .fillMaxHeight(0.8f)
-        ) {
-            LazyColumn(
-                contentPadding = PaddingValues(24.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    Text(
-                        text = person.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
-                    )
-                }
-                itemsIndexed(paragraphs) { index, paragraph ->
-                    Surface(
-                        onClick = {},
-                        shape = ClickableSurfaceDefaults.shape(JetStreamCardShape),
-                        colors = ClickableSurfaceDefaults.colors(
-                            containerColor = Color.Transparent,
-                            focusedContainerColor =
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            focusedContentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                        modifier = if (index == 0) Modifier.focusRequester(first) else Modifier
-                    ) {
-                        Text(
-                            text = paragraph,
-                            style = BioTextStyle(),
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                }
-            }
-        }
-        LaunchedEffect(Unit) { first.requestFocus() }
-    }
-}
-
-@Composable
-private fun BioTextStyle() = MaterialTheme.typography.titleSmall.copy(
-    fontSize = 15.sp,
-    fontWeight = FontWeight.Normal,
-    lineHeight = 22.sp
-)
 
 private val CreditKind.titleRes: Int
     get() = when (this) {

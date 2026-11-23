@@ -26,8 +26,9 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 
 - **LIB-9** Movies and TV shows as poster grids (recently added, new releases, by genre);
   Continue Watching.
-- **LIB-10** A title: facts, cast and crew (directors first), Play / Resume / Start over,
-  "N min left", related titles; a series' seasons and episodes.
+- **LIB-10** A title: facts, its whole description (where it's cut short, selecting it shows
+  the rest), cast and crew (directors first), Play / Resume / Start over, "N min left",
+  related titles; a series' seasons and episodes.
 - **LIB-11** A person: their photo (TMDB `profile_path`; a person icon when there is none),
   life and biography, then what they starred in, directed and wrote.
 

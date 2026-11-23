@@ -49,9 +49,20 @@ anything else). `currentPlaylists` and `subscribedSeries` use it.
   app would keep its own copy of the same rules, which is what the core is for (decision
   [007](007-kmp-core.md)).
 
-## Still to move
+## Every app now
 
-On the phone and TV (built on Linux, where the Android SDK is): the playlist pages still
-reload on `MainViewModel`'s counter, and the podcast pages load their own copy of
-subscriptions and progress. They can collect `currentPlaylists`, `subscribedSeries` and
-`offsets` instead.
+- Mac/iOS: as above.
+- Phone: Playlists, a playlist's page (its tracks load again when its count changes) and the
+  Add to playlist picker follow `currentPlaylists`; `MainViewModel`'s counter is gone.
+- Phone and TV podcast pages combine their loaded details with `subscribedSeries` and `offsets`
+  through `PodcastDetails.following`, so subscribing, Mark as Played and playback show at once.
+  The TV's podcast list takes its Subscribed row from `subscribedSeries`.
+- TV Continue Watching is computed from `offsets` (`ProgressRules.selectInProgress`, then
+  `TakeoutVideoRepository.continueWatchingOf`); showing Home only asks the server for progress
+  made elsewhere.
+- Linux: `takeout_watch` has `playlists` (the Playlists grid follows it) and
+  `podcastSubscriptions` and `episodeProgress` (each episode's
+  "N min left" / Played by GUID, computed in the core), as `Core` properties the podcast pages
+  bind to; they no longer reload when playback pauses. Favorites drops a track unfavorited
+  anywhere at once, and loads again only for a new favorite (only the server has its details).
+- Pages still load once when shown, for changes made on another device.

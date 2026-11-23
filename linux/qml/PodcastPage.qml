@@ -17,6 +17,9 @@ AppPage {
     property var error: null
 
     readonly property var shown: details?.series ?? series
+    // Following the core (decision 017): Subscribe and playback change these without a reload.
+    readonly property bool subscribed: Core.podcastSubscriptions
+        ? Core.podcastSubscriptions.some(s => s.id === seriesId) : (details?.subscribed ?? false)
     title: shown?.title ?? ""
 
     function load() {
@@ -30,13 +33,6 @@ AppPage {
     }
     Component.onCompleted: load()
 
-    // Paused or stopped: an episode's progress has moved.
-    Connections {
-        target: Player
-        function onPlayingChanged() { if (!Player.playing) reload.restart() }
-    }
-    Timer { id: reload; interval: 1000; onTriggered: page.load() }
-
     /** A feed's HTML description as plain text (rendering it would also fetch its images). */
     function plain(html) {
         const entities = {amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " "}
@@ -47,7 +43,7 @@ AppPage {
 
     /** "12 min left", "Played", or the date. */
     function status(episode) {
-        const progress = episode.progress
+        const progress = Core.episodeProgress[episode.eid]
         if (progress?.type === "Complete") return KI18n.i18n("Played")
         if (progress?.type === "Started") return KI18n.i18n("%1 min left", progress.minutesLeft)
         return ""
@@ -56,10 +52,9 @@ AppPage {
     actions: [
         Kirigami.Action {
             visible: !!page.details
-            text: page.details?.subscribed ? KI18n.i18n("Unsubscribe") : KI18n.i18n("Subscribe")
-            icon.name: page.details?.subscribed ? "list-remove" : "list-add"
-            onTriggered: Core.call("setSubscribed", {seriesId: page.seriesId, subscribed: !page.details.subscribed},
-                                   (r, error) => { if (!error) page.load() })
+            text: page.subscribed ? KI18n.i18n("Unsubscribe") : KI18n.i18n("Subscribe")
+            icon.name: page.subscribed ? "list-remove" : "list-add"
+            onTriggered: Core.call("setSubscribed", {seriesId: page.seriesId, subscribed: !page.subscribed})
         }
     ]
 

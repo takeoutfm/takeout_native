@@ -72,6 +72,10 @@ qt_add_qml_module(takeoutfm
         qml/ArtistPage.qml
         qml/AlbumPage.qml
         qml/PlaylistsPage.qml
+        qml/PlaylistMosaic.qml
+        qml/FavoriteTracksArt.qml
+        qml/PlaylistTile.qml
+        qml/DeletePlaylistDialog.qml
         qml/TracksPage.qml
         qml/RadioPage.qml
         qml/SearchPage.qml

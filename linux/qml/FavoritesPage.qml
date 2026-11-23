@@ -15,7 +15,8 @@ AppPage {
     property bool loading: false
     property var error: null
 
-    readonly property var tracks: favorites?.tracks ?? []
+    // Following the core's favorites (decision 017): a track unfavorited anywhere drops out.
+    readonly property var tracks: (favorites?.tracks ?? []).filter(t => !t.etag || Core.favoriteTracks.includes(t.etag))
     readonly property var etags: tracks.map(t => t.etag).filter(e => e)
     readonly property bool allDownloaded: etags.length > 0 && etags.every(e => Core.downloadsByEtag[e]?.state === "Done")
 
@@ -30,10 +31,13 @@ AppPage {
     }
     Component.onCompleted: load()
 
-    // A track favorited or not elsewhere (Now Playing's ♥).
+    // A track favorited elsewhere (Now Playing's ♥): only the server has its details.
     Connections {
         target: Core
-        function onFavoriteTracksChanged() { page.load() }
+        function onFavoriteTracksChanged() {
+            const shown = (page.favorites?.tracks ?? []).map(t => t.etag)
+            if (Core.favoriteTracks.some(e => !shown.includes(e))) page.load()
+        }
     }
 
     ColumnLayout {

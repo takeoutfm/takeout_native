@@ -278,8 +278,14 @@ class TakeoutVideoRepository(
      * Movies and TV episodes started within the last [days] days and not finished, most recently
      * watched first, each with its [VideoCard.progress].
      */
-    suspend fun continueWatching(days: Int): List<VideoCard> = background {
-        val offsets = progress.inProgress(days)
+    suspend fun continueWatching(days: Int): List<VideoCard> = continueWatchingOf(progress.inProgress(days))
+
+    /**
+     * The titles for [offsets], offsets already chosen as in progress (e.g. by
+     * [ProgressRules.selectInProgress] from `TakeoutProgress.offsets`, to follow it; decision
+     * 017), in their order. Offsets that aren't a movie or episode (podcasts) are left out.
+     */
+    suspend fun continueWatchingOf(offsets: List<ApiOffset>): List<VideoCard> = background {
         if (offsets.isEmpty()) return@background emptyList()
         // Only fetch the libraries the server says it has.
         val index = index()

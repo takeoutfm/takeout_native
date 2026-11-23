@@ -9,6 +9,7 @@ import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
 import com.takeoutfm.shared.progress.ProgressRules
@@ -21,6 +22,7 @@ import kotlinx.datetime.Instant
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -91,6 +93,15 @@ class LinuxCalls(private val core: LinuxCore) {
         "session" -> core.session.state.map { SessionInfo(it.isLoggedIn, it.endpoint, it.user) }.encoded()
         "library" -> core.library.index.encoded()
         "favoriteTracks" -> core.music.favoriteTrackEtags.encoded()
+        // Decision 017: pages follow these instead of loading again after a change.
+        "podcastSubscriptions" -> core.podcasts.subscribedSeries.encoded()
+        "playlists" -> core.music.currentPlaylists.encoded()
+        // Each started or played episode's progress by GUID ("12 min left", Played), following
+        // playback and Mark as Played; one missing hasn't been started.
+        "episodeProgress" -> core.progress.offsets.map { offsets ->
+            offsets.mapValues { TakeoutPodcastRepository.episodeProgress(it.value) }
+                .filterValues { it != EpisodeProgress.NotStarted }
+        }.distinctUntilChanged().encoded()
         "recentlyPlayed" -> core.history.entries.encoded()
         "listenBrainz" -> core.listenBrainz.user.encoded()
         "downloads" -> core.downloads.downloads.map { it.values.toList() }.encoded()
@@ -162,7 +173,12 @@ class LinuxCalls(private val core: LinuxCore) {
         call("radio") { core.music.radio() }
         call("stationQueue") { a -> core.music.stationQueue(a.get("stationId")) }
         call("playlists") { core.music.playlists() }
-        call("playlistQueue") { a -> core.music.playlistQueue(a.get("playlistId"), a.get("startIndex", 0)) }
+        call("playlistQueue") { a ->
+            val id = a.get<String>("playlistId")
+            // the whole playlist (its page): keep its covers for the Playlists grid
+            core.music.playlistQueue(id, a.get("startIndex", 0)).also { core.music.keepCovers(id, it) }
+        }
+        call("playlistCovers") { a -> core.music.playlistCovers(a.get("playlistId"), a.get("trackCount")) }
         call("createPlaylist") { a -> core.music.createPlaylist(a.get("name")) }
         action("addTrackToPlaylist") { a -> core.music.addTrackToPlaylist(a.get("playlistId"), a.get("trackId")) }
         action("addAlbumToPlaylist") { a -> core.music.addAlbumToPlaylist(a.get("playlistId"), a.get("albumId")) }

@@ -21,7 +21,9 @@ int takeout_init(const char *data_dir, const char *user_agent, const char *secre
 void takeout_call(const char *name, const char *args_json, takeout_result_cb cb, void *ctx);
 
 /** Follows shared state [name] (session, library, favoriteTracks, recentlyPlayed,
- *  listenBrainz, settings); NULL for an unknown name. */
+ *  listenBrainz, settings, downloads, cacheUsage, podcastSubscriptions, episodeProgress,
+ *  playlists);
+ *  NULL for an unknown name. */
 void *takeout_watch(const char *name, takeout_value_cb cb, void *ctx);
 
 /** Stops a watch; [cb] isn't called after this returns. Not from inside [cb]. */

@@ -1,5 +1,22 @@
 package com.takeoutfm.android.ui.music
 
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.produceState
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,7 +89,6 @@ import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.MusicSearchResults
 import com.takeoutfm.shared.music.TakeoutMusicRepository
-import com.takeoutfm.shared.util.listFlow
 import com.takeoutfm.shared.video.TakeoutVideoRepository
 import com.takeoutfm.shared.video.VideoCard
 import com.takeoutfm.shared.video.VideoSearchResults
@@ -82,12 +98,15 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -239,15 +258,39 @@ private fun VideoShelf(title: String, cards: List<VideoCard>, onClick: (VideoCar
 
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(private val music: TakeoutMusicRepository) : ViewModel() {
-    fun playlists(): Flow<List<MusicPlaylist>> = listFlow { music.playlists() }
+    private val loadFailed = MutableStateFlow(false)
+
+    /**
+     * The core's playlists (decision 017): creating, deleting or adding to one anywhere in the
+     * app shows here at once. Empty if loading failed with none known yet.
+     */
+    val playlists: StateFlow<List<MusicPlaylist>?> =
+        combine(music.currentPlaylists, loadFailed) { list, failed -> list ?: if (failed) emptyList() else null }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, music.currentPlaylists.value)
+
+    /** Loads them again when shown, for changes made elsewhere. */
+    fun load() {
+        viewModelScope.launch { loadFailed.value = runCatching { music.playlists() }.isFailure }
+    }
+
+    /** [playlist]'s covers for its mosaic; none if they can't be loaded. */
+    suspend fun covers(playlist: MusicPlaylist): List<String> = try {
+        music.playlistCovers(playlist.id, playlist.trackCount)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyList()
+    }
 }
 
-/** The user's playlists: open one, create one (+), or delete one from its menu. */
+/**
+ * Favorite Tracks, then the user's playlists A–Z, as a grid of covers (as on the Mac): each
+ * playlist's art is a mosaic of its first four albums' covers. + creates one; a card's ⋮ deletes it.
+ */
 @Composable
 fun PlaylistsScreen(main: MainViewModel, nav: MusicNav, viewModel: PlaylistsViewModel = hiltViewModel()) {
-    val changed by main.playlistsChanged.collectAsStateWithLifecycle()
-    val flow = remember(changed) { viewModel.playlists() }
-    val playlists by flow.collectAsStateWithLifecycle(initialValue = null)
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { viewModel.load() }
     var creating by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<MusicPlaylist?>(null) }
     MusicPage(
@@ -261,26 +304,35 @@ fun PlaylistsScreen(main: MainViewModel, nav: MusicNav, viewModel: PlaylistsView
         if (list == null) {
             LoadingOrEmpty(true, stringResource(R.string.nothing_here), Modifier.padding(padding))
         } else {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-                // Favorite tracks come first, as a playlist of their own (as on the watch).
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(150.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = padding.calculateBottomPadding() + 96.dp,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
                 item(key = "favorites") {
                     val title = stringResource(R.string.favorite_tracks)
-                    ListItem(
-                        leadingContent = { Icon(Icons.Filled.Favorite, contentDescription = null) },
-                        headlineContent = { Text(title) },
-                        modifier = Modifier.clickable { nav.openQueue(QueueKind.Favorites, "", title) },
-                    )
+                    PlaylistCard(
+                        title = title,
+                        subtitle = stringResource(R.string.favorite_tracks_subtitle),
+                        onClick = { nav.openQueue(QueueKind.Favorites, "", title) },
+                    ) { FavoriteTracksArt(it) }
                 }
                 items(list, key = { it.id }) { p ->
-                    ListItem(
-                        leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
-                        headlineContent = { Text(p.name) },
-                        supportingContent = { Text(pluralStringResource(R.plurals.track_count, p.trackCount, p.trackCount)) },
-                        trailingContent = {
-                            IconButton(onClick = { deleting = p }) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_playlist)) }
-                        },
-                        modifier = Modifier.clickable { nav.openQueue(QueueKind.Playlist, p.id, p.name) },
-                    )
+                    // Kept in the core until its track count changes, so revisits don't refetch.
+                    val covers by produceState<List<String>>(emptyList(), p.id, p.trackCount) { value = viewModel.covers(p) }
+                    PlaylistCard(
+                        title = p.name,
+                        subtitle = pluralStringResource(R.plurals.track_count, p.trackCount, p.trackCount),
+                        onClick = { nav.openQueue(QueueKind.Playlist, p.id, p.name) },
+                        onDelete = { deleting = p },
+                    ) { PlaylistMosaic(covers, it) }
                 }
             }
         }
@@ -289,12 +341,40 @@ fun PlaylistsScreen(main: MainViewModel, nav: MusicNav, viewModel: PlaylistsView
         NameDialog(stringResource(R.string.new_playlist), onConfirm = { main.createPlaylist(it); creating = false }, onDismiss = { creating = false })
     }
     deleting?.let { p ->
-        AlertDialog(
-            onDismissRequest = { deleting = null },
-            text = { Text(stringResource(R.string.delete_playlist_question, p.name)) },
-            confirmButton = { TextButton(onClick = { main.deletePlaylist(p.id); deleting = null }) { Text(stringResource(R.string.delete)) } },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
-        )
+        DeletePlaylistDialog(p.name, onDelete = { main.deletePlaylist(p.id); deleting = null }, onDismiss = { deleting = null })
+    }
+}
+
+/** A card in the Playlists grid: square art, then the name and a line under it; ⋮ when it can be deleted. */
+@Composable
+private fun PlaylistCard(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null,
+    art: @Composable (Modifier) -> Unit,
+) {
+    Column(Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick)) {
+        art(Modifier.fillMaxWidth().aspectRatio(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(top = 6.dp, bottom = 6.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            if (onDelete != null) {
+                var menu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_options)) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete_playlist)) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                            onClick = { menu = false; onDelete() },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -315,13 +395,28 @@ class QueueViewModel @Inject constructor(
 
     init {
         reload()
+        // Its track count changing in the core's playlists (decision 017): an edit made here
+        // (removing a track) or anywhere else in the app, so its tracks load again.
+        if (route.kind != QueueKind.Favorites) viewModelScope.launch {
+            music.currentPlaylists
+                .map { list -> list?.firstOrNull { it.id == route.id }?.trackCount }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { reload() }
+        }
     }
 
     fun reload() {
         viewModelScope.launch {
             _state.value = try {
                 Load.Loaded(
-                    if (route.kind == QueueKind.Favorites) music.favoritesQueue() else music.playlistQueue(route.id)
+                    if (route.kind == QueueKind.Favorites) {
+                        music.favoritesQueue()
+                    } else {
+                        // its covers as the Playlists grid shows them, now that they're known
+                        music.playlistQueue(route.id).also { music.keepCovers(route.id, it) }
+                    }
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -332,32 +427,83 @@ class QueueViewModel @Inject constructor(
     }
 }
 
-/** A playlist's (or the favorite tracks') items; tapping one plays from there. */
+/**
+ * A playlist's (or the favorite tracks') page, as an album's (as on the Mac): its mosaic beside
+ * the name and track count, Play / Shuffle / Download, then the tracks (tapping one plays from
+ * there). A playlist's ⋮ deletes it.
+ */
 @Composable
 fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val downloads by main.downloads.collectAsStateWithLifecycle()
-    val changed by main.playlistsChanged.collectAsStateWithLifecycle()
-    LaunchedEffect(changed) { if (changed > 0) viewModel.reload() }
     val route = viewModel.route
-    val play = { index: Int ->
-        if (route.kind == QueueKind.Favorites) main.playFavorites(index) else main.playPlaylist(route.id, index)
+    val favorites = route.kind == QueueKind.Favorites
+    val play = { index: Int, shuffle: Boolean ->
+        if (favorites) main.playFavorites(index, shuffle) else main.playPlaylist(route.id, index, shuffle)
     }
-    MusicPage(title = route.title, onBack = nav.back) { padding ->
+    var deleting by remember { mutableStateOf(false) }
+    MusicPage(
+        title = route.title,
+        onBack = nav.back,
+        actions = {
+            if (!favorites) {
+                var menu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_options)) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete_playlist)) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                            onClick = { menu = false; deleting = true },
+                        )
+                    }
+                }
+            }
+        },
+    ) { padding ->
         val queue = (state as? Load.Loaded)?.value
-        if (queue == null || queue.items.isEmpty()) {
-            LoadingOrEmpty(state is Load.Loading, stringResource(if (state is Load.Failed) R.string.cant_load else R.string.nothing_here), Modifier.padding(padding))
+        if (queue == null) {
+            LoadingOrEmpty(state is Load.Loading, stringResource(R.string.cant_load), Modifier.padding(padding))
             return@MusicPage
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item {
-                androidx.compose.foundation.layout.Row(Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Button(onClick = { play(0) }) {
+                Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val art = Modifier.size(160.dp)
+                    if (favorites) FavoriteTracksArt(art) else PlaylistMosaic(TakeoutMusicRepository.coversOf(queue), art)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            route.title,
+                            style = MaterialTheme.typography.titleLarge.copy(hyphens = Hyphens.None, lineBreak = LineBreak.Heading),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            pluralStringResource(R.plurals.track_count, queue.items.size, queue.items.size),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val playable = queue.items.isNotEmpty()
+                    Button(onClick = { play(0, false) }, enabled = playable) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(stringResource(R.string.play_all), modifier = Modifier.padding(start = 6.dp))
                     }
-                    IconButton(onClick = { if (route.kind == QueueKind.Favorites) main.downloadFavorites() else main.downloadPlaylist(route.id) }) {
-                        Icon(androidx.compose.material.icons.Icons.Filled.Download, contentDescription = stringResource(R.string.download))
+                    FilledTonalButton(onClick = { play(0, true) }, enabled = playable) {
+                        Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 6.dp))
+                    }
+                    val allDownloaded = playable &&
+                        queue.items.all { downloads[it.etag]?.status == com.takeoutfm.media.offline.CacheStatus.Cached }
+                    IconButton(
+                        onClick = { if (favorites) main.downloadFavorites() else main.downloadPlaylist(route.id) },
+                        enabled = playable && !allDownloaded,
+                    ) {
+                        Icon(
+                            if (allDownloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                            contentDescription = stringResource(if (allDownloaded) R.string.downloaded else R.string.download),
+                        )
                     }
                 }
             }
@@ -376,10 +522,17 @@ fun QueueScreen(main: MainViewModel, nav: MusicNav, viewModel: QueueViewModel = 
                             }
                         }
                     },
-                    modifier = Modifier.clickable { play(index) },
+                    modifier = Modifier.clickable { play(index, false) },
                 )
             }
             item { Spacer(Modifier.height(96.dp)) }
         }
+    }
+    if (deleting) {
+        DeletePlaylistDialog(
+            route.title,
+            onDelete = { deleting = false; main.deletePlaylist(route.id); nav.back() },
+            onDismiss = { deleting = false },
+        )
     }
 }

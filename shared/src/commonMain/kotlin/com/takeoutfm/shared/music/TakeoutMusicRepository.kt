@@ -311,6 +311,31 @@ class TakeoutMusicRepository(
             .toQueue(urls::absolute)
             .startingAt(startIndex)
 
+    // ---- Playlist covers ----
+
+    private val coversLock = Mutex()
+    private val keptCovers = mutableMapOf<String, Pair<Int, List<String>>>()
+
+    /**
+     * Up to four different album covers from playlist [playlistId], for its mosaic (four in a
+     * square, else the first alone). Kept while the app runs and fetched again when its
+     * [trackCount] changes, so a grid of playlists doesn't load each one on every visit.
+     */
+    suspend fun playlistCovers(playlistId: String, trackCount: Int): List<String> {
+        if (trackCount <= 0) return emptyList()
+        coversLock.withLock {
+            keptCovers[playlistId]?.takeIf { it.first == trackCount }?.let { return it.second }
+        }
+        return keepCovers(playlistId, playlistQueue(playlistId))
+    }
+
+    /** Keeps the covers of [queue], playlist [playlistId] as its page loaded it, and returns them. */
+    suspend fun keepCovers(playlistId: String, queue: MusicQueue): List<String> {
+        val covers = coversOf(queue)
+        coversLock.withLock { keptCovers[playlistId] = queue.items.size to covers }
+        return covers
+    }
+
     /** All favorite tracks. */
     suspend fun favoritesQueue(startIndex: Int = 0): MusicQueue =
         api.playlist("/api/favorite/tracks/playlist")
@@ -364,6 +389,10 @@ class TakeoutMusicRepository(
     )
 
     companion object {
+        /** The first four different covers in [queue] (fewer when it has fewer). */
+        fun coversOf(queue: MusicQueue): List<String> =
+            queue.items.map { it.imageUri }.filter { it.isNotEmpty() }.distinct().take(4)
+
         const val ArtistPrefix = "ar-"
         const val AlbumPrefix = "al-"
         const val TrackPrefix = "t-"

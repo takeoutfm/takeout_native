@@ -1,5 +1,7 @@
 package com.takeoutfm.tv.data.repositories
 
+import com.takeoutfm.shared.model.ApiOffset
+
 import com.takeoutfm.shared.util.formatBytes
 import com.takeoutfm.shared.video.CastCredit
 import com.takeoutfm.shared.video.EpisodeInfo
@@ -85,11 +87,11 @@ class TakeoutMovieRepository @Inject constructor(
     // ---- Continue Watching ----
 
     /**
-     * Movies and TV episodes started within the last [days] days and not finished, most recently
-     * watched first. Cards are landscape: movie backdrops, episode stills.
+     * Movies and TV episodes for [inProgress] (offsets already chosen as started, unfinished
+     * and recent enough), in that order. Cards are landscape: movie backdrops, episode stills.
      */
-    fun getContinueWatching(days: Int): Flow<MovieList> =
-        cards(long = true) { video.continueWatching(days) }
+    fun getContinueWatching(inProgress: List<ApiOffset>): Flow<MovieList> =
+        cards(long = true) { video.continueWatchingOf(inProgress) }
 
     // ---- Recommendations ----
 

@@ -47,12 +47,16 @@ import com.takeoutfm.android.ui.main.PodcastRoute
 import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.PodcastDetails
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
+import com.takeoutfm.shared.podcast.following
+import com.takeoutfm.shared.progress.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 
@@ -60,15 +64,24 @@ import kotlinx.datetime.Instant
 class PodcastViewModel @Inject constructor(
     saved: SavedStateHandle,
     private val podcasts: TakeoutPodcastRepository,
+    progress: TakeoutProgress,
 ) : ViewModel() {
     private val id = saved.toRoute<PodcastRoute>().id
-    private val _state = MutableStateFlow<Load<PodcastDetails>>(Load.Loading)
-    val state: StateFlow<Load<PodcastDetails>> = _state.asStateFlow()
+    private val loaded = MutableStateFlow<Load<PodcastDetails>>(Load.Loading)
 
-    /** (Re)loads, e.g. back from playing, so episode progress is current. */
+    /**
+     * The loaded details as the core now has them (decision 017): playback, Mark as Played and
+     * Subscribe show at once, without loading again.
+     */
+    val state: StateFlow<Load<PodcastDetails>> =
+        combine(loaded, progress.offsets, podcasts.subscribedSeries) { load, offsets, subscribed ->
+            if (load is Load.Loaded) Load.Loaded(load.value.following(offsets, subscribed)) else load
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, Load.Loading)
+
+    /** (Re)loads when shown, for changes made elsewhere (another device, the server). */
     fun load() {
         viewModelScope.launch {
-            val loaded = try {
+            val result = try {
                 Load.Loaded(podcasts.details(id))
             } catch (e: CancellationException) {
                 throw e
@@ -76,16 +89,13 @@ class PodcastViewModel @Inject constructor(
                 Load.Failed
             }
             // A failed refresh keeps what's shown.
-            if (loaded is Load.Loaded || _state.value !is Load.Loaded) _state.value = loaded
+            if (result is Load.Loaded || loaded.value !is Load.Loaded) loaded.value = result
         }
     }
 
+    /** The core shows the change at once and puts it back if the server refuses. */
     fun setSubscribed(subscribed: Boolean) {
-        val details = (_state.value as? Load.Loaded)?.value ?: return
-        _state.value = Load.Loaded(details.copy(subscribed = subscribed))
-        viewModelScope.launch {
-            runCatching { podcasts.setSubscribed(id, subscribed) }.onFailure { _state.value = Load.Loaded(details) }
-        }
+        viewModelScope.launch { runCatching { podcasts.setSubscribed(id, subscribed) } }
     }
 }
 

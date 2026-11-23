@@ -36,7 +36,10 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 
 - **LIB-12** Search across artists, releases, tracks, stations, movies, series and episodes,
   with the server's query syntax (`artist:name`, `guitar:person`).
-- **LIB-13** Playlists: list and play; create, add a track, remove a track, delete.
+- **LIB-13** Playlists: list and play; create, add a track, remove a track, delete (asking
+  first). Shown as covers: Favorite Tracks first, then each playlist as a mosaic of its first
+  four albums' covers; a playlist's page has an album's header (the mosaic, name, track count,
+  Play / Shuffle / Download).
 - **LIB-14** Activity: the server's play stats by period (recent, this and last week and
   month, …) for artists, releases and tracks.
 
@@ -60,7 +63,8 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
 | LIB-12 search | ✅ | ⚠️ video only | ❌ | ✅ | ✅ | ✅ |
 | LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ⚠️ create only | ✅ | ❌ |
-| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ⚠️ delete only | ❌ | ❌ |
+| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ⚠️ delete only | ⚠️ delete only | ❌ |
+| LIB-13 playlists as covers | ✅ | ❌ | ❌ | ✅ | ✅ | — text |
 | LIB-14 activity | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 

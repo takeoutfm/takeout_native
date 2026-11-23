@@ -64,6 +64,22 @@ data class PodcastDetails(
 )
 
 /**
+ * These details as the core now has them (decision 017): each episode's progress from
+ * [offsets] (`TakeoutProgress.offsets`) and Subscribed from [subscribed]
+ * ([TakeoutPodcastRepository.subscribedSeries]; null, not yet loaded, keeps the loaded value).
+ * Pages combine their loaded details with those flows, so playback, Mark as Played and
+ * Subscribe show without loading the page again.
+ */
+fun PodcastDetails.following(offsets: Map<String, ApiOffset>, subscribed: List<PodcastSeries>?): PodcastDetails =
+    copy(
+        subscribed = subscribed?.any { it.id == series.id } ?: this.subscribed,
+        episodes = episodes.map { e ->
+            val progress = TakeoutPodcastRepository.episodeProgress(offsets[e.eid])
+            if (progress == e.progress) e else e.copy(progress = progress)
+        },
+    )
+
+/**
  * The server's podcasts for every app: all and subscribed series, a series' episodes with
  * this user's progress ("N min left", Complete), subscribing, and play queues of episodes that
  * resume where they were left.

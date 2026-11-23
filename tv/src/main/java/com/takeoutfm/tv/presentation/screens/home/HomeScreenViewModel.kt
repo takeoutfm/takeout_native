@@ -23,14 +23,17 @@ import com.takeoutfm.tv.data.entities.Recommendation
 import com.takeoutfm.tv.data.repositories.MovieRepository
 import com.takeoutfm.tv.data.repositories.TakeoutMovieRepository
 import com.takeoutfm.shared.library.TakeoutLibrary
+import com.takeoutfm.shared.progress.ProgressRules
+import com.takeoutfm.shared.progress.TakeoutProgress
+import kotlinx.datetime.Clock
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,24 +44,32 @@ class HomeScreeViewModel @Inject constructor(
     takeout: TakeoutMovieRepository,
     settings: TakeoutSettings,
     private val library: TakeoutLibrary,
+    private val progress: TakeoutProgress,
 ) : ViewModel() {
 
-    private val refreshes = MutableStateFlow(0)
-
     /**
-     * Re-reads progress, e.g. when Home is shown again after watching something, and refreshes
-     * the library index if it's more than a few minutes old.
+     * When Home is shown: asks the server for progress made elsewhere (watching here already
+     * shows, through [TakeoutProgress.offsets]), and refreshes the library index if it's more
+     * than a few minutes old.
      */
     fun refreshContinueWatching() {
-        refreshes.value++
-        viewModelScope.launch { library.refresh(maxAgeMs = 5 * 60_000) }
+        viewModelScope.launch {
+            progress.latest()
+            library.refresh(maxAgeMs = 5 * 60_000)
+        }
     }
 
-    /** Movies and episodes in progress, most recently watched first. */
+    /**
+     * Movies and episodes in progress, most recently watched first. Follows the core's progress
+     * (decision 017), so watching, or progress fetched from the server, updates the row.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val continueWatching: StateFlow<MovieList> =
-        combine(settings.continueWatchingDays, refreshes) { days, _ -> days }
-            .flatMapLatest { days -> takeout.getContinueWatching(days) }
+        combine(settings.continueWatchingDays, progress.offsets) { days, offsets ->
+            ProgressRules.selectInProgress(offsets.values, days, Clock.System.now())
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { inProgress -> takeout.getContinueWatching(inProgress) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val uiState: StateFlow<HomeScreenUiState> = combine(

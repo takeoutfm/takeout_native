@@ -1,10 +1,15 @@
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import TakeoutFM
 import org.kde.ki18n
 
-/** A playlist's tracks, or Favorite Tracks when [playlistId] is empty. */
+/**
+ * A playlist's tracks, or Favorite Tracks when [playlistId] is empty, under a header as an
+ * album's (as on the Mac and the phone): its mosaic beside the name and track count. A
+ * playlist's menu deletes it.
+ */
 AppPage {
     id: page
 
@@ -23,8 +28,13 @@ AppPage {
             loading = false
             error = failure
             if (result) queue = result
+            // kept by the core as it loaded the playlist
+            if (result && playlistId !== "")
+                Core.call("playlistCovers", {playlistId: playlistId, trackCount: result.items.length},
+                          (c) => { if (c) page.covers = c })
         })
     }
+    property var covers: []
     Component.onCompleted: load()
 
     actions: [
@@ -48,11 +58,53 @@ AppPage {
             displayHint: Kirigami.DisplayHint.AlwaysHide
             enabled: etags.length > 0
             onTriggered: all ? Core.call("removeDownloads", {etags: etags}) : Core.call("downloadQueue", {queue: page.queue})
+        },
+        Kirigami.Action {
+            text: KI18n.i18n("Delete Playlist…")
+            icon.name: "edit-delete"
+            displayHint: Kirigami.DisplayHint.AlwaysHide
+            visible: page.playlistId !== ""
+            onTriggered: {
+                deleting.playlist = {id: page.playlistId, name: page.title}
+                deleting.open()
+            }
         }
     ]
 
+    DeletePlaylistDialog {
+        id: deleting
+        onDeleted: applicationWindow().pageStack.pop()
+    }
+
     ListView {
         model: page.tracks
+        header: RowLayout {
+            width: ListView.view.width
+            spacing: Kirigami.Units.largeSpacing * 2
+            Loader {
+                Layout.margins: Kirigami.Units.largeSpacing
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 10
+                Layout.preferredHeight: Kirigami.Units.gridUnit * 10
+                sourceComponent: page.playlistId === "" ? heart : mosaic
+            }
+            Component { id: heart; FavoriteTracksArt {} }
+            Component { id: mosaic; PlaylistMosaic { covers: page.covers } }
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignBottom
+                Layout.bottomMargin: Kirigami.Units.largeSpacing
+                Kirigami.Heading {
+                    Layout.fillWidth: true
+                    text: page.title
+                    wrapMode: Text.Wrap
+                }
+                QQC2.Label {
+                    visible: !!page.queue
+                    text: KI18n.i18np("1 track", "%1 tracks", page.tracks.length)
+                    opacity: 0.7
+                }
+            }
+        }
         reuseItems: true
         // No row is current (or looks selected) until the arrow keys pick one; the list is
         // given focus when the page opens, and a new model would make the first row current.

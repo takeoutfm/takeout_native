@@ -54,13 +54,16 @@ import com.takeoutfm.android.ui.main.PodcastEpisodeRoute
 import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.PodcastDetails
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
+import com.takeoutfm.shared.podcast.following
 import com.takeoutfm.shared.progress.TakeoutProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -71,15 +74,22 @@ class PodcastEpisodeViewModel @Inject constructor(
 ) : ViewModel() {
     private val route = saved.toRoute<PodcastEpisodeRoute>()
     val episodeId = route.episodeId
-    private val _state = MutableStateFlow<Load<PodcastDetails>>(Load.Loading)
+    private val loaded = MutableStateFlow<Load<PodcastDetails>>(Load.Loading)
 
-    /** The episode's podcast, with every episode (for the neighbours and the play queue). */
-    val state: StateFlow<Load<PodcastDetails>> = _state.asStateFlow()
+    /**
+     * The episode's podcast, with every episode (for the neighbours and the play queue), as the
+     * core now has it (decision 017): playback and Mark as Played show at once, without loading
+     * again.
+     */
+    val state: StateFlow<Load<PodcastDetails>> =
+        combine(loaded, progress.offsets, podcasts.subscribedSeries) { load, offsets, subscribed ->
+            if (load is Load.Loaded) Load.Loaded(load.value.following(offsets, subscribed)) else load
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, Load.Loading)
 
-    /** (Re)loads, e.g. back from playing, so its progress is current. */
+    /** (Re)loads when shown, for changes made elsewhere (another device, the server). */
     fun load() {
         viewModelScope.launch {
-            val loaded = try {
+            val result = try {
                 Load.Loaded(podcasts.details(route.seriesId))
             } catch (e: CancellationException) {
                 throw e
@@ -87,17 +97,17 @@ class PodcastEpisodeViewModel @Inject constructor(
                 Load.Failed
             }
             // A failed refresh keeps what's shown.
-            if (loaded is Load.Loaded || _state.value !is Load.Loaded) _state.value = loaded
+            if (result is Load.Loaded || loaded.value !is Load.Loaded) loaded.value = result
         }
     }
 
     /** Marks it played (Complete) or not (back to the start); changes the user's real progress. */
     fun setPlayed(played: Boolean) {
-        val episode = (_state.value as? Load.Loaded)?.value?.episodes?.firstOrNull { it.id == episodeId } ?: return
+        val episode = (state.value as? Load.Loaded)?.value?.episodes?.firstOrNull { it.id == episodeId } ?: return
         viewModelScope.launch {
             val (offset, duration) = TakeoutPodcastRepository.playedMark(podcasts.offset(episode.eid), played)
+            // shows through progress.offsets
             progress.report(episode.eid, offset * 1000L, duration * 1000L)
-            load()
         }
     }
 }

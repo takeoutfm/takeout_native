@@ -62,7 +62,8 @@ bool TakeoutCore::start(const QString &dataDir, const QString &userAgent, const 
         secrets.empty() ? nullptr : secrets.c_str(),
         [](void *, const char *json) { SecretStore::save(app, json); }, nullptr);
     if (status != 0) return false;
-    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads", "cacheUsage", "listenBrainz"}) watch(name);
+    for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads", "cacheUsage", "listenBrainz",
+                             "podcastSubscriptions", "episodeProgress", "playlists"}) watch(name);
     return true;
 }
 
@@ -113,6 +114,15 @@ void TakeoutCore::updated(const QByteArray &name, const QVariant &value)
     } else if (name == "cacheUsage") {
         m_cacheUsage = value.toMap();
         Q_EMIT cacheUsageChanged();
+    } else if (name == "playlists") {
+        m_playlists = value;
+        Q_EMIT playlistsChanged();
+    } else if (name == "podcastSubscriptions") {
+        m_podcastSubscriptions = value;
+        Q_EMIT podcastSubscriptionsChanged();
+    } else if (name == "episodeProgress") {
+        m_episodeProgress = value.toMap();
+        Q_EMIT episodeProgressChanged();
     }
 }
 

@@ -52,7 +52,8 @@ AppPage {
         readonly property int columns: Math.max(1, Math.floor(width / (Kirigami.Units.gridUnit * 10)))
         cellWidth: width / columns
         cellHeight: cellWidth + Kirigami.Units.gridUnit * 3
-        model: page.series
+        // Subscribed: the core's list, so Unsubscribe on a podcast's page takes it off here.
+        model: page.subscribedOnly ? (Core.podcastSubscriptions ?? page.series) : page.series
         delegate: AlbumTile {
             required property var modelData
             width: grid.cellWidth

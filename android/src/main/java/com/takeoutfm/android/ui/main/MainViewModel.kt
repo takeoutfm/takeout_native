@@ -31,6 +31,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -86,18 +89,20 @@ class MainViewModel @Inject constructor(
     private val _adding = MutableStateFlow<AddTarget?>(null)
     val adding: StateFlow<AddTarget?> = _adding.asStateFlow()
 
-    /** The user's playlists for the picker (loaded when it opens). */
-    private val _playlists = MutableStateFlow<List<MusicPlaylist>?>(null)
-    val playlists: StateFlow<List<MusicPlaylist>?> = _playlists.asStateFlow()
+    private val pickerLoadFailed = MutableStateFlow(false)
 
-    /** Bumped after a playlist changes, so pages showing playlists reload. */
-    private val _playlistsChanged = MutableStateFlow(0)
-    val playlistsChanged: StateFlow<Int> = _playlistsChanged.asStateFlow()
+    /**
+     * The user's playlists for the picker: the core's (decision 017), which every edit keeps
+     * current, loaded again when the picker opens. Empty if that failed with none known yet.
+     */
+    val playlists: StateFlow<List<MusicPlaylist>?> =
+        combine(music.currentPlaylists, pickerLoadFailed) { list, failed -> list ?: if (failed) emptyList() else null }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, music.currentPlaylists.value)
 
     fun addToPlaylist(target: AddTarget) {
         _adding.value = target
-        _playlists.value = null
-        viewModelScope.launch { _playlists.value = runCatching { music.playlists() }.getOrDefault(emptyList()) }
+        pickerLoadFailed.value = false
+        viewModelScope.launch { pickerLoadFailed.value = runCatching { music.playlists() }.isFailure }
     }
 
     fun dismissAdd() {
@@ -115,7 +120,6 @@ class MainViewModel @Inject constructor(
                     is AddTarget.TrackTarget -> music.addTrackToPlaylist(list.id, target.trackId)
                     is AddTarget.AlbumTarget -> music.addAlbumToPlaylist(list.id, target.albumId)
                 }
-                _playlistsChanged.update { it + 1 }
                 _formatted.tryEmit(R.string.added_to_playlist to list.name)
             } catch (e: CancellationException) {
                 throw e
@@ -132,8 +136,7 @@ class MainViewModel @Inject constructor(
     private fun edit(block: suspend () -> Unit) {
         viewModelScope.launch {
             try {
-                block()
-                _playlistsChanged.update { it + 1 }
+                block() // pages follow music.currentPlaylists
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -172,8 +175,13 @@ class MainViewModel @Inject constructor(
         if (shuffle) queue.copy(items = queue.items.shuffled(), startIndex = 0) else queue
     }
     fun playTrack(trackId: String) = play { music.trackQueue(trackId) }
-    fun playPlaylist(playlistId: String, index: Int = 0) = play { music.playlistQueue(playlistId, index) }
-    fun playFavorites(index: Int = 0) = play { music.favoritesQueue(index) }
+    fun playPlaylist(playlistId: String, index: Int = 0, shuffle: Boolean = false) = play {
+        music.playlistQueue(playlistId, index).shuffledIf(shuffle)
+    }
+    fun playFavorites(index: Int = 0, shuffle: Boolean = false) = play { music.favoritesQueue(index).shuffledIf(shuffle) }
+
+    private fun MusicQueue.shuffledIf(shuffle: Boolean) =
+        if (shuffle) copy(items = items.shuffled(), startIndex = 0) else this
 
     /** Plays podcast [episodes] from [index], resuming that episode where it was left. */
     /** [episodes] from [index], resuming that one if it was started (unless [fromStart]). */

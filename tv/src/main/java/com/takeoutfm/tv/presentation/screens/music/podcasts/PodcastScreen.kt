@@ -56,6 +56,8 @@ import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.PodcastDetails
 import com.takeoutfm.shared.podcast.PodcastEpisode
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
+import com.takeoutfm.shared.podcast.following
+import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.tv.R
 import com.takeoutfm.tv.presentation.common.DetailsSkeleton
 import com.takeoutfm.tv.presentation.common.Error
@@ -78,7 +80,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 object PodcastScreen {
@@ -99,7 +103,7 @@ fun PodcastScreen(
 ) {
     BackHandler(onBack = onBackPressed)
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Back from the player: show the new progress.
+    // Shown again: pick up changes made elsewhere (playing here already shows).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
     when (val s = state) {
         PodcastState.Loading -> DetailsSkeleton(Modifier.fillMaxSize())
@@ -349,11 +353,20 @@ sealed interface PodcastState {
 class PodcastScreenViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val podcasts: TakeoutPodcastRepository,
+    progress: TakeoutProgress,
 ) : ViewModel() {
     private val seriesId: String = savedStateHandle[PodcastScreen.SeriesIdBundleKey] ?: ""
 
     private val _state = MutableStateFlow<PodcastState>(PodcastState.Loading)
-    val state: StateFlow<PodcastState> = _state.asStateFlow()
+
+    /**
+     * The loaded podcast as the core now has it (decision 017): playback, Mark as Played and
+     * Subscribe show at once, without loading again.
+     */
+    val state: StateFlow<PodcastState> =
+        combine(_state, progress.offsets, podcasts.subscribedSeries) { state, offsets, subscribed ->
+            if (state is PodcastState.Ready) PodcastState.Ready(state.details.following(offsets, subscribed)) else state
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, PodcastState.Loading)
 
     /** The episode or button that last had focus, so Back from the player returns to it. */
     val focusedKey = mutableStateOf<String?>(null)
@@ -375,7 +388,7 @@ class PodcastScreenViewModel @Inject constructor(
         }
     }
 
-    /** Reloads the episodes' progress quietly, keeping what's shown if it fails. */
+    /** Reloads quietly when shown, for changes made elsewhere; keeps what's shown if it fails. */
     fun refresh() {
         if (_state.value !is PodcastState.Ready) return
         viewModelScope.launch {
@@ -383,12 +396,8 @@ class PodcastScreenViewModel @Inject constructor(
         }
     }
 
+    /** The core shows the change at once and puts it back if the server refuses. */
     fun setSubscribed(subscribed: Boolean) {
-        val details = (_state.value as? PodcastState.Ready)?.details ?: return
-        _state.value = PodcastState.Ready(details.copy(subscribed = subscribed))
-        viewModelScope.launch {
-            runCatching { podcasts.setSubscribed(seriesId, subscribed) }
-                .onFailure { _state.value = PodcastState.Ready(details) }
-        }
+        viewModelScope.launch { runCatching { podcasts.setSubscribed(seriesId, subscribed) } }
     }
 }

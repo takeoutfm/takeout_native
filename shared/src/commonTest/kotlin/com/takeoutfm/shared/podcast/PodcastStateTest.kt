@@ -141,4 +141,24 @@ class PodcastStateTest {
         assertEquals(TakeoutPodcastRepository.episodeProgress(progress.offsets.value["e2"]),
             EpisodeProgress.Started(fraction = 600f / 1800, minutesLeft = 20))
     }
+
+    @Test
+    fun detailsFollowOffsetsAndSubscriptions() {
+        fun series(id: String) = PodcastSeries(id, id, "", "", "")
+        fun episode(eid: String) = PodcastEpisode("pe-$eid", eid, "Show", eid, "", "", "2026-11-01T00:00:00Z", "")
+        val loaded = PodcastDetails(series("ps-1"), subscribed = false, episodes = listOf(episode("a"), episode("b")))
+        val offsets = mapOf(
+            "a" to ApiOffset("a", 600, 3600, "2026-11-20T00:00:00Z"),
+            "b" to ApiOffset("b", 3600, 3600, "2026-11-21T00:00:00Z"),
+        )
+
+        val now = loaded.following(offsets, subscribed = listOf(series("ps-1")))
+
+        assertEquals(true, now.subscribed)
+        assertEquals(EpisodeProgress.Started(fraction = 600f / 3600, minutesLeft = 50), now.episodes[0].progress)
+        assertEquals(EpisodeProgress.Complete, now.episodes[1].progress)
+        // not loaded yet: what the details said stands
+        assertEquals(false, loaded.following(emptyMap(), subscribed = null).subscribed)
+        assertEquals(EpisodeProgress.NotStarted, loaded.following(emptyMap(), null).episodes[0].progress)
+    }
 }

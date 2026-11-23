@@ -91,4 +91,12 @@ class PlaylistsTest {
         music.deletePlaylist("pl-1")
         assertNull(music.currentPlaylists.value)
     }
+
+    @Test
+    fun coversAreTheFirstFourDifferentOnes() {
+        fun item(cover: String) = QueueItem("t", "a", "b", imageUri = cover, uri = "u", etag = cover)
+        val queue = MusicQueue("p", "", "", listOf("a", "a", "", "b", "c", "b", "d", "e").map(::item))
+        assertEquals(listOf("a", "b", "c", "d"), TakeoutMusicRepository.coversOf(queue))
+        assertEquals(listOf("a"), TakeoutMusicRepository.coversOf(queue.copy(items = queue.items.take(2))))
+    }
 }

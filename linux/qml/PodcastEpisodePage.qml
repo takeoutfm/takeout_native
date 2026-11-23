@@ -21,8 +21,10 @@ AppPage {
     readonly property int index: (details?.episodes ?? []).findIndex(e => e.id === episodeId)
     readonly property var episode: index >= 0 ? details.episodes[index] : null
     readonly property var series: details?.series ?? null
-    readonly property bool started: episode?.progress?.type === "Started"
-    readonly property bool played: episode?.progress?.type === "Complete"
+    // Following the core (decision 017): playback and Mark as Played change it without a reload.
+    readonly property var progress: episode ? Core.episodeProgress[episode.eid] : undefined
+    readonly property bool started: progress?.type === "Started"
+    readonly property bool played: progress?.type === "Complete"
     readonly property var download: episode ? Core.downloadsByEtag[episode.eid] : undefined
 
     title: series?.title ?? ""
@@ -37,13 +39,6 @@ AppPage {
         })
     }
     Component.onCompleted: load()
-
-    // Paused or stopped: where the episode got to has moved.
-    Connections {
-        target: Player
-        function onPlayingChanged() { if (!Player.playing) reload.restart() }
-    }
-    Timer { id: reload; interval: 1000; onTriggered: page.load() }
 
     readonly property var queueArgs: ({
         title: series?.title ?? "", imageUri: series?.imageUri ?? "",
@@ -117,14 +112,14 @@ AppPage {
                     opacity: 0.7
                     text: [page.episode ? page.published(page.episode.date) : "",
                            page.played ? KI18n.i18n("Played")
-                           : page.started ? KI18n.i18n("%1 min left", page.episode.progress.minutesLeft) : ""]
+                           : page.started ? KI18n.i18n("%1 min left", page.progress.minutesLeft) : ""]
                         .filter(s => s.length > 0).join(" · ")
                 }
                 // Partly heard: how far.
                 QQC2.ProgressBar {
                     visible: page.started
                     Layout.preferredWidth: Kirigami.Units.gridUnit * 12
-                    value: page.episode?.progress?.fraction ?? 0
+                    value: page.progress?.fraction ?? 0
                 }
 
                 Flow {
@@ -149,8 +144,7 @@ AppPage {
                     QQC2.Button {
                         icon.name: page.played ? "edit-undo" : "checkmark"
                         text: page.played ? KI18n.i18n("Mark as Not Played") : KI18n.i18n("Mark as Played")
-                        onClicked: Core.call("markPlayed", {eid: page.episode.eid, played: !page.played},
-                                             (r, error) => { if (!error) page.load() })
+                        onClicked: Core.call("markPlayed", {eid: page.episode.eid, played: !page.played})
                     }
                     QQC2.Button {
                         enabled: page.download?.state !== "Queued" && page.download?.state !== "Downloading"

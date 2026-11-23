@@ -6,7 +6,9 @@ Requirements: [../requirements/library.md](../requirements/library.md).
   sets, saved on the device (`takeout_library`), refreshed by `refresh(maxAgeMs)`; asks
   `/api/me` for the user's name.
 - `music/TakeoutMusicRepository`: home lists, artists, releases, favorites, playlists
-  (`createPlaylist`, `addToPlaylist`, `removeFromPlaylist`, `deletePlaylist`), search; ids
+  (`createPlaylist`, `addToPlaylist`, `removeFromPlaylist`, `deletePlaylist`; `playlistCovers`
+  gives a playlist's first four album covers for its mosaic, kept until its track count
+  changes — Mac/iOS keeps its own copy in `PlaylistCovers`), search; ids
   `ar-`, `al-`, `t-`.
 - `video/TakeoutVideoRepository`: movies, TV, people, genres, search, Continue Watching
   (through `TakeoutProgress`); ids `m-` (movie), `s-` (series), `e-` (episode).

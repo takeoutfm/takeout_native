@@ -31,6 +31,18 @@ class TakeoutCore : public QObject
      * before the first count.
      */
     Q_PROPERTY(QVariantMap cacheUsage READ cacheUsage NOTIFY cacheUsageChanged)
+    /**
+     * The subscribed podcasts A–Z, kept current by Subscribe / Unsubscribe; null until first
+     * loaded (decision 017: pages follow this rather than loading again).
+     */
+    /** The user's playlists A–Z ({id, name, trackCount}), kept current by every edit; null until first loaded. */
+    Q_PROPERTY(QVariant playlists READ playlists NOTIFY playlistsChanged)
+    Q_PROPERTY(QVariant podcastSubscriptions READ podcastSubscriptions NOTIFY podcastSubscriptionsChanged)
+    /**
+     * Each started or played episode's progress by GUID ({type: Started, fraction, minutesLeft}
+     * or {type: Complete}), following playback and Mark as Played; missing = not started.
+     */
+    Q_PROPERTY(QVariantMap episodeProgress READ episodeProgress NOTIFY episodeProgressChanged)
 
 public:
     explicit TakeoutCore(QObject *parent = nullptr);
@@ -62,6 +74,9 @@ public:
     QVariantList downloads() const { return m_downloads; }
     QVariantMap downloadsByEtag() const { return m_downloadsByEtag; }
     QVariantMap cacheUsage() const { return m_cacheUsage; }
+    QVariant playlists() const { return m_playlists; }
+    QVariant podcastSubscriptions() const { return m_podcastSubscriptions; }
+    QVariantMap episodeProgress() const { return m_episodeProgress; }
     /** The downloaded file for [etag], or "" when it isn't wholly here. */
     Q_INVOKABLE QString localFile(const QString &etag) const;
 
@@ -74,6 +89,9 @@ Q_SIGNALS:
     void listenBrainzChanged();
     void downloadsChanged();
     void cacheUsageChanged();
+    void playlistsChanged();
+    void podcastSubscriptionsChanged();
+    void episodeProgressChanged();
     void failed(const QString &name, const QVariantMap &error);
     /**
      * The computer woke from sleep (logind's PrepareForSleep(false)): whatever follows the clock
@@ -103,4 +121,7 @@ private:
     QVariantList m_downloads;
     QVariantMap m_downloadsByEtag;
     QVariantMap m_cacheUsage;
+    QVariant m_playlists;
+    QVariant m_podcastSubscriptions;
+    QVariantMap m_episodeProgress;
 };

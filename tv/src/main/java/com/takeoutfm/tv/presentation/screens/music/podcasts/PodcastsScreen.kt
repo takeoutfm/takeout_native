@@ -44,7 +44,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -59,7 +61,7 @@ fun PodcastsScreen(
     viewModel: PodcastsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Back from a podcast page: pick up a changed subscription.
+    // Shown again: pick up subscriptions changed elsewhere (changes made here already show).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
     when (val s = state) {
         PodcastsState.Loading -> PosterGridSkeleton(Modifier.fillMaxSize(), aspectRatio = 1f)
@@ -155,7 +157,12 @@ class PodcastsViewModel @Inject constructor(
     private val podcasts: TakeoutPodcastRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow<PodcastsState>(PodcastsState.Loading)
-    val state: StateFlow<PodcastsState> = _state.asStateFlow()
+
+    /** Subscribed follows the core (decision 017), so Subscribe on a podcast's page shows here. */
+    val state: StateFlow<PodcastsState> =
+        combine(_state, podcasts.subscribedSeries) { state, subscribed ->
+            if (state is PodcastsState.Ready && subscribed != null) state.copy(subscribed = subscribed) else state
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, PodcastsState.Loading)
 
     init {
         load()
@@ -176,7 +183,7 @@ class PodcastsViewModel @Inject constructor(
         }
     }
 
-    /** Reloads the lists quietly, keeping what's shown if it fails. */
+    /** Reloads the subscriptions quietly when shown, for changes made elsewhere. */
     fun refresh() {
         if (_state.value !is PodcastsState.Ready) return
         viewModelScope.launch {

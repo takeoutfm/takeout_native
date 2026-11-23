@@ -61,6 +61,14 @@ final class AppModel: ObservableObject {
     @Published private(set) var serverUser: String?
     /// The full Now Playing screen is over the window.
     @Published var showNowPlaying = false
+    /// The user's playlists as the shared core last loaded them, kept current by every edit
+    /// (`currentPlaylists`); nil until first loaded.
+    @Published private(set) var playlists: [MusicPlaylist]?
+    /// The subscribed podcasts as the shared core last loaded them, kept current by subscribing
+    /// and unsubscribing (`subscribedSeries`); nil until first loaded.
+    @Published private(set) var subscribedPodcasts: [PodcastSeries]?
+    /// Where each episode stands, kept apart: it changes every few seconds while one plays.
+    let episodeOffsets: EpisodeOffsets
     /// A short message at the bottom of the window ("Playing Next"), cleared after a moment.
     @Published private(set) var message: String?
     private var messageTask: Task<Void, Never>?
@@ -85,6 +93,7 @@ final class AppModel: ObservableObject {
             dataDirectory: support.path
         )
         calls = SwiftCalls(core: core)
+        episodeOffsets = EpisodeOffsets(calls: calls)
         let cache = MediaCache(calls: calls, directory: support)
         let player = AudioPlayer(calls: calls, cache: cache)
         // The purge leaves what's playing.
@@ -127,6 +136,15 @@ final class AppModel: ObservableObject {
             },
             WatchKt.watch(flow: core.music.favoriteTrackEtags) { [weak self] etags in
                 self?.favoriteTracks = etags as? Set<String> ?? []
+            },
+            WatchKt.watch(flow: core.music.currentPlaylists) { [weak self] playlists in
+                self?.playlists = playlists as? [MusicPlaylist]
+            },
+            WatchKt.watch(flow: core.podcasts.subscribedSeries) { [weak self] series in
+                self?.subscribedPodcasts = series as? [PodcastSeries]
+            },
+            WatchKt.watch(flow: core.progress.offsets) { [weak self] offsets in
+                self?.episodeOffsets.offsets = offsets as? [String: ApiOffset] ?? [:]
             },
             WatchKt.watch(flow: core.listenBrainz.user) { [weak self] user in
                 self?.listenBrainzUser = (user as? ListenBrainzUser)?.name

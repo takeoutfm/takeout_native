@@ -5,29 +5,36 @@ import Shared
 // left (progress keyed by the episode's GUID, synced like video). Kotlin's `description` is
 // `description_` here.
 
-/** Subscribed podcasts, or every podcast on the server. */
+/**
+ * Subscribed podcasts, or every podcast on the server. The subscribed ones are the shared
+ * core's current list, so subscribing on a podcast's page shows here at once.
+ */
 struct PodcastsView: View {
     @EnvironmentObject private var model: AppModel
     @AppStorage("podcastsShowAll") private var showAll = false
+    /** The first load of the subscriptions failed, with nothing to show. */
+    @State private var failed = false
 
     var body: some View {
-        Loaded(id: showAll, load: { try await model.calls.podcasts(subscribedOnly: !showAll) }) { series in
-            if series.isEmpty {
-                ContentUnavailableView {
-                    Label(showAll ? "No Podcasts" : "No Subscriptions", systemImage: "antenna.radiowaves.left.and.right")
-                } actions: {
-                    if !showAll { Button("Show All Podcasts") { showAll = true }.buttonStyle(.bordered) }
-                }
+        Group {
+            if showAll {
+                Loaded(load: { try await model.calls.podcasts(subscribedOnly: false) }) { grid($0) }
+            } else if let series = model.subscribedPodcasts {
+                grid(series)
+            } else if failed {
+                ContentUnavailableView("Couldn't load this", systemImage: "wifi.exclamationmark")
             } else {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 20)], spacing: 24) {
-                        ForEach(series, id: \.id) { s in
-                            NavigationLink(value: Route.podcast(s.id)) { PodcastCard(series: s) }
-                                .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(20)
-                }
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        // Each visit asks the server again (another app may have changed them).
+        .task(id: showAll) {
+            guard !showAll else { return }
+            do {
+                _ = try await model.calls.podcasts(subscribedOnly: true)
+                failed = false
+            } catch {
+                failed = model.subscribedPodcasts == nil
             }
         }
         .navigationTitle("Podcasts")
@@ -39,6 +46,43 @@ struct PodcastsView: View {
             .pickerStyle(.segmented)
         }
     }
+
+    @ViewBuilder
+    private func grid(_ series: [PodcastSeries]) -> some View {
+        if series.isEmpty {
+            ContentUnavailableView {
+                Label(showAll ? "No Podcasts" : "No Subscriptions", systemImage: "antenna.radiowaves.left.and.right")
+            } actions: {
+                if !showAll { Button("Show All Podcasts") { showAll = true }.buttonStyle(.bordered) }
+            }
+        } else {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 20)], spacing: 24) {
+                    ForEach(series, id: \.id) { s in
+                        NavigationLink(value: Route.podcast(s.id)) { PodcastCard(series: s) }
+                            .buttonStyle(.plain)
+                    }
+                }
+                .padding(20)
+            }
+        }
+    }
+}
+
+/**
+ * Where each episode stands (`TakeoutProgress.offsets`): playing and marking played update it
+ * in the shared core, and the episode views watching this redraw. Its own object, not
+ * AppModel's, as it changes every few seconds while an episode plays.
+ */
+@MainActor
+final class EpisodeOffsets: ObservableObject {
+    @Published var offsets: [String: ApiOffset] = [:]
+    private let calls: SwiftCalls
+
+    init(calls: SwiftCalls) { self.calls = calls }
+
+    /** The episode with GUID [eid]: not started, "N min left", or played. */
+    func progress(_ eid: String) -> EpisodeProgress { calls.episodeProgress(offset: offsets[eid]) }
 }
 
 struct PodcastCard: View {
@@ -54,30 +98,29 @@ struct PodcastCard: View {
     }
 }
 
-/** A podcast: Subscribe, and its episodes newest first with where you are in each. */
+/**
+ * A podcast: Subscribe, and its episodes newest first with where you are in each. Whether it's
+ * subscribed and where each episode stands come from the shared core's state, so they change
+ * as you subscribe, play or mark episodes, without loading the page again.
+ */
 struct PodcastView: View {
     let seriesId: String
     @EnvironmentObject private var model: AppModel
-    /// Bumped to reload after marking an episode.
-    @State private var version = 0
 
     var body: some View {
-        Loaded(id: "\(seriesId)/\(version)", load: { try await model.calls.podcastDetails(seriesId: seriesId) }) { details in
-            PodcastPage(details: details) { version += 1 }
+        Loaded(id: seriesId, load: { try await model.calls.podcastDetails(seriesId: seriesId) }) { details in
+            PodcastPage(details: details, offsets: model.episodeOffsets)
         }
     }
 }
 
 private struct PodcastPage: View {
     let details: PodcastDetails
-    let changed: () -> Void
+    @ObservedObject var offsets: EpisodeOffsets
     @EnvironmentObject private var model: AppModel
-    @State private var subscribed: Bool
 
-    init(details: PodcastDetails, changed: @escaping () -> Void) {
-        self.details = details
-        self.changed = changed
-        _subscribed = State(initialValue: details.subscribed)
+    private var subscribed: Bool {
+        model.subscribedPodcasts.map { list in list.contains { $0.id == details.series.id } } ?? details.subscribed
     }
 
     var body: some View {
@@ -105,7 +148,7 @@ private struct PodcastPage: View {
             ForEach(Array(details.episodes.enumerated()), id: \.offset) { index, episode in
                 HStack(alignment: .top) {
                     NavigationLink(value: Route.podcastEpisode(seriesId: details.series.id, episodeId: episode.id)) {
-                        EpisodeRow(episode: episode).contentShape(Rectangle())
+                        EpisodeRow(episode: episode, progress: offsets.progress(episode.eid)).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     Button { play(index) } label: { Image(systemName: "play.circle").font(.title) }
@@ -114,13 +157,12 @@ private struct PodcastPage: View {
                 }
                 .contextMenu {
                     Button("Play") { play(index) }
-                    let played = episode.progress is EpisodeProgressComplete
+                    let played = offsets.progress(episode.eid) is EpisodeProgressComplete
                     Button(played ? "Mark as Not Played" : "Mark as Played") { mark(episode, played: !played) }
                 }
             }
         }
         .navigationTitle(details.series.title)
-        .onChange(of: details.subscribed) { _, value in subscribed = value }
     }
 
     private func play(_ index: Int) {
@@ -134,22 +176,20 @@ private struct PodcastPage: View {
         Task {
             do {
                 try await model.calls.markPlayed(eid: episode.eid, played: played)
-                changed()
             } catch {
                 NSLog("Mark played failed: \(error)")
             }
         }
     }
 
+    /** The shared core shows the change at once, and undoes it if the server refuses. */
     private func toggleSubscribed() {
         let wanted = !subscribed
-        subscribed = wanted
         Task {
             do {
                 try await model.calls.setSubscribed(seriesId: details.series.id, subscribed: wanted)
             } catch {
-                NSLog("Subscribe failed: \(error)")
-                subscribed = !wanted
+                model.show(wanted ? "Couldn't subscribe" : "Couldn't unsubscribe")
             }
         }
     }
@@ -157,6 +197,7 @@ private struct PodcastPage: View {
 
 private struct EpisodeRow: View {
     let episode: PodcastEpisode
+    let progress: EpisodeProgress
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -172,7 +213,7 @@ private struct EpisodeRow: View {
         .padding(.vertical, 4)
     }
 
-    private var status: some View { EpisodeStatus(progress: episode.progress) }
+    private var status: some View { EpisodeStatus(progress: progress) }
     private var date: String { published(episode.date) }
 }
 
@@ -208,27 +249,34 @@ struct PodcastEpisodeView: View {
     let seriesId: String
     let episodeId: String
     @EnvironmentObject private var model: AppModel
-    @EnvironmentObject private var player: AudioPlayer
-    @EnvironmentObject private var cache: MediaCache
-    /// Bumped to reload after marking it, and when playback pauses (for current progress).
-    @State private var version = 0
 
     var body: some View {
-        Loaded(id: "\(episodeId)/\(version)", load: { try await model.calls.podcastDetails(seriesId: seriesId) }) { details in
+        Loaded(id: episodeId, load: { try await model.calls.podcastDetails(seriesId: seriesId) }) { details in
             if let index = details.episodes.firstIndex(where: { $0.id == episodeId }) {
-                page(details, index)
+                EpisodePage(details: details, index: index, offsets: model.episodeOffsets)
             } else {
                 ContentUnavailableView("Episode not found", systemImage: "antenna.radiowaves.left.and.right")
             }
         }
-        .onChange(of: player.isPlaying) { _, playing in if !playing { version += 1 } }
     }
+}
+
+/** Where the episode stands follows the shared core's progress: playing and marking show at once. */
+private struct EpisodePage: View {
+    let details: PodcastDetails
+    let index: Int
+    @ObservedObject var offsets: EpisodeOffsets
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var cache: MediaCache
+
+    var body: some View { page(details, index) }
 
     private func page(_ details: PodcastDetails, _ index: Int) -> some View {
         let series = details.series
         let episode = details.episodes[index]
-        let started = episode.progress as? EpisodeProgressStarted
-        let played = episode.progress is EpisodeProgressComplete
+        let progress = offsets.progress(episode.eid)
+        let started = progress as? EpisodeProgressStarted
+        let played = progress is EpisodeProgressComplete
         // Listed newest first: the previous episode is the older one.
         let older = details.episodes.indices.contains(index + 1) ? details.episodes[index + 1] : nil
         let newer = index > 0 ? details.episodes[index - 1] : nil
@@ -249,7 +297,7 @@ struct PodcastEpisodeView: View {
                         .buttonStyle(.plain)
                         HStack {
                             Text(published(episode.date)).foregroundStyle(.secondary)
-                            EpisodeStatus(progress: episode.progress)
+                            EpisodeStatus(progress: progress)
                         }
                         FlowRow {
                             Button { play(details, index, fromStart: false) } label: {
@@ -317,7 +365,6 @@ struct PodcastEpisodeView: View {
         Task {
             do {
                 try await model.calls.markPlayed(eid: episode.eid, played: played)
-                version += 1
             } catch {
                 NSLog("Mark played failed: \(error)")
             }

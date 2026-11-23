@@ -45,6 +45,12 @@ Rules for the core:
   `linuxMain` (and `nativeMain`, shared by Apple and Linux).
 - **No dependency injection framework**: plain constructors; each app wires the graph
   (Hilt modules on Android, `TakeoutCore` on Apple, `LinuxCore` on Linux).
+- **Shared state is a `StateFlow`, kept current by its edits**: server state that several
+  pages show or edit (playlists, favorite tracks, podcast subscriptions, episode progress) is
+  held in its repository or store; loading sets it,
+  every edit through the repository updates it, and pages observe it. No reload counters or
+  "changed" signals in the apps; `util/EditedState` keeps a load that overlapped an edit from
+  undoing it (decision [017](../decisions/017-shared-state-flows.md)).
 - **Never heavy work on the caller's thread**: sorting and mapping the library run on
   `Dispatchers.Default` (`listFlow`); JSON decodes off the main thread.
 - Tests in `commonTest` (`kotlin.test`), run on the JVM and natively (`linuxX64Test`; on a Mac,

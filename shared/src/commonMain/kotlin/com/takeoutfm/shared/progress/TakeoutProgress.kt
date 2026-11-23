@@ -17,6 +17,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -48,6 +50,19 @@ class TakeoutProgress(
     /** ETags whose local offset the server hasn't confirmed yet. */
     private val pending: MutableStateFlow<Set<String>>
 
+    /** The server's offsets as last fetched. */
+    private val remote = MutableStateFlow<List<ApiOffset>>(emptyList())
+
+    private val _offsets: MutableStateFlow<Map<String, ApiOffset>>
+
+    /**
+     * The newest known offset per ETag: the server's as last fetched merged with every report
+     * made here (playing, marking played). Pages showing progress (an episode's "12 min left",
+     * Played) observe this, so they follow playback and marks without loading again (decision
+     * 017). Empty after sign-out.
+     */
+    val offsets: StateFlow<Map<String, ApiOffset>>
+
     init {
         val saved = db.progressQueries.all().executeAsList()
         local = MutableStateFlow(
@@ -56,6 +71,8 @@ class TakeoutProgress(
             }
         )
         pending = MutableStateFlow(saved.filter { it.pending != 0L }.map { it.etag }.toSet())
+        _offsets = MutableStateFlow(newestByEtag(local.value.values))
+        offsets = _offsets.asStateFlow()
         scope.launch {
             session.state.collect { state ->
                 if (!state.isLoggedIn) {
@@ -70,14 +87,8 @@ class TakeoutProgress(
     /** Where to resume [etag], in ms; 0 to start from the beginning. */
     suspend fun resumePositionMs(etag: String): Long {
         if (etag.isEmpty()) return 0
-        val remote = try {
-            api.progress().offsets.firstOrNull { it.etag == etag }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        }
-        val newest = listOfNotNull(local.value[etag], remote).maxByOrNull { it.instant() } ?: return 0
+        val fetched = fetchRemote()?.firstOrNull { it.etag == etag }
+        val newest = listOfNotNull(local.value[etag], fetched).maxByOrNull { it.instant() } ?: return 0
         return if (shouldResume(newest.offset, newest.duration)) newest.offset * 1000L else 0
     }
 
@@ -89,15 +100,25 @@ class TakeoutProgress(
         selectInProgress(latest().values, days, Clock.System.now())
 
     /** The newest offset for every ETag, from the server plus local saves (local alone offline). */
-    override suspend fun latest(): Map<String, ApiOffset> {
-        val remote = try {
+    override suspend fun latest(): Map<String, ApiOffset> =
+        newestByEtag(fetchRemote().orEmpty() + local.value.values)
+
+    /** The server's offsets, kept for [offsets]; null when it can't be reached. */
+    private suspend fun fetchRemote(): List<ApiOffset>? {
+        val fetched = try {
             api.progress().offsets
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            emptyList()
+            return null
         }
-        return newestByEtag(remote + local.value.values)
+        remote.value = fetched
+        publish()
+        return fetched
+    }
+
+    private fun publish() {
+        _offsets.value = newestByEtag(remote.value + local.value.values)
     }
 
     fun report(etag: String, positionMs: Long, durationMs: Long) {
@@ -119,6 +140,7 @@ class TakeoutProgress(
                 keepNewest(updated.values, pending.value, MaxLocal).associateBy { it.etag }
             }
         }
+        publish()
         writer.write {
             db.progressQueries.transaction {
                 db.progressQueries.upsert(
@@ -151,6 +173,8 @@ class TakeoutProgress(
     private fun clear() {
         local.value = emptyMap()
         pending.value = emptySet()
+        remote.value = emptyList()
+        publish()
         writer.write { db.progressQueries.clear() }
     }
 

@@ -131,6 +131,9 @@ ctest --test-dir linux/build                # C API smoke test, http_host_test, 
   while needed and `repeat` (a one-shot that re-arms itself stops for good if one tick goes
   wrong: the Live guide stayed on yesterday). QML `Timer`s are coarse (up to 5% early): never
   act on "the time has come" without checking the clock.
+- State that several pages show or edit (playlists, favorites, subscriptions, progress) is a `StateFlow` in the shared
+  repository that its edits update and pages observe, not a reload counter or "changed" signal
+  in an app: a Mac page under a pushed one never reappears to reload (decision 017).
 - Swift's synthesized `Codable` fails on a missing key: a field added to a saved JSON type
   must be optional, or every existing file stops decoding.
 - C++ range-for over a member of a temporary (`for (x : f()->rows)`) uses freed memory; keep

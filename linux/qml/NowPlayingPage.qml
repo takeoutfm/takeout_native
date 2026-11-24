@@ -166,6 +166,20 @@ Kirigami.Page {
                     text: KI18n.i18n("Previous")
                     onClicked: Player.previous()
                 }
+                // Back 10 s and ahead 30 s, as the other apps' Now Playing (PLAY-9); a stream has no time to move in.
+                QQC2.ToolButton {
+                    visible: !Player.live
+                    enabled: Player.duration > 0
+                    icon.name: "media-seek-backward"
+                    icon.width: Kirigami.Units.iconSizes.medium
+                    icon.height: Kirigami.Units.iconSizes.medium
+                    display: QQC2.AbstractButton.IconOnly
+                    text: KI18n.i18n("Back 10 Seconds")
+                    QQC2.ToolTip.text: text
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    onClicked: Player.seek(Math.max(0, Player.position - 10))
+                }
                 QQC2.RoundButton {
                     icon.name: Player.playing ? "media-playback-pause" : "media-playback-start"
                     icon.width: Kirigami.Units.iconSizes.large
@@ -174,6 +188,20 @@ Kirigami.Page {
                     display: QQC2.AbstractButton.IconOnly
                     text: Player.playing ? KI18n.i18n("Pause") : KI18n.i18n("Play")
                     onClicked: Player.togglePlay()
+                }
+                QQC2.ToolButton {
+                    visible: !Player.live
+                    enabled: Player.duration > 0
+                    icon.name: "media-seek-forward"
+                    icon.width: Kirigami.Units.iconSizes.medium
+                    icon.height: Kirigami.Units.iconSizes.medium
+                    display: QQC2.AbstractButton.IconOnly
+                    text: KI18n.i18n("Ahead 30 Seconds")
+                    QQC2.ToolTip.text: text
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    // Not past the end: a moment before it, so the track still ends and the next one starts.
+                    onClicked: Player.seek(Math.min(Player.position + 30, Math.max(0, Player.duration - 1)))
                 }
                 QQC2.ToolButton {
                     icon.name: "media-skip-forward"

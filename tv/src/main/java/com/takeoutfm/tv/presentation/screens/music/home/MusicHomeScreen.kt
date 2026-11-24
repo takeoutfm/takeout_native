@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,7 +17,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import android.text.format.DateUtils
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,11 +31,16 @@ import com.takeoutfm.shared.music.Album
 import com.takeoutfm.shared.music.FeaturedAlbum
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.PlayedQueue
+import com.takeoutfm.shared.music.StreamHistory
+import com.takeoutfm.shared.music.StreamSong
+import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.MusicHomeSkeleton
 import com.takeoutfm.tv.presentation.common.TileRow
 import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
+import com.takeoutfm.tv.presentation.screens.music.common.MusicListRow
+import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
 import com.takeoutfm.tv.presentation.screens.music.player.QueueRef
 import com.takeoutfm.tv.presentation.utils.FocusMemory
 import com.takeoutfm.tv.presentation.utils.RestoreRememberedFocus
@@ -40,6 +50,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /** Music mode's first tab: rows of recently added and newly released albums. */
@@ -54,6 +65,7 @@ fun MusicHomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recentlyPlayed by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
     val featured by viewModel.featured.collectAsStateWithLifecycle()
+    val streamSongs by viewModel.streamSongs.collectAsStateWithLifecycle()
     // Only what the row shows: playing updates each entry's position every few seconds, and a
     // list that compares different would make the row re-animate and drop focus from the card.
     val playedTiles = remember(recentlyPlayed) {
@@ -80,6 +92,7 @@ fun MusicHomeScreen(
         if (isTopBarVisible) listState.animateScrollToItem(0)
     }
 
+    val childPadding = rememberChildPadding()
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(bottom = 108.dp),
@@ -143,6 +156,27 @@ fun MusicHomeScreen(
                 keyPrefix = "new-",
             )
         }
+        // Stream History (RADIO-5): the songs heard on live streams here, newest first. A record
+        // only: selecting a song does nothing.
+        if (streamSongs.isNotEmpty()) item(key = "stream-title") {
+            Text(
+                text = stringResource(R.string.music_stream_history),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = childPadding.start, top = 32.dp, bottom = 8.dp),
+            )
+        }
+        itemsIndexed(streamSongs, key = { index, song -> "stream-$index-${song.heardAt}" }) { _, song ->
+            val parsed = remember(song.title) { parseStreamTitle(song.title) }
+            MusicListRow(
+                imageUri = song.imageUri,
+                placeholderKey = song.station,
+                title = parsed?.second ?: song.title,
+                subtitle = listOfNotNull(parsed?.first, song.station).joinToString(" · "),
+                trailing = DateUtils.getRelativeTimeSpanString(song.heardAt).toString(),
+                onClick = {},
+                modifier = Modifier.padding(horizontal = childPadding.start),
+            )
+        }
     }
 }
 
@@ -158,27 +192,35 @@ fun AlbumRow(
     modifier: Modifier = Modifier,
     focusMemory: FocusMemory? = null,
     keyPrefix: String = "",
+    /** The heading's style: TileRow's large one on Home, smaller among other rows (search). */
+    titleStyle: TextStyle? = null,
 ) {
-    TileRow(
-        items = albums,
-        key = { keyPrefix + it.id },
-        itemTitle = { it.name },
-        itemImage = { album, _, imageModifier ->
-            MusicImage(
-                url = album.coverUri,
-                contentDescription = album.name,
-                modifier = imageModifier.fillMaxWidth(),
-                placeholderKey = album.id,
-                fallbackText = album.name,
-            )
-        },
-        modifier = modifier.padding(top = 16.dp),
-        itemDirection = ItemDirection.Square,
-        title = title,
-        onItemSelected = onAlbumClick,
-        focusMemory = focusMemory,
-    )
+    val image: @Composable (Album, Int, Modifier) -> Unit = { album, _, imageModifier ->
+        MusicImage(
+            url = album.coverUri,
+            contentDescription = album.name,
+            modifier = imageModifier.fillMaxWidth(),
+            placeholderKey = album.id,
+            fallbackText = album.name,
+        )
+    }
+    if (titleStyle == null) {
+        TileRow(
+            items = albums, key = { keyPrefix + it.id }, itemTitle = { it.name }, itemImage = image,
+            modifier = modifier.padding(top = 16.dp), itemDirection = ItemDirection.Square,
+            title = title, onItemSelected = onAlbumClick, focusMemory = focusMemory,
+        )
+    } else {
+        TileRow(
+            items = albums, key = { keyPrefix + it.id }, itemTitle = { it.name }, itemImage = image,
+            modifier = modifier.padding(top = 16.dp), itemDirection = ItemDirection.Square,
+            title = title, titleStyle = titleStyle, onItemSelected = onAlbumClick, focusMemory = focusMemory,
+        )
+    }
 }
+
+/** Stream History rows shown on Home. */
+private const val MaxStreamSongs = 25
 
 /** A Recently Played card. */
 private data class PlayedTile(val id: String, val title: String, val coverUri: String)
@@ -192,7 +234,13 @@ data class MusicHomeState(
 class MusicHomeViewModel @Inject constructor(
     repository: TakeoutMusicRepository,
     history: MusicHistory,
+    streamHistory: StreamHistory,
 ) : ViewModel() {
+    /** Songs heard on live streams here, newest first: the latest few. */
+    val streamSongs: StateFlow<List<StreamSong>> = streamHistory.songs
+        .map { it.take(MaxStreamSongs) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Queues played on this device, newest first. */
     val recentlyPlayed: StateFlow<List<PlayedQueue>> = history.entries
 

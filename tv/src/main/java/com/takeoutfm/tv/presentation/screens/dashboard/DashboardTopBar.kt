@@ -98,8 +98,8 @@ const val RecommendedRoutePattern = "$RecommendedRouteName/{$RecommendedIndexKey
 
 /**
  * Video: Home, then a tab per recommendation set, then Genres, Movies, Shows, Favorites, Search.
- * Music: Home, Artists, Favorites, Playlists (when the user has any), Radio, Podcasts (when the
- * server has any).
+ * Music: Home, Artists, Favorites, Playlists (when the user has any), Activity, Radio, Podcasts
+ * (when the server has any), Search.
  */
 fun dashboardTabs(
     recommendations: List<Recommendation>,
@@ -113,7 +113,9 @@ fun dashboardTabs(
                     (it != Screens.Playlists || index?.hasPlaylists != false) &&
                     (it != Screens.Podcasts || index?.hasPodcasts != false)
             }
-            .map { DashboardTab(route = it(), label = it.tabLabel ?: it(), icon = it.tabIcon) }
+            .map { DashboardTab(route = it(), label = it.tabLabel ?: it(), icon = it.tabIcon) } +
+            // the same search as video mode's (LIB-12), last as there
+            DashboardTab(route = Screens.Search(), label = Screens.Search(), icon = Screens.Search.tabIcon)
     }
     // Before the first index is known, show everything rather than guess.
     fun has(screen: Screens) = when (screen) {

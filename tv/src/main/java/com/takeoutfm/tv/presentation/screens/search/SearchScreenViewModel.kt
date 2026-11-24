@@ -18,40 +18,66 @@ package com.takeoutfm.tv.presentation.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takeoutfm.media.MusicPlayer
+import com.takeoutfm.shared.music.MusicSearchResults
+import com.takeoutfm.shared.music.Track
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.tv.data.entities.SearchResults
 import com.takeoutfm.tv.data.repositories.TakeoutMovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Searches video and music at once (LIB-12). Movies and shows are what the TV is mostly for, so
+ * the video results show as soon as they come, and music's follow below them.
+ */
 @HiltViewModel
 class SearchScreenViewModel @Inject constructor(
-    private val repository: TakeoutMovieRepository
+    private val repository: TakeoutMovieRepository,
+    private val music: TakeoutMusicRepository,
+    private val player: MusicPlayer,
 ) : ViewModel() {
 
-    private val internalSearchState = MutableSharedFlow<SearchState>()
+    private val _searchState = MutableStateFlow<SearchState>(SearchState.Done(SearchResults(), MusicSearchResults()))
+    val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
+
+    private var searching: Job? = null
 
     fun query(queryString: String) {
-        viewModelScope.launch { postQuery(queryString) }
+        searching?.cancel()
+        searching = viewModelScope.launch {
+            _searchState.value = SearchState.Searching
+            val musicResults = async { safely { music.search(queryString) } ?: MusicSearchResults() }
+            val video = safely { repository.search(query = queryString) } ?: SearchResults()
+            _searchState.value = SearchState.Done(video, null)
+            _searchState.value = SearchState.Done(video, musicResults.await())
+        }
     }
 
-    private suspend fun postQuery(queryString: String) {
-        internalSearchState.emit(SearchState.Searching)
-        val result = repository.search(query = queryString)
-        internalSearchState.emit(SearchState.Done(result))
+    /** Plays the search's [tracks] from the [index]th, as the phone does (the rest follow). */
+    fun playTracks(query: String, tracks: List<Track>, index: Int) {
+        player.play(music.tracksQueue(query, tracks, index))
     }
 
-    val searchState = internalSearchState.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = SearchState.Done(SearchResults())
-    )
+    private suspend fun <T> safely(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
 }
 
 sealed interface SearchState {
     data object Searching : SearchState
-    data class Done(val results: SearchResults) : SearchState
+
+    /** [music] null while it's still coming. */
+    data class Done(val results: SearchResults, val music: MusicSearchResults?) : SearchState
 }

@@ -16,6 +16,7 @@
 
 package com.takeoutfm.tv.presentation
 
+import com.takeoutfm.tv.presentation.screens.music.playlists.PlaylistScreen
 import android.net.Uri
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -241,6 +242,12 @@ private fun AppContent(
                         playMusic = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
                         },
+                        openNowPlaying = {
+                            navController.navigate(Screens.NowPlaying()) { launchSingleTop = true }
+                        },
+                        openPlaylist = { id, name ->
+                            navController.navigate(Screens.Playlist.withArgs(id, Uri.encode(name)))
+                        },
                         openLivePlayer = { channel ->
                             navController.navigate(Screens.LivePlayer.withArgs(Uri.encode(channel)))
                         },
@@ -305,6 +312,24 @@ private fun AppContent(
                         onArtistClick = { artist ->
                             navController.navigate(Screens.Artist.withArgs(artist.id))
                         },
+                        onPlay = { ref ->
+                            navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
+                        },
+                        onBackPressed = {
+                            if (navController.navigateUp()) {
+                                isComingBackFromDifferentScreen = true
+                            }
+                        },
+                    )
+                }
+                composable(
+                    route = Screens.Playlist(),
+                    arguments = listOf(
+                        navArgument(PlaylistScreen.PlaylistIdBundleKey) { type = NavType.StringType },
+                        navArgument(PlaylistScreen.PlaylistNameBundleKey) { type = NavType.StringType },
+                    )
+                ) {
+                    PlaylistScreen(
                         onPlay = { ref ->
                             navController.navigate(Screens.MusicPlayer.withArgs(ref.encode()))
                         },

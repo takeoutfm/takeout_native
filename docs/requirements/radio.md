@@ -22,7 +22,6 @@ Stations and live streams. Design: [../design/radio.md](../design/radio.md).
 |---|---|---|---|---|---|---|
 | RADIO-1/2 stations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-3/4 streams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| RADIO-5 Stream History kept | ✅ | ✅ (shared service) | ✅ | ✅ | ✅ | ✅ (shared player) |
-| RADIO-5 Stream History listed | ✅ | ❌ | ✅ | ✅ under Recently Played | ✅ under Recently Played | ✅ under Recently Played |
+| RADIO-5 Stream History kept | ✅ | ✅ (shared service; recorded since 2026-11-24) | ✅ | ✅ | ✅ | ✅ (shared player) |
+| RADIO-5 Stream History listed | ✅ | ✅ on music Home | ✅ | ✅ under Recently Played | ✅ under Recently Played | ✅ under Recently Played |
 
-The TV keeps Stream History but doesn't list it yet.

@@ -74,6 +74,16 @@ import com.takeoutfm.tv.R
 import com.takeoutfm.tv.data.entities.Movie
 import com.takeoutfm.tv.data.entities.MovieList
 import com.takeoutfm.tv.data.entities.SearchResults
+import com.takeoutfm.shared.music.Album
+import com.takeoutfm.shared.music.Artist
+import com.takeoutfm.shared.music.MusicSearchResults
+import com.takeoutfm.shared.music.Track
+import com.takeoutfm.tv.presentation.common.TileRow
+import com.takeoutfm.tv.presentation.screens.music.artist.TrackRow
+import com.takeoutfm.tv.presentation.screens.music.common.MusicImage
+import com.takeoutfm.tv.presentation.screens.music.common.TrackMenuDialog
+import com.takeoutfm.tv.presentation.screens.music.home.AlbumRow
+import com.takeoutfm.tv.presentation.screens.music.player.QueueRef
 import com.takeoutfm.tv.presentation.common.ItemDirection
 import com.takeoutfm.tv.presentation.common.MoviesRow
 import com.takeoutfm.tv.presentation.screens.dashboard.rememberChildPadding
@@ -82,6 +92,10 @@ import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 @Composable
 fun SearchScreen(
     onMovieClick: (movie: Movie) -> Unit,
+    onArtistClick: (Artist) -> Unit,
+    onAlbumClick: (Album) -> Unit,
+    onPlay: (QueueRef) -> Unit,
+    openNowPlaying: () -> Unit,
     onScroll: (isTopBarVisible: Boolean) -> Unit,
     searchScreenViewModel: SearchScreenViewModel = hiltViewModel(),
 ) {
@@ -102,16 +116,28 @@ fun SearchScreen(
     // Kept here, not in SearchResult, so the query survives while results load.
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var lastResults by remember { mutableStateOf(SearchResults()) }
+    var lastMusic by remember { mutableStateOf(MusicSearchResults()) }
     val s = searchState
-    if (s is SearchState.Done) lastResults = s.results
+    if (s is SearchState.Done) {
+        lastResults = s.results
+        lastMusic = s.music ?: MusicSearchResults()
+    }
 
     SearchResult(
         query = searchQuery,
         onQueryChange = { searchQuery = it },
         results = lastResults,
+        music = lastMusic,
         isSearching = s is SearchState.Searching,
         searchMovies = searchScreenViewModel::query,
         onMovieClick = onMovieClick,
+        onArtistClick = onArtistClick,
+        onAlbumClick = onAlbumClick,
+        onPlay = onPlay,
+        onPlayTrack = { index ->
+            searchScreenViewModel.playTracks(searchQuery, lastMusic.tracks, index)
+            openNowPlaying()
+        },
         lazyColumnState = lazyColumnState,
     )
 }
@@ -122,9 +148,14 @@ fun SearchResult(
     query: String,
     onQueryChange: (String) -> Unit,
     results: SearchResults,
+    music: MusicSearchResults,
     isSearching: Boolean,
     searchMovies: (queryString: String) -> Unit,
     onMovieClick: (movie: Movie) -> Unit,
+    onArtistClick: (Artist) -> Unit,
+    onAlbumClick: (Album) -> Unit,
+    onPlay: (QueueRef) -> Unit,
+    onPlayTrack: (index: Int) -> Unit,
     modifier: Modifier = Modifier,
     lazyColumnState: LazyListState = rememberLazyListState(),
 ) {
@@ -140,6 +171,8 @@ fun SearchResult(
     val tfInteractionSource = remember { MutableInteractionSource() }
 
     val isTfFocused by tfInteractionSource.collectIsFocusedAsState()
+    var menuTrack by remember { mutableStateOf<Track?>(null) }
+    menuTrack?.let { TrackMenuDialog(it, onDismissRequest = { menuTrack = null }) }
 
     val voiceSearch = rememberVoiceSearch(
         onPartial = onQueryChange,
@@ -315,6 +348,69 @@ fun SearchResult(
                     movieList = list
                 ) { selectedMovie -> onMovieClick(selectedMovie) }
             }
+        }
+        // Music after video, always (LIB-12): movies and shows are what the TV is mostly for.
+        val top = if (rows.isEmpty()) childPadding.top * 2 else 0.dp
+        if (music.artists.isNotEmpty()) item(key = "artists") {
+            TileRow(
+                items = music.artists,
+                key = { "artist-${it.id}" },
+                itemTitle = { it.name },
+                itemImage = { artist, _, imageModifier ->
+                    MusicImage(
+                        url = artist.imageUri,
+                        contentDescription = artist.name,
+                        modifier = imageModifier.fillMaxWidth(),
+                        placeholderKey = artist.id,
+                        fallbackText = artist.name,
+                    )
+                },
+                modifier = Modifier.padding(top = top),
+                itemDirection = ItemDirection.Square,
+                title = stringResource(R.string.music_favorite_artists),
+                titleStyle = MaterialTheme.typography.titleMedium,
+                onItemSelected = onArtistClick,
+            )
+        }
+        if (music.albums.isNotEmpty()) item(key = "albums") {
+            AlbumRow(
+                title = stringResource(R.string.music_albums),
+                albums = music.albums,
+                onAlbumClick = onAlbumClick,
+                keyPrefix = "album-",
+                titleStyle = MaterialTheme.typography.titleMedium,
+            )
+        }
+        if (music.tracks.isNotEmpty()) item(key = "tracks") {
+            // The tracks as a queue from the one picked, as on the phone; a long press for its menu.
+            TrackRow(
+                title = stringResource(R.string.music_favorite_tracks),
+                tracks = music.tracks,
+                focusMemory = null,
+                onTrackClick = onPlayTrack,
+                onTrackLongPressed = { menuTrack = it },
+            )
+        }
+        if (music.stations.isNotEmpty()) item(key = "stations") {
+            TileRow(
+                items = music.stations,
+                key = { "station-${it.id}" },
+                itemTitle = { it.name },
+                itemImage = { station, _, imageModifier ->
+                    MusicImage(
+                        url = station.imageUri,
+                        contentDescription = station.name,
+                        modifier = imageModifier.fillMaxWidth(),
+                        placeholderKey = station.id,
+                        fallbackText = station.name,
+                    )
+                },
+                modifier = Modifier.padding(top = 16.dp),
+                itemDirection = ItemDirection.Square,
+                title = stringResource(R.string.music_stations),
+                titleStyle = MaterialTheme.typography.titleMedium,
+                onItemSelected = { onPlay(QueueRef.Station(it.id)) },
+            )
         }
     }
 }

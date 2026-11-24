@@ -16,6 +16,7 @@
 
 package com.takeoutfm.tv.presentation.screens.dashboard
 
+import com.takeoutfm.tv.presentation.screens.music.activity.ActivityScreen
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -113,6 +114,10 @@ fun DashboardScreen(
     openAlbum: (albumId: String) -> Unit = {},
     openPodcast: (seriesId: String) -> Unit = {},
     playMusic: (QueueRef) -> Unit = {},
+    /** Now Playing, for what was started here (search's tracks). */
+    openNowPlaying: () -> Unit = {},
+    /** A playlist's page (or Favorite Tracks'), by id and name. */
+    openPlaylist: (id: String, name: String) -> Unit = { _, _ -> },
     openLivePlayer: (channel: String) -> Unit = {},
     dashboardViewModel: DashboardViewModel = hiltViewModel(),
 ) {
@@ -296,6 +301,8 @@ fun DashboardScreen(
             openAlbum = openAlbum,
             openPodcast = openPodcast,
             playMusic = playMusic,
+            openNowPlaying = openNowPlaying,
+            openPlaylist = openPlaylist,
             openLivePlayer = openLivePlayer,
             startDestination = startDestination,
             updateTopBarVisibility = { isTopBarVisible = it },
@@ -336,6 +343,8 @@ private fun Body(
     openAlbum: (albumId: String) -> Unit,
     openPodcast: (seriesId: String) -> Unit,
     playMusic: (QueueRef) -> Unit,
+    openNowPlaying: () -> Unit,
+    openPlaylist: (id: String, name: String) -> Unit,
     openLivePlayer: (channel: String) -> Unit,
     startDestination: String,
     updateTopBarVisibility: (Boolean) -> Unit,
@@ -411,6 +420,10 @@ private fun Body(
         composable(Screens.Search()) {
             SearchScreen(
                 onMovieClick = { movie -> openMovieDetailsScreen(movie.id) },
+                onArtistClick = { openArtist(it.id) },
+                onAlbumClick = { openAlbum(it.id) },
+                onPlay = playMusic,
+                openNowPlaying = openNowPlaying,
                 onScroll = updateTopBarVisibility
             )
         }
@@ -439,8 +452,16 @@ private fun Body(
         }
         composable(Screens.Playlists()) {
             PlaylistsScreen(
-                onPlaylistClick = { playMusic(QueueRef.Playlist(it.id)) },
-                onFavoritesClick = { playMusic(QueueRef.Favorites()) },
+                onPlaylistClick = openPlaylist,
+                onScroll = updateTopBarVisibility,
+                isTopBarVisible = isTopBarVisible,
+            )
+        }
+        composable(Screens.Activity()) {
+            ActivityScreen(
+                onArtistClick = { openArtist(it.id) },
+                onAlbumClick = { openAlbum(it.id) },
+                openNowPlaying = openNowPlaying,
                 onScroll = updateTopBarVisibility,
                 isTopBarVisible = isTopBarVisible,
             )

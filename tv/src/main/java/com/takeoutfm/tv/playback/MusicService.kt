@@ -4,6 +4,7 @@ import com.takeoutfm.media.TakeoutMusicService
 import com.takeoutfm.media.TakeoutPlayerFactory
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
+import com.takeoutfm.shared.music.StreamHistory
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.tv.MainActivity
 import com.takeoutfm.tv.data.takeout.TakeoutSettings
@@ -16,6 +17,8 @@ class MusicService : TakeoutMusicService() {
     @Inject public override lateinit var playerFactory: TakeoutPlayerFactory
     @Inject public override lateinit var listenReporter: ListenReporter
     @Inject public override lateinit var history: MusicHistory
+    /** Songs heard on live streams, listed on music Home (RADIO-5). */
+    @Inject public override lateinit var streamHistory: StreamHistory
 
     /** Podcast episodes' positions (shared with the phone), saved as they play. */
     @Inject public override lateinit var progress: TakeoutProgress

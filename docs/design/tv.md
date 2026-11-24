@@ -334,16 +334,26 @@ the rest of this section is the plan for what's next.
   video, ♪ TAKEOUT ⇄ in music. Selecting it swaps the tab set and opens that mode's first tab;
   the mode is saved (`TakeoutSettings.mode`) and the app starts in it. A library without music
   always shows video.
-- **Music tabs**: Home · Artists · Favorites · Playlists (only with `HasPlaylists`) · Radio.
+- **Music tabs**: Home · Artists · Favorites · Playlists (only with `HasPlaylists`) · Activity ·
+  Radio · Podcasts · Search (the same search as video mode's).
   - Home: **Recently Played** (local history, below), Recently Added, New Releases (`/api/home`'s
-    `AddedReleases`/`NewReleases`).
+    `AddedReleases`/`NewReleases`), then **Stream History** (RADIO-5: the latest 25 songs heard on
+    live streams, song over artist · station and when; recorded by the music service, a record
+    only).
   - Artists: every artist A–Z, square photos; no photo → the name on a coloured tile.
   - Favorites (`/api/favorite`'s `Artists`/`Tracks`, reloaded on each visit): Play all
     (`/api/favorite/tracks/playlist`), a row of favorite artists, then the favorite tracks as a
     list (selecting one plays the favorites from it). A message when there are none.
-  - Playlists (`/api/playlists`): name tiles (playlists have no art) with track counts, after a
-    Favorite Tracks tile (as on the watch; left out when there are none); selecting one plays it
-    (`/api/playlists/{id}/playlist`, `/api/favorite/tracks/playlist`).
+  - Playlists (LIB-13, `music/playlists/`): covers, as on the phone, Mac and Linux: New Playlist
+    (asks a name), Favorite Tracks (a heart; left out when there are none), then each playlist
+    as a mosaic of its first album covers (the shared `playlistCovers`), following the shared
+    `currentPlaylists`. Selecting one opens its page (`Screens.Playlist`): art, name, count, Play
+    and Delete Playlist (asks, Cancel focused), then the tracks; selecting a track plays from it,
+    a long press offers Play Next, Add to Queue and Remove from Playlist (asks). The page loads
+    again when the playlist's shared track count changes.
+  - Activity (LIB-14, `music/activity/`): chips for Artists / Releases / Tracks and the period,
+    then each with its play count; an artist or release opens its page, a track plays the list
+    from it.
   - Radio (`/api/radio`): one row per kind — Live Radio, Genres, Decades, Artists, Similar,
     Series, More Stations — of name tiles (or the station image); selecting plays the station
     (`/api/radio/{id}/playlist`, a fresh mix each time).
@@ -383,8 +393,12 @@ the rest of this section is the plan for what's next.
   favorites track lists, the artist's Popular cards) opens `TrackMenuDialog`
   (`music/common/TrackMenu.kt`): the track's title, artist · album, and the two buttons. Either
   puts the track alone (the first item of its track queue) after the playing one or at the end;
-  with nothing queued it starts playing. A toast says which. Playlists play whole and have no
-  track list on the TV, so no menu there.
+  with nothing queued it starts playing. A toast says which. A third button, Add to Playlist,
+  picks a playlist or makes a new one (`AddToPlaylistDialog`). A playlist's own tracks have
+  their own menu (with Remove from Playlist) on its page.
+- **Search** (LIB-12): video and music at once; movies, TV shows and episodes always come first
+  (shown as soon as they arrive), then artists, albums, tracks (selecting plays them from there,
+  a long press for the menu) and stations.
 - **Mini player**: a card in the bottom-right corner of every screen except the players (cover,
   track, artist → Now Playing; play/pause button), while anything is queued. Reached with the
   D-pad like any other control (Down from the bottom row).
@@ -599,7 +613,6 @@ The gaps it shares with other apps are in `PLAN.md`; these are the TV's own:
 
 - No Android TV Watch Next row or home-screen channels, and no Cast Connect (needs a Cast
   receiver app first).
-- Search covers video only (no music or podcasts).
 - Playback speed resets to Normal for each title.
 - The mini player covers part of the last visible row on long pages (grids, details); it could
   hide while the content under it has focus, or move into the top bar.

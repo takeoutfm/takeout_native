@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -19,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,6 +35,7 @@ import com.takeoutfm.media.MusicPlayer
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.music.Track
 import com.takeoutfm.tv.R
+import com.takeoutfm.tv.presentation.screens.music.playlists.AddToPlaylistDialog
 import com.takeoutfm.tv.presentation.theme.JetStreamCardShape
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -38,7 +44,8 @@ import kotlinx.coroutines.launch
 
 /**
  * What a long press on a track offers (PLAY-4): Play Next puts it after the track playing, Add
- * to Queue at the end; with nothing queued, either starts it. Says which with a toast.
+ * to Queue at the end; with nothing queued, either starts it. Says which with a toast. Add to
+ * Playlist picks one (LIB-13).
  */
 @Composable
 fun TrackMenuDialog(
@@ -48,13 +55,19 @@ fun TrackMenuDialog(
 ) {
     val context = LocalContext.current
     val first = remember { FocusRequester() }
+    var picking by remember { mutableStateOf(false) }
+    if (picking) {
+        AddToPlaylistDialog(trackId = track.id, title = track.title, onDismissRequest = onDismissRequest)
+        return
+    }
     fun enqueue(last: Boolean) {
         viewModel.enqueue(track.id, last) { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
         onDismissRequest()
     }
-    Dialog(onDismissRequest = onDismissRequest) {
+    // as wide as its buttons: the platform's default width squeezed the third
+    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             shape = JetStreamCardShape,
             colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -89,6 +102,12 @@ fun TrackMenuDialog(
                         text = stringResource(R.string.music_add_to_queue),
                         icon = Icons.AutoMirrored.Filled.PlaylistAdd,
                         onClick = { enqueue(last = true) },
+                    )
+                    // LIB-13: to a playlist, or a new one.
+                    MusicButton(
+                        text = stringResource(R.string.playlist_add),
+                        icon = Icons.AutoMirrored.Filled.QueueMusic,
+                        onClick = { picking = true },
                     )
                 }
             }

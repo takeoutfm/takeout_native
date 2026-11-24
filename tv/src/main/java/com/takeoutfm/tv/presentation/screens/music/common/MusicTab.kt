@@ -81,6 +81,35 @@ fun MusicTrackRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    trailing: String? = null,
+) {
+    MusicListRow(
+        imageUri = track.coverUri,
+        placeholderKey = track.album,
+        title = track.title,
+        subtitle = listOf(track.artist, track.album).filter { it.isNotEmpty() }.joinToString(" · "),
+        onClick = onClick,
+        modifier = modifier,
+        onLongClick = onLongClick,
+        trailing = trailing,
+    )
+}
+
+/**
+ * A list line: small art (none when [imageUri] is null), title, a second line, and [trailing]
+ * text at the end (a play count, a time). Focusable even with nothing to do, so the D-pad can
+ * scroll through a list of records (Stream History).
+ */
+@Composable
+fun MusicListRow(
+    imageUri: String?,
+    placeholderKey: String,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    trailing: String? = null,
 ) {
     Surface(
         onClick = onClick,
@@ -100,27 +129,38 @@ fun MusicTrackRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            MusicImage(
-                url = track.coverUri,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(JetStreamCardShape),
-                placeholderKey = track.album,
-            )
-            Column(Modifier.padding(start = 16.dp)) {
+            if (imageUri != null) {
+                MusicImage(
+                    url = imageUri,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .size(44.dp)
+                        .clip(JetStreamCardShape),
+                    placeholderKey = placeholderKey,
+                )
+            }
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = track.title,
+                    text = title,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (trailing != null) {
                 Text(
-                    text = listOf(track.artist, track.album).filter { it.isNotEmpty() }
-                        .joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    text = trailing,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 16.dp),
                 )
             }
         }

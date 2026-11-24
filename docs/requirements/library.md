@@ -61,11 +61,11 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-8 favorite tracks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LIB-8 favorite artists list | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
-| LIB-12 search | ✅ | ⚠️ video only | ❌ | ✅ | ✅ | ✅ |
-| LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ (+ on a track) |
-| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ (D on a track) |
-| LIB-13 playlists as covers | ✅ | ❌ | ❌ | ✅ | ✅ | — text |
-| LIB-14 activity | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| LIB-12 search | ✅ | ✅ (movies and shows first, then music) | ❌ | ✅ | ✅ | ✅ |
+| LIB-13 playlists: create, add | ✅ | ✅ (a track's long press) | ❌ | ✅ | ✅ | ✅ (+ on a track) |
+| LIB-13 playlists: remove, delete | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ (D on a track) |
+| LIB-13 playlists as covers | ✅ | ✅ | ❌ | ✅ | ✅ | — text |
+| LIB-14 activity | ✅ | ✅ (a music tab) | ❌ | ✅ | ✅ | ✅ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 
 Not done anywhere: the artist page's Want List and Tracks Like This.

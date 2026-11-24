@@ -51,7 +51,7 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 | LIVE-8 retunes after sleep or the background | ⚠️ not checked | ⚠️ not checked | ⚠️ on wake (Mac), back from the background (iOS); not yet seen on a real wake | ⚠️ not checked |
 | LIVE-10 track choices | ✅ | ✅ | ✅ | ✅ |
 | LIVE-12 never freezes | ✅ | ✅ | ⚠️ VLCKit's stop is synchronous; no hang seen | ✅ |
-| LIVE-13 picture-in-picture | ✅ | — | ❌ | — |
+| LIVE-13 picture-in-picture | ✅ | — | ⚠️ Mac: floats on top (P), seen; iOS: none until VLCKit 4 | — |
 
 None on the watch or in tofm. LIVE-6 and LIVE-7 were found on Linux (2026-11-14); the others
 hold by how they wait (until the slot's end) and by their engines.

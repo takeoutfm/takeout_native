@@ -57,7 +57,7 @@ would notice. Fixing one updates its status table in the same commit.
 | Subtitle languages compared as written ("eng" ≠ "en") | Linux | TRACKS-6 |
 | Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
-| Picture-in-picture for live TV | Mac/iOS | LIVE-13 |
+| Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
 
 Waiting on the server: custom radio stations (RADIO-7; no `POST /api/radio`, no delete). Not
 done anywhere: the artist page's Want List and Tracks Like This.

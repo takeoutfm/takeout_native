@@ -24,6 +24,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var hasGuide = false
     /// The channel the Mac's Live window plays (a new request each time one is picked).
     @Published var liveRequest: LiveRequest?
+    /// The videos asked to play since launch (the Mac's video windows). A window SwiftUI brings
+    /// back from the last run, killed or quit with a video open, isn't one of them: it closes
+    /// instead of playing (and saving progress).
+    var videoRequests: Set<VideoPlayRequest> = []
     /// Recently Played, newest first.
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.

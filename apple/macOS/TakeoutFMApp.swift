@@ -33,7 +33,7 @@ struct TakeoutFMApp: App {
             if let request {
                 VideoPlayerView(request: request, calls: model.calls, cache: model.cache)
                     .environmentObject(model)
-                    .frame(minWidth: 640, minHeight: 360)
+                    .frame(minWidth: 320, minHeight: 180)  // small enough to float on top (FloatingWindow)
                     .notRestored()
             }
         }
@@ -42,7 +42,7 @@ struct TakeoutFMApp: App {
         Window("Live", id: "live") {
             LiveWindowView(calls: model.calls)
                 .environmentObject(model)
-                .frame(minWidth: 640, minHeight: 360)
+                .frame(minWidth: 320, minHeight: 180)  // small enough to float on top (FloatingWindow)
                 .notRestored()
         }
         .defaultSize(width: 1280, height: 720)
@@ -71,7 +71,10 @@ private struct MacRoot: View {
                 SignInView()
             }
         }
-        .environment(\.playVideo, PlayVideoAction { openWindow(id: "video", value: $0) })
+        .environment(\.playVideo, PlayVideoAction {
+            model.videoRequests.insert($0)
+            openWindow(id: "video", value: $0)
+        })
         .environment(\.playLive, PlayLiveAction {
             model.liveRequest = LiveRequest(channel: $0)
             openWindow(id: "live")

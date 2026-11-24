@@ -12,6 +12,8 @@ struct LiveWindowView: View {
     @EnvironmentObject private var model: AppModel
     @StateObject private var live: LivePlayerModel
     @State private var showControls = true
+    @StateObject private var floating = FloatingWindow()
+    @Environment(\.dismiss) private var dismiss
     @State private var hideTask: Task<Void, Never>?
 
     init(calls: SwiftCalls) {
@@ -32,9 +34,22 @@ struct LiveWindowView: View {
                 ProgressView().controlSize(.large)
             }
             if showControls || !live.isPlaying {
-                controls.transition(.opacity)
+                Group {
+                    if floating.isFloating {
+                        VStack {
+                            Spacer()
+                            // live: play/pause only (behind live, L jumps back)
+                            FloatingControls(isPlaying: live.isPlaying, togglePlay: { live.togglePause(); poke() },
+                                             restore: floating.toggle)
+                        }
+                    } else {
+                        controls
+                    }
+                }
+                .transition(.opacity)
             }
         }
+        .background(FloatingWindowReader(floating: floating))
         .navigationTitle(live.channel.isEmpty ? "Live" : live.channel)
         .onContinuousHover { _ in poke() }
         .onTapGesture(count: 2) { toggleFullScreen() }
@@ -44,9 +59,15 @@ struct LiveWindowView: View {
         .onKeyPress(.space) { live.togglePause(); poke(); return .handled }
         .onKeyPress("l") { if live.behind { live.tune() }; return .handled }
         .onKeyPress("f") { toggleFullScreen(); return .handled }
+        .onKeyPress("p") { floating.toggle(); poke(); return .handled }
         .onAppear {
+            // Brought back from the last run with no channel asked for: close, never play.
+            guard let request = model.liveRequest else {
+                DispatchQueue.main.async { dismiss() }
+                return
+            }
             model.player.pause()
-            if let request = model.liveRequest { live.play(request.channel) }
+            live.play(request.channel)
             poke()
         }
         .onChange(of: model.liveRequest) {
@@ -88,6 +109,8 @@ struct LiveWindowView: View {
                     LiveTrackMenus(live: live)
                         .menuStyle(.button)
                         .buttonStyle(.plain)  // so the icons take the bar's white (a menu label is drawn by AppKit)
+                    Button { floating.toggle() } label: { Image(systemName: "pip.enter") }
+                        .help("Float on Top (P)")
                     Button { toggleFullScreen() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
                         .help("Full Screen")
                 }

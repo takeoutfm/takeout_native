@@ -65,6 +65,8 @@ AppPage {
             Layout.preferredHeight: status === Image.Ready ? Math.min(width * 9 / 16, Kirigami.Units.gridUnit * 16) : 0
             source: page.details?.backgroundUri ?? ""
             fillMode: Image.PreserveAspectCrop
+            // A banner of a wide photo: cut from the bottom, keeping the faces (usually up top).
+            verticalAlignment: Image.AlignTop
             asynchronous: true
             visible: status === Image.Ready
         }

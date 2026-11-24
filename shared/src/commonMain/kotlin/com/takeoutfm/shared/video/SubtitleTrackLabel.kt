@@ -57,3 +57,26 @@ fun isGeneratedTrackName(name: String): Boolean =
 
 private fun String.containsWord(word: String): Boolean =
     Regex("""\b${Regex.escape(word)}\b""").containsMatchIn(this)
+
+/** A subtitle track as [pickSubtitleTrack] sees it. */
+data class SubtitleCandidate(
+    val id: Int,
+    /** Normalised ("en"), or null when the track has none. */
+    val language: String?,
+    /** Where the player reports it (mpv, Media3); else from the track's name ([looksForced]). */
+    val forced: Boolean,
+)
+
+/**
+ * The subtitle track for a new title in the [language] picked last (TRACKS-6): the first in it
+ * that isn't forced, as forced tracks only subtitle the odd foreign line; a forced one only when
+ * that's all the language has. Null when the title has none in it (the app then leaves the
+ * title's own default). "Off" and "never picked" are the app's to handle before calling this.
+ */
+fun pickSubtitleTrack(tracks: List<SubtitleCandidate>, language: String): Int? {
+    val inLanguage = tracks.filter { it.language == language }
+    return (inLanguage.firstOrNull { !it.forced } ?: inLanguage.firstOrNull())?.id
+}
+
+/** Whether a track's name says it's forced, for players that give no flag (VLC). */
+fun looksForced(name: String): Boolean = Regex("""\bforced\b""", RegexOption.IGNORE_CASE).containsMatchIn(name)

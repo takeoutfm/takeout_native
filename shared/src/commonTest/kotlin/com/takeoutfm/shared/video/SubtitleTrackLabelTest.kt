@@ -40,4 +40,31 @@ class SubtitleTrackLabelTest {
         assertFalse(isGeneratedTrackName("English SDH"))
         assertFalse(isGeneratedTrackName("Track 1 - Commentary"))
     }
+
+    @Test
+    fun picksTheFirstTrackInTheLanguageThatIsNotForced() {
+        val tracks = listOf(
+            SubtitleCandidate(1, "en", forced = true),
+            SubtitleCandidate(2, "fr", forced = false),
+            SubtitleCandidate(3, "en", forced = false),
+            SubtitleCandidate(4, "en", forced = false),
+        )
+        assertEquals(3, pickSubtitleTrack(tracks, "en"))
+        assertEquals(2, pickSubtitleTrack(tracks, "fr"))
+        assertNull(pickSubtitleTrack(tracks, "de"))
+    }
+
+    @Test
+    fun aForcedTrackOnlyWhenThatIsAllTheLanguageHas() {
+        val tracks = listOf(SubtitleCandidate(1, "fr", forced = false), SubtitleCandidate(2, "en", forced = true))
+        assertEquals(2, pickSubtitleTrack(tracks, "en"))
+    }
+
+    @Test
+    fun forcedFromTheName() {
+        assertTrue(looksForced("English (Forced)"))
+        assertTrue(looksForced("FORCED"))
+        assertFalse(looksForced("English SDH"))
+        assertFalse(looksForced("Enforcedness"))
+    }
 }

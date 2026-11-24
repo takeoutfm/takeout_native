@@ -383,8 +383,9 @@ extension VLCMediaPlayer {
     }
 
     /**
-     * Selects the subtitles picked last: off, or the first track in that language. Nothing
-     * picked yet, or no track in it, leaves VLC's choice (a file's forced ones stay on).
+     * Selects the subtitles picked last (TRACKS-6): off, or by the shared rule the first track in
+     * that language that isn't forced (a forced one only if that's all it has). Nothing picked
+     * yet, or no track in it, leaves VLC's choice, the file's default (its forced ones stay on).
      * False while VLC lists no subtitle tracks yet, so it's tried again.
      */
     func applySubtitlePreference() -> Bool {
@@ -393,10 +394,25 @@ extension VLCMediaPlayer {
             currentVideoSubTitleIndex = -1
             return true
         }
-        let languages = subtitleLanguages
-        if languages.isEmpty { return false }
-        if let id = languages.filter({ $0.value == language }).keys.min() { currentVideoSubTitleIndex = id }
+        let candidates = subtitleCandidates
+        if candidates.isEmpty { return false }
+        if let id = SubtitleTrackLabelKt.pickSubtitleTrack(tracks: candidates, language: language) {
+            currentVideoSubTitleIndex = id.int32Value
+        }
         return true
+    }
+
+    /** The subtitle tracks in VLC's order, for the shared pick (VLC has no forced flag: the name says). */
+    private var subtitleCandidates: [SubtitleCandidate] {
+        (media?.tracksInformation ?? []).compactMap { info -> SubtitleCandidate? in
+            guard let info = info as? [String: Any],
+                  info[VLCMediaTracksInformationType] as? String == VLCMediaTracksInformationTypeText,
+                  let id = (info[VLCMediaTracksInformationId] as? NSNumber)?.int32Value else { return nil }
+            let language = AudioTrackRankingKt.normalizeLanguage(tag: info[VLCMediaTracksInformationLanguage] as? String)
+            let name = info[VLCMediaTracksInformationDescription] as? String ?? ""
+            return SubtitleCandidate(id: id, language: language, forced: SubtitleTrackLabelKt.looksForced(name: name))
+        }
+        .sorted { $0.id < $1.id }
     }
 
     /** Switches to the best audio track (the shared ranking), unless VLC already has it. */

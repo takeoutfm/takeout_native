@@ -38,6 +38,7 @@ struct PhoneTabs: View {
             }
         }
         .animation(.default, value: model.message)
+        .newPlaylistPrompt(model)
     }
 
     private func tab<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {

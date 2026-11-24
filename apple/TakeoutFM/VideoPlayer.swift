@@ -52,6 +52,8 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     @Published private(set) var subtitleTracks: [MediaTrack] = []
     @Published private(set) var audioTrack: Int32 = -1
     @Published private(set) var subtitleTrack: Int32 = -1
+    /** The playback speed (VIDEO-8). */
+    @Published private(set) var speed: Float = 1
 
     #if os(macOS)
     let videoView = VLCVideoView()
@@ -124,6 +126,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
                 if resumeMs > 0 { media.addOption(":start-time=\(Double(resumeMs) / 1000)") }
                 player.media = media
                 player.play()
+                if speed != 1 { player.rate = speed }
             } catch is CancellationError {
             } catch {
                 NSLog("Video \(request.id) failed: \(error)")
@@ -159,6 +162,15 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         subtitleTrack = index
         // The language picked is used for the next titles (the live player's too).
         player.rememberSubtitle(index)
+    }
+
+    /** The speeds the player offers (VIDEO-8), as on Linux. */
+    static let speeds: [Float] = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
+    /** Plays at [rate] (1 is normal); kept for the next episode while the player is open. */
+    func setSpeed(_ rate: Float) {
+        player.rate = rate
+        speed = rate
     }
 
     /** Saves the place and stops (the window closed). */
@@ -413,4 +425,10 @@ extension VLCMediaPlayer {
         let length = Int64(media?.length.intValue ?? 0)
         return length > 0 && Int64(time.intValue) >= length - 1_000
     }
+}
+
+/** A speed as the menus show it: "0.5×", "1×", "1.25×". */
+func speedLabel(_ rate: Float) -> String {
+    let text = rate == rate.rounded() ? String(Int(rate)) : String(format: "%g", rate)
+    return text + "×"
 }

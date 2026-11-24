@@ -143,6 +143,11 @@ struct VideoPlayerScreen: View {
                     }
                 } label: { Image(systemName: "captions.bubble") }
             }
+            Menu {
+                Picker("Speed", selection: Binding(get: { video.speed }, set: { video.setSpeed($0) })) {
+                    ForEach(VideoPlayerModel.speeds, id: \.self) { Text(speedLabel($0)).tag($0) }
+                }
+            } label: { Text(speedLabel(video.speed)).monospacedDigit() }
         }
     }
 

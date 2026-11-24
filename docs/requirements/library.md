@@ -62,8 +62,8 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-8 favorite artists list | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
 | LIB-12 search | ✅ | ⚠️ video only | ❌ | ✅ | ✅ | ✅ |
-| LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ⚠️ create only | ✅ | ❌ |
-| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ⚠️ delete only | ⚠️ delete only | ❌ |
+| LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ✅ | ⚠️ delete only | ❌ |
 | LIB-13 playlists as covers | ✅ | ❌ | ❌ | ✅ | ✅ | — text |
 | LIB-14 activity | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |

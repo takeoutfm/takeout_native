@@ -120,6 +120,16 @@ class SwiftCalls(private val core: TakeoutCore) {
     suspend fun deletePlaylist(playlistId: String) = core.music.deletePlaylist(playlistId)
 
     @Throws(Throwable::class)
+    suspend fun addTrackToPlaylist(playlistId: String, trackId: String) = core.music.addTrackToPlaylist(playlistId, trackId)
+
+    @Throws(Throwable::class)
+    suspend fun addAlbumToPlaylist(playlistId: String, albumId: String) = core.music.addAlbumToPlaylist(playlistId, albumId)
+
+    /** Removes the track at [index] (0-based, as the playlist lists them). */
+    @Throws(Throwable::class)
+    suspend fun removeFromPlaylist(playlistId: String, index: Int) = core.music.removeFromPlaylist(playlistId, index)
+
+    @Throws(Throwable::class)
     suspend fun favorites(): MusicFavorites = core.music.favorites()
 
     @Throws(Throwable::class)

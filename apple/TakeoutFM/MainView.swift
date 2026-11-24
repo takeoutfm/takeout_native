@@ -150,6 +150,7 @@ struct MainView: View {
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Artists, albums, tracks")
         .confirmSignOut($confirmingSignOut, model: model)
+        .newPlaylistPrompt(model)
         .onSubmit(of: .search) {
             let q = query.trimmingCharacters(in: .whitespaces)
             guard !q.isEmpty else { return }

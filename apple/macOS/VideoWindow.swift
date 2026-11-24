@@ -144,6 +144,19 @@ struct VideoPlayerView: View {
                     .fixedSize()
                     .help("Subtitles")
                 }
+                Menu {
+                    ForEach(VideoPlayerModel.speeds, id: \.self) { rate in
+                        Toggle(speedLabel(rate), isOn: Binding(
+                            get: { video.speed == rate },
+                            set: { _ in video.setSpeed(rate) }
+                        ))
+                    }
+                } label: { Text(speedLabel(video.speed)).monospacedDigit() }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Playback Speed")
                 Button { toggleFullScreen() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
                     .help("Full Screen")
             }

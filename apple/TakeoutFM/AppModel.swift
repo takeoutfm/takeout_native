@@ -64,6 +64,8 @@ final class AppModel: ObservableObject {
     /// The user's playlists as the shared core last loaded them, kept current by every edit
     /// (`currentPlaylists`); nil until first loaded.
     @Published private(set) var playlists: [MusicPlaylist]?
+    /// What New Playlist… in an Add to Playlist menu is for, while the name is asked.
+    @Published var newPlaylistTarget: PlaylistTarget?
     /// The subscribed podcasts as the shared core last loaded them, kept current by subscribing
     /// and unsubscribing (`subscribedSeries`); nil until first loaded.
     @Published private(set) var subscribedPodcasts: [PodcastSeries]?
@@ -154,6 +156,8 @@ final class AppModel: ObservableObject {
         Self.apply(theme)
         Task { try? await calls.refreshLibrary() }
         Task { try? await calls.loadFavoriteTracks() }
+        // for the Add to Playlist menus (kept current by every edit)
+        Task { _ = try? await calls.playlists() }
         // A track that can't play says why (the player goes on with the next).
         playerFailures = self.player.failures.receive(on: RunLoop.main).sink { [weak self] text in
             self?.show(text, for: .seconds(5))
@@ -241,6 +245,37 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: Playlists (LIB-13)
+
+    /** Adds [target] to [playlist], saying so. */
+    func add(_ target: PlaylistTarget, to playlist: MusicPlaylist) {
+        Task {
+            do {
+                switch target {
+                case .track(let id): try await calls.addTrackToPlaylist(playlistId: playlist.id, trackId: id)
+                case .album(let id): try await calls.addAlbumToPlaylist(playlistId: playlist.id, albumId: id)
+                }
+                show("Added to \(playlist.name)")
+            } catch {
+                show("Couldn't add to \(playlist.name)")
+            }
+        }
+    }
+
+    /** A new playlist named [name], with [target] in it. */
+    func add(_ target: PlaylistTarget, toNewPlaylist name: String) {
+        let name = name.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        Task {
+            do {
+                let playlist = try await calls.createPlaylist(name: name)
+                add(target, to: playlist)
+            } catch {
+                show("Couldn't create \(name)")
+            }
+        }
+    }
+
     /** [items] next or last, with the same message. */
     func enqueue(_ items: [QueueItem], last: Bool) {
         player.enqueue(items, last: last)
@@ -273,4 +308,10 @@ final class AppModel: ObservableObject {
         player.stop()
         core.session.signOut()
     }
+}
+
+/** What an Add to Playlist menu adds (LIB-13): a track or a whole album, by id. */
+enum PlaylistTarget: Hashable {
+    case track(String)
+    case album(String)
 }

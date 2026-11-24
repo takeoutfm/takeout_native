@@ -13,7 +13,8 @@ struct SignInView: View {
     @State private var link: String?
     @State private var expiresAt = Date.distantFuture
     @State private var expired = false
-    @State private var failed = false
+    /// Why there's no code (SIGN-5), or nil.
+    @State private var problem: String?
     @State private var signIn: CodeSignIn?
 
     var body: some View {
@@ -60,8 +61,8 @@ struct SignInView: View {
                 Button("Sign In", action: start)
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                if failed {
-                    Text("Couldn't sign in. Check the server and try again.")
+                if let problem {
+                    Text(problem)
                         .foregroundStyle(.red)
                 }
             }
@@ -72,7 +73,7 @@ struct SignInView: View {
     }
 
     private func start() {
-        failed = false
+        problem = nil
         signIn?.cancel()
         let s = CodeSignIn(api: model.core.api, session: model.core.session, library: model.core.library)
         signIn = s
@@ -86,7 +87,14 @@ struct SignInView: View {
             },
             onSignedIn: { code = nil; link = nil },
             onExpired: { expired = true },
-            onFailed: { code = nil; link = nil; failed = true }
+            onFailed: { [server] answered in
+                code = nil
+                link = nil
+                // as Linux words them
+                problem = answered.boolValue
+                    ? "That server didn't give a code. Check its address."
+                    : "Can't reach \(server). Check the address and your connection."
+            }
         )
     }
 

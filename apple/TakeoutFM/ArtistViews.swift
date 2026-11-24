@@ -90,7 +90,7 @@ private struct ArtistPage: View {
                         SectionTitle("Popular")
                         ForEach(Array(details.popular.prefix(10).enumerated()), id: \.offset) { index, track in
                             TrackRow(title: track.title, detail: track.album, imageUri: track.coverUri, etag: track.etag,
-                                     enqueue: { model.enqueueTrack(track.id, last: $0) }) {
+                                     enqueue: { model.enqueueTrack(track.id, last: $0) }, trackId: track.id) {
                                 model.play { model.calls.tracksQueue(title: "Popular", tracks: details.popular, startIndex: Int32(index)) }
                             }
                         }

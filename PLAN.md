@@ -42,10 +42,9 @@ would notice. Fixing one updates its status table in the same commit.
 | Ask before signing out | phone, TV, watch | SIGN-10 |
 | Play next / add to queue | TV, watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
-| Playback speed | Mac/iOS | VIDEO-8 |
 | Back 10 s / ahead 30 s in Now Playing | Linux (watch: only previous, play, next) | PLAY-9 |
-| Playlists: create, add | TV, watch, tofm; Mac/iOS can't add | LIB-13 |
-| Playlists: remove a track, delete | all but the phone; Mac/iOS can delete | LIB-13 |
+| Playlists: create, add | TV, watch, tofm | LIB-13 |
+| Playlists: remove a track, delete | TV, watch, tofm; Linux can delete | LIB-13 |
 | Search | watch; the TV searches video only | LIB-12 |
 | Favorite an artist; the favorite artists list | most apps | LIB-6, LIB-8 |
 | Activity (play stats) | all but the phone | LIB-14 |

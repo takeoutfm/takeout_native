@@ -267,6 +267,10 @@ struct TrackRow: View {
     var etag = ""
     /// Play Next (false) / Add to Queue (true), when the row can be queued.
     var enqueue: ((Bool) -> Void)?
+    /// The track's id, for Add to Playlist.
+    var trackId: String?
+    /// On a playlist's own page: removes this row from it.
+    var removeFromPlaylist: (() -> Void)?
     let play: () -> Void
     @EnvironmentObject private var model: AppModel
     @State private var hovering = false
@@ -325,12 +329,63 @@ struct TrackRow: View {
                 Button("Play Next") { enqueue(false) }
                 Button("Add to Queue") { enqueue(true) }
             }
+            if let trackId {
+                AddToPlaylistMenu(target: .track(trackId))
+            }
+            if let removeFromPlaylist {
+                Button("Remove from Playlist", role: .destructive, action: removeFromPlaylist)
+            }
             if !etag.isEmpty {
                 Divider()
                 Button(model.isFavorite(etag) ? "Remove from Favorites" : "Add to Favorites") {
                     model.toggleFavorite(etag)
                 }
             }
+        }
+    }
+}
+
+/** Add to Playlist (LIB-13): the user's playlists, then New Playlist… (which asks for a name). */
+struct AddToPlaylistMenu: View {
+    let target: PlaylistTarget
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        Menu {
+            ForEach(model.playlists ?? [], id: \.id) { playlist in
+                Button(playlist.name.trimmingCharacters(in: .whitespaces)) { model.add(target, to: playlist) }
+            }
+            if !(model.playlists ?? []).isEmpty { Divider() }
+            Button("New Playlist…") { model.newPlaylistTarget = target }
+        } label: {
+            Label("Add to Playlist", systemImage: "text.badge.plus")
+        }
+    }
+}
+
+extension View {
+    /** Asks the new playlist's name for New Playlist… in an Add to Playlist menu. */
+    func newPlaylistPrompt(_ model: AppModel) -> some View {
+        modifier(NewPlaylistPrompt(model: model))
+    }
+}
+
+private struct NewPlaylistPrompt: ViewModifier {
+    @ObservedObject var model: AppModel
+    @State private var name = ""
+
+    func body(content: Content) -> some View {
+        content.alert(
+            "New Playlist",
+            isPresented: Binding(get: { model.newPlaylistTarget != nil }, set: { if !$0 { model.newPlaylistTarget = nil } })
+        ) {
+            TextField("Name", text: $name)
+            Button("Cancel", role: .cancel) { name = "" }
+            Button("Create") {
+                if let target = model.newPlaylistTarget { model.add(target, toNewPlaylist: name) }
+                name = ""
+            }
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         }
     }
 }

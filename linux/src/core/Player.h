@@ -82,6 +82,12 @@ Q_SIGNALS:
     void repeatModeChanged();
     /** A jump (not playback moving on), for MPRIS's Seeked. */
     void seeked();
+    /**
+     * Item [title] couldn't play (PLAY-12); mpv goes on with the next. [reason]: "load" (it
+     * couldn't be fetched), "format", "empty", "audio" (no sound output) or "other", with mpv's
+     * own words in [detail].
+     */
+    void couldNotPlay(const QString &title, const QString &reason, const QString &detail);
 
 private:
     void onEvents();

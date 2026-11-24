@@ -8,6 +8,8 @@ import com.takeoutfm.shared.music.ActivityInterval
 import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
+import com.takeoutfm.shared.music.StreamSong
+import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.shared.music.Track
 import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.PodcastEpisode
@@ -54,6 +56,28 @@ internal class Args(private val o: JsonObject) {
 
 @Serializable
 data class SessionInfo(val signedIn: Boolean, val endpoint: String, val user: String? = null)
+
+/**
+ * A song from Stream History for the Recently Played page: the stream's title split into
+ * [artist] and [song] where it reads "Artist - Title" (else [song] is the whole title).
+ */
+@Serializable
+data class HeardSong(
+    val station: String,
+    val imageUri: String,
+    val artist: String?,
+    val song: String,
+    /** Epoch ms. */
+    val heardAt: Long,
+) {
+    constructor(heard: StreamSong) : this(
+        heard.station,
+        heard.imageUri,
+        parseStreamTitle(heard.title)?.first,
+        parseStreamTitle(heard.title)?.second ?: heard.title,
+        heard.heardAt,
+    )
+}
 
 @Serializable
 /** A sign-in code, the page to approve it on, and the seconds it's valid for from now. */
@@ -103,6 +127,10 @@ class LinuxCalls(private val core: LinuxCore) {
                 .filterValues { it != EpisodeProgress.NotStarted }
         }.distinctUntilChanged().encoded()
         "recentlyPlayed" -> core.history.entries.encoded()
+        // Songs heard on live streams, newest first (RADIO-5).
+        "streamHistory" -> core.streamHistory.songs.map { songs -> songs.map(::HeardSong) }.encoded()
+        // The favorite artists' ids, following ♥ on an artist (LIB-6).
+        "favoriteArtists" -> core.music.favoriteArtistIds.encoded()
         "listenBrainz" -> core.listenBrainz.user.encoded()
         "downloads" -> core.downloads.downloads.map { it.values.toList() }.encoded()
         "cacheUsage" -> core.cachePurge.usage.encoded()
@@ -148,6 +176,16 @@ class LinuxCalls(private val core: LinuxCore) {
         /** Stops awaitCode, which then fails as cancelled. */
         action("cancelCode") { awaiting?.cancel() }
         action("signOut") { core.session.signOut() }
+        /**
+         * Approves another device's sign-in code with this account's user, password and passcode
+         * (SIGN-11), on the server this app is signed in to: true when it accepted them, false
+         * when it refused the code or the account; fails when the server can't be reached.
+         */
+        call("link") { a ->
+            core.api.link(
+                core.session.endpoint, a.get("code"), a.get("user"), a.get("password"), a.get("passcode", ""),
+            )
+        }
         call("mediaAuthorization") { a -> core.session.mediaAuthorization(a.get("url")) }
 
         // ---- Library and music ----
@@ -262,6 +300,11 @@ class LinuxCalls(private val core: LinuxCore) {
         call("recordPlayed") { a -> core.history.record(a.get<MusicQueue>("queue")) }
         action("playedProgress") { a -> core.history.progress(a.get("id"), a.get("index"), a.get("positionMs")) }
         action("clearRecentlyPlayed") { core.history.clear() }
+        /** Clears Recently Played and Stream History on this device, as the phone's Clear does. */
+        action("clearHistory") {
+            core.history.clear()
+            core.streamHistory.clear()
+        }
         action("retryListens") { core.listenReporter.retry() }
         // What the player is doing, for ListenSession (see there).
         action("listenTrack") { a ->

@@ -9,4 +9,6 @@ Requirements: [../requirements/radio.md](../requirements/radio.md).
   songs heard (database).
 - Android: the music service reads ICY metadata and records Stream History (`TakeoutMusicService`).
 - Linux, tofm: `Player` watches mpv's `metadata/by-key/icy-title` and reports `streamSongHeard`.
-- Mac/iOS: `AudioPlayer` shows the stream title; it doesn't record Stream History.
+  The KDE app lists the songs under Recently Played (`RecentPage.qml`) from `Core.streamHistory`
+  (the `streamHistory` watch, each song split by `parseStreamTitle`); Clear calls `clearHistory`.
+- Mac/iOS: `AudioPlayer` shows the stream title and records Stream History (`streamSongHeard`).

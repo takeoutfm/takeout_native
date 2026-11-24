@@ -6,7 +6,10 @@ import org.kde.kirigami.delegates as KD
 import TakeoutFM
 import org.kde.ki18n
 
-/** Recently Played on this computer: queues, newest first, resumed where they were left. */
+/**
+ * Recently Played on this computer: queues, newest first, resumed where they were left; then
+ * Stream History (RADIO-5), the songs heard on live streams, as the phone and Mac list them.
+ */
 AppPage {
     id: page
 
@@ -45,17 +48,27 @@ AppPage {
         return new Date(ms).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
     }
 
+    readonly property bool empty: Core.recentlyPlayed.length === 0 && Core.streamHistory.length === 0
+
     actions: [
         Kirigami.Action {
             text: KI18n.i18n("Clear")
             icon.name: "edit-clear-history"
-            enabled: Core.recentlyPlayed.length > 0
+            enabled: !page.empty
             onTriggered: clear.open()
         }
     ]
 
     ListView {
-        model: Core.recentlyPlayed
+        // The queues, then the songs heard on streams, each under its heading.
+        model: Core.recentlyPlayed.map(e => ({kind: "queue", entry: e}))
+            .concat(Core.streamHistory.map(s => ({kind: "stream", song: s})))
+        section.property: "kind"
+        section.delegate: Kirigami.ListSectionHeader {
+            required property string section
+            width: ListView.view.width
+            text: section === "queue" ? KI18n.i18n("Recently Played") : KI18n.i18n("Stream History")
+        }
         // No row is current (or looks selected) until the arrow keys pick one; the list is
         // given focus when the page opens, and a new model would make the first row current.
         currentIndex: -1
@@ -64,19 +77,26 @@ AppPage {
         delegate: KD.SubtitleDelegate {
             id: row
             required property var modelData
+            readonly property bool queue: modelData.kind === "queue"
+            readonly property var entry: modelData.entry
+            readonly property var song: modelData.song
             width: ListView.view.width
             // Only the current row holds the list's focus (a reset leaves it on the first).
             focus: ListView.isCurrentItem
-            text: modelData.title
-            subtitle: page.detail(modelData)
-            onClicked: Player.play(page.toQueue(modelData))
+            // A song heard on a stream is only a record: nothing to replay.
+            hoverEnabled: queue
+            down: queue && pressed
+            text: queue ? entry.title : song.song
+            // song: artist · station
+            subtitle: queue ? page.detail(entry) : [song.artist, song.station].filter(s => s).join(" · ")
+            onClicked: if (queue) Player.play(page.toQueue(entry))
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing
                 Image {
                     Layout.preferredWidth: Kirigami.Units.iconSizes.large
                     Layout.preferredHeight: Kirigami.Units.iconSizes.large
-                    source: row.modelData.imageUri || (row.modelData.items[0]?.imageUri ?? "")
+                    source: row.queue ? (row.entry.imageUri || (row.entry.items[0]?.imageUri ?? "")) : row.song.imageUri
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     sourceSize.width: width * Screen.devicePixelRatio
@@ -88,7 +108,7 @@ AppPage {
                     subtitle: row.subtitle
                 }
                 QQC2.Label {
-                    text: page.played(row.modelData.playedAt)
+                    text: page.played(row.queue ? row.entry.playedAt : row.song.heardAt)
                     opacity: 0.7
                 }
             }
@@ -97,7 +117,7 @@ AppPage {
         Kirigami.PlaceholderMessage {
             anchors.centerIn: parent
             width: parent.width - Kirigami.Units.gridUnit * 4
-            visible: Core.recentlyPlayed.length === 0
+            visible: page.empty
             icon.name: "document-open-recent"
             text: KI18n.i18n("Nothing played yet")
         }
@@ -106,7 +126,8 @@ AppPage {
     Kirigami.PromptDialog {
         id: clear
         title: KI18n.i18n("Clear Recently Played?")
+        subtitle: KI18n.i18n("Recently Played and Stream History on this computer are both cleared.")
         standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
-        onAccepted: Core.call("clearRecentlyPlayed")
+        onAccepted: Core.call("clearHistory")
     }
 }

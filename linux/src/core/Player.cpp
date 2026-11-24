@@ -382,6 +382,13 @@ void Player::onEvents()
             } else if (end->reason == MPV_END_FILE_REASON_ERROR) {
                 qWarning() << "Can't play" << text(current(), "uri") << mpv_error_string(end->error);
                 report("listenStopped", {});
+                const char *reason = end->error == MPV_ERROR_LOADING_FAILED ? "load"
+                    : end->error == MPV_ERROR_UNKNOWN_FORMAT ? "format"
+                    : end->error == MPV_ERROR_NOTHING_TO_PLAY ? "empty"
+                    : end->error == MPV_ERROR_AO_INIT_FAILED ? "audio"
+                    : "other";
+                Q_EMIT couldNotPlay(text(current(), "title"), QString::fromLatin1(reason),
+                                    QString::fromUtf8(mpv_error_string(end->error)));
             }
             break;
         }

@@ -37,6 +37,16 @@ AppPage {
     property var covers: []
     Component.onCompleted: load()
 
+    // A track added or removed (here or anywhere) changes the shared count: load again (decision 017).
+    Connections {
+        target: Core
+        enabled: page.playlistId !== ""
+        function onPlaylistsChanged() {
+            const count = (Core.playlists ?? []).find(p => p.id === page.playlistId)?.trackCount
+            if (page.queue && count !== undefined && count !== page.tracks.length) page.load()
+        }
+    }
+
     actions: [
         Kirigami.Action {
             text: KI18n.i18n("Play")
@@ -123,6 +133,11 @@ AppPage {
             title: modelData.title
             subtitle: [modelData.artist, modelData.album].filter(s => s.length > 0).join(" · ")
             imageUri: modelData.imageUri
+            // LIB-13: by its place in the playlist; the shared count then reloads the page.
+            removable: page.playlistId !== ""
+            onRemove: Core.call("removeFromPlaylist", {playlistId: page.playlistId, index: index}, (r, error) => {
+                if (error) applicationWindow().showPassiveNotification(KI18n.i18n("Couldn't remove %1", modelData.title))
+            })
         }
 
         LoadState {

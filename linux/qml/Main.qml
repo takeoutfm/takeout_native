@@ -173,6 +173,20 @@ Kirigami.ApplicationWindow {
     }
     Component.onCompleted: route()
 
+    // A track that can't play says why (PLAY-12); mpv goes on with the next.
+    Connections {
+        target: Player
+        function onCouldNotPlay(title, reason, detail) {
+            const why = reason === "load" ? KI18n.i18n("it couldn't be loaded from the server")
+                : reason === "format" ? KI18n.i18n("its format isn't supported")
+                : reason === "empty" ? KI18n.i18n("there's nothing in it to play")
+                : reason === "audio" ? KI18n.i18n("there's no sound output")
+                : detail
+            root.showPassiveNotification(title ? KI18n.i18n("Can't play “%1”: %2", title, why)
+                                               : KI18n.i18n("Can't play this: %1", why))
+        }
+    }
+
     Connections {
         target: Core
         function onSessionChanged() { root.route() }
@@ -219,6 +233,12 @@ Kirigami.ApplicationWindow {
                 visible: root.hasMusic
                 text: KI18n.i18n("Recently Played"); icon.name: "document-open-recent"
                 page: "RecentPage"
+            },
+            PageAction {
+                // the server's play stats (LIB-14), after Recently Played as on the Mac
+                visible: root.hasMusic
+                text: KI18n.i18n("Activity"); icon.name: "office-chart-bar"
+                page: "ActivityPage"
             },
             PageAction {
                 visible: root.hasMusic

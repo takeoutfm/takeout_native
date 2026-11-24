@@ -18,6 +18,10 @@ AppPage {
 
     title: details?.artist.name ?? artist?.name ?? ""
 
+    /** Followed from the shared favorite artists, which ♥ here (or anywhere) updates at once (LIB-6). */
+    readonly property string arid: details?.artist.arid ?? ""
+    readonly property bool isFavorite: arid.length > 0 && Core.favoriteArtists.indexOf(arid) >= 0
+
     function load() {
         loading = true
         error = null
@@ -46,15 +50,10 @@ AppPage {
             onTriggered: applicationWindow().playCall("artistQueue", {artistId: page.artistId, mix: "Radio"})
         },
         Kirigami.Action {
-            visible: !!page.details && page.details.artist.arid.length > 0
-            text: page.details?.isFavorite ? KI18n.i18n("Unfavorite") : KI18n.i18n("Favorite")
-            icon.name: page.details?.isFavorite ? "starred-symbolic" : "non-starred-symbolic"
-            onTriggered: {
-                const favorite = !page.details.isFavorite
-                Core.call("setArtistFavorite", {arid: page.details.artist.arid, favorite: favorite}, (r, error) => {
-                    if (!error) page.load()
-                })
-            }
+            visible: page.arid.length > 0
+            text: page.isFavorite ? KI18n.i18n("Unfavorite") : KI18n.i18n("Favorite")
+            icon.name: page.isFavorite ? "starred-symbolic" : "non-starred-symbolic"
+            onTriggered: Core.call("setArtistFavorite", {arid: page.arid, favorite: !page.isFavorite})
         }
     ]
 

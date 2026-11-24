@@ -42,5 +42,5 @@ How an app signs in to a Takeout server, keeps the session and signs out. Design
 | SIGN-7/8 tokens | ✅ shared core | ✅ | ✅ | ✅ | ✅ | ✅ |
 | SIGN-9 Connected as | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | SIGN-10 asks before signing out | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SIGN-11 Link | ✅ | — | — | ✅ (approving a real code not yet seen) | ❌ | ❌ |
+| SIGN-11 Link | ✅ | — | — | ✅ (approving a real code not yet seen) | ✅ Settings (approving a real code not yet seen) | ❌ |
 

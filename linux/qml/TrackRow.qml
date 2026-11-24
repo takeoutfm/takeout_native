@@ -29,6 +29,9 @@ QQC2.ItemDelegate {
     readonly property var download: etag ? Core.downloadsByEtag[etag] : undefined
     /** A control at the row's end (a podcast episode's Download). */
     property Component trailing: null
+    /** Offers Remove from Playlist in the menu (a playlist's own rows), which emits [remove]. */
+    property bool removable: false
+    signal remove()
 
     Layout.fillWidth: true
     width: ListView.view ? ListView.view.width : implicitWidth
@@ -163,6 +166,13 @@ QQC2.ItemDelegate {
             text: row.favorite ? KI18n.i18n("Remove from Favorites") : KI18n.i18n("Add to Favorites")
             icon.name: row.favorite ? "emblem-favorite" : "emblem-favorite-symbolic"
             onTriggered: row.toggleFavorite()
+        }
+        QQC2.MenuItem {
+            visible: row.removable
+            height: visible ? implicitHeight : 0
+            text: KI18n.i18n("Remove from Playlist")
+            icon.name: "list-remove"
+            onTriggered: row.remove()
         }
     }
 }

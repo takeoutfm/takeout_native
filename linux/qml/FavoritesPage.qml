@@ -17,6 +17,8 @@ AppPage {
 
     // Following the core's favorites (decision 017): a track unfavorited anywhere drops out.
     readonly property var tracks: (favorites?.tracks ?? []).filter(t => !t.etag || Core.favoriteTracks.includes(t.etag))
+    // and an artist unfavorited on its page drops out too.
+    readonly property var artists: (favorites?.artists ?? []).filter(a => !a.arid || Core.favoriteArtists.includes(a.arid))
     readonly property var etags: tracks.map(t => t.etag).filter(e => e)
     readonly property bool allDownloaded: etags.length > 0 && etags.every(e => Core.downloadsByEtag[e]?.state === "Done")
 
@@ -38,6 +40,11 @@ AppPage {
             const shown = (page.favorites?.tracks ?? []).map(t => t.etag)
             if (Core.favoriteTracks.some(e => !shown.includes(e))) page.load()
         }
+        // an artist favorited on its page: only the server has the card's details
+        function onFavoriteArtistsChanged() {
+            const shown = (page.favorites?.artists ?? []).map(a => a.arid)
+            if (Core.favoriteArtists.some(id => !shown.includes(id))) page.load()
+        }
     }
 
     ColumnLayout {
@@ -52,14 +59,14 @@ AppPage {
         Kirigami.PlaceholderMessage {
             Layout.fillWidth: true
             Layout.topMargin: Kirigami.Units.gridUnit * 4
-            visible: !!page.favorites && page.favorites.artists.length === 0 && page.tracks.length === 0
+            visible: !!page.favorites && page.artists.length === 0 && page.tracks.length === 0
             icon.name: "emblem-favorite"
             text: KI18n.i18n("No favorites")
         }
 
         CardRow {
             title: KI18n.i18n("Artists")
-            model: page.favorites?.artists ?? []
+            model: page.artists
             delegate: ArtistCard {
                 required property var modelData
                 artist: modelData

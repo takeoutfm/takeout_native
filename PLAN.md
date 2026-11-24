@@ -38,21 +38,21 @@ would notice. Fixing one updates its status table in the same commit.
 
 | Gap | Apps missing it | Rule |
 |---|---|---|
-| Say why a track can't play | Linux, tofm, watch | PLAY-12 |
+| Say why a track can't play | tofm, watch | PLAY-12 |
 | Play next / add to queue | watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Back 10 s / ahead 30 s in Now Playing | watch (only previous, play, next) | PLAY-9 |
 | Playlists: create, add | TV, watch, tofm | LIB-13 |
-| Playlists: remove a track, delete | TV, watch, tofm; Linux can delete | LIB-13 |
+| Playlists: remove a track, delete | TV, watch, tofm | LIB-13 |
 | Search | watch; the TV searches video only | LIB-12 |
-| Favorite an artist; the favorite artists list | artist: watch, Linux, tofm; list: phone, watch, tofm | LIB-6, LIB-8 |
-| Activity (play stats) | TV, watch, Linux, tofm | LIB-14 |
-| Recommendation lists | Linux, tofm | LIB-3 |
+| Favorite an artist; the favorite artists list | artist: watch, tofm; list: phone, watch, tofm | LIB-6, LIB-8 |
+| Activity (play stats) | TV, watch, tofm | LIB-14 |
+| Recommendation lists | tofm | LIB-3 |
 | Mark an episode played | phone, TV, watch, tofm | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |
 | Connect ListenBrainz | watch | LISTEN-5 |
-| Link another device | Linux, tofm | SIGN-11 |
-| Stream History listed with Recently Played | Linux (keeps it, never lists it: see radio.md), TV, tofm | RADIO-5 |
+| Link another device | tofm | SIGN-11 |
+| Stream History listed with Recently Played | TV, tofm | RADIO-5 |
 | Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |

@@ -63,7 +63,7 @@ bool TakeoutCore::start(const QString &dataDir, const QString &userAgent, const 
         [](void *, const char *json) { SecretStore::save(app, json); }, nullptr);
     if (status != 0) return false;
     for (const char *name : {"session", "library", "settings", "favoriteTracks", "recentlyPlayed", "downloads", "cacheUsage", "listenBrainz",
-                             "podcastSubscriptions", "episodeProgress", "playlists"}) watch(name);
+                             "podcastSubscriptions", "episodeProgress", "playlists", "streamHistory", "favoriteArtists"}) watch(name);
     return true;
 }
 
@@ -123,6 +123,12 @@ void TakeoutCore::updated(const QByteArray &name, const QVariant &value)
     } else if (name == "episodeProgress") {
         m_episodeProgress = value.toMap();
         Q_EMIT episodeProgressChanged();
+    } else if (name == "streamHistory") {
+        m_streamHistory = value.toList();
+        Q_EMIT streamHistoryChanged();
+    } else if (name == "favoriteArtists") {
+        m_favoriteArtists = value.toStringList();
+        Q_EMIT favoriteArtistsChanged();
     }
 }
 

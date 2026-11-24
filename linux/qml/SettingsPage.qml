@@ -50,6 +50,13 @@ AppPage {
                 description: Core.user
             }
             FormCard.FormDelegateSeparator {}
+            // Approve the code another device shows (SIGN-11).
+            FormCard.FormButtonDelegate {
+                text: KI18n.i18n("Link a Device…")
+                icon.name: "network-connect"
+                onClicked: applicationWindow().open("LinkPage")
+            }
+            FormCard.FormDelegateSeparator {}
             FormCard.FormButtonDelegate {
                 text: KI18n.i18n("Sign Out…")
                 icon.name: "system-log-out"

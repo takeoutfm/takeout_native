@@ -31,13 +31,17 @@ class TakeoutCore : public QObject
      * before the first count.
      */
     Q_PROPERTY(QVariantMap cacheUsage READ cacheUsage NOTIFY cacheUsageChanged)
+    /** The user's playlists A–Z ({id, name, trackCount}), kept current by every edit; null until first loaded. */
+    Q_PROPERTY(QVariant playlists READ playlists NOTIFY playlistsChanged)
     /**
      * The subscribed podcasts A–Z, kept current by Subscribe / Unsubscribe; null until first
      * loaded (decision 017: pages follow this rather than loading again).
      */
-    /** The user's playlists A–Z ({id, name, trackCount}), kept current by every edit; null until first loaded. */
-    Q_PROPERTY(QVariant playlists READ playlists NOTIFY playlistsChanged)
     Q_PROPERTY(QVariant podcastSubscriptions READ podcastSubscriptions NOTIFY podcastSubscriptionsChanged)
+    /** Songs heard on live streams here, newest first ({station, imageUri, title, heardAt}). */
+    Q_PROPERTY(QVariantList streamHistory READ streamHistory NOTIFY streamHistoryChanged)
+    /** The favorite artists' ids, following ♥ on an artist page. */
+    Q_PROPERTY(QStringList favoriteArtists READ favoriteArtists NOTIFY favoriteArtistsChanged)
     /**
      * Each started or played episode's progress by GUID ({type: Started, fraction, minutesLeft}
      * or {type: Complete}), following playback and Mark as Played; missing = not started.
@@ -77,6 +81,8 @@ public:
     QVariant playlists() const { return m_playlists; }
     QVariant podcastSubscriptions() const { return m_podcastSubscriptions; }
     QVariantMap episodeProgress() const { return m_episodeProgress; }
+    QVariantList streamHistory() const { return m_streamHistory; }
+    QStringList favoriteArtists() const { return m_favoriteArtists; }
     /** The downloaded file for [etag], or "" when it isn't wholly here. */
     Q_INVOKABLE QString localFile(const QString &etag) const;
 
@@ -92,6 +98,8 @@ Q_SIGNALS:
     void playlistsChanged();
     void podcastSubscriptionsChanged();
     void episodeProgressChanged();
+    void streamHistoryChanged();
+    void favoriteArtistsChanged();
     void failed(const QString &name, const QVariantMap &error);
     /**
      * The computer woke from sleep (logind's PrepareForSleep(false)): whatever follows the clock
@@ -124,4 +132,6 @@ private:
     QVariant m_playlists;
     QVariant m_podcastSubscriptions;
     QVariantMap m_episodeProgress;
+    QVariantList m_streamHistory;
+    QStringList m_favoriteArtists;
 };

@@ -42,16 +42,15 @@ would notice. Fixing one updates its status table in the same commit.
 | Play next / add to queue | watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Back 10 s / ahead 30 s in Now Playing | watch (only previous, play, next) | PLAY-9 |
-| Playlists: create, add | watch | LIB-13 |
-| Playlists: remove a track, delete | watch | LIB-13 |
-| Search | watch | LIB-12 |
-| Favorite an artist; the favorite artists list | artist: watch; list: phone, watch | LIB-6, LIB-8 |
-| Activity (play stats) | watch | LIB-14 |
+| Favorite an artist; the favorite artists list | watch | LIB-6, LIB-8 |
 | Mark an episode played | watch | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |
 | Connect ListenBrainz | watch | LISTEN-5 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
+
+Deferred on the watch, as not useful there: search (LIB-12), editing playlists or showing them as
+covers (LIB-13; it lists and plays them) and Activity (LIB-14).
 
 Waiting on the server: custom radio stations (RADIO-7; no `POST /api/radio`, no delete). Not
 done anywhere: the artist page's Want List and Tracks Like This.

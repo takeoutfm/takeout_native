@@ -59,13 +59,13 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-4–7 music browsing | ✅ | ✅ | ⚠️ albums, artists, playlists only | ✅ | ✅ | ✅ |
 | LIB-6 favorite artist | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | LIB-8 favorite tracks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| LIB-8 favorite artists list | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| LIB-8 favorite artists list | ✅ (the Artists tab's Favorites view) | ✅ | ❌ | ✅ | ✅ | ✅ |
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
-| LIB-12 search | ✅ | ✅ (movies and shows first, then music) | ❌ | ✅ | ✅ | ✅ |
-| LIB-13 playlists: create, add | ✅ | ✅ (a track's long press) | ❌ | ✅ | ✅ | ✅ (+ on a track) |
-| LIB-13 playlists: remove, delete | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ (D on a track) |
-| LIB-13 playlists as covers | ✅ | ✅ | ❌ | ✅ | ✅ | — text |
-| LIB-14 activity | ✅ | ✅ (a music tab) | ❌ | ✅ | ✅ | ✅ |
+| LIB-12 search | ✅ | ✅ (movies and shows first, then music) | — deferred (not useful on a watch) | ✅ | ✅ | ✅ |
+| LIB-13 playlists: create, add | ✅ | ✅ (a track's long press) | — deferred (not useful on a watch) | ✅ | ✅ | ✅ (+ on a track) |
+| LIB-13 playlists: remove, delete | ✅ | ✅ | — deferred (not useful on a watch) | ✅ | ✅ | ✅ (D on a track) |
+| LIB-13 playlists as covers | ✅ | ✅ | — deferred (not useful on a watch) | ✅ | ✅ | — text |
+| LIB-14 activity | ✅ | ✅ (a music tab) | — deferred (not useful on a watch) | ✅ | ✅ | ✅ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 
 Not done anywhere: the artist page's Want List and Tracks Like This.

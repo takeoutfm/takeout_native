@@ -119,6 +119,11 @@ data class VideoDetails(
     val seasons: List<SeasonInfo> = emptyList(),
     /** Series: the episode Play starts, e.g. "S1E3". */
     val playTarget: String? = null,
+    /**
+     * Series: that episode's id ("e-57"), for a player to play it as itself (its own details carry
+     * its previous and next episodes; a series' don't, as its page isn't an episode).
+     */
+    val playEpisodeId: String? = null,
     val previousEpisodeId: String? = null,
     val nextEpisodeId: String? = null,
     /** A movie's trailers, newest first (TMDB often lists teasers before the final one). */

@@ -40,7 +40,6 @@ would notice. Fixing one updates its status table in the same commit.
 |---|---|---|
 | Say why a track can't play | watch | PLAY-12 |
 | Play next / add to queue | watch | PLAY-4 |
-| Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Back 10 s / ahead 30 s in Now Playing | watch (only previous, play, next) | PLAY-9 |
 | Favorite an artist; the favorite artists list | watch | LIB-6, LIB-8 |
 | Mark an episode played | watch | POD-7 |

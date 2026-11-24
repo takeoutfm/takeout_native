@@ -75,4 +75,15 @@ class EpisodeDetailsTest {
         assertEquals("e-11", d.previousEpisodeId)
         assertEquals("e-13", d.nextEpisodeId)
     }
+
+    @Test
+    fun aSeriesNamesTheEpisodePlayStartsButNotItsNeighbours() = runTest {
+        // no progress: the first episode; the series' page isn't an episode, so no previous/next
+        val d = repository().details("s-4")
+        assertEquals(VideoKind.Series, d.kind)
+        assertEquals("S1E1", d.playTarget)
+        assertEquals("e-11", d.playEpisodeId)
+        assertEquals(null, d.previousEpisodeId)
+        assertEquals(null, d.nextEpisodeId)
+    }
 }

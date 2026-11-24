@@ -202,6 +202,7 @@ class TakeoutVideoRepository(
             favoritePath = s.tvid.takeIf { it > 0 }?.let { "shows/$it" },
             seasons = seasons(episodes),
             playTarget = first?.let { "S${it.season}E${it.episode}" },
+            playEpisodeId = first?.let { "$EpisodePrefix${it.id}" },
         )
     }
 

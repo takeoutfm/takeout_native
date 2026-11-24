@@ -18,6 +18,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -98,8 +99,10 @@ class VideoPlayerActivity : ComponentActivity() {
         picks = TrackPicks(player, settings::setAudioLanguage, settings::setSubtitleLanguage)
         player.addListener(picks)
         playerView = PlayerView(this).apply {
-            player = this@VideoPlayerActivity.player
+            // ⏮ ⏭ are the previous and next episode (VIDEO-7), shown only when there's one.
+            player = episodes
             setShowSubtitleButton(true)
+            // until the title's details say there's an episode that way
             setShowNextButton(false)
             setShowPreviousButton(false)
             setShowFastForwardButton(true)
@@ -109,7 +112,7 @@ class VideoPlayerActivity : ComponentActivity() {
         }
         setContentView(playerView)
         // Media keys, Assistant and the picture-in-picture controls reach the player.
-        session = MediaSession.Builder(this, player).setId("video").build()
+        session = MediaSession.Builder(this, episodes).setId("video").build()
         val id = intent.getStringExtra(ExtraId) ?: return finish()
         play(id, intent.getBooleanExtra(ExtraStartOver, false))
     }
@@ -117,7 +120,9 @@ class VideoPlayerActivity : ComponentActivity() {
     private fun play(id: String, startOver: Boolean) {
         lifecycleScope.launch {
             val d = try {
-                video.details(id)
+                // A series plays the episode it would start (Resume S1E2…) as that episode, so
+                // the episode buttons and on-to-the-next work as for an episode opened itself.
+                video.details(id).let { d -> d.playEpisodeId?.let { video.details(it) } ?: d }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -130,6 +135,9 @@ class VideoPlayerActivity : ComponentActivity() {
             details = d
             hasPlayed = false
             audioChosen = false
+            // only the episode buttons there's an episode for (Media3 would grey out the others)
+            playerView.setShowPreviousButton(d.previousEpisodeId != null)
+            playerView.setShowNextButton(d.nextEpisodeId != null)
             val resumeMs = if (startOver) 0 else runCatching { progress.resumePositionMs(d.etag) }.getOrDefault(0)
             player.setMediaItem(
                 MediaItem.Builder()
@@ -145,6 +153,49 @@ class VideoPlayerActivity : ComponentActivity() {
             picks.auto { applySubtitlePreference(player, settings.subtitleLanguage) }
             player.prepare()
             player.play()
+        }
+    }
+
+    /**
+     * The player as the controls, media keys and picture-in-picture see it: previous and next go
+     * to the series' previous and next episode (resumed where it was left), and are offered only
+     * when there is one. A movie has neither.
+     */
+    @OptIn(UnstableApi::class)
+    private val episodes: Player by lazy {
+        object : ForwardingPlayer(player) {
+            private fun previousId() = details?.previousEpisodeId
+            private fun nextId() = details?.nextEpisodeId
+
+            override fun isCommandAvailable(command: Int): Boolean = when (command) {
+                Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> previousId() != null
+                Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> nextId() != null
+                else -> super.isCommandAvailable(command)
+            }
+
+            override fun getAvailableCommands(): Player.Commands {
+                val builder = super.getAvailableCommands().buildUpon()
+                    .removeAll(
+                        Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                        Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                    )
+                if (previousId() != null) builder.addAll(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                if (nextId() != null) builder.addAll(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                return builder.build()
+            }
+
+            override fun hasPreviousMediaItem() = previousId() != null
+            override fun hasNextMediaItem() = nextId() != null
+            override fun seekToPrevious() = goTo(previousId())
+            override fun seekToPreviousMediaItem() = goTo(previousId())
+            override fun seekToNext() = goTo(nextId())
+            override fun seekToNextMediaItem() = goTo(nextId())
+
+            private fun goTo(id: String?) {
+                id ?: return
+                save()
+                play(id, startOver = false)
+            }
         }
     }
 

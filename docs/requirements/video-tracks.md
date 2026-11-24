@@ -24,7 +24,10 @@ Decision: [003](../decisions/003-track-choices-by-language.md).
 - **TRACKS-6** Each new title gets the subtitles in the **language the viewer last picked**:
   - never picked: the title's own default (forced subtitles show);
   - picked *Off*: none;
-  - picked a language: the first track in it; if the title has none, its own default.
+  - picked a language: the first track in it that isn't forced (forced tracks only subtitle the
+    odd foreign line), a forced one only when that's all it has; if the title has none in it,
+    its own default. The shared `pickSubtitleTrack` decides; where the player gives no forced
+    flag (VLC), the track's name says.
 - **TRACKS-7** Only the **viewer's picks** are remembered, never the app's own choices (the best
   audio track, a remembered subtitle language applied): the best track for a Japanese-only
   film must not make Japanese the preferred language.
@@ -42,13 +45,13 @@ Decision: [003](../decisions/003-track-choices-by-language.md).
 |---|---|---|---|---|---|---|
 | TRACKS-1 embedded only | ✅ | ✅ | ✅ | ✅ | ✅ | — no video |
 | TRACKS-2 audio labels | ⚠️ Media3's own menu names them | ✅ | ✅ | ✅ | — mpv's | — |
-| TRACKS-3 subtitle labels | ⚠️ Media3's | ✅ | ⚠️ VLC's names | ✅ | — mpv's | — |
+| TRACKS-3 subtitle labels | ⚠️ Media3's | ✅ | ✅ (Forced / SDH from the track's name: VLC has no flags) | ✅ | — mpv's | — |
 | TRACKS-5 best audio | ✅ | ✅ | ✅ | ✅ | — mpv picks | — |
-| TRACKS-6 subtitle language | ✅ | ✅ | 🔨 | ✅ | — mpv picks | — |
+| TRACKS-6 subtitle language | ⚠️ Media3 picks in the language (forced or not: not checked) | ⚠️ the same | ✅ (forced from the track's name) | ⚠️ the first in the language, forced too | — mpv picks | — |
 | TRACKS-7 only the viewer's picks | ✅ | ✅ (own pickers) | ✅ | ✅ | — | — |
-| TRACKS-10 saved, both players | ✅ | ✅ | 🔨 | ✅ | — | — |
+| TRACKS-10 saved, both players | ✅ | ✅ | ✅ | ✅ | — | — |
 | TRACKS-11 reopening keeps tracks | — the player follows URLs itself | — | — | ✅ | — | — |
 
 Known gaps: the Linux app compares subtitle languages as the file gives them ("eng" and "en"
 don't match), where the others normalise them; tofm hands video to mpv, which chooses for
-itself. Mac/iOS (🔨) is written but not yet built on a Mac.
+itself.

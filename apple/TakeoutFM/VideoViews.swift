@@ -26,6 +26,10 @@ struct WatchView: View {
                     VideoRow(title: "Recently Added", cards: rows.recentlyAdded)
                     VideoRow(title: "New Releases", cards: rows.newReleases)
                     VideoRow(title: "TV", cards: rows.recentShows)
+                    // The server's recommendation sets (LIB-3), a row each.
+                    ForEach(model.recommendations, id: \.name) { set in
+                        VideoRow(title: set.name, cards: set.titles)
+                    }
                 }
                 .padding(24)
             }

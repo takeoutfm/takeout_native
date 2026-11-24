@@ -24,10 +24,20 @@ final class AppModel: ObservableObject {
     @Published private(set) var hasGuide = false
     /// The channel the Mac's Live window plays (a new request each time one is picked).
     @Published var liveRequest: LiveRequest?
+    /// The videos asked to play since launch (the Mac's video windows). A window SwiftUI brings
+    /// back from the last run, killed or quit with a video open, isn't one of them: it closes
+    /// instead of playing (and saving progress).
+    var videoRequests: Set<VideoPlayRequest> = []
     /// Recently Played, newest first.
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.
     @Published private(set) var favoriteTracks: Set<String> = []
+    /// Songs heard on live streams on this device, newest first (RADIO-5).
+    @Published private(set) var streamSongs: [StreamSong] = []
+    /// The server's recommendation sets (LIB-3), from the library index; empty when it has none.
+    @Published private(set) var recommendations: [RecommendationSet] = []
+    /// MusicBrainz ids of the favorite artists (the shared `favoriteArtistIds`, LIB-6).
+    @Published private(set) var favoriteArtists: Set<String> = []
     /// Track Activity: report plays to the server.
     @Published var reportPlays: Bool {
         didSet { calls.reportPlays = reportPlays }
@@ -64,6 +74,8 @@ final class AppModel: ObservableObject {
     /// The user's playlists as the shared core last loaded them, kept current by every edit
     /// (`currentPlaylists`); nil until first loaded.
     @Published private(set) var playlists: [MusicPlaylist]?
+    /// What New Playlist… in an Add to Playlist menu is for, while the name is asked.
+    @Published var newPlaylistTarget: PlaylistTarget?
     /// The subscribed podcasts as the shared core last loaded them, kept current by subscribing
     /// and unsubscribing (`subscribedSeries`); nil until first loaded.
     @Published private(set) var subscribedPodcasts: [PodcastSeries]?
@@ -72,6 +84,7 @@ final class AppModel: ObservableObject {
     /// A short message at the bottom of the window ("Playing Next"), cleared after a moment.
     @Published private(set) var message: String?
     private var messageTask: Task<Void, Never>?
+    private var playerFailures: AnyCancellable?
     private var watches: [Watching] = []
     private var activeObserver: NSObjectProtocol?
 
@@ -131,11 +144,20 @@ final class AppModel: ObservableObject {
                 self?.hasPodcasts = index?.hasPodcasts ?? false
                 self?.hasGuide = index?.hasGuide ?? false
             },
+            WatchKt.watch(flow: core.streamHistory.songs) { [weak self] songs in
+                self?.streamSongs = songs as? [StreamSong] ?? []
+            },
             WatchKt.watch(flow: core.history.entries) { [weak self] entries in
                 self?.recentlyPlayed = entries as? [PlayedQueue] ?? []
             },
             WatchKt.watch(flow: core.music.favoriteTrackEtags) { [weak self] etags in
                 self?.favoriteTracks = etags as? Set<String> ?? []
+            },
+            WatchKt.watch(flow: core.video.recommendations()) { [weak self] sets in
+                self?.recommendations = sets as? [RecommendationSet] ?? []
+            },
+            WatchKt.watch(flow: core.music.favoriteArtistIds) { [weak self] ids in
+                self?.favoriteArtists = ids as? Set<String> ?? []
             },
             WatchKt.watch(flow: core.music.currentPlaylists) { [weak self] playlists in
                 self?.playlists = playlists as? [MusicPlaylist]
@@ -153,6 +175,12 @@ final class AppModel: ObservableObject {
         Self.apply(theme)
         Task { try? await calls.refreshLibrary() }
         Task { try? await calls.loadFavoriteTracks() }
+        // for the Add to Playlist menus (kept current by every edit)
+        Task { _ = try? await calls.playlists() }
+        // A track that can't play says why (the player goes on with the next).
+        playerFailures = self.player.failures.receive(on: RunLoop.main).sink { [weak self] text in
+            self?.show(text, for: .seconds(5))
+        }
         calls.retryListens()
         // As the Android apps do on returning to the foreground.
         #if os(macOS)
@@ -169,7 +197,7 @@ final class AppModel: ObservableObject {
         if let album = UserDefaults.standard.string(forKey: "downloadAlbum") {
             Task { [calls, cache] in
                 guard let queue = try? await calls.albumQueue(albumId: album, startIndex: 0) else { return NSLog("No album \(album)") }
-                cache.download(queue.items, group: album, groupTitle: queue.title)
+                cache.download(queue)  // grouped as the Download button groups it
             }
         }
         if let album = UserDefaults.standard.string(forKey: "playAlbum") {
@@ -222,6 +250,18 @@ final class AppModel: ObservableObject {
 
     func isFavorite(_ etag: String) -> Bool { favoriteTracks.contains(etag) }
 
+    /** Adds or removes a favorite artist (the shared set updates at once; reverted on failure). */
+    func toggleFavoriteArtist(_ artist: Artist) {
+        let wanted = !favoriteArtists.contains(artist.arid)
+        Task {
+            do {
+                try await calls.setArtistFavorite(arid: artist.arid, favorite: wanted)
+            } catch {
+                show(wanted ? "Couldn't add \(artist.name) to Favorites" : "Couldn't remove \(artist.name) from Favorites")
+            }
+        }
+    }
+
     /** Play Next / Add to Queue for one track, as on the phone: just the track (its server queue goes on with similar ones). */
     func enqueueTrack(_ trackId: String, last: Bool) {
         Task {
@@ -236,17 +276,48 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: Playlists (LIB-13)
+
+    /** Adds [target] to [playlist], saying so. */
+    func add(_ target: PlaylistTarget, to playlist: MusicPlaylist) {
+        Task {
+            do {
+                switch target {
+                case .track(let id): try await calls.addTrackToPlaylist(playlistId: playlist.id, trackId: id)
+                case .album(let id): try await calls.addAlbumToPlaylist(playlistId: playlist.id, albumId: id)
+                }
+                show("Added to \(playlist.name)")
+            } catch {
+                show("Couldn't add to \(playlist.name)")
+            }
+        }
+    }
+
+    /** A new playlist named [name], with [target] in it. */
+    func add(_ target: PlaylistTarget, toNewPlaylist name: String) {
+        let name = name.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        Task {
+            do {
+                let playlist = try await calls.createPlaylist(name: name)
+                add(target, to: playlist)
+            } catch {
+                show("Couldn't create \(name)")
+            }
+        }
+    }
+
     /** [items] next or last, with the same message. */
     func enqueue(_ items: [QueueItem], last: Bool) {
         player.enqueue(items, last: last)
         show(last ? "Added to Queue" : "Playing Next")
     }
 
-    func show(_ text: String) {
+    func show(_ text: String, for duration: Duration = .seconds(2)) {
         message = text
         messageTask?.cancel()
         messageTask = Task {
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: duration)
             guard !Task.isCancelled else { return }
             message = nil
         }
@@ -268,4 +339,10 @@ final class AppModel: ObservableObject {
         player.stop()
         core.session.signOut()
     }
+}
+
+/** What an Add to Playlist menu adds (LIB-13): a track or a whole album, by id. */
+enum PlaylistTarget: Hashable {
+    case track(String)
+    case album(String)
 }

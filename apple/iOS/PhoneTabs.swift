@@ -38,6 +38,7 @@ struct PhoneTabs: View {
             }
         }
         .animation(.default, value: model.message)
+        .newPlaylistPrompt(model)
     }
 
     private func tab<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
@@ -130,6 +131,7 @@ private struct HomeTab: View {
             if model.hasPodcasts { link("Podcasts", "antenna.radiowaves.left.and.right", .podcasts) }
             link("Recently Added", "plus.square.on.square", .recentlyAdded)
             link("New Releases", "sparkles", .newReleases)
+            link("Activity", "chart.bar", .activity)
             if model.hasGuide { link("Live", "dot.radiowaves.up.forward", .live) }
             if model.hasMovies || model.hasShows { link("Watch", "play.tv", .watch) }
             if model.hasMovies { link("Movies", "film", .movies) }

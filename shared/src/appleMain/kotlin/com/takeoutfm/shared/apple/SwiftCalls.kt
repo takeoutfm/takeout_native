@@ -18,6 +18,8 @@ import com.takeoutfm.shared.music.AlbumDetails
 import com.takeoutfm.shared.music.Artist
 import com.takeoutfm.shared.music.ArtistDetails
 import com.takeoutfm.shared.music.ArtistMix
+import com.takeoutfm.shared.music.ActivityInterval
+import com.takeoutfm.shared.music.ActivityStats
 import com.takeoutfm.shared.music.MusicFavorites
 import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
@@ -120,7 +122,21 @@ class SwiftCalls(private val core: TakeoutCore) {
     suspend fun deletePlaylist(playlistId: String) = core.music.deletePlaylist(playlistId)
 
     @Throws(Throwable::class)
+    suspend fun addTrackToPlaylist(playlistId: String, trackId: String) = core.music.addTrackToPlaylist(playlistId, trackId)
+
+    @Throws(Throwable::class)
+    suspend fun addAlbumToPlaylist(playlistId: String, albumId: String) = core.music.addAlbumToPlaylist(playlistId, albumId)
+
+    /** Removes the track at [index] (0-based, as the playlist lists them). */
+    @Throws(Throwable::class)
+    suspend fun removeFromPlaylist(playlistId: String, index: Int) = core.music.removeFromPlaylist(playlistId, index)
+
+    @Throws(Throwable::class)
     suspend fun favorites(): MusicFavorites = core.music.favorites()
+
+    /** The server's play stats for [interval] (LIB-14): artists, releases and tracks, most played first. */
+    @Throws(Throwable::class)
+    suspend fun activity(interval: ActivityInterval): ActivityStats = core.music.activity(interval)
 
     @Throws(Throwable::class)
     suspend fun favoritesQueue(startIndex: Int): MusicQueue = core.music.favoritesQueue(startIndex)
@@ -160,6 +176,18 @@ class SwiftCalls(private val core: TakeoutCore) {
         val (offset, duration) = TakeoutPodcastRepository.playedMark(core.podcasts.offset(eid), played)
         core.progress.report(eid, offset * 1000L, duration * 1000L)
     }
+
+    // ---- Linking another device (SIGN-11) ----
+
+    /**
+     * Approves another device's sign-in [code] with this account's [user], [password] and
+     * [passcode] (empty when the account has none), on the server this app is signed in to:
+     * true when it accepted them, false when it refused the code or the account. Throws when the
+     * server can't be reached.
+     */
+    @Throws(Throwable::class)
+    suspend fun link(code: String, user: String, password: String, passcode: String): Boolean =
+        core.api.link(core.session.endpoint, code, user, password, passcode)
 
     // ---- Video ----
 
@@ -216,6 +244,16 @@ class SwiftCalls(private val core: TakeoutCore) {
     fun recentlyPlayed(): List<PlayedQueue> = core.history.entries.value
 
     fun clearRecentlyPlayed() = core.history.clear()
+
+    /** A song started on the live stream [station] (its ICY [title]): kept in Stream History (RADIO-5). */
+    fun streamSongHeard(station: String, imageUri: String, title: String) =
+        core.streamHistory.heard(station, imageUri, title)
+
+    /** Clears Recently Played and Stream History on this device, as the phone's Clear does. */
+    fun clearHistory() {
+        core.history.clear()
+        core.streamHistory.clear()
+    }
 
     /** Decides listens for the player, reporting them per the Music settings. */
     fun listenSession(): ListenSession = ListenSession(core.listenReporter)

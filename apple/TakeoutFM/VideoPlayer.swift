@@ -45,10 +45,15 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     @Published private(set) var isBuffering = true
     @Published private(set) var timeMs: Int64 = 0
     @Published private(set) var lengthMs: Int64 = 0
+    #if DEBUG
+    private var seekedNearEnd = false
+    #endif
     @Published private(set) var audioTracks: [MediaTrack] = []
     @Published private(set) var subtitleTracks: [MediaTrack] = []
     @Published private(set) var audioTrack: Int32 = -1
     @Published private(set) var subtitleTrack: Int32 = -1
+    /** The playback speed (VIDEO-8). */
+    @Published private(set) var speed: Float = 1
 
     #if os(macOS)
     let videoView = VLCVideoView()
@@ -61,6 +66,8 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     /** This title's subtitles were set as picked last (once VLC listed them). */
     private var subtitlesChosen = false
     private var hasPlayed = false
+    /// This title's end was handled (`ended`), so a second end event changes nothing.
+    private var endHandled = false
     private var savedAt = Date.distantPast
     private var loading: Task<Void, Never>?
     /// This video's id with the stream proxy, while it's registered.
@@ -88,6 +95,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         failure = nil
         finished = false
         hasPlayed = false
+        endHandled = false
         isBuffering = true
         timeMs = 0
         lengthMs = 0
@@ -118,6 +126,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
                 if resumeMs > 0 { media.addOption(":start-time=\(Double(resumeMs) / 1000)") }
                 player.media = media
                 player.play()
+                if speed != 1 { player.rate = speed }
             } catch is CancellationError {
             } catch {
                 NSLog("Video \(request.id) failed: \(error)")
@@ -153,6 +162,15 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         subtitleTrack = index
         // The language picked is used for the next titles (the live player's too).
         player.rememberSubtitle(index)
+    }
+
+    /** The speeds the player offers (VIDEO-8), as on Linux. */
+    static let speeds: [Float] = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
+    /** Plays at [rate] (1 is normal); kept for the next episode while the player is open. */
+    func setSpeed(_ rate: Float) {
+        player.rate = rate
+        speed = rate
     }
 
     /** Saves the place and stops (the window closed). */
@@ -213,22 +231,34 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
             if !hasPlayed { started() }
         case .paused:
             save()
+            // not on Stopped: loading the next episode stops this one at its end
+            if hasPlayed && player.isAtEnd { ended() }
         case .ended:
-            save()
-            // An episode ends: on to the next one, from its start.
-            if let next = details?.nextEpisodeId {
-                load(VideoPlayRequest(id: next, startOver: true))
-            } else if let etag = details?.etag, let entry = cache.entries[etag], entry.isDone, !entry.isCached {
-                // watched to its end: offered for removal (never removed by itself), then leaves
-                watchedDownload = entry
-            } else {
-                finished = true
-            }
+            ended()
         case .error:
             NSLog("VLC error playing \(details?.id ?? "?")")
             failure = "Couldn't play this."
         default:
             break
+        }
+    }
+
+    /**
+     * The title has played to its end (VLC says Ended, or stops paused at the end, as it did
+     * after a seek near it, which left the player on a stopped picture): once per title.
+     */
+    private func ended() {
+        guard !endHandled else { return }
+        endHandled = true
+        save()
+        // An episode ends: on to the next one, from its start.
+        if let next = details?.nextEpisodeId {
+            load(VideoPlayRequest(id: next, startOver: true))
+        } else if let etag = details?.etag, let entry = cache.entries[etag], entry.isDone, !entry.isCached {
+            // watched to its end: offered for removal (never removed by itself), then leaves
+            watchedDownload = entry
+        } else {
+            finished = true
         }
     }
 
@@ -260,6 +290,14 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         // Tracks can appear after the first frames (e.g. subtitles in a later cluster).
         if hasPlayed && !subtitlesChosen { chooseSubtitles() }
         if audioTracks.isEmpty || subtitleTracks.isEmpty { refreshTracks() }
+        #if DEBUG
+        // For testing a title's end without watching it all: `-seekNearEnd YES` (with
+        // `-noProgress YES`, nothing is saved).
+        if UserDefaults.standard.bool(forKey: "seekNearEnd"), !seekedNearEnd, hasPlayed, lengthMs > 20_000, timeMs > 1_000 {
+            seekedNearEnd = true
+            seek(toMs: lengthMs - 5_000)
+        }
+        #endif
         if Date().timeIntervalSince(savedAt) > 10 { save() }
     }
 }
@@ -282,9 +320,41 @@ extension VLCMediaPlayer {
             }
     }
 
-    /** The subtitle tracks, "Disable" (-1) first, as VLC names them. */
+    /**
+     * The subtitle tracks, Off (-1) first, labelled by the shared rule (TRACKS-3): "English ·
+     * SDH · PGS" from VLC's track details, not its own "Track 1 - [English]". VLC gives no
+     * forced or SDH flags, so the track's name stands in.
+     */
     var subtitleTrackList: [MediaTrack] {
-        Self.tracks(names: videoSubTitlesNames, indexes: videoSubTitlesIndexes)
+        var details: [Int32: [String: Any]] = [:]
+        for info in media?.tracksInformation ?? [] {
+            guard let info = info as? [String: Any],
+                  info[VLCMediaTracksInformationType] as? String == VLCMediaTracksInformationTypeText,
+                  let id = (info[VLCMediaTracksInformationId] as? NSNumber)?.int32Value else { continue }
+            details[id] = info
+        }
+        var number = 0
+        return Self.tracks(names: videoSubTitlesNames, indexes: videoSubTitlesIndexes).map { track in
+            guard track.index >= 0 else { return MediaTrack(index: -1, name: "Off") }
+            number += 1
+            let info = details[track.index] ?? [:]
+            let language = AudioTrackRankingKt.normalizeLanguage(tag: info[VLCMediaTracksInformationLanguage] as? String)
+                .map { Locale.current.localizedString(forLanguageCode: $0) ?? $0 }
+            var name = info[VLCMediaTracksInformationDescription] as? String ?? ""
+            if SubtitleTrackLabelKt.isGeneratedTrackName(name: name) { name = "" }
+            let fourcc = (info[VLCMediaTracksInformationCodec] as? NSNumber)?.uint32Value ?? 0
+            let codec = VLCMedia.codecName(forFourCC: fourcc, trackType: VLCMediaTracksInformationTypeText)
+            let lower = name.lowercased()
+            let label = SubtitleTrackLabelKt.subtitleTrackLabel(
+                languageName: language,
+                name: name,
+                forced: lower.contains("forced"),
+                sdh: lower.contains("sdh") || lower.contains("hearing"),
+                format: SubtitleTrackLabelKt.subtitleFormat(codec: codec),
+                number: Int32(number)
+            )
+            return MediaTrack(index: track.index, name: label)
+        }
     }
 
     /** The languages of the subtitle tracks, by track id (VLC's names don't always say). */
@@ -313,8 +383,9 @@ extension VLCMediaPlayer {
     }
 
     /**
-     * Selects the subtitles picked last: off, or the first track in that language. Nothing
-     * picked yet, or no track in it, leaves VLC's choice (a file's forced ones stay on).
+     * Selects the subtitles picked last (TRACKS-6): off, or by the shared rule the first track in
+     * that language that isn't forced (a forced one only if that's all it has). Nothing picked
+     * yet, or no track in it, leaves VLC's choice, the file's default (its forced ones stay on).
      * False while VLC lists no subtitle tracks yet, so it's tried again.
      */
     func applySubtitlePreference() -> Bool {
@@ -323,10 +394,25 @@ extension VLCMediaPlayer {
             currentVideoSubTitleIndex = -1
             return true
         }
-        let languages = subtitleLanguages
-        if languages.isEmpty { return false }
-        if let id = languages.filter({ $0.value == language }).keys.min() { currentVideoSubTitleIndex = id }
+        let candidates = subtitleCandidates
+        if candidates.isEmpty { return false }
+        if let id = SubtitleTrackLabelKt.pickSubtitleTrack(tracks: candidates, language: language) {
+            currentVideoSubTitleIndex = id.int32Value
+        }
         return true
+    }
+
+    /** The subtitle tracks in VLC's order, for the shared pick (VLC has no forced flag: the name says). */
+    private var subtitleCandidates: [SubtitleCandidate] {
+        (media?.tracksInformation ?? []).compactMap { info -> SubtitleCandidate? in
+            guard let info = info as? [String: Any],
+                  info[VLCMediaTracksInformationType] as? String == VLCMediaTracksInformationTypeText,
+                  let id = (info[VLCMediaTracksInformationId] as? NSNumber)?.int32Value else { return nil }
+            let language = AudioTrackRankingKt.normalizeLanguage(tag: info[VLCMediaTracksInformationLanguage] as? String)
+            let name = info[VLCMediaTracksInformationDescription] as? String ?? ""
+            return SubtitleCandidate(id: id, language: language, forced: SubtitleTrackLabelKt.looksForced(name: name))
+        }
+        .sorted { $0.id < $1.id }
     }
 
     /** Switches to the best audio track (the shared ranking), unless VLC already has it. */
@@ -347,4 +433,18 @@ extension VLCMediaPlayer {
             return MediaTrack(index: i, name: name as? String ?? "Track \(i)")
         }
     }
+}
+
+extension VLCMediaPlayer {
+    /** Within a second of the media's end (VLC can stop there paused, not Ended). */
+    var isAtEnd: Bool {
+        let length = Int64(media?.length.intValue ?? 0)
+        return length > 0 && Int64(time.intValue) >= length - 1_000
+    }
+}
+
+/** A speed as the menus show it: "0.5×", "1×", "1.25×". */
+func speedLabel(_ rate: Float) -> String {
+    let text = rate == rate.rounded() ? String(Int(rate)) : String(format: "%g", rate)
+    return text + "×"
 }

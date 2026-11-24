@@ -59,6 +59,7 @@ struct AlbumView: View {
                             Button { play(0) } label: { Label("Play", systemImage: "play.fill") }
                                 .buttonStyle(.borderedProminent)
                             Button { play(0, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
+                            AddToPlaylistMenu(target: .album(albumId))
                             DownloadButton(etags: details.tracks.map(\.etag)) {
                                 Task {
                                     guard let queue = try? await model.calls.albumQueue(albumId: albumId, startIndex: 0) else { return }
@@ -78,7 +79,8 @@ struct AlbumView: View {
                         title: track.title,
                         detail: track.artist != details.album.artist ? track.artist : "",
                         etag: track.etag,
-                        enqueue: { model.enqueueTrack(track.id, last: $0) }
+                        enqueue: { model.enqueueTrack(track.id, last: $0) },
+                        trackId: track.id
                     ) { play(index) }
                 }
                 AlbumRow(title: "Similar Albums", albums: details.similar)

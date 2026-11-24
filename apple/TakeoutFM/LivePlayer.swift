@@ -317,6 +317,9 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
         subtitleTracks = player.subtitleTrackList
         audioTrack = player.currentAudioTrackIndex
         subtitleTrack = player.currentVideoSubTitleIndex
+        #if DEBUG
+        NSLog("Live tracks: audio \(audioTracks.map(\.name)) (\(audioTrack)), subtitles \(subtitleTracks.map(\.name)) (\(subtitleTrack))")
+        #endif
     }
 
     /** Playback started on a newly loaded file: its best audio track and the subtitles as chosen. */
@@ -344,19 +347,29 @@ final class LivePlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate 
         case .opening:
             isBuffering = true
         case .ended:
-            // Behind live: back to whatever is on now. A file shorter than its slot: the slate
-            // until the slot ends (the retune is already set for then).
-            if behind {
-                tune()
-            } else if tuned?.kind == "program" {
-                fileEnded = true
-            }
+            fileFinished()
+        case .paused:
+            // VLC can stop paused at a file's end instead of saying Ended (not on Stopped:
+            // a retune stops the file just as it ends)
+            if player.isAtEnd { fileFinished() }
         case .error:
             NSLog("VLC error playing live \(channel)")
             isBuffering = false
             error = "Couldn't play this."
         default:
             break
+        }
+    }
+
+    /**
+     * The file played to its end. Behind live: back to whatever is on now. A file shorter than
+     * its slot: the slate until the slot ends (the retune is already set for then).
+     */
+    private func fileFinished() {
+        if behind {
+            tune()
+        } else if tuned?.kind == "program" {
+            fileEnded = true
         }
     }
 

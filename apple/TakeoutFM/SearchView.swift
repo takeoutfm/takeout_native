@@ -44,7 +44,8 @@ struct SearchView: View {
                                         detail: "\(track.artist) · \(track.album)",
                                         imageUri: track.coverUri,
                                         etag: track.etag,
-                                        enqueue: { model.enqueueTrack(track.id, last: $0) }
+                                        enqueue: { model.enqueueTrack(track.id, last: $0) },
+                                        trackId: track.id
                                     ) {
                                         model.play { model.calls.tracksQueue(title: query, tracks: results.tracks, startIndex: Int32(index)) }
                                     }

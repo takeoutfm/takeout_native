@@ -27,7 +27,7 @@ The phase-by-phase log of how each app was built (2026-10-25 to 2026-11-14) is i
 | Phone (`:android`) | Released (F-Droid repository, with the TV and watch: one version) | the gaps below |
 | TV (`:tv`) | Released | the gaps below; `docs/design/tv.md` lists its own open items |
 | Watch (`:wear`) | Released | not yet checked: downloads and offline play, the complication; downloads aren't limited to Wi-Fi |
-| Mac/iOS (`apple/`) | In progress | build and check the cache purge, track choices and the sign-out confirmation (written on Linux, not yet compiled); iPad check; downloads, radio and podcasts on the iPhone; a real device (needs a team); lock screen and Control Center, picture-in-picture, Siri; CarPlay not started |
+| Mac/iOS (`apple/`) | In progress | iPad check; downloads, radio and podcasts on the iPhone; a real device (needs a team); lock screen and Control Center, picture-in-picture, Siri; CarPlay not started |
 | Linux, KDE (`linux/`) | Working, packaged as debs | Flatpak (KDE runtime 6.x, an mpv module) |
 | tofm (`linux/tui/`) | Working, packaged as a deb | the gaps below |
 
@@ -38,27 +38,26 @@ would notice. Fixing one updates its status table in the same commit.
 
 | Gap | Apps missing it | Rule |
 |---|---|---|
-| Say why a track can't play | Mac/iOS, Linux, tofm, watch | PLAY-12 |
+| Say why a track can't play | Linux, tofm, watch | PLAY-12 |
 | Play next / add to queue | watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
-| Playback speed | Mac/iOS | VIDEO-8 |
-| Leave the player when a film ends | Mac/iOS | VIDEO-6 |
 | Back 10 s / ahead 30 s in Now Playing | watch (only previous, play, next) | PLAY-9 |
-| Playlists: create, add | TV, watch, tofm; Mac/iOS can't add | LIB-13 |
-| Playlists: remove a track, delete | all but the phone; Mac/iOS can delete | LIB-13 |
+| Playlists: create, add | TV, watch, tofm | LIB-13 |
+| Playlists: remove a track, delete | TV, watch, tofm; Linux can delete | LIB-13 |
 | Search | watch; the TV searches video only | LIB-12 |
-| Favorite an artist; the favorite artists list | most apps | LIB-6, LIB-8 |
-| Activity (play stats) | all but the phone | LIB-14 |
-| Recommendation lists | Mac/iOS, Linux, tofm | LIB-3 |
+| Favorite an artist; the favorite artists list | artist: watch, Linux, tofm; list: phone, watch, tofm | LIB-6, LIB-8 |
+| Activity (play stats) | TV, watch, Linux, tofm | LIB-14 |
+| Recommendation lists | Linux, tofm | LIB-3 |
 | Mark an episode played | phone, TV, watch, tofm | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |
 | Connect ListenBrainz | watch | LISTEN-5 |
-| Link another device | Mac/iOS, Linux, tofm | SIGN-11 |
-| Stream History kept / listed | kept: not on Mac/iOS; listed: only phone and watch | RADIO-5 |
+| Link another device | Linux, tofm | SIGN-11 |
+| Stream History listed with Recently Played | Linux (keeps it, never lists it: see radio.md), TV, tofm | RADIO-5 |
 | Subtitle languages compared as written ("eng" ≠ "en") | Linux | TRACKS-6 |
+| Remembered subtitle language: the first track that isn't forced (shared `pickSubtitleTrack`; Mac/iOS done) | Linux (`subtitleFor` in `Main.qml` takes the first, forced too; mpv has the flag), phone and TV (`applySubtitlePreference` in `android-media/.../Tracks.kt` only sets Media3's preferred language: choose the track with Media3's `SELECTION_FLAG_FORCED`) | TRACKS-6 |
 | Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
-| Picture-in-picture for live TV | Mac/iOS | LIVE-13 |
+| Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
 
 Waiting on the server: custom radio stations (RADIO-7; no `POST /api/radio`, no delete). Not
 done anywhere: the artist page's Want List and Tracks Like This.

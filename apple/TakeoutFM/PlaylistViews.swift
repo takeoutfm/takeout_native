@@ -236,52 +236,33 @@ struct PlaylistView: View {
     @EnvironmentObject private var cache: MediaCache
     @Environment(\.dismiss) private var dismiss
     @State private var deleting: MusicPlaylist?
+    @State private var queue: MusicQueue?
+    @State private var failed = false
 
     private var isFavorites: Bool { playlistId == favoriteTracksId }
 
+    /// The playlist's track count in the shared list (decision 017): it changes with every track
+    /// added or removed, here or on another page, and the tracks load again with it.
+    private var sharedCount: Int32? { model.playlists?.first { $0.id == playlistId }?.trackCount }
+
     var body: some View {
-        Loaded(load: {
-            if isFavorites { return try await model.calls.favoritesQueue(startIndex: 0) }
-            return try await model.calls.playlistQueue(playlistId: playlistId)
-        }) { queue in
-            List {
-                HeaderStack(alignment: .bottom) {
-                    Group {
-                        if isFavorites {
-                            FavoriteTracksArt()
-                        } else {
-                            PlaylistMosaic(covers: PlaylistCovers.keep(queue, for: playlistId, count: queue.items.count))
-                        }
-                    }
-                    .frame(width: 200, height: 200)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(name).font(.largeTitle.bold())
-                        Text(trackCount(queue.items.count)).font(.title3).foregroundStyle(.secondary)
-                        FlowRow {
-                            Button { player.play(queue, from: 0) } label: { Label("Play", systemImage: "play.fill") }
-                                .buttonStyle(.borderedProminent)
-                            Button { player.play(queue, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
-                            DownloadButton(etags: queue.items.map(\.etag)) {
-                                cache.download(queue)
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        // In a List row a Label takes the row's look: a wide gap and an accent icon, unseen on Play.
-                        .labelStyle(.titleAndIcon)
-                        .disabled(queue.items.isEmpty)
-                    }
-                }
-                .padding(.vertical, 12)
-                ForEach(Array(queue.items.enumerated()), id: \.offset) { index, item in
-                    TrackRow(
-                        number: "\(index + 1)",
-                        title: item.title,
-                        detail: "\(item.artist) · \(item.album)",
-                        imageUri: item.imageUri,
-                        etag: item.etag,
-                        enqueue: { model.enqueue([item], last: $0) }
-                    ) { player.play(queue, from: index) }
-                }
+        Group {
+            if let queue {
+                page(queue)
+            } else if failed {
+                ContentUnavailableView("Couldn't load this", systemImage: "wifi.exclamationmark")
+            } else {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .task(id: sharedCount) {
+            do {
+                queue = isFavorites
+                    ? try await model.calls.favoritesQueue(startIndex: 0)
+                    : try await model.calls.playlistQueue(playlistId: playlistId)
+                failed = false
+            } catch {
+                failed = queue == nil
             }
         }
         .navigationTitle(name)
@@ -310,6 +291,60 @@ struct PlaylistView: View {
             }
         }
     }
+
+    /** Removes the track at [index]; the shared count changes and the tracks load again. */
+    private func remove(_ index: Int, _ title: String) {
+        Task {
+            do {
+                try await model.calls.removeFromPlaylist(playlistId: playlistId, index: Int32(index))
+            } catch {
+                model.show("Couldn't remove \(title)")
+            }
+        }
+    }
+
+    private func page(_ queue: MusicQueue) -> some View {
+        List {
+            HeaderStack(alignment: .bottom) {
+                Group {
+                    if isFavorites {
+                        FavoriteTracksArt()
+                    } else {
+                        PlaylistMosaic(covers: PlaylistCovers.keep(queue, for: playlistId, count: queue.items.count))
+                    }
+                }
+                .frame(width: 200, height: 200)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(name).font(.largeTitle.bold())
+                    Text(trackCount(queue.items.count)).font(.title3).foregroundStyle(.secondary)
+                    FlowRow {
+                        Button { player.play(queue, from: 0) } label: { Label("Play", systemImage: "play.fill") }
+                            .buttonStyle(.borderedProminent)
+                        Button { player.play(queue, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle") }
+                        DownloadButton(etags: queue.items.map(\.etag)) {
+                            cache.download(queue)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    // In a List row a Label takes the row's look: a wide gap and an accent icon, unseen on Play.
+                    .labelStyle(.titleAndIcon)
+                    .disabled(queue.items.isEmpty)
+                }
+            }
+            .padding(.vertical, 12)
+            ForEach(Array(queue.items.enumerated()), id: \.offset) { index, item in
+                TrackRow(
+                    number: "\(index + 1)",
+                    title: item.title,
+                    detail: "\(item.artist) · \(item.album)",
+                    imageUri: item.imageUri,
+                    etag: item.etag,
+                    enqueue: { model.enqueue([item], last: $0) },
+                    removeFromPlaylist: isFavorites ? nil : { remove(index, item.title) }
+                ) { player.play(queue, from: index) }
+            }
+        }
+    }
 }
 
 /** Favorite artists and tracks. */
@@ -318,7 +353,8 @@ struct FavoritesView: View {
     @EnvironmentObject private var cache: MediaCache
 
     var body: some View {
-        Loaded(load: { try await model.calls.favorites() }) { favorites in
+        // Again when the favorite artists change, from an artist's page or anywhere (decision 017).
+        Loaded(id: model.favoriteArtists, keepContent: true, load: { try await model.calls.favorites() }) { favorites in
             if favorites.artists.isEmpty && favorites.tracks.isEmpty {
                 ContentUnavailableView("No Favorites", systemImage: "heart")
             } else {
@@ -345,7 +381,8 @@ struct FavoritesView: View {
                                         detail: "\(track.artist) · \(track.album)",
                                         imageUri: track.coverUri,
                                         etag: track.etag,
-                                        enqueue: { model.enqueueTrack(track.id, last: $0) }
+                                        enqueue: { model.enqueueTrack(track.id, last: $0) },
+                                        trackId: track.id
                                     ) { play(index) }
                                 }
                             }

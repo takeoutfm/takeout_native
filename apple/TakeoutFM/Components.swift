@@ -120,6 +120,7 @@ private struct ListPage: View {
         case .movies: PosterGrid(title: "Movies") { try await model.calls.movies() }
         case .shows: PosterGrid(title: "TV Shows") { try await model.calls.shows() }
         case .downloads: DownloadsView()
+        case .activity: ActivityView()
         }
     }
 }
@@ -161,7 +162,7 @@ enum Route: Hashable {
 }
 
 enum LibraryList: Hashable {
-    case recentlyAdded, newReleases, favorites, playlists, podcasts, live, watch, movies, shows, downloads
+    case recentlyAdded, newReleases, favorites, playlists, podcasts, live, watch, movies, shows, downloads, activity
 }
 
 /**
@@ -267,6 +268,10 @@ struct TrackRow: View {
     var etag = ""
     /// Play Next (false) / Add to Queue (true), when the row can be queued.
     var enqueue: ((Bool) -> Void)?
+    /// The track's id, for Add to Playlist.
+    var trackId: String?
+    /// On a playlist's own page: removes this row from it.
+    var removeFromPlaylist: (() -> Void)?
     let play: () -> Void
     @EnvironmentObject private var model: AppModel
     @State private var hovering = false
@@ -325,12 +330,63 @@ struct TrackRow: View {
                 Button("Play Next") { enqueue(false) }
                 Button("Add to Queue") { enqueue(true) }
             }
+            if let trackId {
+                AddToPlaylistMenu(target: .track(trackId))
+            }
+            if let removeFromPlaylist {
+                Button("Remove from Playlist", role: .destructive, action: removeFromPlaylist)
+            }
             if !etag.isEmpty {
                 Divider()
                 Button(model.isFavorite(etag) ? "Remove from Favorites" : "Add to Favorites") {
                     model.toggleFavorite(etag)
                 }
             }
+        }
+    }
+}
+
+/** Add to Playlist (LIB-13): the user's playlists, then New Playlist… (which asks for a name). */
+struct AddToPlaylistMenu: View {
+    let target: PlaylistTarget
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        Menu {
+            ForEach(model.playlists ?? [], id: \.id) { playlist in
+                Button(playlist.name.trimmingCharacters(in: .whitespaces)) { model.add(target, to: playlist) }
+            }
+            if !(model.playlists ?? []).isEmpty { Divider() }
+            Button("New Playlist…") { model.newPlaylistTarget = target }
+        } label: {
+            Label("Add to Playlist", systemImage: "text.badge.plus")
+        }
+    }
+}
+
+extension View {
+    /** Asks the new playlist's name for New Playlist… in an Add to Playlist menu. */
+    func newPlaylistPrompt(_ model: AppModel) -> some View {
+        modifier(NewPlaylistPrompt(model: model))
+    }
+}
+
+private struct NewPlaylistPrompt: ViewModifier {
+    @ObservedObject var model: AppModel
+    @State private var name = ""
+
+    func body(content: Content) -> some View {
+        content.alert(
+            "New Playlist",
+            isPresented: Binding(get: { model.newPlaylistTarget != nil }, set: { if !$0 { model.newPlaylistTarget = nil } })
+        ) {
+            TextField("Name", text: $name)
+            Button("Cancel", role: .cancel) { name = "" }
+            Button("Create") {
+                if let target = model.newPlaylistTarget { model.add(target, toNewPlaylist: name) }
+                name = ""
+            }
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         }
     }
 }
@@ -406,6 +462,24 @@ struct ArtistRow: View {
                     .padding(.bottom, 8)
                 }
             }
+        }
+    }
+}
+
+extension View {
+    /**
+     * "Sign Out?" before signing out (SIGN-10), saying what goes with it: Recently Played on
+     * this device (downloads stay).
+     */
+    func confirmSignOut(_ isPresented: Binding<Bool>, model: AppModel) -> some View {
+        confirmationDialog("Sign Out?", isPresented: isPresented, titleVisibility: .visible) {
+            Button("Sign Out", role: .destructive) { model.signOut() }
+        } message: {
+            #if os(macOS)
+            Text("Recently Played on this Mac is cleared too. Downloads stay.")
+            #else
+            Text("Recently Played on this device is cleared too. Downloads stay.")
+            #endif
         }
     }
 }

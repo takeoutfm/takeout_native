@@ -27,6 +27,8 @@ podcast subscriptions, episode progress) lives in the shared core as a `StateFlo
 `favoriteTrackEtags` was already this shape. Following it:
 
 - `TakeoutMusicRepository.currentPlaylists`: the user's playlists (`PlaylistsTest`).
+- `TakeoutMusicRepository.favoriteArtistIds`: the favorite artists' MusicBrainz ids, set by
+  loading Favorites or an artist and changed at once by its ♥ (`PlaylistsTest`).
 - `TakeoutPodcastRepository.subscribedSeries`: the subscribed podcasts, changed at once by
   subscribing and put back if the server refuses (`PodcastStateTest`).
 - `TakeoutProgress.offsets`: the newest position per ETag, the server's as last fetched merged

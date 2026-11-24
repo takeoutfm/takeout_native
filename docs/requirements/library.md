@@ -55,17 +55,17 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
 | LIB-1/2 index | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| LIB-3 recommendation lists | ✅ | ✅ tabs | — | ❌ | ❌ | ❌ |
+| LIB-3 recommendation lists | ✅ | ✅ tabs | — | ✅ rows on Watch (not yet seen: this server has none) | ❌ | ❌ |
 | LIB-4–7 music browsing | ✅ | ✅ | ⚠️ albums, artists, playlists only | ✅ | ✅ | ✅ |
-| LIB-6 favorite artist | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| LIB-6 favorite artist | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | LIB-8 favorite tracks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LIB-8 favorite artists list | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
 | LIB-12 search | ✅ | ⚠️ video only | ❌ | ✅ | ✅ | ✅ |
-| LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ⚠️ create only | ✅ | ❌ |
-| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ⚠️ delete only | ⚠️ delete only | ❌ |
+| LIB-13 playlists: create, add | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| LIB-13 playlists: remove, delete | ✅ | ❌ | ❌ | ✅ | ⚠️ delete only | ❌ |
 | LIB-13 playlists as covers | ✅ | ❌ | ❌ | ✅ | ✅ | — text |
-| LIB-14 activity | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| LIB-14 activity | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 
 Not done anywhere: the artist page's Want List and Tracks Like This.

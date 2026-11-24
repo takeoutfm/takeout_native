@@ -60,7 +60,10 @@ struct VideoPlayerScreen: View {
         .onDisappear { video.close() }
         .offerWatchedRemoval(video, cache: model.cache)
         // the title ended (no next episode): back to where it was played from
-        .onChange(of: video.finished) { if video.finished { dismiss() } }
+        .onChange(of: video.finished) {
+            // after the Remove Download? alert has gone: dismissing while it's still up dismisses it alone
+            if video.finished { DispatchQueue.main.async { dismiss() } }
+        }
     }
 
     private var controls: some View {
@@ -140,6 +143,11 @@ struct VideoPlayerScreen: View {
                     }
                 } label: { Image(systemName: "captions.bubble") }
             }
+            Menu {
+                Picker("Speed", selection: Binding(get: { video.speed }, set: { video.setSpeed($0) })) {
+                    ForEach(VideoPlayerModel.speeds, id: \.self) { Text(speedLabel($0)).tag($0) }
+                }
+            } label: { Text(speedLabel(video.speed)).monospacedDigit() }
         }
     }
 

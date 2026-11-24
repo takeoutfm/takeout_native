@@ -245,6 +245,16 @@ class SwiftCalls(private val core: TakeoutCore) {
 
     fun clearRecentlyPlayed() = core.history.clear()
 
+    /** A song started on the live stream [station] (its ICY [title]): kept in Stream History (RADIO-5). */
+    fun streamSongHeard(station: String, imageUri: String, title: String) =
+        core.streamHistory.heard(station, imageUri, title)
+
+    /** Clears Recently Played and Stream History on this device, as the phone's Clear does. */
+    fun clearHistory() {
+        core.history.clear()
+        core.streamHistory.clear()
+    }
+
     /** Decides listens for the player, reporting them per the Music settings. */
     fun listenSession(): ListenSession = ListenSession(core.listenReporter)
 

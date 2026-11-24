@@ -22,5 +22,11 @@ Stations and live streams. Design: [../design/radio.md](../design/radio.md).
 |---|---|---|---|---|---|---|
 | RADIO-1/2 stations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-3/4 streams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| RADIO-5 Stream History kept | ✅ | ✅ (shared service) | ✅ | ❌ | ✅ | ✅ (shared player) |
-| RADIO-5 Stream History listed | ✅ | ❌ | ✅ | — | ❌ | ❌ |
+| RADIO-5 Stream History kept | ✅ | ✅ (shared service) | ✅ | ✅ | ✅ | ✅ (shared player) |
+| RADIO-5 Stream History listed | ✅ | ❌ | ✅ | ✅ under Recently Played | ❌ (see below) | ❌ |
+
+**The Linux app doesn't follow RADIO-5 yet**: it keeps Stream History (`streamSongHeard`
+in `LinuxCalls`) and sends the songs to ListenBrainz, but never lists them: its Recently
+Played page shows only the queues. It should list the songs below them, as the phone and
+Mac/iOS do (a "Stream History" section: song, artist · station · when; Clear asks to clear
+both). tofm and the TV don't list them either.

@@ -409,6 +409,10 @@ final class AudioPlayer: ObservableObject {
         #endif
         streamTitle = title
         listens.streamTitle(icy: title)
+        // Stream History (RADIO-5): the song, on this station, listed under Recently Played.
+        if let item = current {
+            calls.streamSongHeard(station: item.title, imageUri: item.imageUri, title: title)
+        }
         updateNowPlaying()
     }
 

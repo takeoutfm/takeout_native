@@ -23,6 +23,6 @@ Stations and live streams. Design: [../design/radio.md](../design/radio.md).
 | RADIO-1/2 stations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-3/4 streams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-5 Stream History kept | ✅ | ✅ (shared service) | ✅ | ✅ | ✅ | ✅ (shared player) |
-| RADIO-5 Stream History listed | ✅ | ❌ | ✅ | ✅ under Recently Played | ✅ under Recently Played | ❌ |
+| RADIO-5 Stream History listed | ✅ | ❌ | ✅ | ✅ under Recently Played | ✅ under Recently Played | ✅ under Recently Played |
 
-tofm and the TV keep Stream History but don't list it yet.
+The TV keeps Stream History but doesn't list it yet.

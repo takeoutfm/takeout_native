@@ -48,4 +48,4 @@ Radio streams and podcasts: [radio.md](radio.md), [podcasts.md](podcasts.md).
 | PLAY-9 Now Playing controls | ✅ | ✅ | ⚠️ previous, play/pause, next | ✅ | ✅ | ✅ (keys `[` `]`) |
 | PLAY-10 small player | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (the bar) |
 | PLAY-11 system controls | ✅ media session, Android Auto | ✅ media session | ✅ tile, complication | ✅ | ✅ MPRIS | ✅ MPRIS (`tofm`) |
-| PLAY-12 says why a track can't play | ✅ | ✅ | ❌ | ✅ | ✅ (mpv's error, as a notification) | ❌ |
+| PLAY-12 says why a track can't play | ✅ | ✅ | ❌ | ✅ | ✅ (mpv's error, as a notification) | ✅ (the message line) |

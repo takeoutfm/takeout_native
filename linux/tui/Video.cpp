@@ -211,6 +211,13 @@ void Tofm::videoClosed()
     saveVideoProgress();
     if (m_video.position > 0 && m_video.duration > 0)
         flash(QStringLiteral("Stopped at %1 of %2").arg(clock(qint64(m_video.position)), clock(qint64(m_video.duration))));
+    // A download watched to its end (CACHE-15): offered for removal, never removed by itself.
+    const bool ended = m_video.duration > 0 && m_video.position >= m_video.duration - 30;
+    if (ended && !m_video.etag.isEmpty() && !m_core->localFile(m_video.etag).isEmpty()) {
+        const QString etag = m_video.etag, title = m_video.title;
+        ask({QStringLiteral("Watched “%1”. Remove the download?").arg(title), {}, false, true,
+             [this, etag, title](const QString &) { m_core->call("removeDownloads", {{"etags", QStringList{etag}}}); flash(QStringLiteral("Removed ") + title); }});
+    }
     if (m_video.socket) m_video.socket->deleteLater();
     if (m_video.process) m_video.process->deleteLater();
     if (!m_video.configFile.isEmpty()) QFile::remove(m_video.configFile);

@@ -93,7 +93,7 @@ Decisions: [001](../decisions/001-cache-budget.md), [002](../decisions/002-downl
 | CACHE-6 partial tracks | ✅ | ✅ | — none | — none | — none | — |
 | CACHE-12 warning | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | CACHE-13/14 room for a big download | ✅ | — no video | ✅ asks, or can't fit; clearing the cache first not yet seen | ✅ | ✅ | — |
-| CACHE-15 watched removal | ✅ | — | ✅ Mac; iOS not yet seen | ✅ | ⚠️ Downloads page only (videos play in mpv) | — |
+| CACHE-15 watched removal | ✅ | — | ✅ Mac; iOS not yet seen | ✅ | ✅ (asked when mpv closes at the end) | — |
 | CACHE-16 settings | ✅ | ✅ (tap steps through sizes) | ✅ | ✅ | ✅ (Enter steps through sizes) | — |
 | CACHE-17 Downloads page | ✅ | ⚠️ marks and warning; no sizes or order | ✅ | ✅ | ✅ | — |
 

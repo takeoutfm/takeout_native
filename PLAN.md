@@ -29,7 +29,7 @@ The phase-by-phase log of how each app was built (2026-10-25 to 2026-11-14) is i
 | Watch (`:wear`) | Released | not yet checked: downloads and offline play, the complication; downloads aren't limited to Wi-Fi |
 | Mac/iOS (`apple/`) | In progress | iPad check; downloads, radio and podcasts on the iPhone; a real device (needs a team); lock screen and Control Center, picture-in-picture, Siri; CarPlay not started |
 | Linux, KDE (`linux/`) | Working, packaged as debs | Flatpak (KDE runtime 6.x, an mpv module) |
-| tofm (`linux/tui/`) | Working, packaged as a deb | the gaps below |
+| tofm (`linux/tui/`) | Working, packaged as a deb | none of the gaps below; no person pages (LIB-9–11), and mpv decides what a video does at its end (VIDEO-6) |
 
 ## Gaps between apps
 
@@ -38,22 +38,19 @@ would notice. Fixing one updates its status table in the same commit.
 
 | Gap | Apps missing it | Rule |
 |---|---|---|
-| Say why a track can't play | tofm, watch | PLAY-12 |
+| Say why a track can't play | watch | PLAY-12 |
 | Play next / add to queue | watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Back 10 s / ahead 30 s in Now Playing | watch (only previous, play, next) | PLAY-9 |
-| Playlists: create, add | TV, watch, tofm | LIB-13 |
-| Playlists: remove a track, delete | TV, watch, tofm | LIB-13 |
+| Playlists: create, add | TV, watch | LIB-13 |
+| Playlists: remove a track, delete | TV, watch | LIB-13 |
 | Search | watch; the TV searches video only | LIB-12 |
-| Favorite an artist; the favorite artists list | artist: watch, tofm; list: phone, watch, tofm | LIB-6, LIB-8 |
-| Activity (play stats) | TV, watch, tofm | LIB-14 |
-| Recommendation lists | tofm | LIB-3 |
-| Mark an episode played | phone, TV, watch, tofm | POD-7 |
+| Favorite an artist; the favorite artists list | artist: watch; list: phone, watch | LIB-6, LIB-8 |
+| Activity (play stats) | TV, watch | LIB-14 |
+| Mark an episode played | phone, TV, watch | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |
 | Connect ListenBrainz | watch | LISTEN-5 |
-| Link another device | tofm | SIGN-11 |
-| Stream History listed with Recently Played | TV, tofm | RADIO-5 |
-| Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |
+| Stream History listed with Recently Played | TV | RADIO-5 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
 

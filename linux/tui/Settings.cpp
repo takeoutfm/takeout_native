@@ -52,6 +52,8 @@ Tofm::PagePtr Tofm::settingsPage()
     rows.push_back({Row::Header, QStringLiteral("Account")});
     rows.push_back({Row::Note, QStringLiteral("Server       ") + m_core->endpoint()});
     if (!m_core->user().isEmpty()) rows.push_back({Row::Note, QStringLiteral("Signed in as ") + m_core->user()});
+    rows.push_back({Row::Action, QStringLiteral("Link a device…"), QStringLiteral("approve the code a TV or new phone shows"), {}, {},
+                    [this] { linkDevice(); }, {}});
     rows.push_back({Row::Action, QStringLiteral("Sign out…"), {}, {}, {}, [this] {
         ask({QStringLiteral("Sign out of %1?").arg(m_core->endpoint()), {}, false, true,
              [this](const QString &) { m_core->call("signOut"); }});
@@ -177,7 +179,8 @@ Element Tofm::renderHelp()
         group("Moving around", {{"↑ ↓  j k", "move"}, {"PgUp PgDn", "a page"}, {"g G", "top, bottom"},
                                 {"Enter → l", "open or play"}, {"← h Esc", "back"}, {"Tab", "the sidebar"},
                                 {"/", "find in the list"}, {"s", "a new search (Search)"}}),
-        group("Tracks", {{"a", "add to the end of the queue"}, {"n", "play next"}, {"f", "♥ favorite"}}),
+        group("Tracks", {{"a", "add to the end of the queue"}, {"n", "play next"}, {"f", "♥ favorite"},
+                         {"+", "add to a playlist"}, {"D", "remove from this playlist"}, {"m", "episode played / not"}}),
         group("Downloads", {{"d", "download an episode"}, {"x", "remove a download"}, {"R", "retry a failed one"}}),
     });
     Element right = vbox({
@@ -192,6 +195,31 @@ Element Tofm::renderHelp()
         hbox({text(" "), left | size(WIDTH, EQUAL, 46), right}),
         text(" ? or Esc to close") | dim,
     });
+}
+
+// ---- Linking another device (SIGN-11) ----
+
+void Tofm::linkDevice()
+{
+    // One question at a time; Esc at any of them stops. The password is never kept.
+    ask({QStringLiteral("Code shown on the other device:"), {}, false, false, [this](const QString &code) {
+        if (code.trimmed().isEmpty()) return;
+        ask({QStringLiteral("User:"), m_core->user(), false, false, [this, code](const QString &user) {
+            if (user.trimmed().isEmpty()) return;
+            ask({QStringLiteral("Password:"), {}, true, false, [this, code, user](const QString &password) {
+                if (password.isEmpty()) return;
+                ask({QStringLiteral("Passcode (Enter for none):"), {}, false, false, [this, code, user, password](const QString &passcode) {
+                    flash(QStringLiteral("Linking…"));
+                    m_core->call("link", {{"code", code.trimmed()}, {"user", user.trimmed()}, {"password", password}, {"passcode", passcode.trimmed()}},
+                                 [this](const QVariant &accepted, const QVariant &error) {
+                        if (error.isValid()) flash(QStringLiteral("Can't reach %1").arg(m_core->endpoint()));
+                        else if (accepted.toBool()) flash(QStringLiteral("Linked. The other device signs in now."));
+                        else flash(QStringLiteral("That code, user name or password wasn't accepted"));
+                    });
+                }});
+            }});
+        }});
+    }});
 }
 
 // ---- Prompt ----

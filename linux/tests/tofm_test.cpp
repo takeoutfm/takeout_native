@@ -163,6 +163,25 @@ public:
 
     Element bar() { return t.renderBar(); }
 
+    /** The Recently Played page's rows: "title | detail". */
+    std::vector<QString> recentRows()
+    {
+        std::vector<QString> rows;
+        const auto page = t.recentPage();
+        for (const auto &row : page->rows) rows.push_back(row.title + " | " + row.detail);
+        return rows;
+    }
+
+    /** An artist's ♥ row, drawn as the shared favorite artists say. */
+    Element favoriteArtistRow(const QString &arid)
+    {
+        Tofm::Page p;
+        Tofm::Row row{Tofm::Row::Action};
+        row.favoriteArtist = arid;
+        p.rows.push_back(row);
+        return t.renderPage(p, 1);
+    }
+
 private:
     Tofm &t;
 };
@@ -328,6 +347,29 @@ int main(int argc, char *argv[])
 
     // Nothing playing.
     CHECK(contains(lines(test.bar(), 60, 3), "Nothing playing"));
+
+    // Stream History below the queues (RADIO-5), the stream's title split into song and artist.
+    {
+        test.feed("recentlyPlayed", QVariantList{QVariantMap{{"id", "h1"}, {"title", "Odelay"}, {"creator", "Beck"},
+                                                             {"items", QVariantList{QVariantMap{{"title", "Devils Haircut"}}}},
+                                                             {"playedAt", QDateTime::currentMSecsSinceEpoch()}}});
+        test.feed("streamHistory", QVariantList{QVariantMap{{"station", "BAGeL Radio"}, {"artist", "Pixies"},
+                                                            {"song", "In Heaven"}, {"heardAt", QDateTime::currentMSecsSinceEpoch()}}});
+        const std::vector<QString> recent = test.recentRows();
+        auto at = [&recent](const QString &text) {
+            return int(std::find_if(recent.begin(), recent.end(), [&](const QString &r) { return r.startsWith(text); }) - recent.begin());
+        };
+        CHECK(at("Odelay |") < at("Stream History |"));
+        CHECK(at("Stream History |") < at("In Heaven | Pixies · BAGeL Radio"));
+        CHECK(at("In Heaven | Pixies · BAGeL Radio") < int(recent.size()));
+        CHECK(at("✕ Clear |") < int(recent.size()));
+    }
+
+    // The artist's ♥ follows the shared favorite artists (LIB-6), not the page as loaded.
+    test.feed("favoriteArtists", QStringList{});
+    CHECK(contains(lines(test.favoriteArtistRow("a1"), 60, 2), "♡ Add to favorites"));
+    test.feed("favoriteArtists", QStringList{"a1"});
+    CHECK(contains(lines(test.favoriteArtistRow("a1"), 60, 2), "♥ Favorite artist"));
 
     if (failures) std::fprintf(stderr, "%d failed\n", failures);
     else std::printf("tofm_test: all passed\n");

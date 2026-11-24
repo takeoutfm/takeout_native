@@ -120,6 +120,7 @@ std::vector<Tofm::Section> Tofm::sections() const
     const QVariantMap library = m_core->library();
     const bool music = library.value("hasMusic", true).toBool();
     std::vector<Section> shown = {Section::Recent, Section::Search};
+    if (music) shown.push_back(Section::Activity);
     if (music) {
         for (Section section : {Section::RecentlyAdded, Section::NewReleases, Section::Artists, Section::Favorites})
             shown.push_back(section);
@@ -129,6 +130,8 @@ std::vector<Tofm::Section> Tofm::sections() const
     if (library.value("hasPodcasts").toBool()) shown.push_back(Section::Podcasts);
     if (library.value("hasMovies").toBool()) shown.push_back(Section::Movies);
     if (library.value("hasShows").toBool()) shown.push_back(Section::Shows);
+    if (library.value("hasRecommendations").toBool() && !library.value("recommendations").toList().isEmpty())
+        shown.push_back(Section::Recommended);
     shown.push_back(Section::Downloads);
     shown.push_back(Section::Settings);
     return shown;
@@ -138,7 +141,8 @@ namespace {
 const char *sectionName(int section)
 {
     static const char *const Names[] = {"Recent", "Search", "Recently Added", "New Releases", "Artists", "Favorites",
-                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows", "Downloads", "Settings"};
+                                        "Playlists", "Radio", "Podcasts", "Movies", "TV Shows", "Downloads", "Settings",
+                                        "Activity", "Recommended"};
     return Names[section];
 }
 }
@@ -159,6 +163,8 @@ Tofm::PagePtr Tofm::sectionPage(Section section)
     case Section::NewReleases: return albumListPage(QStringLiteral("New Releases"), QStringLiteral("newReleases"));
     case Section::Artists: return artistsPage();
     case Section::Favorites: return favoritesPage();
+    case Section::Activity: return activityPage(0, 0);
+    case Section::Recommended: return recommendedPage();
     }
     return recentPage();
 }
@@ -213,8 +219,109 @@ Tofm::PagePtr Tofm::recentPage()
         };
         page->rows.push_back(row);
     }
-    if (entries.isEmpty()) page->error = QStringLiteral("Nothing played yet. Pick an album from the sidebar.");
+    // Stream History (RADIO-5): the songs heard on live streams, below the queues.
+    const QVariantList songs = m_core->streamHistory();
+    if (!songs.isEmpty() && !entries.isEmpty()) page->rows.push_back({Row::Header, QStringLiteral("Stream History")});
+    for (const QVariant &value : songs) {
+        const QVariantMap song = value.toMap();
+        Row row;
+        row.title = song.value("song").toString();
+        row.detail = joined({song.value("artist").toString(), song.value("station").toString()});
+        row.right = ago(song.value("heardAt").toLongLong());
+        page->rows.push_back(row); // a record only: nothing to play again
+    }
+    if (!entries.isEmpty() || !songs.isEmpty()) {
+        page->rows.push_back({Row::Header, QString()});
+        page->rows.push_back({Row::Action, QStringLiteral("✕ Clear"), QStringLiteral("Recently Played and Stream History here"), {}, {}, [this] {
+            ask({QStringLiteral("Clear Recently Played and Stream History?"), {}, false, true,
+                 [this](const QString &) { m_core->call("clearHistory"); }});
+        }, {}});
+    }
+    if (entries.isEmpty() && songs.isEmpty()) page->error = QStringLiteral("Nothing played yet. Pick an album from the sidebar.");
     selectFirst(*page);
+    return page;
+}
+
+Tofm::PagePtr Tofm::activityPage(int kind, int interval)
+{
+    static const char *const Kinds[] = {"Artists", "Releases", "Tracks"};
+    static const char *const Intervals[] = {"Recent", "LastWeek", "ThisMonth", "LastMonth"};
+    static const char *const IntervalNames[] = {"Recent", "Last week", "This month", "Last month"};
+    auto page = std::make_shared<Page>();
+    page->title = QStringLiteral("Activity");
+    page->subtitle = QStringLiteral("%1 · %2 · the server's play stats").arg(Kinds[kind], IntervalNames[interval]);
+    // Enter on these steps through what's shown and the period, as the other apps' tabs.
+    auto again = [this](int kind, int interval) {
+        return [this, kind, interval] {
+            if (m_stack.empty()) return;
+            m_stack.back() = activityPage(kind, interval);
+            redraw();
+        };
+    };
+    page->rows.push_back({Row::Action, QStringLiteral("Show: %1").arg(Kinds[kind]), QStringLiteral("Enter for the next"), {}, {},
+                          again((kind + 1) % 3, interval), {}});
+    page->rows.push_back({Row::Action, QStringLiteral("Period: %1").arg(IntervalNames[interval]), QStringLiteral("Enter for the next"), {}, {},
+                          again(kind, (interval + 1) % 4), {}});
+    page->rows.push_back({Row::Header, QString::fromUtf8(Kinds[kind])});
+    load(page, QStringLiteral("activity"), {{"interval", Intervals[interval]}}, [this, kind](Page &page, const QVariant &result) {
+        const QVariantMap stats = result.toMap();
+        auto plays = [](const QVariantMap &counted) {
+            const int n = counted.value("count").toInt();
+            return n == 1 ? QStringLiteral("1 play") : QStringLiteral("%1 plays").arg(n);
+        };
+        // Without entries the server sends with no name (a release no longer in the library).
+        if (kind == 0) {
+            for (const QVariant &value : stats.value("artists").toList()) {
+                const QVariantMap counted = value.toMap(), artist = counted.value("item").toMap();
+                if (artist.value("name").toString().isEmpty()) continue;
+                Row row = artistRow(artist);
+                row.right = plays(counted);
+                page.rows.push_back(row);
+            }
+        } else if (kind == 1) {
+            for (const QVariant &value : stats.value("albums").toList()) {
+                const QVariantMap counted = value.toMap(), album = counted.value("item").toMap();
+                if (album.value("name").toString().isEmpty()) continue;
+                Row row = albumRow(album, true);
+                row.right = plays(counted);
+                page.rows.push_back(row);
+            }
+        } else {
+            QVariantList tracks;
+            QList<QVariantMap> counts;
+            for (const QVariant &value : stats.value("tracks").toList()) {
+                const QVariantMap counted = value.toMap();
+                if (counted.value("item").toMap().value("title").toString().isEmpty()) continue;
+                tracks << counted.value("item");
+                counts << counted;
+            }
+            for (int i = 0; i < tracks.size(); ++i) {
+                const QVariantMap track = tracks[i].toMap();
+                Row row = trackRow(track, joined({track.value("artist").toString(), track.value("album").toString()}), [this, tracks, i] {
+                    playCall(QStringLiteral("tracksQueue"), {{"title", QStringLiteral("Activity")}, {"tracks", tracks}, {"startIndex", i}});
+                });
+                row.right = plays(counts[i]);
+                page.rows.push_back(row);
+            }
+        }
+        if (page.rows.size() == 3) page.rows.push_back({Row::Note, QStringLiteral("Nothing played. Plays show here when Track Activity is on.")});
+    });
+    return page;
+}
+
+Tofm::PagePtr Tofm::recommendedPage()
+{
+    auto page = std::make_shared<Page>();
+    page->title = QStringLiteral("Recommended");
+    page->subtitle = QStringLiteral("the server's picks");
+    load(page, QStringLiteral("recommendations"), {}, [this](Page &page, const QVariant &result) {
+        for (const QVariant &value : result.toList()) {
+            const QVariantMap set = value.toMap();
+            page.rows.push_back({Row::Header, set.value("name").toString()});
+            for (const QVariant &card : set.value("titles").toList()) page.rows.push_back(videoRow(card.toMap()));
+        }
+        if (page.rows.empty()) page.error = QStringLiteral("No recommendations.");
+    });
     return page;
 }
 
@@ -286,21 +393,14 @@ Tofm::PagePtr Tofm::artistPage(const QVariantMap &artist)
         page.rows.push_back({Row::Action, QStringLiteral("≋ Radio"), QStringLiteral("this artist and similar ones"), {}, {}, mix("Radio"), {}});
         const QString arid = artist.value("arid").toString();
         if (!arid.isEmpty()) {
-            const bool favorite = details.value("isFavorite").toBool();
-            page.rows.push_back({Row::Action, favorite ? QStringLiteral("♥ Favorite artist") : QStringLiteral("♡ Add to favorites"),
-                                 {}, {}, {}, [this, arid, favorite, artist] {
-                m_core->call("setArtistFavorite", {{"arid", arid}, {"favorite", !favorite}},
-                             [this, favorite, artist](const QVariant &, const QVariant &error) {
-                    if (error.isValid()) return;
-                    flash(favorite ? QStringLiteral("Removed from favorites") : QStringLiteral("Added to favorites"));
-                    // Reload, to show the new state.
-                    if (!m_stack.empty()) {
-                        const int selected = m_stack.back()->selected;
-                        m_stack.back() = artistPage(artist);
-                        m_stack.back()->selected = selected;
-                    }
-                });
-            }, {}});
+            // Its title follows the shared favorite artists (drawn with them: favoriteRow).
+            Row row{Row::Action, QString(), {}, {}, {}, [this, arid] {
+                const bool favorite = m_core->favoriteArtists().contains(arid);
+                m_core->call("setArtistFavorite", {{"arid", arid}, {"favorite", !favorite}});
+                flash(favorite ? QStringLiteral("Removed from favorites") : QStringLiteral("Added to favorites"));
+            }, {}};
+            row.favoriteArtist = arid;
+            page.rows.push_back(row);
         }
         const QVariantList popular = details.value("popular").toList().mid(0, 5);
         if (!popular.isEmpty()) page.rows.push_back({Row::Header, QStringLiteral("Popular")});
@@ -399,6 +499,7 @@ Tofm::Row Tofm::trackRow(const QVariantMap &track, const QString &detail, std::f
     row.etag = track.value("etag").toString();
     row.activate = std::move(play);
     const QString id = track.value("id").toString();
+    row.trackId = id;
     row.enqueue = [this, id](bool last) { enqueueTrack(id, last); };
     return row;
 }
@@ -532,6 +633,12 @@ Element Tofm::renderPage(const Page &page, int height)
 
     const QStringList favorites = m_core->favoriteTracks();
     auto width = [](const QString &text) { return text.isEmpty() ? 0 : string_width(str(text)); };
+    // An artist's ♥ row says what the shared favorite artists say now.
+    const QStringList favoriteArtists = m_core->favoriteArtists();
+    auto shownTitle = [&favoriteArtists](const Row &row) {
+        if (row.favoriteArtist.isEmpty()) return row.title;
+        return favoriteArtists.contains(row.favoriteArtist) ? QStringLiteral("♥ Favorite artist") : QStringLiteral("♡ Add to favorites");
+    };
     auto trimmedEnd = [](QString text) {
         while (text.endsWith(' ')) text.chop(1);
         return text;
@@ -564,7 +671,7 @@ Element Tofm::renderPage(const Page &page, int height)
         if (!selectable(row)) continue;
         const Fitted f = fitted(row);
         const int detail = row.detail.trimmed().isEmpty() ? 0 : 2 + std::min(DetailMax, width(row.detail.trimmed()));
-        listWidth = std::max(listWidth, 3 + width(trimmedEnd(row.title)) + detail + width(f.right) + width(f.mark) + 1);
+        listWidth = std::max(listWidth, 3 + width(trimmedEnd(shownTitle(row))) + detail + width(f.right) + width(f.mark) + 1);
     }
     listWidth = std::min(pageWidth, listWidth);
 
@@ -583,7 +690,7 @@ Element Tofm::renderPage(const Page &page, int height)
             // Fitted by hand: the marks always show, the title gets what's left, the detail the rest.
             const Fitted f = fitted(row);
             const int room = std::max(10, listWidth - 3 - width(f.right) - width(f.mark) - 1);
-            const QString titleText = cut(trimmedEnd(row.title), room);
+            const QString titleText = cut(trimmedEnd(shownTitle(row)), room);
             const int detailRoom = std::min(DetailMax, room - width(titleText) - 2);
             const QString detail0 = row.detail.trimmed();
             const QString detailText = detail0.isEmpty() || detailRoom < 4 ? QString() : cut(detail0, detailRoom);
@@ -724,6 +831,12 @@ bool Tofm::onPageEvent(Page &page, const Event &event)
     } else if (event == Event::Character('f')) {
         if (row && row->enqueue) toggleFavorite(row->etag); // tracks only
 
+    } else if (event == Event::Character('+')) {
+        if (row && !row->trackId.isEmpty()) addToPlaylist(row->trackId, row->title.trimmed());
+    } else if (event == Event::Character('D') || event == Event::Delete) {
+        if (row && row->remove) row->remove();
+    } else if (event == Event::Character('m')) {
+        if (row && row->mark) row->mark();
     } else if (event == Event::Character('d')) {
         if (row && row->download) row->download();
     } else if (event == Event::Character('x')) {

@@ -61,6 +61,14 @@ private:
         std::function<void(bool last)> enqueue;
         /** d: download it (an episode). */
         std::function<void()> download;
+        /** +: add it to a playlist (a track, by its id). */
+        QString trackId;
+        /** D or Delete: take it out of what lists it (a playlist's track); asks first. */
+        std::function<void()> remove;
+        /** m: mark it played, or not played (a podcast episode). */
+        std::function<void()> mark;
+        /** An artist's ♥ row: its title follows the shared favorite artists (this arid). */
+        QString favoriteArtist;
     };
 
     /** A page of rows: a sidebar section, or what it opened (an artist, an album). */
@@ -82,13 +90,17 @@ private:
         std::function<void(const QString &)> search;
         /** A cover (album, artist) beside the title; "" for none. */
         QString coverUri;
+        /** The playlist this page shows, if it's one: shown again after an edit. */
+        QVariant playlistId;
         /** Rows to show: all, or those matching the filter (headings and actions hidden). */
         std::vector<int> visibleRows() const;
     };
     using PagePtr = std::shared_ptr<Page>;
 
+    // The sidebar shows them in sections()'s order; their names (sectionName) follow this one.
     enum class Section {
         Recent, Search, RecentlyAdded, NewReleases, Artists, Favorites, Playlists, Radio, Podcasts, Movies, Shows, Downloads, Settings,
+        Activity, Recommended,
     };
 
     /** Album art: as the terminal allows (block characters for now), always characters, or none. */
@@ -141,6 +153,10 @@ private:
     PagePtr favoritesPage();
     PagePtr artistPage(const QVariantMap &artist);
     PagePtr albumPage(const QVariantMap &album);
+    /** The server's play stats (LIB-14): [kind] 0 artists, 1 releases, 2 tracks; [interval] 0–3. */
+    PagePtr activityPage(int kind, int interval);
+    /** The server's recommendation sets (LIB-3), each under its name. */
+    PagePtr recommendedPage();
     /** The sidebar's sections, those the server's library has. */
     std::vector<Section> sections() const;
 
@@ -149,6 +165,10 @@ private:
     void runSearch(const PagePtr &page, const QString &query);
     PagePtr playlistsPage();
     PagePtr playlistPage(const QVariantMap &playlist);
+    /** Asks which playlist (or a new one) to add track [trackId] ([title]) to (LIB-13). */
+    void addToPlaylist(const QString &trackId, const QString &title);
+    /** Shows playlist [id] again, as it is now (after an edit). */
+    void reloadPlaylist(const QVariant &id, const QString &name);
     PagePtr radioPage();
     PagePtr podcastsPage();
     PagePtr podcastPage(const QVariantMap &series);
@@ -172,6 +192,8 @@ private:
 
     // ---- Settings and help (Settings.cpp) ----
     PagePtr settingsPage();
+    /** Approves another device's code (SIGN-11): asks for it, the user, password and passcode. */
+    void linkDevice();
     void refreshSettings();
     ftxui::Element renderHelp();
     void ask(const Prompt &prompt);

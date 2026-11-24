@@ -27,6 +27,7 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
         if (error.value("kind").toString() == "network") flash(QStringLiteral("Can't reach the server"));
     });
     QObject::connect(core, &TakeoutCore::favoriteTracksChanged, core, [this] { redraw(); });
+    QObject::connect(core, &TakeoutCore::favoriteArtistsChanged, core, [this] { redraw(); });
     QObject::connect(core, &TakeoutCore::settingsChanged, core, [this] { refreshSettings(); });
     QObject::connect(core, &TakeoutCore::listenBrainzChanged, core, [this] { refreshSettings(); });
     QObject::connect(core, &TakeoutCore::downloadsChanged, core, [this] { refreshDownloads(); });
@@ -34,9 +35,34 @@ Tofm::Tofm(TakeoutCore *core, Player *player)
         refreshDownloads();
         refreshSettings();
     });
-    QObject::connect(core, &TakeoutCore::recentlyPlayedChanged, core, [this] {
-        if (m_section == Section::Recent && m_stack.size() == 1) m_stack[0] = recentPage();
+    // Recently Played and Stream History, shown as they change (the selection stays).
+    auto refreshRecent = [this] {
+        if (m_section == Section::Recent && m_stack.size() == 1) {
+            const int selected = m_stack[0]->selected;
+            m_stack[0] = recentPage();
+            m_stack[0]->selected = std::max(0, std::min(selected, int(m_stack[0]->visibleRows().size()) - 1));
+        }
         redraw();
+    };
+    QObject::connect(core, &TakeoutCore::recentlyPlayedChanged, core, refreshRecent);
+    QObject::connect(core, &TakeoutCore::streamHistoryChanged, core, refreshRecent);
+    // The playlists as they change (one made, deleted, or its track count).
+    QObject::connect(core, &TakeoutCore::playlistsChanged, core, [this] {
+        if (m_section == Section::Playlists && !m_stack.empty()) {
+            const int selected = m_stack[0]->selected;
+            m_stack[0] = playlistsPage();
+            m_stack[0]->selected = selected;
+        }
+        redraw();
+    });
+    // A track that can't play says why (PLAY-12); mpv goes on with the next.
+    QObject::connect(player, &Player::couldNotPlay, core, [this](const QString &title, const QString &reason, const QString &detail) {
+        const QString why = reason == "load" ? QStringLiteral("it couldn't be loaded from the server")
+            : reason == "format" ? QStringLiteral("its format isn't supported")
+            : reason == "empty" ? QStringLiteral("there's nothing in it to play")
+            : reason == "audio" ? QStringLiteral("there's no sound output")
+            : detail;
+        flash(title.isEmpty() ? QStringLiteral("Can't play this: %1").arg(why) : QStringLiteral("Can't play “%1”: %2").arg(title, why));
     });
     for (auto signal : {&Player::itemsChanged, &Player::currentChanged, &Player::playingChanged,
                         &Player::positionChanged, &Player::durationChanged, &Player::repeatModeChanged})

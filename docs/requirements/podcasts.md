@@ -23,4 +23,4 @@ Series, episodes, subscriptions and episode progress. Design: [../design/podcast
 | POD-2/3 episodes, playing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | POD-4 progress | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | POD-6 downloads | ✅ | — streams only | ✅ | ✅ | ✅ | ✅ |
-| POD-7 mark played | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| POD-7 mark played | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ (m on an episode) |

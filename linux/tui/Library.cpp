@@ -141,6 +141,15 @@ Tofm::PagePtr Tofm::playlistsPage()
     auto page = std::make_shared<Page>();
     page->title = QStringLiteral("Playlists");
     load(page, QStringLiteral("playlists"), {}, [this](Page &page, const QVariant &result) {
+        page.rows.push_back({Row::Action, QStringLiteral("+ New playlist…"), {}, {}, {}, [this] {
+            ask({QStringLiteral("New playlist's name:"), {}, false, false, [this](const QString &name) {
+                if (name.trimmed().isEmpty()) return;
+                m_core->call("createPlaylist", {{"name", name.trimmed()}}, [this](const QVariant &playlist, const QVariant &error) {
+                    if (error.isValid()) return flash(QStringLiteral("Couldn't make that playlist"));
+                    flash(QStringLiteral("Made ") + playlist.toMap().value("name").toString());
+                });
+            }});
+        }, {}});
         for (const QVariant &value : result.toList()) {
             const QVariantMap playlist = value.toMap();
             Row row;
@@ -149,9 +158,63 @@ Tofm::PagePtr Tofm::playlistsPage()
             row.activate = [this, playlist] { push(playlistPage(playlist)); };
             page.rows.push_back(row);
         }
-        if (page.rows.empty()) page.error = QStringLiteral("No playlists yet.");
+        if (page.rows.size() == 1) page.rows.push_back({Row::Note, QStringLiteral("No playlists yet.")});
     });
     return page;
+}
+
+void Tofm::reloadPlaylist(const QVariant &id, const QString &name)
+{
+    for (PagePtr &page : m_stack) {
+        if (page->playlistId != id) continue;
+        const int selected = page->selected;
+        page = playlistPage({{"id", id}, {"name", name}});
+        page->selected = selected;
+    }
+    redraw();
+}
+
+void Tofm::addToPlaylist(const QString &trackId, const QString &title)
+{
+    // A page of the playlists to pick from, with a new one first; Enter adds and goes back.
+    auto page = std::make_shared<Page>();
+    page->title = QStringLiteral("Add to a playlist");
+    page->subtitle = title;
+    auto added = [this](const QString &name) {
+        back();
+        flash(QStringLiteral("Added to ") + name);
+    };
+    load(page, QStringLiteral("playlists"), {}, [this, trackId, added](Page &page, const QVariant &result) {
+        page.rows.push_back({Row::Action, QStringLiteral("+ New playlist…"), {}, {}, {}, [this, trackId, added] {
+            ask({QStringLiteral("New playlist's name:"), {}, false, false, [this, trackId, added](const QString &name) {
+                if (name.trimmed().isEmpty()) return;
+                m_core->call("createPlaylist", {{"name", name.trimmed()}}, [this, trackId, added](const QVariant &playlist, const QVariant &error) {
+                    if (error.isValid()) return flash(QStringLiteral("Couldn't make that playlist"));
+                    const QVariantMap p = playlist.toMap();
+                    m_core->call("addTrackToPlaylist", {{"playlistId", p.value("id")}, {"trackId", trackId}},
+                                 [this, p, added](const QVariant &, const QVariant &error) {
+                        if (error.isValid()) return flash(QStringLiteral("Couldn't add that"));
+                        added(p.value("name").toString());
+                    });
+                });
+            }});
+        }, {}});
+        for (const QVariant &value : result.toList()) {
+            const QVariantMap playlist = value.toMap();
+            Row row;
+            row.title = playlist.value("name").toString();
+            row.detail = count(playlist.value("trackCount").toInt(), QStringLiteral("1 track"), QStringLiteral("%1 tracks"));
+            row.activate = [this, playlist, trackId, added] {
+                m_core->call("addTrackToPlaylist", {{"playlistId", playlist.value("id")}, {"trackId", trackId}},
+                             [this, playlist, added](const QVariant &, const QVariant &error) {
+                    if (error.isValid()) return flash(QStringLiteral("Couldn't add that"));
+                    added(playlist.value("name").toString());
+                });
+            };
+            page.rows.push_back(row);
+        }
+    });
+    push(page);
 }
 
 Tofm::PagePtr Tofm::playlistPage(const QVariantMap &playlist)
@@ -159,7 +222,9 @@ Tofm::PagePtr Tofm::playlistPage(const QVariantMap &playlist)
     auto page = std::make_shared<Page>();
     page->title = playlist.value("name").toString();
     const QVariant id = playlist.value("id");
-    load(page, QStringLiteral("playlistQueue"), {{"playlistId", id}}, [this, id](Page &page, const QVariant &result) {
+    page->playlistId = id;
+    const QString name = page->title;
+    load(page, QStringLiteral("playlistQueue"), {{"playlistId", id}}, [this, id, name](Page &page, const QVariant &result) {
         const QVariantMap queue = result.toMap();
         const QVariantList items = queue.value("items").toList();
         page.subtitle = count(items.size(), QStringLiteral("1 track"), QStringLiteral("%1 tracks"));
@@ -172,7 +237,17 @@ Tofm::PagePtr Tofm::playlistPage(const QVariantMap &playlist)
             m_core->call("downloadQueue", {{"queue", queue}});
             flash(QStringLiteral("Downloading ") + queue.value("title").toString());
         }));
-        page.rows.push_back({Row::Header, QStringLiteral("Tracks")});
+        page.rows.push_back({Row::Action, QStringLiteral("✕ Delete playlist…"), {}, {}, {}, [this, id, name] {
+            ask({QStringLiteral("Delete the playlist “%1”? Its tracks stay in your library.").arg(name), {}, false, true,
+                 [this, id, name](const QString &) {
+                m_core->call("deletePlaylist", {{"playlistId", id}}, [this, name](const QVariant &, const QVariant &error) {
+                    if (error.isValid()) return flash(QStringLiteral("Couldn't delete ") + name);
+                    flash(QStringLiteral("Deleted ") + name);
+                    back();
+                });
+            }});
+        }, {}});
+        page.rows.push_back({Row::Header, QStringLiteral("Tracks · D: remove from the playlist")});
         for (int i = 0; i < items.size(); ++i) {
             const QVariantMap item = items[i].toMap();
             Row row;
@@ -183,6 +258,18 @@ Tofm::PagePtr Tofm::playlistPage(const QVariantMap &playlist)
             row.enqueue = [this, item](bool last) {
                 m_player->enqueue({item}, last);
                 flash(last ? QStringLiteral("Added to the queue") : QStringLiteral("Playing next"));
+            };
+            // LIB-13: by its place in the playlist.
+            const QString title = row.title;
+            row.remove = [this, id, name, i, title] {
+                ask({QStringLiteral("Remove “%1” from %2?").arg(title, name), {}, false, true, [this, id, name, i, title](const QString &) {
+                    m_core->call("removeFromPlaylist", {{"playlistId", id}, {"index", i}},
+                                 [this, id, name, title](const QVariant &, const QVariant &error) {
+                        if (error.isValid()) return flash(QStringLiteral("Couldn't remove ") + title);
+                        flash(QStringLiteral("Removed ") + title);
+                        reloadPlaylist(id, name);
+                    });
+                }});
             };
             page.rows.push_back(row);
         }
@@ -264,7 +351,7 @@ Tofm::PagePtr Tofm::podcastPage(const QVariantMap &series)
         }, {}});
         for (const QString &line : wrap(series.value("description").toString()).mid(0, 3))
             page.rows.push_back({Row::Note, line});
-        page.rows.push_back({Row::Header, QStringLiteral("Episodes · d: download")});
+        page.rows.push_back({Row::Header, QStringLiteral("Episodes · d: download · m: played")});
         for (int i = 0; i < episodes.size(); ++i) {
             const QVariantMap episode = episodes[i].toMap();
             const QVariantMap progress = episode.value("progress").toMap();
@@ -279,6 +366,22 @@ Tofm::PagePtr Tofm::podcastPage(const QVariantMap &series)
                                    {"episodes", episodes}, {"startIndex", i}};
             row.activate = [this, args] { playCall(QStringLiteral("episodesQueue"), args); };
             row.download = [this, args, i] { downloadCall(QStringLiteral("episodesQueue"), args, i); };
+            // POD-7: played, or not, without playing it.
+            const QString eid = episode.value("eid").toString();
+            const bool played = state == "Complete";
+            row.mark = [this, eid, played, series] {
+                m_core->call("markPlayed", {{"eid", eid}, {"played", !played}}, [this, played, series](const QVariant &, const QVariant &error) {
+                    if (error.isValid()) return flash(QStringLiteral("Couldn't mark that"));
+                    flash(played ? QStringLiteral("Marked not played") : QStringLiteral("Marked played"));
+                    for (PagePtr &page : m_stack) {
+                        if (page->title != series.value("title").toString()) continue;
+                        const int selected = page->selected;
+                        page = podcastPage(series);
+                        page->selected = selected;
+                    }
+                    redraw();
+                });
+            };
             // Its download is keyed by the GUID (eid), as its queue item's etag. Not a track:
             // no ♥ (only tracks can be favorites).
             row.etag = episode.value("eid").toString();

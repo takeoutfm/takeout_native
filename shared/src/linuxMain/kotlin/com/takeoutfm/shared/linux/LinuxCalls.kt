@@ -252,6 +252,10 @@ class LinuxCalls(private val core: LinuxCore) {
         call("audioTracks") { a ->
             audioTracks(a.get<List<MpvAudioTrack>>("tracks"), a.get<String?>("preferredLanguage", null))
         }
+        /** The subtitle track for a new title in the language picked last; null for none in it. */
+        call("subtitleTrack") { a ->
+            subtitleTrack(a.get<List<MpvSubtitleTrack>>("tracks"), a.get("language"))
+        }
         action("reportProgress") { a ->
             core.progress.report(a.get("etag"), a.get("positionMs"), a.get("durationMs"))
         }

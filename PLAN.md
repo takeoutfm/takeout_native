@@ -53,8 +53,6 @@ would notice. Fixing one updates its status table in the same commit.
 | Connect ListenBrainz | watch | LISTEN-5 |
 | Link another device | Linux, tofm | SIGN-11 |
 | Stream History listed with Recently Played | Linux (keeps it, never lists it: see radio.md), TV, tofm | RADIO-5 |
-| Subtitle languages compared as written ("eng" ≠ "en") | Linux | TRACKS-6 |
-| Remembered subtitle language: the first track that isn't forced (shared `pickSubtitleTrack`; Mac/iOS done) | Linux (`subtitleFor` in `Main.qml` takes the first, forced too; mpv has the flag), phone and TV (`applySubtitlePreference` in `android-media/.../Tracks.kt` only sets Media3's preferred language: choose the track with Media3's `SELECTION_FLAG_FORCED`) | TRACKS-6 |
 | Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |

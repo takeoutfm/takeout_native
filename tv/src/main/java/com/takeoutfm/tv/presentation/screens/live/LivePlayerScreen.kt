@@ -94,6 +94,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.selectBestAudioTrack
+import com.takeoutfm.media.video.selectSubtitleTrack
 import com.takeoutfm.shared.guide.Guide
 import com.takeoutfm.shared.guide.LiveGuide
 import com.takeoutfm.shared.guide.displayTitle
@@ -192,6 +193,7 @@ fun LivePlayerScreen(
             override fun onTracksChanged(tracks: Tracks) {
                 if (!audioChosen) {
                     audioChosen = selectBestAudioTrack(exoPlayer, viewModel.settings.audioLanguage)
+                    if (audioChosen) selectSubtitleTrack(exoPlayer, viewModel.settings.subtitleLanguage)
                 }
             }
 

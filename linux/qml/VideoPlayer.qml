@@ -177,8 +177,7 @@ QQC2.Popup {
                 player.audioChosen = true
                 if (choose) {
                     // subtitles in the language picked last
-                    const sub = settings.subtitleFor(subtitleTracks)
-                    if (sub >= 0) video.setSubtitle(sub)
+                    settings.chooseSubtitles(subtitleTracks, (id) => video.setSubtitle(id), () => ids === player.audioLabelsFor)
                 }
                 Core.call("audioTracks", {
                     tracks: tracks.map(t => t.info),

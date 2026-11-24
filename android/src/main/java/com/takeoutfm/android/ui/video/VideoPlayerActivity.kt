@@ -33,6 +33,7 @@ import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.media.video.TrackPicks
 import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.selectBestAudioTrack
+import com.takeoutfm.media.video.selectSubtitleTrack
 import com.takeoutfm.android.R
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.settings.PlaySettings
@@ -149,7 +150,10 @@ class VideoPlayerActivity : ComponentActivity() {
 
     private val listener = object : Player.Listener {
         override fun onTracksChanged(tracks: Tracks) {
-            if (!audioChosen) audioChosen = picks.auto { selectBestAudioTrack(player, settings.audioLanguage) }
+            // The best audio, and the subtitles the shared rule picks, once the tracks are known.
+            if (!audioChosen) audioChosen = picks.auto {
+                selectBestAudioTrack(player, settings.audioLanguage).also { if (it) selectSubtitleTrack(player, settings.subtitleLanguage) }
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {

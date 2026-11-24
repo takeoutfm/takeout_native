@@ -451,7 +451,9 @@ void VideoView::tracksUpdated(const mpv_node *list)
                 QStringList parts;
                 if (!languageText.isEmpty() && !title.contains(languageText, Qt::CaseInsensitive)) parts << languageText;
                 if (!title.isEmpty()) parts << title;
-                if (flag(track, "forced")) parts << QStringLiteral("Forced");
+                const bool forced = flag(track, "forced");
+                item.insert("forced", forced);
+                if (forced) parts << QStringLiteral("Forced");
                 if (flag(track, "hearing-impaired")) parts << QStringLiteral("SDH");
                 const QString format = subtitleFormat(codec);
                 if (!format.isEmpty() && !title.contains(format, Qt::CaseInsensitive)) parts << format;

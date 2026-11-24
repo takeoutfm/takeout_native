@@ -68,6 +68,7 @@ import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.audioTrackOptions
 import com.takeoutfm.shared.video.normalizeLanguage
 import com.takeoutfm.media.video.selectBestAudioTrack
+import com.takeoutfm.media.video.selectSubtitleTrack
 import com.takeoutfm.media.video.speedOptions
 import com.takeoutfm.media.video.subtitleTrackOptions
 import com.takeoutfm.shared.progress.TakeoutProgress
@@ -203,6 +204,7 @@ fun VideoPlayerScreenContent(
             override fun onTracksChanged(tracks: Tracks) {
                 if (!audioChosen) {
                     audioChosen = selectBestAudioTrack(exoPlayer, settings.audioLanguage)
+                    if (audioChosen) selectSubtitleTrack(exoPlayer, settings.subtitleLanguage)
                 }
             }
 

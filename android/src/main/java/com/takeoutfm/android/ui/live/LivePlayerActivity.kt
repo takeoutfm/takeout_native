@@ -95,6 +95,7 @@ import com.takeoutfm.media.video.TrackPicks
 import com.takeoutfm.media.video.applySubtitlePreference
 import com.takeoutfm.media.video.audioTrackOptions
 import com.takeoutfm.media.video.selectBestAudioTrack
+import com.takeoutfm.media.video.selectSubtitleTrack
 import com.takeoutfm.media.video.subtitleTrackOptions
 import com.takeoutfm.shared.guide.Guide
 import com.takeoutfm.shared.guide.GuideProgram
@@ -292,7 +293,9 @@ class LivePlayerActivity : ComponentActivity() {
                 }
 
                 override fun onTracksChanged(tracks: Tracks) {
-                    if (!audioChosen) audioChosen = picks.auto { selectBestAudioTrack(player, settings.audioLanguage) }
+                    if (!audioChosen) audioChosen = picks.auto {
+                        selectBestAudioTrack(player, settings.audioLanguage).also { if (it) selectSubtitleTrack(player, settings.subtitleLanguage) }
+                    }
                 }
 
                 override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {

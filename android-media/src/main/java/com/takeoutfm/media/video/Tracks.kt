@@ -10,7 +10,9 @@ import androidx.media3.common.util.UnstableApi
 import com.takeoutfm.shared.video.audioFormat
 import com.takeoutfm.shared.video.audioTrackLabel
 import com.takeoutfm.shared.video.bestAudioTrack
+import com.takeoutfm.shared.video.SubtitleCandidate
 import com.takeoutfm.shared.video.normalizeLanguage
+import com.takeoutfm.shared.video.pickSubtitleTrack
 import java.util.Locale
 
 // Video track choices for the apps' pickers: embedded audio and subtitle tracks (no
@@ -172,6 +174,33 @@ fun selectBestAudioTrack(player: Player, preferredLanguage: String?): Boolean {
             .build()
     }
     return true
+}
+
+/**
+ * Once the title's tracks are known, selects the subtitle track the shared rule picks in the
+ * [language] picked last (TRACKS-6): the first in it that isn't forced, a forced one only when
+ * that's all it has. [applySubtitlePreference] only gives Media3 the language, and Media3 may
+ * take a forced track. Nothing for no preference, off (already applied), or none in it.
+ */
+fun selectSubtitleTrack(player: Player, language: String?) {
+    val wanted = normalizeLanguage(language) ?: return
+    val playable = player.currentTracks.groups
+        .filter { it.type == C.TRACK_TYPE_TEXT }
+        .flatMap { group -> (0 until group.length).filter { group.isTrackSupported(it) }.map { group to it } }
+    val pick = pickSubtitleTrack(
+        playable.mapIndexed { i, (group, index) ->
+            val format = group.getTrackFormat(index)
+            SubtitleCandidate(i, normalizeLanguage(format.language), format.selectionFlags and C.SELECTION_FLAG_FORCED != 0)
+        },
+        wanted,
+    ) ?: return
+    val (group, index) = playable[pick]
+    if (!group.isTrackSelected(index)) {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, index))
+            .build()
+    }
 }
 
 /**

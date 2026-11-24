@@ -69,15 +69,21 @@ Kirigami.ApplicationWindow {
         }
 
         /**
-         * The subtitle track id to select from [tracks] (a new title's): 0 for off, -1 to leave
-         * mpv's choice (nothing picked yet, or none in the language picked, where its forced
-         * ones stay on).
+         * Selects subtitles from [tracks] (a new title's) with [select] (an id; 0 for off): none
+         * when off was picked; in the language picked, the shared rule's track (the first that
+         * isn't forced; "eng" matches "en"); nothing picked yet, or none in that language,
+         * leaves mpv's choice, where the title's forced ones stay on (TRACKS-6). [stillFor]
+         * says whether the title is still the one asked about when the core answers.
          */
-        function subtitleFor(tracks) {
-            if (!subtitlesChosen) return -1
-            if (subtitleLanguage === "") return 0
-            const track = tracks.find(t => t.language === subtitleLanguage)
-            return track ? track.id : -1
+        function chooseSubtitles(tracks, select, stillFor) {
+            if (!subtitlesChosen) return
+            if (subtitleLanguage === "") return select(0)
+            Core.call("subtitleTrack", {
+                tracks: tracks.map(t => ({id: t.id, language: t.language || null, forced: t.forced ?? false})),
+                language: subtitleLanguage,
+            }, (id) => {
+                if (id !== undefined && id !== null && stillFor()) select(id)
+            })
         }
     }
     property string section: ""

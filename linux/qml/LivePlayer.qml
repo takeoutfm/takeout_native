@@ -242,8 +242,7 @@ QQC2.Popup {
                 player.tracksFor = ids
                 const tracks = audioTracks
                 // subtitles in the language picked last (here or in the video player)
-                const sub = settings.subtitleFor(subtitleTracks)
-                if (sub >= 0) video.setSubtitle(sub)
+                settings.chooseSubtitles(subtitleTracks, (id) => video.setSubtitle(id), () => ids === player.tracksFor)
                 // audio: the shared ranking, in the language chosen last (here or in the video player)
                 Core.call("audioTracks", {
                     tracks: tracks.map(t => t.info),

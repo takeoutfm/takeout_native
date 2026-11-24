@@ -14,7 +14,10 @@ How each app picks and remembers audio and subtitle tracks. Requirements:
 
 - Tracks: `:android-media` `video/Tracks.kt`. `selectBestAudioTrack(player, language)` sets an
   override; `applySubtitlePreference(player, language)` sets Media3's preferred text language,
-  or disables text for "" (off).
+  or disables text for "" (off), before the title loads; once its tracks are known,
+  `selectSubtitleTrack(player, language)` selects the track the shared `pickSubtitleTrack`
+  chooses (Media3 alone may take a forced one), with Media3's `SELECTION_FLAG_FORCED`. Tests:
+  `SubtitleSelectionTest` (instrumented).
 - Picks are made in Media3's own menus (the `PlayerView` settings and subtitle buttons), so
   `TrackPicks` listens for `onTrackSelectionParametersChanged` and keeps the audio and subtitle
   language of an override that changed, or "" for off. What the app sets itself goes through
@@ -41,11 +44,13 @@ How each app picks and remembers audio and subtitle tracks. Requirements:
 ## Linux (`linux/`)
 
 - One `Settings` object (`Main.qml` `videoSettings`, category `video`: `audioLanguage`,
-  `subtitlesChosen`, `subtitleLanguage`, with `pickSubtitle` and `subtitleFor`) shared by
+  `subtitlesChosen`, `subtitleLanguage`, with `pickSubtitle` and `chooseSubtitles`) shared by
   `VideoPlayer.qml` and `LivePlayer.qml`, so a pick reaches the other player at once (two
   `Settings` objects only read the file when created).
 - `VideoView` (`src/VideoView.cpp`, mpv rendering into a Qt Quick FBO) lists the tracks with
-  what the ranking needs; `sid=auto` leaves the file's default; reopening a title passes the
+  what the ranking needs (subtitles with mpv's `forced` flag); `chooseSubtitles` asks the core's
+  `subtitleTrack` call (`linuxMain` `SubtitleTracks.kt`: the shared `pickSubtitleTrack`, both
+  languages normalised so "eng" finds "en"); `sid=auto` leaves the file's default; reopening a title passes the
   selected `aid` / `sid` to `loadfile`.
 - Every mpv call from the UI thread is asynchronous: a blocking one can wait on the video
   output, which waits on the UI thread to draw, and the window freezes (2026-11-13/14). Its

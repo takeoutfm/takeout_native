@@ -353,7 +353,8 @@ struct FavoritesView: View {
     @EnvironmentObject private var cache: MediaCache
 
     var body: some View {
-        Loaded(load: { try await model.calls.favorites() }) { favorites in
+        // Again when the favorite artists change, from an artist's page or anywhere (decision 017).
+        Loaded(id: model.favoriteArtists, keepContent: true, load: { try await model.calls.favorites() }) { favorites in
             if favorites.artists.isEmpty && favorites.tracks.isEmpty {
                 ContentUnavailableView("No Favorites", systemImage: "heart")
             } else {

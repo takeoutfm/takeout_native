@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
@@ -98,7 +99,12 @@ class TakeoutMusicRepository(
             popular = popular.await().map { it.toTrack() },
             similar = view.similar.orEmpty().map { it.toArtist() },
             isFavorite = view.isFavorite,
-        )
+        ).also { details ->
+            val arid = details.artist.arid
+            if (arid.isNotEmpty()) {
+                _favoriteArtistIds.update { if (details.isFavorite) it + arid else it - arid }
+            }
+        }
     }
 
     // ---- Albums ----
@@ -125,11 +131,21 @@ class TakeoutMusicRepository(
     /** ETags of the user's favorite tracks, as last loaded or changed here (for ♥ buttons). */
     val favoriteTrackEtags: StateFlow<Set<String>> = _favoriteTrackEtags.asStateFlow()
 
+    private val _favoriteArtistIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * MusicBrainz ids ([Artist.arid]) of the user's favorite artists, as last loaded ([favorites],
+     * [artistDetails]) or changed here ([setArtistFavorite]): the artist page's ♥ and the
+     * Favorites page follow it (decision 017).
+     */
+    val favoriteArtistIds: StateFlow<Set<String>> = _favoriteArtistIds.asStateFlow()
+
     /** Favorite artists (A–Z) and tracks (as the server orders them, which Play all follows). */
     suspend fun favorites(): MusicFavorites {
         val view = api.favorites()
         val tracks = view.tracks.orEmpty().map { it.toTrack() }
         _favoriteTrackEtags.value = tracks.map { it.etag }.filter { it.isNotEmpty() }.toSet()
+        _favoriteArtistIds.value = view.artists.orEmpty().map { it.arid }.filter { it.isNotEmpty() }.toSet()
         return MusicFavorites(
             artists = view.artists.orEmpty()
                 .sortedByTitle { it.sortName.ifEmpty { it.name } }
@@ -143,8 +159,17 @@ class TakeoutMusicRepository(
         if (_favoriteTrackEtags.value.isEmpty()) runCatching { favorites() }
     }
 
-    suspend fun setArtistFavorite(arid: String, favorite: Boolean) =
-        api.setFavorite("artists/$arid", favorite)
+    /** Updates [favoriteArtistIds] right away; reverted if the server refuses. */
+    suspend fun setArtistFavorite(arid: String, favorite: Boolean) {
+        val before = _favoriteArtistIds.value
+        _favoriteArtistIds.value = if (favorite) before + arid else before - arid
+        try {
+            api.setFavorite("artists/$arid", favorite)
+        } catch (e: Exception) {
+            _favoriteArtistIds.value = before
+            throw e
+        }
+    }
 
     /** Updates [favoriteTrackEtags] right away; reverted if the server refuses. */
     suspend fun setTrackFavorite(etag: String, favorite: Boolean) {

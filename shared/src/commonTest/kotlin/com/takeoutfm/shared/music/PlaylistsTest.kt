@@ -99,4 +99,32 @@ class PlaylistsTest {
         assertEquals(listOf("a", "b", "c", "d"), TakeoutMusicRepository.coversOf(queue))
         assertEquals(listOf("a"), TakeoutMusicRepository.coversOf(queue.copy(items = queue.items.take(2))))
     }
+
+    @Test
+    fun favoriteArtistsFollowEdits() = runTest {
+        val session = TakeoutSession(store = null).apply {
+            signIn("https://takeout.example", ApiTokens("access", "media", "refresh"))
+        }
+        var refuse = false
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath == "/api/favorite" -> respond(
+                    """{"Artists":[{"ID":1,"Name":"Beck","ARID":"a-beck"}],"Tracks":[]}""",
+                    headers = jsonHeaders,
+                )
+                refuse -> respondError(HttpStatusCode.InternalServerError)
+                else -> respond("{}", headers = jsonHeaders)
+            }
+        }
+        val api = TakeoutApi(session, "test", engine)
+        val music = TakeoutMusicRepository(api, TakeoutLibrary(api, session, MemoryStore()), TakeoutUrls(session))
+        music.favorites()
+        assertEquals(setOf("a-beck"), music.favoriteArtistIds.value)
+        music.setArtistFavorite("a-wilco", true)
+        music.setArtistFavorite("a-beck", false)
+        assertEquals(setOf("a-wilco"), music.favoriteArtistIds.value)
+        refuse = true
+        assertFailsWith<Exception> { music.setArtistFavorite("a-wilco", false) }
+        assertEquals(setOf("a-wilco"), music.favoriteArtistIds.value)
+    }
 }

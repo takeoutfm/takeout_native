@@ -6,7 +6,7 @@ struct MainView: View {
     @EnvironmentObject private var model: AppModel
 
     enum Page: Hashable {
-        case recentlyAdded, newReleases, recentlyPlayed, artists, favorites, playlists, radio, podcasts
+        case recentlyAdded, newReleases, recentlyPlayed, activity, artists, favorites, playlists, radio, podcasts
         case live, watch, movies, shows, downloads, nowPlaying
         case search(String)
 
@@ -15,6 +15,7 @@ struct MainView: View {
             case .recentlyAdded: return "Recently Added"
             case .newReleases: return "New Releases"
             case .recentlyPlayed: return "Recently Played"
+            case .activity: return "Activity"
             case .artists: return "Artists"
             case .favorites: return "Favorites"
             case .playlists: return "Playlists"
@@ -35,6 +36,7 @@ struct MainView: View {
             case .recentlyAdded: return "plus.square.on.square"
             case .newReleases: return "sparkles"
             case .recentlyPlayed: return "clock.arrow.circlepath"
+            case .activity: return "chart.bar"
             case .artists: return "music.mic"
             case .favorites: return "heart"
             case .playlists: return "music.note.list"
@@ -62,7 +64,7 @@ struct MainView: View {
     @Environment(\.playLive) private var playLive
 
     private var musicPages: [Page] {
-        var pages: [Page] = [.recentlyPlayed, .recentlyAdded, .newReleases, .artists, .favorites]
+        var pages: [Page] = [.recentlyPlayed, .activity, .recentlyAdded, .newReleases, .artists, .favorites]
         if model.hasPlaylists { pages.append(.playlists) }
         pages.append(.radio)
         if model.hasPodcasts { pages.append(.podcasts) }
@@ -207,6 +209,7 @@ struct MainView: View {
         case .newReleases:
             AlbumGrid(title: "New Releases") { try await model.calls.doNewReleases() }  // Kotlin adds "do" to names starting with "new"
         case .recentlyPlayed: RecentlyPlayedView()
+        case .activity: ActivityView()
         case .artists: ArtistList()
         case .favorites: FavoritesView()
         case .playlists: PlaylistList()

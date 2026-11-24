@@ -18,6 +18,8 @@ import com.takeoutfm.shared.music.AlbumDetails
 import com.takeoutfm.shared.music.Artist
 import com.takeoutfm.shared.music.ArtistDetails
 import com.takeoutfm.shared.music.ArtistMix
+import com.takeoutfm.shared.music.ActivityInterval
+import com.takeoutfm.shared.music.ActivityStats
 import com.takeoutfm.shared.music.MusicFavorites
 import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
@@ -131,6 +133,10 @@ class SwiftCalls(private val core: TakeoutCore) {
 
     @Throws(Throwable::class)
     suspend fun favorites(): MusicFavorites = core.music.favorites()
+
+    /** The server's play stats for [interval] (LIB-14): artists, releases and tracks, most played first. */
+    @Throws(Throwable::class)
+    suspend fun activity(interval: ActivityInterval): ActivityStats = core.music.activity(interval)
 
     @Throws(Throwable::class)
     suspend fun favoritesQueue(startIndex: Int): MusicQueue = core.music.favoritesQueue(startIndex)

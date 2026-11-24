@@ -51,13 +51,9 @@ private struct ArtistPage: View {
     let artistId: String
     let details: ArtistDetails
     @EnvironmentObject private var model: AppModel
-    @State private var favorite: Bool
 
-    init(artistId: String, details: ArtistDetails) {
-        self.artistId = artistId
-        self.details = details
-        _favorite = State(initialValue: details.isFavorite)
-    }
+    /// The shared favorite artists (LIB-6), which loading this page brought up to date.
+    private var favorite: Bool { model.favoriteArtists.contains(details.artist.arid) }
 
     var body: some View {
         ScrollView {
@@ -76,7 +72,7 @@ private struct ArtistPage: View {
                                 .buttonStyle(.borderedProminent)
                             Button { mix(.radio) } label: { Label("Radio", systemImage: "dot.radiowaves.left.and.right") }
                             if !details.artist.arid.isEmpty {
-                                Button(action: toggleFavorite) {
+                                Button { model.toggleFavoriteArtist(details.artist) } label: {
                                     Image(systemName: favorite ? "heart.fill" : "heart")
                                 }
                                 .help(favorite ? "Remove from Favorites" : "Add to Favorites")
@@ -104,23 +100,10 @@ private struct ArtistPage: View {
             .padding(24)
         }
         .navigationTitle(details.artist.name)
-        .onChange(of: details.isFavorite) { _, value in favorite = value }
     }
 
     private func mix(_ mix: ArtistMix) {
         model.play { try await model.calls.artistQueue(artistId: artistId, mix: mix) }
     }
 
-    private func toggleFavorite() {
-        let wanted = !favorite
-        favorite = wanted
-        Task {
-            do {
-                try await model.calls.setArtistFavorite(arid: details.artist.arid, favorite: wanted)
-            } catch {
-                NSLog("Favorite failed: \(error)")
-                favorite = !wanted
-            }
-        }
-    }
 }

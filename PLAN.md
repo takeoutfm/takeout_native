@@ -46,8 +46,8 @@ would notice. Fixing one updates its status table in the same commit.
 | Playlists: create, add | TV, watch, tofm | LIB-13 |
 | Playlists: remove a track, delete | TV, watch, tofm; Linux can delete | LIB-13 |
 | Search | watch; the TV searches video only | LIB-12 |
-| Favorite an artist; the favorite artists list | most apps | LIB-6, LIB-8 |
-| Activity (play stats) | all but the phone | LIB-14 |
+| Favorite an artist; the favorite artists list | artist: watch, Linux, tofm; list: phone, watch, tofm | LIB-6, LIB-8 |
+| Activity (play stats) | TV, watch, Linux, tofm | LIB-14 |
 | Recommendation lists | Mac/iOS, Linux, tofm | LIB-3 |
 | Mark an episode played | phone, TV, watch, tofm | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |

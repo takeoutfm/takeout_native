@@ -28,6 +28,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.
     @Published private(set) var favoriteTracks: Set<String> = []
+    /// MusicBrainz ids of the favorite artists (the shared `favoriteArtistIds`, LIB-6).
+    @Published private(set) var favoriteArtists: Set<String> = []
     /// Track Activity: report plays to the server.
     @Published var reportPlays: Bool {
         didSet { calls.reportPlays = reportPlays }
@@ -140,6 +142,9 @@ final class AppModel: ObservableObject {
             WatchKt.watch(flow: core.music.favoriteTrackEtags) { [weak self] etags in
                 self?.favoriteTracks = etags as? Set<String> ?? []
             },
+            WatchKt.watch(flow: core.music.favoriteArtistIds) { [weak self] ids in
+                self?.favoriteArtists = ids as? Set<String> ?? []
+            },
             WatchKt.watch(flow: core.music.currentPlaylists) { [weak self] playlists in
                 self?.playlists = playlists as? [MusicPlaylist]
             },
@@ -230,6 +235,18 @@ final class AppModel: ObservableObject {
     }
 
     func isFavorite(_ etag: String) -> Bool { favoriteTracks.contains(etag) }
+
+    /** Adds or removes a favorite artist (the shared set updates at once; reverted on failure). */
+    func toggleFavoriteArtist(_ artist: Artist) {
+        let wanted = !favoriteArtists.contains(artist.arid)
+        Task {
+            do {
+                try await calls.setArtistFavorite(arid: artist.arid, favorite: wanted)
+            } catch {
+                show(wanted ? "Couldn't add \(artist.name) to Favorites" : "Couldn't remove \(artist.name) from Favorites")
+            }
+        }
+    }
 
     /** Play Next / Add to Queue for one track, as on the phone: just the track (its server queue goes on with similar ones). */
     func enqueueTrack(_ trackId: String, last: Bool) {

@@ -308,9 +308,41 @@ extension VLCMediaPlayer {
             }
     }
 
-    /** The subtitle tracks, "Disable" (-1) first, as VLC names them. */
+    /**
+     * The subtitle tracks, Off (-1) first, labelled by the shared rule (TRACKS-3): "English ·
+     * SDH · PGS" from VLC's track details, not its own "Track 1 - [English]". VLC gives no
+     * forced or SDH flags, so the track's name stands in.
+     */
     var subtitleTrackList: [MediaTrack] {
-        Self.tracks(names: videoSubTitlesNames, indexes: videoSubTitlesIndexes)
+        var details: [Int32: [String: Any]] = [:]
+        for info in media?.tracksInformation ?? [] {
+            guard let info = info as? [String: Any],
+                  info[VLCMediaTracksInformationType] as? String == VLCMediaTracksInformationTypeText,
+                  let id = (info[VLCMediaTracksInformationId] as? NSNumber)?.int32Value else { continue }
+            details[id] = info
+        }
+        var number = 0
+        return Self.tracks(names: videoSubTitlesNames, indexes: videoSubTitlesIndexes).map { track in
+            guard track.index >= 0 else { return MediaTrack(index: -1, name: "Off") }
+            number += 1
+            let info = details[track.index] ?? [:]
+            let language = AudioTrackRankingKt.normalizeLanguage(tag: info[VLCMediaTracksInformationLanguage] as? String)
+                .map { Locale.current.localizedString(forLanguageCode: $0) ?? $0 }
+            var name = info[VLCMediaTracksInformationDescription] as? String ?? ""
+            if SubtitleTrackLabelKt.isGeneratedTrackName(name: name) { name = "" }
+            let fourcc = (info[VLCMediaTracksInformationCodec] as? NSNumber)?.uint32Value ?? 0
+            let codec = VLCMedia.codecName(forFourCC: fourcc, trackType: VLCMediaTracksInformationTypeText)
+            let lower = name.lowercased()
+            let label = SubtitleTrackLabelKt.subtitleTrackLabel(
+                languageName: language,
+                name: name,
+                forced: lower.contains("forced"),
+                sdh: lower.contains("sdh") || lower.contains("hearing"),
+                format: SubtitleTrackLabelKt.subtitleFormat(codec: codec),
+                number: Int32(number)
+            )
+            return MediaTrack(index: track.index, name: label)
+        }
     }
 
     /** The languages of the subtitle tracks, by track id (VLC's names don't always say). */

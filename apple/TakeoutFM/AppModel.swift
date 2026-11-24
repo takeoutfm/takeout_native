@@ -72,6 +72,7 @@ final class AppModel: ObservableObject {
     /// A short message at the bottom of the window ("Playing Next"), cleared after a moment.
     @Published private(set) var message: String?
     private var messageTask: Task<Void, Never>?
+    private var playerFailures: AnyCancellable?
     private var watches: [Watching] = []
     private var activeObserver: NSObjectProtocol?
 
@@ -153,6 +154,10 @@ final class AppModel: ObservableObject {
         Self.apply(theme)
         Task { try? await calls.refreshLibrary() }
         Task { try? await calls.loadFavoriteTracks() }
+        // A track that can't play says why (the player goes on with the next).
+        playerFailures = self.player.failures.receive(on: RunLoop.main).sink { [weak self] text in
+            self?.show(text, for: .seconds(5))
+        }
         calls.retryListens()
         // As the Android apps do on returning to the foreground.
         #if os(macOS)
@@ -242,11 +247,11 @@ final class AppModel: ObservableObject {
         show(last ? "Added to Queue" : "Playing Next")
     }
 
-    func show(_ text: String) {
+    func show(_ text: String, for duration: Duration = .seconds(2)) {
         message = text
         messageTask?.cancel()
         messageTask = Task {
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: duration)
             guard !Task.isCancelled else { return }
             message = nil
         }

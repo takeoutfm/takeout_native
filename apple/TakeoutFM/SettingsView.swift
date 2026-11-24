@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var token = ""
     @State private var connecting = false
     @State private var refused = false
+    @State private var confirmingSignOut = false
 
     var body: some View {
         Form {
@@ -18,7 +19,8 @@ struct SettingsView: View {
                 if let user = model.serverUser {
                     LabeledContent("Connected as", value: user)
                 }
-                Button("Sign Out", role: .destructive) { model.signOut() }
+                Button("Sign Out", role: .destructive) { confirmingSignOut = true }
+                    .confirmSignOut($confirmingSignOut, model: model)
             }
             #endif
             Section("Appearance") {

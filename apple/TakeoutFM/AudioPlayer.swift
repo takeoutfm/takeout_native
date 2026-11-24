@@ -34,6 +34,8 @@ final class AudioPlayer: ObservableObject {
 
     enum RepeatMode { case off, all, one }
     @Published private(set) var index = 0
+    /// Why an item couldn't play, as it happens (PLAY-12); the app shows it.
+    let failures = PassthroughSubject<String, Never>()
     @Published private(set) var isPlaying = false
     /** Where the playing item is, and its length: watched only by the views that show them. */
     let progress = PlaybackProgress()
@@ -96,19 +98,24 @@ final class AudioPlayer: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] status in self?.playingChanged(status == .playing) }
             .store(in: &bag)
-        // AVFoundation fails quietly: log why an item couldn't be opened or stopped short.
+        // AVFoundation fails quietly: say why an item couldn't be opened or stopped short, and go
+        // on with the next (PLAY-12).
         player.publisher(for: \.currentItem)
             .compactMap { $0 }
             .flatMap { item in item.publisher(for: \.status).filter { $0 == .failed }.map { _ in item } }
             .receive(on: RunLoop.main)
-            .sink { item in NSLog("Can't play \(Self.describe(item)): \(item.error.map { "\($0)" } ?? "unknown error")") }
+            .sink { [weak self] item in
+                NSLog("Can't play \(Self.describe(item)): \(item.error.map { "\($0)" } ?? "unknown error")")
+                self?.couldNotPlay(item.error)
+            }
             .store(in: &bag)
         NotificationCenter.default.publisher(for: AVPlayerItem.failedToPlayToEndTimeNotification)
             .receive(on: RunLoop.main)
             .sink { [weak self] note in
                 self?.listens.stopped()
-                let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey]
+                let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
                 NSLog("Stopped short \((note.object as? AVPlayerItem).map(Self.describe) ?? ""): \(error.map { "\($0)" } ?? "")")
+                self?.couldNotPlay(error)
             }
             .store(in: &bag)
         NotificationCenter.default.publisher(for: AVPlayerItem.newErrorLogEntryNotification)
@@ -268,6 +275,54 @@ final class AudioPlayer: ObservableObject {
             playerItem.add(output)
         }
         return playerItem
+    }
+
+    /**
+     * The current item couldn't play: why, for the window's message (`failures`), then the next
+     * item, as on the phone. A live stream has no next to go to.
+     */
+    private func couldNotPlay(_ error: Error?) {
+        let title = current.map { "“\($0.title)”" } ?? "this"
+        failures.send("Can't play \(title): \(Self.reason(error)).")
+        if index + 1 < items.count { next() }
+    }
+
+    /** Why AVFoundation couldn't play an item, in words the viewer can act on. */
+    static func reason(_ error: Error?) -> String {
+        guard let error = error as NSError? else { return "unknown error" }
+        let errors = [error] + ((error.userInfo[NSUnderlyingErrorKey] as? NSError).map { [$0] } ?? [])
+        for e in errors {
+            if e.domain == NSURLErrorDomain {
+                switch e.code {
+                case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorTimedOut,
+                     NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost, NSURLErrorDNSLookupFailed:
+                    return "the server can't be reached"
+                default: break
+                }
+            }
+            // CoreMedia's HTTP answers
+            if e.domain == "CoreMediaErrorDomain" {
+                switch e.code {
+                case -12938: return "it isn't on the server"
+                case -12660, -12937: return "the server refused it"
+                default: break
+                }
+            }
+            // Core Audio's file errors under AVFoundation's -11800: 'typ?', 'fmt?', 'dta?'
+            if e.domain == NSOSStatusErrorDomain, [1954115647, 1718449215, 1685348671].contains(e.code) {
+                return "its format isn't supported"
+            }
+            if e.domain == AVFoundationErrorDomain {
+                switch AVError.Code(rawValue: e.code) {
+                case .fileFormatNotRecognized, .decoderNotFound, .decoderTemporarilyUnavailable, .failedToParse:
+                    return "its format isn't supported"
+                case .serverIncorrectlyConfigured, .contentIsUnavailable:
+                    return "the server couldn't provide it"
+                default: break
+                }
+            }
+        }
+        return error.localizedDescription.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
     }
 
     private static func describe(_ item: AVPlayerItem) -> String {

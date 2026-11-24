@@ -57,6 +57,7 @@ struct MainView: View {
     @State private var path: [Route] = []
     @State private var query = ""
     @State private var showAccount = false
+    @State private var confirmingSignOut = false
     @Environment(\.playVideo) private var playVideo
     @Environment(\.playLive) private var playLive
 
@@ -124,9 +125,9 @@ struct MainView: View {
                                 accountRow("Connected as", user).padding(.top, 8)
                             }
                             Divider().padding(.vertical, 8)
-                            Button("Sign Out") {
+                            Button("Sign Out…") {
                                 showAccount = false
-                                model.signOut()
+                                confirmingSignOut = true
                             }
                         }
                         .padding()
@@ -148,6 +149,7 @@ struct MainView: View {
             }
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Artists, albums, tracks")
+        .confirmSignOut($confirmingSignOut, model: model)
         .onSubmit(of: .search) {
             let q = query.trimmingCharacters(in: .whitespaces)
             guard !q.isEmpty else { return }

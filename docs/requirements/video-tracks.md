@@ -42,7 +42,7 @@ Decision: [003](../decisions/003-track-choices-by-language.md).
 |---|---|---|---|---|---|---|
 | TRACKS-1 embedded only | ✅ | ✅ | ✅ | ✅ | ✅ | — no video |
 | TRACKS-2 audio labels | ⚠️ Media3's own menu names them | ✅ | ✅ | ✅ | — mpv's | — |
-| TRACKS-3 subtitle labels | ⚠️ Media3's | ✅ | ⚠️ VLC's names | ✅ | — mpv's | — |
+| TRACKS-3 subtitle labels | ⚠️ Media3's | ✅ | ✅ (Forced / SDH from the track's name: VLC has no flags) | ✅ | — mpv's | — |
 | TRACKS-5 best audio | ✅ | ✅ | ✅ | ✅ | — mpv picks | — |
 | TRACKS-6 subtitle language | ✅ | ✅ | ✅ | ✅ | — mpv picks | — |
 | TRACKS-7 only the viewer's picks | ✅ | ✅ (own pickers) | ✅ | ✅ | — | — |

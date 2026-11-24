@@ -409,3 +409,21 @@ struct ArtistRow: View {
         }
     }
 }
+
+extension View {
+    /**
+     * "Sign Out?" before signing out (SIGN-10), saying what goes with it: Recently Played on
+     * this device (downloads stay).
+     */
+    func confirmSignOut(_ isPresented: Binding<Bool>, model: AppModel) -> some View {
+        confirmationDialog("Sign Out?", isPresented: isPresented, titleVisibility: .visible) {
+            Button("Sign Out", role: .destructive) { model.signOut() }
+        } message: {
+            #if os(macOS)
+            Text("Recently Played on this Mac is cleared too. Downloads stay.")
+            #else
+            Text("Recently Played on this device is cleared too. Downloads stay.")
+            #endif
+        }
+    }
+}

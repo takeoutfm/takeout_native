@@ -60,6 +60,7 @@ struct MainView: View {
     @State private var query = ""
     @State private var showAccount = false
     @State private var confirmingSignOut = false
+    @State private var linking = false
     @Environment(\.playVideo) private var playVideo
     @Environment(\.playLive) private var playLive
 
@@ -127,6 +128,11 @@ struct MainView: View {
                                 accountRow("Connected as", user).padding(.top, 8)
                             }
                             Divider().padding(.vertical, 8)
+                            Button("Link a Device…") {
+                                showAccount = false
+                                linking = true
+                            }
+                            .padding(.bottom, 4)
                             Button("Sign Out…") {
                                 showAccount = false
                                 confirmingSignOut = true
@@ -152,6 +158,9 @@ struct MainView: View {
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Artists, albums, tracks")
         .confirmSignOut($confirmingSignOut, model: model)
+        .sheet(isPresented: $linking) {
+            NavigationStack { LinkView() }
+        }
         .newPlaylistPrompt(model)
         .onSubmit(of: .search) {
             let q = query.trimmingCharacters(in: .whitespaces)

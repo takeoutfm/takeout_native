@@ -19,6 +19,7 @@ struct SettingsView: View {
                 if let user = model.serverUser {
                     LabeledContent("Connected as", value: user)
                 }
+                NavigationLink("Link a Device") { LinkView() }
                 Button("Sign Out", role: .destructive) { confirmingSignOut = true }
                     .confirmSignOut($confirmingSignOut, model: model)
             }

@@ -177,6 +177,18 @@ class SwiftCalls(private val core: TakeoutCore) {
         core.progress.report(eid, offset * 1000L, duration * 1000L)
     }
 
+    // ---- Linking another device (SIGN-11) ----
+
+    /**
+     * Approves another device's sign-in [code] with this account's [user], [password] and
+     * [passcode] (empty when the account has none), on the server this app is signed in to:
+     * true when it accepted them, false when it refused the code or the account. Throws when the
+     * server can't be reached.
+     */
+    @Throws(Throwable::class)
+    suspend fun link(code: String, user: String, password: String, passcode: String): Boolean =
+        core.api.link(core.session.endpoint, code, user, password, passcode)
+
     // ---- Video ----
 
     /** Started-but-unfinished movies and episodes, most recently watched first. */

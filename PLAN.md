@@ -48,11 +48,11 @@ would notice. Fixing one updates its status table in the same commit.
 | Search | watch; the TV searches video only | LIB-12 |
 | Favorite an artist; the favorite artists list | artist: watch, Linux, tofm; list: phone, watch, tofm | LIB-6, LIB-8 |
 | Activity (play stats) | TV, watch, Linux, tofm | LIB-14 |
-| Recommendation lists | Mac/iOS, Linux, tofm | LIB-3 |
+| Recommendation lists | Linux, tofm | LIB-3 |
 | Mark an episode played | phone, TV, watch, tofm | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |
 | Connect ListenBrainz | watch | LISTEN-5 |
-| Link another device | Mac/iOS, Linux, tofm | SIGN-11 |
+| Link another device | Linux, tofm | SIGN-11 |
 | Stream History kept / listed | kept: not on Mac/iOS; listed: only phone and watch | RADIO-5 |
 | Subtitle languages compared as written ("eng" ≠ "en") | Linux | TRACKS-6 |
 | Watched videos offered at the end | tofm (Downloads page only) | CACHE-15 |

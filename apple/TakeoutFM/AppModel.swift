@@ -28,6 +28,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var recentlyPlayed: [PlayedQueue] = []
     /// ETags of the favorite tracks, for ♥ buttons.
     @Published private(set) var favoriteTracks: Set<String> = []
+    /// The server's recommendation sets (LIB-3), from the library index; empty when it has none.
+    @Published private(set) var recommendations: [RecommendationSet] = []
     /// MusicBrainz ids of the favorite artists (the shared `favoriteArtistIds`, LIB-6).
     @Published private(set) var favoriteArtists: Set<String> = []
     /// Track Activity: report plays to the server.
@@ -141,6 +143,9 @@ final class AppModel: ObservableObject {
             },
             WatchKt.watch(flow: core.music.favoriteTrackEtags) { [weak self] etags in
                 self?.favoriteTracks = etags as? Set<String> ?? []
+            },
+            WatchKt.watch(flow: core.video.recommendations()) { [weak self] sets in
+                self?.recommendations = sets as? [RecommendationSet] ?? []
             },
             WatchKt.watch(flow: core.music.favoriteArtistIds) { [weak self] ids in
                 self?.favoriteArtists = ids as? Set<String> ?? []

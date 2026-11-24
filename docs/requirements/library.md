@@ -55,7 +55,7 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
 | LIB-1/2 index | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| LIB-3 recommendation lists | ✅ | ✅ tabs | — | ❌ | ❌ | ❌ |
+| LIB-3 recommendation lists | ✅ | ✅ tabs | — | ✅ rows on Watch (not yet seen: this server has none) | ❌ | ❌ |
 | LIB-4–7 music browsing | ✅ | ✅ | ⚠️ albums, artists, playlists only | ✅ | ✅ | ✅ |
 | LIB-6 favorite artist | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | LIB-8 favorite tracks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |

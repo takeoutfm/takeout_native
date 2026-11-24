@@ -43,7 +43,6 @@ would notice. Fixing one updates its status table in the same commit.
 | Play next / add to queue | TV, watch | PLAY-4 |
 | Previous / next episode buttons in the video player | phone | VIDEO-7 |
 | Playback speed | Mac/iOS | VIDEO-8 |
-| Leave the player when a film ends | Mac/iOS | VIDEO-6 |
 | Back 10 s / ahead 30 s in Now Playing | Linux (watch: only previous, play, next) | PLAY-9 |
 | Playlists: create, add | TV, watch, tofm; Mac/iOS can't add | LIB-13 |
 | Playlists: remove a track, delete | all but the phone; Mac/iOS can delete | LIB-13 |

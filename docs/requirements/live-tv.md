@@ -49,7 +49,7 @@ Server design: the Go project's `CHANNELS.md`. Design: [../design/live-tv.md](..
 | LIVE-7 music under a hidden video | ✅ Media3 plays audio without a surface | ✅ | ✅ VLC the same | ✅ |
 | LIVE-8 behind live, Jump to Live | ✅ | ✅ | ✅ | ✅ |
 | LIVE-8 retunes after sleep or the background | ⚠️ not checked | ⚠️ not checked | ⚠️ on wake (Mac), back from the background (iOS); not yet seen on a real wake | ⚠️ not checked |
-| LIVE-10 track choices | ✅ | ✅ | 🔨 subtitles | ✅ |
+| LIVE-10 track choices | ✅ | ✅ | ✅ | ✅ |
 | LIVE-12 never freezes | ✅ | ✅ | ⚠️ VLCKit's stop is synchronous; no hang seen | ✅ |
 | LIVE-13 picture-in-picture | ✅ | — | ❌ | — |
 

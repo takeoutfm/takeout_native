@@ -118,7 +118,9 @@ files.
   Caching (Settings) keeps a track or episode once it plays to its end, by downloading it.
   Debug builds take `-downloadAlbum al-…`, `-playAlbum al-…` and `-seekNearEnd YES` (jump
   near the first track's end; with `-play_settings.playbackCaching true
-  -play_settings.reportPlays false` it tests caching without changing settings or stats).
+  -play_settings.reportPlays false` it tests caching without changing settings or stats),
+  `-play_settings.cacheLimit 1073741824` (a 1 GB cache for this launch, to see the purge) and
+  `-fakeFreeBytes 1000000000` (a nearly full disk: the warnings, and asking before a movie).
 - Audio assets ask for precise timing: without it AVFoundation seeks FLAC approximately and
   the clock drifts from what's heard.
 - Listens: `AudioPlayer` tells the shared `ListenSession` (`SwiftCalls.listenSession()`)
@@ -139,7 +141,9 @@ files.
   are in `StreamProxy`'s comment. Progress goes through the shared
   `TakeoutProgress` (first save 10 s in, then every 10 s, on pause and on close), so playing
   a title changes your real watch progress. Debug builds take `-playVideo e-57` (and
-  `-noProgress YES` to save nothing) to test playback without the UI.
+  `-noProgress YES` to save nothing; `-seekNearEnd YES` jumps to 5 s before the end) to test
+  playback without the UI. `-subtitleLanguage en` (or `""` for off) stands in for the
+  subtitles picked last, for this launch only.
 - Live (`LiveViews.swift`, `LivePlayer.swift`; only when the library index has `hasGuide`):
   the page is On Now or the Guide (detail panel, day row, a grid of every loaded program that
   fetches the guide in 6-hour windows as it scrolls, `scrollPosition` telling where it is;

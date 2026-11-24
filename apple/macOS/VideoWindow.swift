@@ -18,7 +18,8 @@ struct VideoPlayerView: View {
     let request: VideoPlayRequest
     @EnvironmentObject private var model: AppModel
     @StateObject private var video: VideoPlayerModel
-    @Environment(\.dismissWindow) private var dismissWindow
+    /// Closes this window (`dismissWindow(id:value:)` left it open at a title's end).
+    @Environment(\.dismiss) private var dismiss
     @State private var showControls = true
     @State private var hideTask: Task<Void, Never>?
     @State private var scrubMs: Double?
@@ -58,7 +59,10 @@ struct VideoPlayerView: View {
         .onKeyPress("f") { toggleFullScreen(); return .handled }
         .offerWatchedRemoval(video, cache: model.cache)
         // the title ended (no next episode): the window closes
-        .onChange(of: video.finished) { if video.finished { dismissWindow(id: "video", value: request) } }
+        .onChange(of: video.finished) {
+            // after the Remove Download? alert has gone: closing while it's still up closes it alone
+            if video.finished { DispatchQueue.main.async { dismiss() } }
+        }
         .onAppear {
             model.player.pause()
             video.load(request)

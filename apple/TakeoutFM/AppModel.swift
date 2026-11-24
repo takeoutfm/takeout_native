@@ -169,7 +169,7 @@ final class AppModel: ObservableObject {
         if let album = UserDefaults.standard.string(forKey: "downloadAlbum") {
             Task { [calls, cache] in
                 guard let queue = try? await calls.albumQueue(albumId: album, startIndex: 0) else { return NSLog("No album \(album)") }
-                cache.download(queue.items, group: album, groupTitle: queue.title)
+                cache.download(queue)  // grouped as the Download button groups it
             }
         }
         if let album = UserDefaults.standard.string(forKey: "playAlbum") {

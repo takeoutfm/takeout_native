@@ -34,7 +34,7 @@ choices: [video-tracks.md](video-tracks.md); live channels: [live-tv.md](live-tv
 |---|---|---|---|---|---|
 | VIDEO-1–4 progress, resume | ✅ | ✅ | ✅ | ✅ | ✅ (mpv's IPC) |
 | VIDEO-5 downloads | ✅ | — streams only | ✅ | ✅ | ✅ |
-| VIDEO-6 next episode, leave at end | ✅ | ✅ | ⚠️ next episode; stays at the end | ✅ | ⚠️ mpv's own |
+| VIDEO-6 next episode, leave at end | ✅ | ✅ | ✅ (leaving seen on the Mac) | ✅ | ⚠️ mpv's own |
 | VIDEO-7 previous / next episode buttons | ❌ next plays by itself | ✅ | ✅ | ✅ | — mpv's |
 | VIDEO-8 speed | ✅ Media3's menu | ✅ | ❌ | ✅ | — mpv's |
 | VIDEO-9 full screen / PiP | ✅ PiP | — | ✅ full screen | ✅ full screen | — mpv's |

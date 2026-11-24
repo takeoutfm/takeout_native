@@ -88,14 +88,16 @@ Decisions: [001](../decisions/001-cache-budget.md), [002](../decisions/002-downl
 |---|---|---|---|---|---|---|
 | DL-1–5 | ✅ | ✅ | ✅ | ✅ | ✅ | — streams only |
 | CACHE-1 Playback Caching | ✅ as it streams | ✅ queue ahead | ✅ played to the end | ✅ played to the end | ✅ (shared player) | — |
-| CACHE-3/4 cached vs explicit | ✅ | ✅ | 🔨 | ✅ | ✅ | — |
-| CACHE-5–11 budget and purge | ✅ | 🔨 not run on a watch | 🔨 | ✅ | ✅ | — |
+| CACHE-3/4 cached vs explicit | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| CACHE-5–11 budget and purge | ✅ | 🔨 not run on a watch | ✅ | ✅ | ✅ | — |
 | CACHE-6 partial tracks | ✅ | ✅ | — none | — none | — none | — |
-| CACHE-12 warning | ✅ | ✅ | 🔨 | ✅ | ✅ | — |
-| CACHE-13/14 room for a big download | ✅ | — no video | 🔨 | ✅ | ✅ | — |
-| CACHE-15 watched removal | ✅ | — | 🔨 | ✅ | ⚠️ Downloads page only (videos play in mpv) | — |
-| CACHE-16 settings | ✅ | ✅ (tap steps through sizes) | 🔨 | ✅ | ✅ (Enter steps through sizes) | — |
-| CACHE-17 Downloads page | ✅ | ⚠️ marks and warning; no sizes or order | 🔨 | ✅ | ✅ | — |
+| CACHE-12 warning | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| CACHE-13/14 room for a big download | ✅ | — no video | ✅ asks, or can't fit; clearing the cache first not yet seen | ✅ | ✅ | — |
+| CACHE-15 watched removal | ✅ | — | ✅ Mac; iOS not yet seen | ✅ | ⚠️ Downloads page only (videos play in mpv) | — |
+| CACHE-16 settings | ✅ | ✅ (tap steps through sizes) | ✅ | ✅ | ✅ (Enter steps through sizes) | — |
+| CACHE-17 Downloads page | ✅ | ⚠️ marks and warning; no sizes or order | ✅ | ✅ | ✅ | — |
 
 Known gaps: episodes have no size from the server, so **CACHE-13/14** only checks movies.
-Mac/iOS (🔨) is written but not yet built on a Mac.
+Mac/iOS was checked on the Mac (2026-11-23), the low-space rules with its debug
+`-fakeFreeBytes`. VLC can stop *paused* at a file's end rather than *ended*; the players take
+that as the end, or a watched download was never offered for removal.

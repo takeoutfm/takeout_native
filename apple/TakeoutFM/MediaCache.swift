@@ -284,6 +284,12 @@ final class MediaCache: NSObject, ObservableObject {
         guard let values = try? directory.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey]),
               let total = values.volumeTotalCapacity, let free = values.volumeAvailableCapacityForImportantUsage
         else { return nil }
+        #if DEBUG
+        // For testing a nearly full disk (the warnings, room for a movie): `-fakeFreeBytes 1000000000`.
+        if let fake = UserDefaults.standard.string(forKey: "fakeFreeBytes").flatMap(Int64.init) {
+            return (total: Int64(total), free: fake)
+        }
+        #endif
         return (total: Int64(total), free: free)
     }
 
@@ -394,7 +400,10 @@ extension MediaCache: URLSessionDownloadDelegate {
     }
 }
 
-/** Bytes as "12 MB" / "1.4 GB". */
+/**
+ * Bytes as "12 MB" / "1.4 GB" (CACHE-18), by the shared rule every app uses: Apple's own
+ * formatter counts a GB as 10⁹ bytes, so the 10 GB Auto limit read "10.74 GB" here.
+ */
 func formatBytes(_ bytes: Int64) -> String {
-    ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    BytesKt.formatBytes(bytes: bytes)
 }

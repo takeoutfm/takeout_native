@@ -44,11 +44,11 @@ Decision: [003](../decisions/003-track-choices-by-language.md).
 | TRACKS-2 audio labels | ⚠️ Media3's own menu names them | ✅ | ✅ | ✅ | — mpv's | — |
 | TRACKS-3 subtitle labels | ⚠️ Media3's | ✅ | ⚠️ VLC's names | ✅ | — mpv's | — |
 | TRACKS-5 best audio | ✅ | ✅ | ✅ | ✅ | — mpv picks | — |
-| TRACKS-6 subtitle language | ✅ | ✅ | 🔨 | ✅ | — mpv picks | — |
+| TRACKS-6 subtitle language | ✅ | ✅ | ✅ | ✅ | — mpv picks | — |
 | TRACKS-7 only the viewer's picks | ✅ | ✅ (own pickers) | ✅ | ✅ | — | — |
-| TRACKS-10 saved, both players | ✅ | ✅ | 🔨 | ✅ | — | — |
+| TRACKS-10 saved, both players | ✅ | ✅ | ✅ | ✅ | — | — |
 | TRACKS-11 reopening keeps tracks | — the player follows URLs itself | — | — | ✅ | — | — |
 
 Known gaps: the Linux app compares subtitle languages as the file gives them ("eng" and "en"
 don't match), where the others normalise them; tofm hands video to mpv, which chooses for
-itself. Mac/iOS (🔨) is written but not yet built on a Mac.
+itself.

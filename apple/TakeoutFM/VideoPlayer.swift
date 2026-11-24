@@ -45,6 +45,9 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     @Published private(set) var isBuffering = true
     @Published private(set) var timeMs: Int64 = 0
     @Published private(set) var lengthMs: Int64 = 0
+    #if DEBUG
+    private var seekedNearEnd = false
+    #endif
     @Published private(set) var audioTracks: [MediaTrack] = []
     @Published private(set) var subtitleTracks: [MediaTrack] = []
     @Published private(set) var audioTrack: Int32 = -1
@@ -61,6 +64,8 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
     /** This title's subtitles were set as picked last (once VLC listed them). */
     private var subtitlesChosen = false
     private var hasPlayed = false
+    /// This title's end was handled (`ended`), so a second end event changes nothing.
+    private var endHandled = false
     private var savedAt = Date.distantPast
     private var loading: Task<Void, Never>?
     /// This video's id with the stream proxy, while it's registered.
@@ -88,6 +93,7 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         failure = nil
         finished = false
         hasPlayed = false
+        endHandled = false
         isBuffering = true
         timeMs = 0
         lengthMs = 0
@@ -213,22 +219,34 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
             if !hasPlayed { started() }
         case .paused:
             save()
+            // not on Stopped: loading the next episode stops this one at its end
+            if hasPlayed && player.isAtEnd { ended() }
         case .ended:
-            save()
-            // An episode ends: on to the next one, from its start.
-            if let next = details?.nextEpisodeId {
-                load(VideoPlayRequest(id: next, startOver: true))
-            } else if let etag = details?.etag, let entry = cache.entries[etag], entry.isDone, !entry.isCached {
-                // watched to its end: offered for removal (never removed by itself), then leaves
-                watchedDownload = entry
-            } else {
-                finished = true
-            }
+            ended()
         case .error:
             NSLog("VLC error playing \(details?.id ?? "?")")
             failure = "Couldn't play this."
         default:
             break
+        }
+    }
+
+    /**
+     * The title has played to its end (VLC says Ended, or stops paused at the end, as it did
+     * after a seek near it, which left the player on a stopped picture): once per title.
+     */
+    private func ended() {
+        guard !endHandled else { return }
+        endHandled = true
+        save()
+        // An episode ends: on to the next one, from its start.
+        if let next = details?.nextEpisodeId {
+            load(VideoPlayRequest(id: next, startOver: true))
+        } else if let etag = details?.etag, let entry = cache.entries[etag], entry.isDone, !entry.isCached {
+            // watched to its end: offered for removal (never removed by itself), then leaves
+            watchedDownload = entry
+        } else {
+            finished = true
         }
     }
 
@@ -260,6 +278,14 @@ final class VideoPlayerModel: NSObject, ObservableObject, VLCMediaPlayerDelegate
         // Tracks can appear after the first frames (e.g. subtitles in a later cluster).
         if hasPlayed && !subtitlesChosen { chooseSubtitles() }
         if audioTracks.isEmpty || subtitleTracks.isEmpty { refreshTracks() }
+        #if DEBUG
+        // For testing a title's end without watching it all: `-seekNearEnd YES` (with
+        // `-noProgress YES`, nothing is saved).
+        if UserDefaults.standard.bool(forKey: "seekNearEnd"), !seekedNearEnd, hasPlayed, lengthMs > 20_000, timeMs > 1_000 {
+            seekedNearEnd = true
+            seek(toMs: lengthMs - 5_000)
+        }
+        #endif
         if Date().timeIntervalSince(savedAt) > 10 { save() }
     }
 }
@@ -346,5 +372,13 @@ extension VLCMediaPlayer {
             guard let i = (index as? NSNumber)?.int32Value else { return nil }
             return MediaTrack(index: i, name: name as? String ?? "Track \(i)")
         }
+    }
+}
+
+extension VLCMediaPlayer {
+    /** Within a second of the media's end (VLC can stop there paused, not Ended). */
+    var isAtEnd: Bool {
+        let length = Int64(media?.length.intValue ?? 0)
+        return length > 0 && Int64(time.intValue) >= length - 1_000
     }
 }

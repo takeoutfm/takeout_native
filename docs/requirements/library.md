@@ -18,6 +18,10 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 - **LIB-5** Artists A–Z, by artist type where the server has types.
 - **LIB-6** An artist: Shuffle, Popular and Radio mixes, releases, singles, popular tracks,
   similar artists; favorite the artist.
+- **LIB-16** An artist's **Want List** (`/api/artists/{id}/wantlist`): the official studio albums
+  the library doesn't have (the server's choice: an ASIN and a release country it's set for),
+  each with links to look for it: Amazon and CamelCamelCamel (when there's an ASIN),
+  MusicBrainz, a web search. Reached from the bottom of the artist page.
 - **LIB-7** A release: tracks by disc, play and shuffle, download, similar releases.
 - **LIB-8** Favorites: tracks (♥ on any track), artists, and favorite artists' tracks as a
   queue.
@@ -25,7 +29,8 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 ## Movies and TV
 
 - **LIB-9** Movies and TV shows as poster grids (recently added, new releases, by genre);
-  Continue Watching.
+  Continue Watching, where a screen for movies lists only movies and one for TV shows only
+  episodes.
 - **LIB-10** A title: facts, its whole description (where it's cut short, selecting it shows
   the rest), cast and crew (directors first), Play / Resume / Start over, "N min left",
   related titles; a series' seasons and episodes.
@@ -60,6 +65,7 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-6 favorite artist | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | LIB-8 favorite tracks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LIB-8 favorite artists list | ✅ (the Artists tab's Favorites view) | ✅ | ❌ | ✅ | ✅ | ✅ |
+| LIB-16 Want List | ✅ (bottom of the artist page) | ❌ | — | ❌ | ❌ | ❌ |
 | LIB-9–11 movies and TV | ✅ | ✅ | — no video | ✅ | ✅ | ⚠️ no person pages |
 | LIB-12 search | ✅ | ✅ (movies and shows first, then music) | — deferred (not useful on a watch) | ✅ | ✅ | ✅ |
 | LIB-13 playlists: create, add | ✅ | ✅ (a track's long press) | — deferred (not useful on a watch) | ✅ | ✅ | ✅ (+ on a track) |
@@ -68,4 +74,4 @@ and TV, search, favorites, playlists, activity, and browsing offline. Design:
 | LIB-14 activity | ✅ | ✅ (a music tab) | — deferred (not useful on a watch) | ✅ | ✅ | ✅ |
 | LIB-15 offline browsing | ✅ | — streams, online only | ✅ | ✅ | ✅ | ✅ |
 
-Not done anywhere: the artist page's Want List and Tracks Like This.
+Not done anywhere: the artist page's Tracks Like This.

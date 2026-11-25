@@ -43,7 +43,7 @@ enum class MediaType(@StringRes val title: Int, val subtypes: List<Subtype>) {
         R.string.nav_movies,
         listOf(Subtype.FilmAdded, Subtype.FilmRecent, Subtype.FilmWatched, Subtype.FilmRecommended, Subtype.FilmGenres, Subtype.FilmFavorite),
     ),
-    Tv(R.string.nav_tv_shows, listOf(Subtype.TvAdded, Subtype.TvAll)),
+    Tv(R.string.nav_tv_shows, listOf(Subtype.TvAdded, Subtype.TvWatched, Subtype.TvAll)),
     Podcast(R.string.nav_podcasts, listOf(Subtype.PodcastsAll, Subtype.PodcastsSubscribed)),
 
     /** The channels (only when the server has a guide): what's on now, or the guide grid. */
@@ -60,6 +60,7 @@ enum class Subtype(@StringRes val label: Int) {
     FilmGenres(R.string.film_genres),
     FilmFavorite(R.string.film_favorite),
     TvAdded(R.string.tv_added),
+    TvWatched(R.string.film_watched),
     TvAll(R.string.tv_all),
     PodcastsAll(R.string.podcasts_all),
     PodcastsSubscribed(R.string.podcasts_subscribed),
@@ -163,12 +164,28 @@ class HomeViewModel @Inject constructor(
         Subtype.MusicRecent -> music.newReleases().first().map { it.toTile() }
         Subtype.FilmAdded -> video.recentlyAdded().map { it.toTile() }
         Subtype.FilmRecent -> video.newReleases().map { it.toTile() }
-        Subtype.FilmWatched -> video.continueWatching(ProgressRules.AllTime).map { it.toTile() }
+        // Movies here, episodes under TV Shows (each tab its own kind).
+        Subtype.FilmWatched -> video.continueWatching(ProgressRules.AllTime)
+            .filter { it.id.startsWith(TakeoutVideoRepository.MoviePrefix) }.map { it.toTile() }
         Subtype.FilmRecommended -> video.recommended(0).map { it.toTile() }
         Subtype.FilmGenres -> video.genres().map { Tile("$GenrePrefix${it.id}", it.name, "", "") }
         Subtype.FilmFavorite -> video.favorites().map { it.toTile() }
         Subtype.TvAdded -> video.recentShows().map { it.toTile() }
         Subtype.TvAll -> video.shows().map { it.toTile() }
+        // an episode under its series' poster, "S1E2 Name" below the series name
+        Subtype.TvWatched -> video.continueWatching(ProgressRules.AllTime)
+            .filter { it.id.startsWith(TakeoutVideoRepository.EpisodePrefix) }
+            .map { card ->
+                val series = card.title.substringBefore(" · ", "")
+                Tile(
+                    card.id,
+                    series.ifEmpty { card.title },
+                    card.title.substringAfter(" · ", ""),
+                    card.seriesPosterUri ?: card.posterUri,
+                    poster = true,
+                    progress = card.progress,
+                )
+            }
         Subtype.PodcastsAll -> podcasts.series(subscribedOnly = false).map { Tile(it.id, it.title, it.author, it.imageUri) }
         Subtype.PodcastsSubscribed -> podcasts.series(subscribedOnly = true).map { Tile(it.id, it.title, it.author, it.imageUri) }
         // the Live screens load the guide themselves

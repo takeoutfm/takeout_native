@@ -147,6 +147,14 @@
     <string name="clear_history_question">Clear Recently Played and Stream History on this device?</string>
     <string name="clear">Clear</string>
     <string name="cancel">Cancel</string>
+    <string name="want_list">Want List</string>
+    <string name="want_list_detail">Releases not in your library</string>
+    <string name="want_list_empty">Your library has every release the server knows of.</string>
+    <string name="want_amazon">Amazon</string>
+    <!-- CamelCamelCamel: the release's Amazon price history -->
+    <string name="want_camel">Camel</string>
+    <string name="want_musicbrainz">MusicBrainz</string>
+    <string name="want_search">Search</string>
     <string name="recent_tracks">Recent Tracks</string>
     <string name="activity">Activity</string>
     <string name="activity_recent">Recent</string>

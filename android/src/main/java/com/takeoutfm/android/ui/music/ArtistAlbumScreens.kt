@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -188,6 +191,16 @@ fun ArtistScreen(main: MainViewModel, nav: MusicNav, viewModel: ArtistViewModel 
                 AlbumShelf(stringResource(R.string.singles), details.singles) { nav.openAlbum(it.id) }
                 AlbumShelf(stringResource(R.string.other_releases), details.otherReleases) { nav.openAlbum(it.id) }
                 ArtistShelf(stringResource(R.string.similar_artists), details.similar) { nav.openArtist(it.id) }
+                // the releases the library doesn't have (the server's Want List), last
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.want_list)) },
+                    supportingContent = { Text(stringResource(R.string.want_list_detail)) },
+                    leadingContent = { Icon(Icons.Filled.LibraryAdd, contentDescription = null) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .clickable { nav.openWantList(id, details.artist.name) },
+                )
                 Spacer(Modifier.height(96.dp)) // clear of the play button
             }
         }

@@ -19,6 +19,8 @@ data class VideoCard(
     val backdropUri: String,
     /** Watched fraction 0–1 for Continue Watching; null elsewhere. */
     val progress: Float? = null,
+    /** An episode's series poster (portrait), for grids of posters; null for others. */
+    val seriesPosterUri: String? = null,
 )
 
 @Serializable

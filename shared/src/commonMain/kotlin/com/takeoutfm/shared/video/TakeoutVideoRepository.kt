@@ -429,6 +429,7 @@ class TakeoutVideoRepository(
             description = overview,
             posterUri = still,
             backdropUri = still,
+            seriesPosterUri = series?.posterPath?.takeIf { it.isNotEmpty() }?.let { urls.tmdbImage("w342", it) },
         )
     }
 

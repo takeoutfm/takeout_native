@@ -3,6 +3,7 @@ package com.takeoutfm.shared.api
 import com.takeoutfm.shared.model.ApiAccessCode
 import com.takeoutfm.shared.model.ApiActivityEvents
 import com.takeoutfm.shared.model.ApiArtistView
+import com.takeoutfm.shared.model.ApiWantListView
 import com.takeoutfm.shared.model.ApiCodeCheck
 import com.takeoutfm.shared.model.ApiArtistsView
 import com.takeoutfm.shared.model.ApiFavoriteView
@@ -367,6 +368,10 @@ class TakeoutApi internal constructor(
 
     suspend fun artist(id: Int): ApiArtistView =
         decode(ApiArtistView.serializer(), getText("/api/artists/$id"))
+
+    /** The artist's releases the library doesn't have (the server's Want List). */
+    suspend fun wantList(artistId: Int): ApiWantListView =
+        decode(ApiWantListView.serializer(), getText("/api/artists/$artistId/wantlist"))
 
     suspend fun artistPopular(id: Int): ApiPopularView =
         decode(ApiPopularView.serializer(), getText("/api/artists/$id/popular"))

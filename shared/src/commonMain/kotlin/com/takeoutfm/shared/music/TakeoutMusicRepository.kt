@@ -11,6 +11,7 @@ import com.takeoutfm.shared.model.ApiTrack
 import com.takeoutfm.shared.util.EditedState
 import com.takeoutfm.shared.util.listFlow
 import com.takeoutfm.shared.util.sortedByTitle
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -79,6 +80,13 @@ class TakeoutMusicRepository(
         releases.map { r ->
             FeaturedAlbum(r.toAlbum(), backgrounds[r.artist.lowercase()].orEmpty())
         }
+    }
+
+    /** The artist's releases the library doesn't have, newest first (the server's Want List). */
+    suspend fun wantList(artistId: String): List<WantedRelease> {
+        val view = api.wantList(numericId(artistId, ArtistPrefix))
+        return view.releases.orEmpty().map { r -> r.toWanted(view.artist.name.ifEmpty { r.artist }) }
+            .sortedByDescending { it.year }
     }
 
     suspend fun artistDetails(artistId: String): ArtistDetails = coroutineScope {
@@ -392,6 +400,19 @@ class TakeoutMusicRepository(
         year = year(date.ifEmpty { releaseDate }),
         coverUri = urls.releaseCover(reid, rgid, artwork, frontArtwork, otherArtwork, groupArtwork),
         type = type,
+    )
+
+    private fun ApiRelease.toWanted(artistName: String) = WantedRelease(
+        name = if (disambiguation.isEmpty()) name else "$name ($disambiguation)",
+        artist = artistName,
+        year = year(date.ifEmpty { releaseDate }),
+        type = type,
+        country = country,
+        coverUri = urls.releaseCover(reid, rgid, artwork, frontArtwork, otherArtwork, groupArtwork),
+        amazonUri = if (asin.isEmpty()) "" else "https://www.amazon.com/dp/$asin",
+        camelUri = if (asin.isEmpty()) "" else "https://camelcamelcamel.com/product/$asin",
+        musicBrainzUri = if (rgid.isEmpty()) "" else "https://musicbrainz.org/release-group/$rgid",
+        searchUri = "https://www.google.com/search?q=" + "$name by $artistName".encodeURLParameter(),
     )
 
     private fun ApiTrack.toTrack() = Track(

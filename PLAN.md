@@ -45,6 +45,7 @@ would notice. Fixing one updates its status table in the same commit.
 | Mark an episode played | watch | POD-7 |
 | Subscribe to a podcast; repeat | watch | POD-1, PLAY-5 |
 | Connect ListenBrainz | watch | LISTEN-5 |
+| Want List (an artist's missing albums) | TV, Mac/iOS, Linux, tofm | LIB-16 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
 
@@ -52,7 +53,7 @@ Deferred on the watch, as not useful there: search (LIB-12), editing playlists o
 covers (LIB-13; it lists and plays them) and Activity (LIB-14).
 
 Waiting on the server: custom radio stations (RADIO-7; no `POST /api/radio`, no delete). Not
-done anywhere: the artist page's Want List and Tracks Like This.
+done anywhere: the artist page's Tracks Like This.
 
 ## Testing
 

@@ -40,6 +40,27 @@ data class Album(
     val type: String = "",
 )
 
+/**
+ * A release the library doesn't have, from the artist's Want List: what it is and where to look
+ * for it (the Flutter app's links: Amazon and its price tracker when there's an ASIN, MusicBrainz,
+ * a web search).
+ */
+@Serializable
+data class WantedRelease(
+    val name: String,
+    val artist: String,
+    /** "1969", or "" when unknown. */
+    val year: String,
+    val type: String,
+    val country: String,
+    val coverUri: String,
+    /** Empty when MusicBrainz has no ASIN for it. */
+    val amazonUri: String,
+    val camelUri: String,
+    val musicBrainzUri: String,
+    val searchUri: String,
+)
+
 @Serializable
 data class Track(
     val id: String,

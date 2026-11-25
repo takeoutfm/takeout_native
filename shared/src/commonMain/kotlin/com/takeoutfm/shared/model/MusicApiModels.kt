@@ -43,6 +43,16 @@ data class ApiRelease(
     @SerialName("FrontArtwork") val frontArtwork: Boolean = false,
     @SerialName("OtherArtwork") val otherArtwork: String = "",
     @SerialName("GroupArtwork") val groupArtwork: Boolean = false,
+    /** Amazon's id for the release, when MusicBrainz has one (the want list's shop links). */
+    @SerialName("Asin") val asin: String = "",
+    @SerialName("Country") val country: String = "",
+)
+
+/** /api/artists/{id}/wantlist: the artist's releases the library doesn't have. */
+@Serializable
+data class ApiWantListView(
+    @SerialName("Artist") val artist: ApiArtist = ApiArtist(),
+    @SerialName("Releases") val releases: List<ApiRelease>? = null,
 )
 
 @Serializable

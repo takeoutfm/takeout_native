@@ -60,6 +60,8 @@ class MusicNav(
     val openEpisode: (String, String) -> Unit,
     val openDownloads: () -> Unit,
     val openSearch: () -> Unit,
+    /** An artist's Want List: (artist id, name). */
+    val openWantList: (String, String) -> Unit,
     val back: () -> Unit,
 )
 

@@ -102,8 +102,9 @@ Kirigami.Page {
 
             Image {
                 Layout.alignment: Qt.AlignHCenter
+                // A live station has two more lines under it (LIVE, and what's next).
                 readonly property real side: page.wide
-                    ? Math.min(player.columnWidth, page.height - Kirigami.Units.gridUnit * 14)
+                    ? Math.min(player.columnWidth, page.height - Kirigami.Units.gridUnit * (Player.liveRadio ? 17 : 14))
                     : Math.min(player.columnWidth, page.height / 2.5)
                 Layout.preferredWidth: side
                 Layout.preferredHeight: side
@@ -290,20 +291,23 @@ Kirigami.Page {
                 Layout.fillHeight: true
                 ListView {
                     id: queue
+                    // A live station's schedule from what's on: the tracks it has played are gone.
+                    readonly property int first: Player.liveRadio ? Math.max(0, Player.index) : 0
                     clip: true
-                    model: Player.items
-                    currentIndex: Player.index
-                    Component.onCompleted: positionViewAtIndex(Player.index, ListView.Center)
+                    model: first > 0 ? Player.items.slice(first) : Player.items
+                    currentIndex: Player.index - first
+                    Component.onCompleted: positionViewAtIndex(currentIndex, ListView.Center)
                     delegate: KD.SubtitleDelegate {
                         required property var modelData
                         required property int index
+                        readonly property bool current: index + queue.first === Player.index
                         width: ListView.view.width
                         text: modelData.title
                         subtitle: modelData.artist
-                        highlighted: index === Player.index
-                        icon.name: index === Player.index ? (Player.playing ? "media-playback-playing" : "media-playback-paused") : ""
+                        highlighted: current
+                        icon.name: current ? (Player.playing ? "media-playback-playing" : "media-playback-paused") : ""
                         hoverEnabled: !Player.liveRadio
-                        onClicked: Player.skipTo(index)
+                        onClicked: Player.skipTo(index + queue.first)
                     }
                 }
             }

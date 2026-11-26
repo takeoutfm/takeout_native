@@ -2,7 +2,8 @@ import SwiftUI
 import Shared
 
 /**
- * The queues played on this device, newest first (clicking one resumes it where it was left),
+ * The queues played on this device, newest first (clicking one resumes it where it was left;
+ * a live station tunes in again),
  * then Stream History (RADIO-5): the songs heard on live streams, as the phone lists them.
  */
 struct RecentlyPlayedView: View {
@@ -19,7 +20,7 @@ struct RecentlyPlayedView: View {
                     if !model.recentlyPlayed.isEmpty {
                         Section("Recently Played") {
                             ForEach(model.recentlyPlayed, id: \.id) { entry in
-                                Button { player.play(entry.toQueue()) } label: {
+                                Button { model.play { [calls = model.calls] in try await calls.replayQueue(entry: entry) } } label: {
                                     HStack(spacing: 12) {
                                         Artwork(url: entry.coverUri, symbol: "music.note").frame(width: 44, height: 44)
                                         VStack(alignment: .leading, spacing: 2) {

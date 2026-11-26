@@ -10,6 +10,12 @@ import SwiftUI
  * bar, and wired to the system's Now Playing (Control Center, media keys). It tells the shared
  * ListenSession what plays (which reports listens), follows live streams' ICY titles, keeps
  * Recently Played's place, and saves podcast episodes' positions (synced, keyed by GUID).
+ *
+ * A live station's tracks (items with a `LiveSlot`) follow its schedule (RADIO-8…12), by the
+ * shared `LiveRadio` rules: each track as it starts is checked against the server's clock (more
+ * than 5 s off seeks to where the station is; a stale queue tunes in again) and the next tracks
+ * are fetched and appended; skip, seek and repeat are refused; resuming after a short pause
+ * plays on behind live, a long one tunes in again.
  */
 @MainActor
 final class AudioPlayer: ObservableObject {
@@ -53,6 +59,8 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var artwork: LoadedArtwork?
     /// The live stream's current ICY title ("Artist - Title"), when it sends one.
     @Published private(set) var streamTitle: String?
+    /// A live station playing a delayed copy of itself, after a pause ("Behind live · Jump to live").
+    @Published private(set) var behindLive = false
 
     private let calls: SwiftCalls
     private let cache: MediaCache
@@ -65,11 +73,21 @@ final class AudioPlayer: ObservableObject {
     private var historyId: String?
     private var savedAt = Date.distantPast
     private var episodeSavedAt = Date.distantPast
+    /// Bumped by each new queue (and stop), so a live fetch that comes back late is dropped.
+    private var generation = 0
+    /// When a live station's track was paused, for resuming behind live or jumping (RADIO-12).
+    private var livePausedAt: Date?
+    private var liveFetching = false
     #if DEBUG
     private var seekedNearEnd = false
     #endif
 
     var current: QueueItem? { items.indices.contains(index) ? items[index] : nil }
+
+    /// Where the playing track is on a live station's schedule, or nil.
+    var liveSlot: LiveSlot? { current?.live }
+    /// A live station's track: play / pause only; the queue is the station's schedule.
+    var isLiveRadio: Bool { liveSlot != nil }
 
     /// What's playing: a stream's current song when it names one ("Artist - Title"), else the item's title.
     var displayTitle: String {
@@ -97,6 +115,12 @@ final class AudioPlayer: ObservableObject {
         player.publisher(for: \.timeControlStatus)
             .receive(on: RunLoop.main)
             .sink { [weak self] status in self?.playingChanged(status == .playing) }
+            .store(in: &bag)
+        player.publisher(for: \.timeControlStatus)
+            .map { $0 == .paused }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] paused in self?.pausedChanged(paused) }
             .store(in: &bag)
         // AVFoundation fails quietly: say why an item couldn't be opened or stopped short, and go
         // on with the next (PLAY-12).
@@ -144,6 +168,10 @@ final class AudioPlayer: ObservableObject {
         saveProgress()
         saveEpisode()
         historyId = calls.recordPlayed(queue: queue)
+        generation += 1
+        behindLive = false
+        livePausedAt = nil
+        liveFetching = false
         if repeatMode == .one { repeatMode = savedRepeat }
         var list = queue.items
         var index = start ?? Int(queue.startIndex)
@@ -166,7 +194,7 @@ final class AudioPlayer: ObservableObject {
     }
 
     func next() {
-        guard index + 1 < items.count else { return }
+        guard !isLiveRadio, index + 1 < items.count else { return }
         saveEpisode()
         load(from: index + 1, at: 0)
         player.play()
@@ -175,7 +203,13 @@ final class AudioPlayer: ObservableObject {
     /// Adds [newItems] after the current item, or at the end ([last]); plays them if nothing is queued.
     func enqueue(_ newItems: [QueueItem], last: Bool) {
         guard !newItems.isEmpty else { return }
-        guard !items.isEmpty else {
+        // Nothing queued, or a live station (whose queue is its schedule): play them instead.
+        guard !items.isEmpty, !isLiveRadio else {
+            saveProgress()
+            historyId = nil
+            generation += 1
+            behindLive = false
+            livePausedAt = nil
             items = newItems
             queueTitle = newItems[0].title
             load(from: 0, at: 0)
@@ -193,6 +227,7 @@ final class AudioPlayer: ObservableObject {
     }
 
     func cycleRepeat() {
+        guard !isLiveRadio else { return }
         switch repeatMode {
         case .off: repeatMode = .all
         case .all: repeatMode = .one
@@ -202,13 +237,14 @@ final class AudioPlayer: ObservableObject {
 
     /// Jumps to item [index] of the queue, from its start.
     func skip(to index: Int) {
-        guard items.indices.contains(index), index != self.index else { return }
+        guard !isLiveRadio, items.indices.contains(index), index != self.index else { return }
         saveEpisode()
         load(from: index, at: 0)
         player.play()
     }
 
     func previous() {
+        guard !isLiveRadio else { return }
         if position > 3 || index == 0 {
             player.seek(to: .zero)
         } else {
@@ -219,6 +255,11 @@ final class AudioPlayer: ObservableObject {
     }
 
     func seek(to seconds: Double) {
+        guard !isLiveRadio else { return }
+        seekPlayer(to: seconds)
+    }
+
+    private func seekPlayer(to seconds: Double) {
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
     }
 
@@ -231,6 +272,9 @@ final class AudioPlayer: ObservableObject {
         queue = nil
         index = 0
         historyId = nil
+        generation += 1
+        behindLive = false
+        livePausedAt = nil
         trackChanged()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
@@ -243,8 +287,9 @@ final class AudioPlayer: ObservableObject {
             guard let playerItem = playerItem(item) else { continue }
             player.insert(playerItem, after: nil)
         }
-        if seconds > 0 { seek(to: seconds) }
+        if seconds > 0 { seekPlayer(to: seconds) }
         trackChanged()
+        liveStarted(at: seconds)
     }
 
     private func playerItem(_ item: QueueItem) -> AVPlayerItem? {
@@ -284,7 +329,11 @@ final class AudioPlayer: ObservableObject {
     private func couldNotPlay(_ error: Error?) {
         let title = current.map { "“\($0.title)”" } ?? "this"
         failures.send("Can't play \(title): \(Self.reason(error)).")
-        if index + 1 < items.count { next() }
+        guard index + 1 < items.count else { return }
+        // A live station goes on to the next track too, where the station is by then.
+        saveEpisode()
+        load(from: index + 1, at: 0)
+        player.play()
     }
 
     /** Why AVFoundation couldn't play an item, in words the viewer can act on. */
@@ -335,6 +384,17 @@ final class AudioPlayer: ObservableObject {
             calls.reportProgress(etag: item.etag, positionMs: durationMs, durationMs: durationMs)
         }
         keepIfCaching()
+        if isLiveRadio {
+            guard index + 1 < items.count else {
+                // The schedule ran out (no fetch came back): tune in again.
+                jumpToLive()
+                return
+            }
+            index += 1
+            trackChanged()
+            liveStarted(at: 0)
+            return
+        }
         if repeatMode == .one, current != nil {
             load(from: index, at: 0)
             player.play()
@@ -392,6 +452,22 @@ final class AudioPlayer: ObservableObject {
         }
     }
 
+    /// The player paused or went on: a live station's pause and resume (RADIO-12).
+    private func pausedChanged(_ paused: Bool) {
+        guard let slot = liveSlot else { return }
+        if paused {
+            if livePausedAt == nil { livePausedAt = Date() }
+            return
+        }
+        guard livePausedAt != nil else { return }
+        livePausedAt = nil
+        switch calls.liveResume(slot: slot, positionMs: Int64(position * 1000)) {
+        case .jump: jumpToLive()
+        case .behind: behindLive = true
+        default: break
+        }
+    }
+
     private func playingChanged(_ playing: Bool) {
         isPlaying = playing
         listens.playing(isPlaying: playing, durationMs: durationMs)
@@ -431,10 +507,12 @@ final class AudioPlayer: ObservableObject {
         )
         listens.tick(durationMs: durationMs)
         #if DEBUG
-        // For testing what happens at a track's end without playing it all: `-seekNearEnd YES`.
-        if UserDefaults.standard.bool(forKey: "seekNearEnd"), !seekedNearEnd, duration > 10, position > 1 {
+        // For testing what happens at a track's end without playing it all: `-seekNearEnd YES`
+        // (a live station's track too). 3 s from the end failed the next item on the iPhone
+        // simulator (AVFoundation -12860, as it handed over gaplessly); 10 s leaves room.
+        if UserDefaults.standard.bool(forKey: "seekNearEnd"), !seekedNearEnd, duration > 20, position > 1 {
             seekedNearEnd = true
-            seek(to: duration - 3)
+            seekPlayer(to: duration - 10)
         }
         #endif
         if Date().timeIntervalSince(savedAt) > 5 { saveProgress() }
@@ -462,7 +540,8 @@ final class AudioPlayer: ObservableObject {
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: song?.title ?? item.title,
             MPMediaItemPropertyArtist: song?.artist ?? item.artist,
-            MPMediaItemPropertyAlbumTitle: song == nil ? item.album : item.title,
+            // A live station's track: the station (and show) where the album would be (RADIO-11).
+            MPMediaItemPropertyAlbumTitle: item.live?.label ?? (song == nil ? item.album : item.title),
             MPNowPlayingInfoPropertyIsLiveStream: isLive,
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
@@ -474,12 +553,80 @@ final class AudioPlayer: ObservableObject {
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
+        // A live station's track: play / pause only (RADIO-10).
+        let center = MPRemoteCommandCenter.shared()
+        center.nextTrackCommand.isEnabled = item.live == nil
+        center.previousTrackCommand.isEnabled = item.live == nil
     }
 
     /// An ICY title as artist and title, when it has that form.
     static func split(_ icy: String) -> (artist: String, title: String)? {
         guard let pair = ListenRulesKt.parseStreamTitle(icy: icy) else { return nil }
         return (pair.first as String? ?? "", pair.second as String? ?? "")
+    }
+
+    // ---- Live radio (the shared LiveRadio rules) ----
+
+    /// A live track started [seconds] in: keep to the schedule, then fetch what comes next.
+    private func liveStarted(at seconds: Double) {
+        guard let slot = liveSlot else { return }
+        let move = calls.liveCheck(slot: slot, positionMs: Int64(seconds * 1000), behindLive: behindLive)
+        switch move.step {
+        case .jump:
+            jumpToLive()
+            return
+        case .seek:
+            #if DEBUG
+            NSLog("Live: \(current?.title ?? "") is off the schedule, to \(move.positionMs / 1000) s")
+            #endif
+            seekPlayer(to: Double(move.positionMs) / 1000)
+        default: break
+        }
+        fetchMoreLive()
+    }
+
+    /// Appends the station's next tracks when few are left; each track start asks, and a failure
+    /// waits for the next.
+    private func fetchMoreLive() {
+        guard !liveFetching, LiveRadio.shared.needsMore(left: Int32(items.count - index - 1)) else { return }
+        let queued = items.filter { $0.live != nil }
+        guard !queued.isEmpty else { return }
+        liveFetching = true
+        let generation = self.generation
+        Task {
+            let more = try? await calls.liveMore(queued: queued)
+            guard generation == self.generation else { return }
+            liveFetching = false
+            guard let last = items.last?.live else { return }
+            let fresh = (more ?? []).filter {
+                guard let slot = $0.live else { return false }
+                return slot.stationId == last.stationId && slot.startMs > last.startMs
+            }
+            guard !fresh.isEmpty else { return }
+            #if DEBUG
+            NSLog("Live: \(fresh.count) more on \(last.stationName)")
+            #endif
+            items.append(contentsOf: fresh)
+            for item in fresh {
+                guard let playerItem = playerItem(item) else { continue }
+                player.insert(playerItem, after: nil)
+            }
+        }
+    }
+
+    /// Tunes in to the playing live station again: the track on now, from where it is.
+    func jumpToLive() {
+        guard let slot = liveSlot else { return }
+        let generation = self.generation
+        Task {
+            do {
+                let queue = try await calls.stationQueue(stationId: slot.stationId)
+                guard generation == self.generation else { return }
+                play(queue)
+            } catch {
+                NSLog("Jump to live failed: \(error)")
+            }
+        }
     }
 
     private func remoteCommands() {

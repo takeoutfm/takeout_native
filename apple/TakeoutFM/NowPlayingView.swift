@@ -6,7 +6,8 @@ import Shared
  * artist's background); title, artist and album; the seek bar; previous · −10 s · play/pause ·
  * +30 s · next; repeat, ♥, AirPlay and the queue (a column beside it when the window is wide).
  * Swiping the cover skips. A live stream shows LIVE, the song on air (its ICY title) and
- * play/stop only. On the iPhone it's a card (swiped down, or the chevron, to close); on the Mac
+ * play/stop only. A live station's track shows the station where the album would be, LIVE (or
+ * Behind live · Jump to live), its progress and time left, play / pause, ♥ and what's next. On the iPhone it's a card (swiped down, or the chevron, to close); on the Mac
  * and iPad a sidebar page ([asPage]), where Esc goes back to the page it was opened from.
  */
 struct NowPlayingView: View {
@@ -45,7 +46,7 @@ struct NowPlayingView: View {
                         .shadow(radius: 24, y: 8)
                         // Swipe the cover: left for the next track, right for the previous.
                         .gesture(DragGesture(minimumDistance: 30).onEnded { drag in
-                            guard !player.isLive, abs(drag.translation.width) > abs(drag.translation.height) else { return }
+                            guard !player.isLive, !player.isLiveRadio, abs(drag.translation.width) > abs(drag.translation.height) else { return }
                             if drag.translation.width < -60 { player.next() }
                             if drag.translation.width > 60 { player.previous() }
                         })
@@ -98,10 +99,33 @@ struct NowPlayingView: View {
             // the controls stay put from track to track.
             MarqueeText(text: player.displayTitle, font: .largeTitle.bold())
             Text(player.streamTitle == nil ? item.artist : player.displaySubtitle).font(.title2).lineLimit(1)
-            if !player.isLive && !item.album.isEmpty && item.album != item.artist {
+            if let slot = item.live {
+                Text(slot.label).font(.title3).foregroundStyle(.secondary).lineLimit(1)
+            } else if !player.isLive && !item.album.isEmpty && item.album != item.artist {
                 Text(item.album).font(.title3).foregroundStyle(.secondary).lineLimit(1)
             }
-            if player.isLive {
+            if item.live != nil {
+                LiveRadioState().padding(.top, 16)
+                WithProgress(progress: player.progress) { p in
+                    LiveRadioProgress(position: p.position, duration: p.duration)
+                }
+                .padding(.vertical, 12)
+                HStack {
+                    FavoriteButton(etag: item.etag).font(.title2)
+                    Spacer()
+                    playPause
+                    Spacer()
+                    RoutePicker()
+                    if showQueueButton { queueButton }
+                }
+                if player.items.indices.contains(player.index + 1) {
+                    let next = player.items[player.index + 1]
+                    Text("Next: \(artistTitle(next))")
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .padding(.top, 8)
+                }
+            } else if player.isLive {
                 LiveBadge(playing: player.isPlaying).padding(.vertical, 16)
                 HStack {
                     playPause
@@ -223,4 +247,48 @@ struct LiveBadge: View {
         .padding(.vertical, 4)
         .background(Color(red: 0.83, green: 0.18, blue: 0.18), in: Capsule())
     }
+}
+
+/** LIVE, or "Behind live" with a button to jump to live, as a live station plays (RADIO-12). */
+struct LiveRadioState: View {
+    @EnvironmentObject private var player: AudioPlayer
+
+    var body: some View {
+        if player.behindLive {
+            HStack(spacing: 8) {
+                Text("Behind live").foregroundStyle(.secondary)
+                Button("Jump to live") { player.jumpToLive() }
+            }
+        } else {
+            LiveBadge(playing: player.isPlaying)
+        }
+    }
+}
+
+/** A live track's progress, which can't be dragged, and the time it has left (RADIO-10). */
+struct LiveRadioProgress: View {
+    let position: Double
+    let duration: Double
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            ProgressView(value: min(position, max(duration, 1)), total: max(duration, 1))
+            Text(duration > 0 ? "−" + timeText(max(duration - position, 0)) : "")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/** "Artist – Title", or the title alone. */
+func artistTitle(_ item: QueueItem) -> String {
+    item.artist.isEmpty ? item.title : "\(item.artist) – \(item.title)"
+}
+
+/** "3:05", or "1:02:03". */
+func timeText(_ seconds: Double) -> String {
+    let s = Int(seconds)
+    return s >= 3600
+        ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+        : String(format: "%d:%02d", s / 60, s % 60)
 }

@@ -201,7 +201,7 @@ private struct MiniPlayer: View {
                         .frame(width: 44, height: 44)
                 }
                 .sensoryFeedback(.impact(weight: .light), trigger: presses)
-                if !player.isLive {
+                if !player.isLive && !player.isLiveRadio {
                     Button { player.next() } label: {
                         Image(systemName: "forward.fill").font(.title3).frame(width: 36, height: 44)
                     }

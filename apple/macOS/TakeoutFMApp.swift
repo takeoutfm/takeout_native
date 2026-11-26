@@ -21,12 +21,7 @@ struct TakeoutFMApp: App {
                 Button("Now Playing") { model.showNowPlaying.toggle() }
                     .keyboardShortcut("l", modifiers: .command)
                 Divider()
-                Button("Play/Pause") { model.player.togglePlay() }
-                    .keyboardShortcut(.space, modifiers: [])
-                Button("Next") { model.player.next() }
-                    .keyboardShortcut(.rightArrow, modifiers: .command)
-                Button("Previous") { model.player.previous() }
-                    .keyboardShortcut(.leftArrow, modifiers: .command)
+                PlaybackCommands(player: model.player)
             }
         }
         WindowGroup("Video", id: "video", for: VideoPlayRequest.self) { $request in
@@ -102,5 +97,21 @@ private struct NotRestored: NSViewRepresentable {
             super.viewDidMoveToWindow()
             window?.isRestorable = false
         }
+    }
+}
+
+/** Play/Pause, Next and Previous; a live station's track can't skip (RADIO-10). */
+private struct PlaybackCommands: View {
+    @ObservedObject var player: AudioPlayer
+
+    var body: some View {
+        Button("Play/Pause") { player.togglePlay() }
+            .keyboardShortcut(.space, modifiers: [])
+        Button("Next") { player.next() }
+            .keyboardShortcut(.rightArrow, modifiers: .command)
+            .disabled(player.isLiveRadio)
+        Button("Previous") { player.previous() }
+            .keyboardShortcut(.leftArrow, modifiers: .command)
+            .disabled(player.isLiveRadio)
     }
 }

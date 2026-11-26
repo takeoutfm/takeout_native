@@ -39,12 +39,12 @@ the server's side is `RADIO.md` in the Takeout server (0.32 on).
 
 | Rule | Phone | TV | Watch | Mac/iOS | Linux | tofm |
 |---|---|---|---|---|---|---|
-| RADIO-1 live and streams | ✅ | ✅ (not checked on the TV) | ✅ | ⚠️ no "on now" | ✅ | ✅ |
+| RADIO-1 live and streams | ✅ | ✅ (not checked on the TV) | ✅ | ✅ | ✅ | ✅ |
 | RADIO-2 streams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-3/4 streams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | RADIO-5 Stream History kept | ✅ | ✅ (shared service; recorded since 2026-11-24) | ✅ | ✅ | ✅ | ✅ (shared player) |
 | RADIO-5 Stream History listed | ✅ | ✅ on music Home | ✅ | ✅ under Recently Played | ✅ under Recently Played | ✅ under Recently Played |
-| RADIO-8/9 tune in, follow | ✅ | ✅ (shared service; not checked) | ✅ | ⚠️ tunes in, then six hours as plain tracks | ✅ | ✅ (shared player) |
-| RADIO-10/11 live controls | ✅ | ✅ (not checked on the TV) | ⚠️ no time left or station name (a small screen) | ❌ | ✅ | ✅ |
-| RADIO-12 behind live | ✅ | ✅ (not checked on the TV) | ✅ | ❌ | ✅ | ✅ (L jumps to live) |
+| RADIO-8/9 tune in, follow | ✅ | ✅ (shared service; not checked) | ✅ | ✅ (checked on the iPhone) | ✅ | ✅ (shared player) |
+| RADIO-10/11 live controls | ✅ | ✅ (not checked on the TV) | ⚠️ no time left or station name (a small screen) | ✅ (checked on the iPhone) | ✅ | ✅ |
+| RADIO-12 behind live | ✅ | ✅ (not checked on the TV) | ✅ | ✅ (checked on the iPhone) | ✅ | ✅ (L jumps to live) |
 | RADIO-13 listens, ♥ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |

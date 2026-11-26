@@ -16,14 +16,20 @@ struct MiniPlayerView: View {
                     Text(player.displayTitle).font(.headline).lineLimit(2).multilineTextAlignment(.center)
                     Text(player.displaySubtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
-                if player.isLive {
+                if let slot = item.live {
+                    Text(slot.label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    WithProgress(progress: player.progress) { p in
+                        LiveRadioProgress(position: p.position, duration: p.duration)
+                    }
                     HStack(spacing: 16) {
-                        Text("LIVE")
-                            .font(.caption.bold())
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.red, in: Capsule())
-                            .foregroundStyle(.white)
+                        LiveRadioState()
+                        Button { player.togglePlay() } label: {
+                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").font(.title)
+                        }
+                    }
+                } else if player.isLive {
+                    HStack(spacing: 16) {
+                        LiveTag()
                         Button { player.togglePlay() } label: {
                             Image(systemName: player.isPlaying ? "stop.fill" : "play.fill").font(.title)
                         }

@@ -35,5 +35,13 @@ streamed for them.
   ends, only while visible. `Player` also watches mpv's `metadata/by-key/icy-title` and
   reports `streamSongHeard`; the KDE app lists the songs under Recently Played
   (`RecentPage.qml`) from `Core.streamHistory`.
-- Mac/iOS: no follower yet; `stationQueue` asks for six hours of the schedule, played as plain
-  tracks from the one on now. `AudioPlayer` shows the stream title and records Stream History.
+- Mac/iOS: `AudioPlayer` follows a live track through `SwiftCalls`' `liveCheck`, `liveResume`
+  and `liveMore` (the shared rules): as each track starts it keeps to the schedule (seek or
+  jump to live) and, when two or fewer are left (`LiveRadio.needsMore`), appends the next ones
+  to the AVQueuePlayer; it refuses skip, seek and repeat and turns off the system's next and
+  previous; `behindLive` and `jumpToLive()` for the views. Now Playing, the bars and the Mac's
+  menu bar player show LIVE or Behind live / Jump to live, the time left and what's next; the
+  queue is "Up next on <station>" with start times. `RadioView` shows what's on each live
+  station (`LiveStationTile`), fetching `radioNow` again when the first track ends while
+  shown; Recently Played replays through `replayQueue`. It also shows a stream's title and
+  records Stream History.

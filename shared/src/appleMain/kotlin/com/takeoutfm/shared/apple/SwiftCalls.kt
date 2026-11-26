@@ -1,6 +1,5 @@
 package com.takeoutfm.shared.apple
 
-import kotlin.time.Duration.Companion.hours
 import kotlin.coroutines.cancellation.CancellationException
 import com.takeoutfm.shared.offline.RoomPlan
 import com.takeoutfm.shared.offline.CachePolicy
@@ -21,11 +20,16 @@ import com.takeoutfm.shared.music.ArtistDetails
 import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.ActivityInterval
 import com.takeoutfm.shared.music.ActivityStats
+import com.takeoutfm.shared.music.LiveRadio
+import com.takeoutfm.shared.music.LiveSlot
+import com.takeoutfm.shared.music.LiveStart
 import com.takeoutfm.shared.music.MusicFavorites
 import com.takeoutfm.shared.music.MusicPlaylist
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.MusicSearchResults
 import com.takeoutfm.shared.music.PlayedQueue
+import com.takeoutfm.shared.music.QueueItem
+import com.takeoutfm.shared.music.RadioNow
 import com.takeoutfm.shared.music.StationGroup
 import com.takeoutfm.shared.music.Track
 import com.takeoutfm.shared.model.ApiOffset
@@ -41,6 +45,7 @@ import com.takeoutfm.shared.video.VideoCard
 import com.takeoutfm.shared.video.VideoDetails
 import com.takeoutfm.shared.video.VideoSearchResults
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 /**
@@ -106,13 +111,41 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun radio(): List<StationGroup> = core.music.radio()
 
+    /** A station: a live one tuned in (the track on now, from where it is), else its stream. */
     @Throws(Throwable::class)
-    /**
-     * A station; a live one as its next six hours of schedule, since the Mac's player doesn't
-     * follow the schedule yet (it plays them as plain tracks, from the one on now).
-     */
-    suspend fun stationQueue(stationId: String): MusicQueue =
-        core.music.stationQueue(stationId, window = 6.hours)
+    suspend fun stationQueue(stationId: String): MusicQueue = core.music.stationQueue(stationId)
+
+    /** What's on each live station now (RADIO-1). */
+    @Throws(Throwable::class)
+    suspend fun radioNow(): RadioNow = core.music.radioNow()
+
+    /** Replaying Recently Played [entry]: a live station tunes in again. */
+    @Throws(Throwable::class)
+    suspend fun replayQueue(entry: PlayedQueue): MusicQueue = core.music.replayQueue(entry)
+
+    /** The live station's tracks after [queued]'s last one, to append (RADIO-9). */
+    @Throws(Throwable::class)
+    suspend fun liveMore(queued: List<QueueItem>): List<QueueItem> = core.music.liveMore(queued)
+
+    /** As live [slot] starts playing at [positionMs]: what the player does (`LiveRadio.check`). */
+    fun liveCheck(slot: LiveSlot, positionMs: Long, behindLive: Boolean): LiveMove =
+        when (val start = LiveRadio.check(slot, positionMs, nowMs(), behindLive)) {
+            LiveStart.AsIs -> LiveMove(LiveStep.AsIs)
+            is LiveStart.SeekTo -> LiveMove(LiveStep.Seek, start.positionMs)
+            LiveStart.JumpToLive -> LiveMove(LiveStep.Jump)
+        }
+
+    /** Resuming live [slot] at [positionMs] after a pause: live, behind live, or jump (RADIO-12). */
+    fun liveResume(slot: LiveSlot, positionMs: Long): LiveStep {
+        val behind = LiveRadio.behindMs(slot, positionMs, nowMs())
+        return when {
+            behind <= LiveRadio.DriftMs -> LiveStep.AsIs
+            LiveRadio.keepBehind(slot, positionMs, behind) -> LiveStep.Behind
+            else -> LiveStep.Jump
+        }
+    }
+
+    private fun nowMs() = Clock.System.now().toEpochMilliseconds()
 
     @Throws(Throwable::class)
     suspend fun playlists(): List<MusicPlaylist> = core.music.playlists()
@@ -373,3 +406,9 @@ class SwiftCalls(private val core: TakeoutCore) {
     @Throws(Throwable::class)
     suspend fun tune(channel: String): LiveTune = core.liveGuide.get().tuneLive(channel)
 }
+
+/** What the Swift player does next on a live station. */
+enum class LiveStep { AsIs, Seek, Jump, Behind }
+
+/** A [LiveStep], with where to seek to for [LiveStep.Seek]. */
+class LiveMove(val step: LiveStep, val positionMs: Long = 0)

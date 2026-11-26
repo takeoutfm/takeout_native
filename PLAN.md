@@ -46,7 +46,6 @@ would notice. Fixing one updates its status table in the same commit.
 | Connect ListenBrainz | watch | LISTEN-5 |
 | Want List (an artist's missing albums) | TV, Mac/iOS, Linux, tofm | LIB-16 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
-| Live radio's controls, what's on, behind live | Mac/iOS (it doesn't follow the schedule) | RADIO-1, RADIO-10–12 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
 
 Deferred on the watch, as not useful there: search (LIB-12), editing playlists or showing them as

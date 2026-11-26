@@ -153,6 +153,7 @@ class MainViewModel @Inject constructor(
 
     fun togglePlay() = player.playPause()
     fun next() = player.next()
+    fun jumpToLive() = player.jumpToLive()
     fun previous() = player.previous()
     fun seekBy(deltaMs: Long) = player.seekBy(deltaMs)
     fun seekTo(positionMs: Long) = player.seekTo(positionMs)
@@ -193,7 +194,7 @@ class MainViewModel @Inject constructor(
 
     /** Replays a Recently Played queue where it was left. */
     fun playRecent(entryId: String) = play {
-        history.find(entryId)?.toQueue() ?: throw IllegalStateException("Gone from history")
+        history.find(entryId)?.let { music.replayQueue(it) } ?: throw IllegalStateException("Gone from history")
     }
 
     /** Plays the track after the current one ([last]: at the end of the queue). */

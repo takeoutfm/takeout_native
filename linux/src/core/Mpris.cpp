@@ -22,6 +22,22 @@ QString serviceName(const MprisIdentity &identity)
 }
 }
 
+namespace {
+// A live station's track can't be skipped or sought.
+bool canGoNext(const Player *p) { return !p->liveRadio() && p->index() + 1 < p->items().size(); }
+bool canSeek(const Player *p) { return !p->live() && !p->liveRadio() && p->duration() > 0; }
+
+/** The album, or a live track's station (and show): "Jazz FM · Jazz at Night". */
+QString liveLabel(const QVariantMap &item)
+{
+    const QVariantMap live = item.value("live").toMap();
+    if (live.isEmpty()) return item.value("album").toString();
+    const QString show = live.value("show").toString();
+    return show.isEmpty() ? live.value("stationName").toString()
+                          : live.value("stationName").toString() + QStringLiteral(" · ") + show;
+}
+}
+
 Mpris::Mpris(Player *player, const MprisIdentity &identity, QObject *parent)
     : QObject(parent)
     , m_player(player)
@@ -34,15 +50,16 @@ Mpris::Mpris(Player *player, const MprisIdentity &identity, QObject *parent)
     if (!bus.registerService(serviceName(identity))) qWarning() << "MPRIS: can't take" << serviceName(identity);
 
     connect(player, &Player::currentChanged, this, [this] {
-        changed({{"Metadata", metadata()}, {"CanGoNext", m_player->index() + 1 < m_player->items().size()}});
+        changed({{"Metadata", metadata()}, {"CanGoNext", canGoNext(m_player)},
+                 {"CanSeek", canSeek(m_player)}});
     });
     connect(player, &Player::durationChanged, this, [this] {
-        changed({{"Metadata", metadata()}, {"CanSeek", !m_player->live() && m_player->duration() > 0}});
+        changed({{"Metadata", metadata()}, {"CanSeek", canSeek(m_player)}});
     });
     connect(player, &Player::itemsChanged, this, [this] {
         const bool any = m_player->hasQueue();
         changed({{"CanPlay", any}, {"CanPause", any}, {"CanGoPrevious", any},
-                 {"CanGoNext", m_player->index() + 1 < m_player->items().size()},
+                 {"CanGoNext", canGoNext(m_player)},
                  {"PlaybackStatus", playbackStatus()}});
     });
     connect(player, &Player::playingChanged, this, [this] { changed({{"PlaybackStatus", playbackStatus()}}); });
@@ -75,7 +92,7 @@ QVariantMap Mpris::metadata() const
         {"mpris:trackid", QVariant::fromValue(trackId(m_player->index()))},
         {"xesam:title", m_player->displayTitle()},
         {"xesam:artist", QStringList{song ? song->first : item.value("artist").toString()}},
-        {"xesam:album", song ? item.value("title").toString() : item.value("album").toString()},
+        {"xesam:album", song ? item.value("title").toString() : liveLabel(item)},
     };
     if (m_player->duration() > 0) data.insert("mpris:length", micros(m_player->duration()));
     const QString art = item.value("imageUri").toString();
@@ -126,8 +143,7 @@ qlonglong MprisPlayer::position() const { return micros(m_mpris->player()->posit
 
 bool MprisPlayer::canGoNext() const
 {
-    const Player *p = m_mpris->player();
-    return p->index() + 1 < p->items().size();
+    return ::canGoNext(m_mpris->player());
 }
 
 bool MprisPlayer::hasQueue() const { return m_mpris->player()->hasQueue(); }
@@ -135,7 +151,7 @@ bool MprisPlayer::hasQueue() const { return m_mpris->player()->hasQueue(); }
 bool MprisPlayer::canSeek() const
 {
     const Player *p = m_mpris->player();
-    return !p->live() && p->duration() > 0;
+    return ::canSeek(p);
 }
 
 void MprisPlayer::Next() { m_mpris->player()->next(); }

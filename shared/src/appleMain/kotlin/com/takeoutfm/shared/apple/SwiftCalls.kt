@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.apple
 
+import kotlin.time.Duration.Companion.hours
 import kotlin.coroutines.cancellation.CancellationException
 import com.takeoutfm.shared.offline.RoomPlan
 import com.takeoutfm.shared.offline.CachePolicy
@@ -106,7 +107,12 @@ class SwiftCalls(private val core: TakeoutCore) {
     suspend fun radio(): List<StationGroup> = core.music.radio()
 
     @Throws(Throwable::class)
-    suspend fun stationQueue(stationId: String): MusicQueue = core.music.stationQueue(stationId)
+    /**
+     * A station; a live one as its next six hours of schedule, since the Mac's player doesn't
+     * follow the schedule yet (it plays them as plain tracks, from the one on now).
+     */
+    suspend fun stationQueue(stationId: String): MusicQueue =
+        core.music.stationQueue(stationId, window = 6.hours)
 
     @Throws(Throwable::class)
     suspend fun playlists(): List<MusicPlaylist> = core.music.playlists()

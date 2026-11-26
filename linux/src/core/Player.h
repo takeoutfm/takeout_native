@@ -28,6 +28,10 @@ class Player : public QObject
     Q_PROPERTY(QString streamTitle READ streamTitle NOTIFY currentChanged)
     Q_PROPERTY(QString displayTitle READ displayTitle NOTIFY currentChanged)
     Q_PROPERTY(QString displaySubtitle READ displaySubtitle NOTIFY currentChanged)
+    /** A live station's track: play / pause only; the queue is the station's schedule. */
+    Q_PROPERTY(bool liveRadio READ liveRadio NOTIFY currentChanged)
+    /** A live station playing behind live, after a pause ("Behind live · Jump to live"). */
+    Q_PROPERTY(bool behindLive READ behindLive NOTIFY behindLiveChanged)
     Q_PROPERTY(RepeatMode repeatMode READ repeatMode WRITE setRepeatMode NOTIFY repeatModeChanged)
 
 public:
@@ -54,6 +58,8 @@ public:
     Q_INVOKABLE void seek(double seconds);
     Q_INVOKABLE void cycleRepeat();
     Q_INVOKABLE void stop();
+    /** Tunes in to the playing live station again, at what's on now. */
+    Q_INVOKABLE void jumpToLive();
 
     QVariantList items() const { return m_items; }
     QString queueTitle() const { return m_queueTitle; }
@@ -67,6 +73,8 @@ public:
     QString streamTitle() const { return m_streamTitle; }
     QString displayTitle() const;
     QString displaySubtitle() const;
+    bool liveRadio() const;
+    bool behindLive() const { return m_behindLive; }
     RepeatMode repeatMode() const { return m_repeat; }
     void setRepeatMode(RepeatMode mode);
 
@@ -80,6 +88,7 @@ Q_SIGNALS:
     void positionChanged();
     void durationChanged();
     void repeatModeChanged();
+    void behindLiveChanged();
     /** A jump (not playback moving on), for MPRIS's Seeked. */
     void seeked();
     /**
@@ -106,6 +115,11 @@ private:
     /** Off or All, as kept in the settings' repeatAll; a new player and a new queue start with it. */
     RepeatMode savedRepeat() const;
     void restoreRepeat();
+    /** A live track started at [seconds] in: keep to the schedule and fetch what comes next. */
+    void liveStarted(double seconds);
+    void livePaused(bool paused);
+    void fetchMoreLive();
+    void setBehindLive(bool behind);
 
     TakeoutCore *m_core;
     mpv_handle *m_mpv = nullptr;
@@ -131,6 +145,11 @@ private:
     RepeatMode m_repeat = RepeatOff;
     /** The saved mode has been applied (settings arrive from the core after start). */
     bool m_repeatRestored = false;
+
+    bool m_behindLive = false;
+    /** When a live track was paused (ms since epoch), or 0. */
+    qint64 m_livePausedAt = 0;
+    bool m_liveFetching = false;
 
     QElapsedTimer m_savedAt;
     QElapsedTimer m_episodeSavedAt;

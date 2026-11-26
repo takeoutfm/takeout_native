@@ -69,6 +69,8 @@ private:
         std::function<void()> mark;
         /** An artist's ♥ row: its title follows the shared favorite artists (this arid). */
         QString favoriteArtist;
+        /** A station's row ("st-<id>"): a live one shows what's on. */
+        QString stationId;
     };
 
     /** A page of rows: a sidebar section, or what it opened (an artist, an album). */
@@ -170,6 +172,8 @@ private:
     /** Shows playlist [id] again, as it is now (after an edit). */
     void reloadPlaylist(const QVariant &id, const QString &name);
     PagePtr radioPage();
+    /** Fills the Radio page's live stations with what's on, and again as tracks end. */
+    void radioNow(const std::weak_ptr<Page> &page);
     PagePtr podcastsPage();
     PagePtr podcastPage(const QVariantMap &series);
     PagePtr videoListPage(const QString &title, const QString &call);

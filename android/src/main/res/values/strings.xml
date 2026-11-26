@@ -59,13 +59,12 @@
     <string name="no_recent">Queues you play show up here.</string>
 
     <!-- Radio -->
-    <string name="radio_genres">Genres</string>
-    <string name="radio_decades">Decades</string>
+    <string name="radio_live">Live</string>
     <string name="radio_streams">Streams</string>
-    <string name="radio_artists">Artists</string>
-    <string name="radio_similar">Similar</string>
-    <string name="radio_series">Series</string>
-    <string name="radio_other">More Stations</string>
+    <string name="behind_live">Behind live</string>
+    <string name="jump_to_live">Jump to live</string>
+    <string name="up_next_on">Up next on %1$s</string>
+    <string name="next_on_air">Next: %1$s</string>
     <string name="show_all">Show all (%1$d)</string>
     <string name="show_less">Show less</string>
 

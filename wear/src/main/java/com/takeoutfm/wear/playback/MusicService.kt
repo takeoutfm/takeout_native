@@ -11,6 +11,7 @@ import com.takeoutfm.media.offline.TakeoutMediaCache
 import com.takeoutfm.shared.listen.ListenReporter
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.StreamHistory
+import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.progress.TakeoutProgress
 import com.takeoutfm.shared.settings.PlaySettings
 import com.takeoutfm.wear.BuildConfig
@@ -28,6 +29,10 @@ class MusicService : TakeoutMusicService() {
     @Inject public override lateinit var progress: TakeoutProgress
     @Inject public override lateinit var mediaCache: TakeoutMediaCache
     @Inject lateinit var settings: PlaySettings
+
+    /** Live stations' schedules, followed as they play. */
+    @Inject lateinit var musicRepository: TakeoutMusicRepository
+    override val radio get() = musicRepository
     override val repeatSetting get() = settings
     @Inject lateinit var streamingNetwork: StreamingNetwork
     override val sessionActivity = MainActivity::class.java

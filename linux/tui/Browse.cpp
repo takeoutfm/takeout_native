@@ -550,9 +550,13 @@ Element Tofm::renderBrowse()
     else if (Page *page = currentPage()) content = renderPage(*page, pageHeight());
     else content = text("");
 
-    Elements hints = {keyHint("⏎", "open/play"), keyHint("/", "find"), keyHint("␣", "pause"), keyHint("<>", "skip"),
-                      keyHint("[]", "seek"), keyHint("a/n", "queue"), keyHint("f", "♥"), keyHint("r", "repeat"),
-                      keyHint("p", "playing"), keyHint("?", "help"), keyHint("q", "quit")};
+    // A live station can't be skipped, sought or repeated; it can be rejoined.
+    Elements hints = m_player->liveRadio()
+        ? Elements{keyHint("⏎", "open/play"), keyHint("/", "find"), keyHint("␣", "pause"), keyHint("L", "jump to live"),
+                   keyHint("a/n", "queue"), keyHint("f", "♥"), keyHint("p", "playing"), keyHint("?", "help"), keyHint("q", "quit")}
+        : Elements{keyHint("⏎", "open/play"), keyHint("/", "find"), keyHint("␣", "pause"), keyHint("<>", "skip"),
+                   keyHint("[]", "seek"), keyHint("a/n", "queue"), keyHint("f", "♥"), keyHint("r", "repeat"),
+                   keyHint("p", "playing"), keyHint("?", "help"), keyHint("q", "quit")};
 
     return vbox({
         hbox({renderSidebar() | size(WIDTH, EQUAL, SidebarWidth), separator(), content | flex}) | flex,

@@ -129,6 +129,7 @@ class WatchViewModel @Inject constructor(
 
     fun togglePlay() = player.playPause()
     fun next() = player.next()
+    fun jumpToLive() = player.jumpToLive()
     fun previous() = player.previous()
 
     fun play(load: suspend () -> MusicQueue) {

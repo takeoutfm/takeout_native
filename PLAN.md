@@ -17,8 +17,7 @@ The phase-by-phase log of how each app was built (2026-10-25 to 2026-11-14) is i
 3. **Native UI and playback** on each platform, with its system integration.
 4. **The apps behave the same**: the requirements apply to every app, and their status
    tables show where one falls short.
-5. **No server changes needed**, except where a feature is waiting on the server (custom
-   stations).
+5. **No server changes needed**, except where a feature is waiting on the server.
 
 ## Where each app stands
 
@@ -47,13 +46,13 @@ would notice. Fixing one updates its status table in the same commit.
 | Connect ListenBrainz | watch | LISTEN-5 |
 | Want List (an artist's missing albums) | TV, Mac/iOS, Linux, tofm | LIB-16 |
 | Sizes and order on the Downloads page | watch | CACHE-17 |
+| Live radio's controls, what's on, behind live | Mac/iOS (it doesn't follow the schedule) | RADIO-1, RADIO-10–12 |
 | Picture-in-picture for video and live TV | iOS (waits for VLCKit 4, still alpha; the Mac floats on top instead) | VIDEO-9, LIVE-13 |
 
 Deferred on the watch, as not useful there: search (LIB-12), editing playlists or showing them as
 covers (LIB-13; it lists and plays them) and Activity (LIB-14).
 
-Waiting on the server: custom radio stations (RADIO-7; no `POST /api/radio`, no delete). Not
-done anywhere: the artist page's Tracks Like This.
+Not done anywhere: the artist page's Tracks Like This.
 
 ## Testing
 

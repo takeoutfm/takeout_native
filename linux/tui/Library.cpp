@@ -7,8 +7,12 @@
 #include "TakeoutCore.h"
 #include "Text.h"
 
+#include <QDateTime>
 #include <QFileInfo>
 #include <QProcess>
+#include <QTimer>
+
+#include <algorithm>
 
 namespace {
 QString joined(const QStringList &parts, const QString &separator = QStringLiteral(" · "))
@@ -39,12 +43,8 @@ QStringList wrap(const QString &text, int width = 76)
 
 QString stationHeading(const QString &kind)
 {
+    if (kind == "Live") return QStringLiteral("Live");
     if (kind == "Stream") return QStringLiteral("Streams");
-    if (kind == "Genre") return QStringLiteral("Genres");
-    if (kind == "Period") return QStringLiteral("Decades");
-    if (kind == "Artist") return QStringLiteral("Artist radio");
-    if (kind == "Similar") return QStringLiteral("Similar");
-    if (kind == "Series") return QStringLiteral("Series");
     return QStringLiteral("More");
 }
 }
@@ -283,6 +283,7 @@ Tofm::Row Tofm::stationRow(const QVariantMap &station)
     row.title = station.value("name").toString();
     row.detail = station.value("description").toString();
     const QString id = station.value("id").toString();
+    row.stationId = id;
     row.activate = [this, id] { playCall(QStringLiteral("stationQueue"), {{"stationId", id}}); };
     return row;
 }
@@ -291,7 +292,8 @@ Tofm::PagePtr Tofm::radioPage()
 {
     auto page = std::make_shared<Page>();
     page->title = QStringLiteral("Radio");
-    load(page, QStringLiteral("radio"), {}, [this](Page &page, const QVariant &result) {
+    std::weak_ptr<Page> weak = page;
+    load(page, QStringLiteral("radio"), {}, [this, weak](Page &page, const QVariant &result) {
         for (const QVariant &value : result.toList()) {
             const QVariantMap group = value.toMap();
             const QVariantList stations = group.value("stations").toList();
@@ -300,8 +302,41 @@ Tofm::PagePtr Tofm::radioPage()
             for (const QVariant &station : stations) page.rows.push_back(stationRow(station.toMap()));
         }
         if (page.rows.empty()) page.error = QStringLiteral("No stations.");
+        radioNow(weak);
     });
     return page;
+}
+
+void Tofm::radioNow(const std::weak_ptr<Page> &weak)
+{
+    m_core->call(QStringLiteral("radioNow"), {}, [this, weak](const QVariant &result, const QVariant &) {
+        const PagePtr page = weak.lock();
+        if (!page) return; // navigated away
+        const QVariantMap now = result.toMap();
+        const QVariantMap stations = now.value("stations").toMap();
+        // Each live station's row: what's on ("Artist – Title"), with the show while one is on.
+        for (Row &row : page->rows) {
+            const QVariantMap on = stations.value(row.stationId).toMap();
+            if (on.isEmpty()) continue;
+            const QVariantMap track = on.value("track").toMap();
+            const QString show = on.value("show").toMap().value("name").toString();
+            const QString artist = track.value("artist").toString();
+            const QString line = artist.isEmpty() ? track.value("title").toString()
+                                                  : artist + QStringLiteral(" – ") + track.value("title").toString();
+            row.detail = show.isEmpty() ? line : show + QStringLiteral(" · ") + line;
+        }
+        redraw();
+        // Again when the first of those tracks ends (a minute on after a failure), for as long
+        // as the page is kept; only asked while it's the one on screen.
+        const qint64 at = now.value("refreshAtMs").toLongLong();
+        const qint64 wait = at > 0 ? at - QDateTime::currentMSecsSinceEpoch() + 500 : 60000;
+        QTimer::singleShot(int(std::clamp<qint64>(wait, 2000, 600000)), m_core, [this, weak] {
+            const PagePtr page = weak.lock();
+            if (!page) return;
+            if (currentPage() == page.get()) radioNow(weak);
+            else QTimer::singleShot(60000, m_core, [this, weak] { radioNow(weak); });
+        });
+    });
 }
 
 // ---- Podcasts ----

@@ -1,8 +1,7 @@
 # The Takeout server API, as the apps use it
 
 Every call goes through `:shared` `api/TakeoutApi` (Ktor); paths are on the signed-in server.
-The server is a separate Go project; the apps need no changes to it (custom stations are
-waiting on one: there's no `POST /api/radio`).
+The server is a separate Go project; the apps need no changes to it. Live radio needs 0.32.
 
 ## Auth
 
@@ -31,7 +30,8 @@ signed-in server (`TakeoutSession.mediaAuthorization`).
 |---|---|
 | `GET /api/artists`, `/api/artists/{id}`, `/api/artists/{id}/popular` | Artists, an artist page, popular tracks |
 | `GET /api/releases/{id}` | A release page |
-| `GET /api/radio` | Stations by type |
+| `GET /api/radio` | Stations: `Live` and `Stream` |
+| `GET /api/radio/schedule`, `/api/radio/{id}/schedule` | What's on live stations (`start`, `end`; default now + 30 min), with the server's `Time` |
 | `GET /api/playlists`; `POST /api/playlists`; `DELETE /api/playlists/{id}`; `PATCH /api/playlists/{id}/playlist` | Playlists: list, create, delete, add or remove a track (JSON patch) |
 | `GET …/playlist` | A queue as a spiff playlist: `/api/releases/{id}/playlist`, `/api/artists/{id}/{shuffle,popular,radio}/playlist`, `/api/radio/{id}/playlist`, `/api/playlists/{id}/playlist`, `/api/tracks/{id}/playlist` (a track and similar ones), `/api/favorite/tracks/playlist` |
 | `PATCH /api/playlist` | The user's server-side current playlist (the phone's voice requests only) |

@@ -24,6 +24,7 @@ import com.takeoutfm.shared.model.ApiPodcastSeriesView
 import com.takeoutfm.shared.model.ApiPodcastsView
 import com.takeoutfm.shared.model.ApiPopularView
 import com.takeoutfm.shared.model.ApiProfileView
+import com.takeoutfm.shared.model.ApiRadioSchedule
 import com.takeoutfm.shared.model.ApiRadioView
 import com.takeoutfm.shared.model.ApiRefreshTokens
 import com.takeoutfm.shared.model.ApiReleaseView
@@ -379,9 +380,23 @@ class TakeoutApi internal constructor(
     suspend fun release(id: Int): ApiReleaseView =
         decode(ApiReleaseView.serializer(), getText("/api/releases/$id"))
 
-    /** The user's radio stations, grouped by kind. */
+    /** Radio stations, live and stream. */
     suspend fun radio(): ApiRadioView =
         decode(ApiRadioView.serializer(), getText("/api/radio"))
+
+    /**
+     * What's on live stations from [start] (default now) to [end] (default start + 30 minutes):
+     * every station's, or only station [stationId]'s (an [HttpException] 404 when it's a stream
+     * or not on the air). Never kept: it's about now.
+     */
+    suspend fun radioSchedule(stationId: Int? = null, start: Instant? = null, end: Instant? = null): ApiRadioSchedule {
+        val query = listOfNotNull(
+            start?.let { "start=${it.toString().encodeURLParameter()}" },
+            end?.let { "end=${it.toString().encodeURLParameter()}" },
+        ).joinToString("&")
+        val path = if (stationId == null) "/api/radio/schedule" else "/api/radio/$stationId/schedule"
+        return decode(ApiRadioSchedule.serializer(), authed(if (query.isEmpty()) path else "$path?$query"))
+    }
 
     /** The user's playlists (names and track counts). */
     suspend fun playlists(): ApiPlaylistsView =

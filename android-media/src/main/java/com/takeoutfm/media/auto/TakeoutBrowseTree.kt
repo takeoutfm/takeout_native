@@ -11,7 +11,6 @@ import com.takeoutfm.shared.music.Artist
 import com.takeoutfm.shared.music.ArtistMix
 import com.takeoutfm.shared.music.MusicHistory
 import com.takeoutfm.shared.music.MusicQueue
-import com.takeoutfm.shared.music.StationKind
 import com.takeoutfm.shared.music.TakeoutMusicRepository
 import com.takeoutfm.shared.podcast.EpisodeProgress
 import com.takeoutfm.shared.podcast.TakeoutPodcastRepository
@@ -66,7 +65,6 @@ class TakeoutBrowseTree(
         parentId == New -> music.newReleases().first().map(::albumItem)
         parentId == Added -> music.recentlyAdded().first().map(::albumItem)
         parentId == Radio -> music.radio()
-            .sortedBy { it.kind != StationKind.Stream }
             .flatMap { it.stations }
             .map { playable("${PlayPrefix}station:${it.id}", it.name, it.description, it.imageUri) }
         parentId == Playlists -> music.playlists().map {
@@ -121,7 +119,7 @@ class TakeoutBrowseTree(
         if (!mediaId.startsWith(PlayPrefix)) return null
         val (kind, rest) = mediaId.removePrefix(PlayPrefix).split(":", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
         return when (kind) {
-            "recent" -> history.find(rest)?.toQueue()
+            "recent" -> history.find(rest)?.let { music.replayQueue(it) }
             "album" -> music.albumQueue(rest)
             "station" -> music.stationQueue(rest)
             "playlist" -> music.playlistQueue(rest)

@@ -18,6 +18,8 @@ QQC2.ToolBar {
     // Podcast episodes' etag is their GUID, not a track's.
     readonly property bool isTrack: (item.etag ?? "") !== "" && !(item.podcast ?? false)
     readonly property bool favorite: Core.favoriteTracks.includes(item.etag ?? "")
+    /** A stream or a live station's track: play / pause and LIVE, nothing to skip or seek. */
+    readonly property bool onAir: Player.live || Player.liveRadio
 
     position: QQC2.ToolBar.Footer
     // Hidden, it takes no room.
@@ -88,17 +90,23 @@ QQC2.ToolBar {
             onClicked: Core.call("setTrackFavorite", {etag: bar.item.etag, favorite: !bar.favorite})
         }
 
-        // A live stream: play / stop and LIVE.
+        // A live stream: play / stop and LIVE; a live station: play / pause and LIVE, or behind it.
         BarButton {
-            visible: Player.live
-            icon.name: Player.playing ? "media-playback-stop" : "media-playback-start"
+            visible: bar.onAir
+            icon.name: Player.playing ? (Player.live ? "media-playback-stop" : "media-playback-pause") : "media-playback-start"
             icon.width: Kirigami.Units.iconSizes.medium
             icon.height: Kirigami.Units.iconSizes.medium
-            text: Player.playing ? KI18n.i18n("Stop") : KI18n.i18n("Play")
+            text: Player.playing ? (Player.live ? KI18n.i18n("Stop") : KI18n.i18n("Pause")) : KI18n.i18n("Play")
             onClicked: Player.togglePlay()
         }
+        QQC2.Button {
+            visible: Player.liveRadio && Player.behindLive
+            flat: true
+            text: KI18n.i18n("Jump to live")
+            onClicked: Player.jumpToLive()
+        }
         QQC2.Label {
-            visible: Player.live
+            visible: bar.onAir && !Player.behindLive
             text: KI18n.i18n("LIVE")
             color: Kirigami.Theme.negativeTextColor
             font.weight: Font.Bold
@@ -107,17 +115,30 @@ QQC2.ToolBar {
             rightPadding: Kirigami.Units.smallSpacing
             background: Rectangle { color: Kirigami.Theme.negativeBackgroundColor; radius: height / 2 }
         }
+        QQC2.ProgressBar {
+            visible: Player.liveRadio
+            Layout.fillWidth: true
+            from: 0
+            to: Math.max(Player.duration, 1)
+            value: Player.position
+        }
+        QQC2.Label {
+            visible: Player.liveRadio
+            text: Player.duration > 0 ? "−" + bar.time(Player.duration - Player.position) : ""
+            font.features: {"tnum": 1}
+            opacity: 0.7
+        }
         Item { visible: Player.live; Layout.fillWidth: true }
 
         // Anything else: previous / play / next and where it is.
         BarButton {
-            visible: !Player.live
+            visible: !bar.onAir
             icon.name: "media-skip-backward"
             text: KI18n.i18n("Previous")
             onClicked: Player.previous()
         }
         BarButton {
-            visible: !Player.live
+            visible: !bar.onAir
             icon.name: Player.playing ? "media-playback-pause" : "media-playback-start"
             icon.width: Kirigami.Units.iconSizes.medium
             icon.height: Kirigami.Units.iconSizes.medium
@@ -125,7 +146,7 @@ QQC2.ToolBar {
             onClicked: Player.togglePlay()
         }
         BarButton {
-            visible: !Player.live
+            visible: !bar.onAir
             icon.name: "media-skip-forward"
             text: KI18n.i18n("Next")
             enabled: Player.index + 1 < Player.items.length
@@ -133,7 +154,7 @@ QQC2.ToolBar {
         }
         QQC2.Slider {
             id: seek
-            visible: !Player.live
+            visible: !bar.onAir
             Layout.fillWidth: true
             from: 0
             to: Math.max(Player.duration, 1)
@@ -142,7 +163,7 @@ QQC2.ToolBar {
             onPressedChanged: if (!pressed) Player.seek(value)
         }
         QQC2.Label {
-            visible: !Player.live
+            visible: !bar.onAir
             text: bar.time(seek.pressed ? seek.value : Player.position) + " / " + bar.time(Player.duration)
             font.features: {"tnum": 1}
             opacity: 0.7

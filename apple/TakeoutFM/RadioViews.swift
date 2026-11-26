@@ -26,12 +26,8 @@ struct RadioView: View {
 
     private func title(_ kind: StationKind) -> String {
         switch kind {
+        case .live: return "Live"
         case .stream: return "Streams"
-        case .genre: return "Genres"
-        case .period: return "Decades"
-        case .artist: return "Artists"
-        case .similar: return "Similar"
-        case .series: return "Series"
         default: return "Other"
         }
     }

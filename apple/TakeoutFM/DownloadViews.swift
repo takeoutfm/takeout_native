@@ -174,7 +174,7 @@ struct DownloadsView: View {
         guard let start = playable.firstIndex(of: entry) else { return }
         let items = playable.map {
             QueueItem(title: $0.title, artist: $0.artist, album: $0.album, imageUri: $0.imageUri,
-                      backgroundUri: "", uri: $0.location, etag: $0.etag, podcast: $0.podcast)
+                      backgroundUri: "", uri: $0.location, etag: $0.etag, podcast: $0.podcast, live: nil)
         }
         player.play(MusicQueue(title: group.title, creator: "", imageUri: items.first?.imageUri ?? "",
                                items: items, startIndex: 0, startPositionMs: 0, location: ""),

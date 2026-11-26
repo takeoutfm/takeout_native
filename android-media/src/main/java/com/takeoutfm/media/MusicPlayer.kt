@@ -11,10 +11,12 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.takeoutfm.shared.api.TakeoutSession
+import com.takeoutfm.shared.music.LiveSlot
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.music.MusicHistory
@@ -53,8 +55,13 @@ data class NowPlaying(
     val isLive: Boolean = false,
     /** What a live stream says is playing now (its ICY metadata), or null. */
     val streamTitle: String? = null,
+    /** A live station plays behind live, after a pause ("Behind live · Jump to live"). */
+    val behindLive: Boolean = false,
 ) {
     val current: QueueItem? get() = items.getOrNull(index)
+
+    /** A live station's track is playing: play / pause only, and the station's next tracks. */
+    val liveRadio: Boolean get() = current?.live != null
 
     /** The current item's ETag and the next one's (which the player may already read ahead). */
     val loadedEtags: Set<String> get() = listOfNotNull(current, items.getOrNull(index + 1)).map { it.etag }.filter { it.isNotEmpty() }.toSet()
@@ -145,6 +152,9 @@ class MusicPlayer(
 
     fun next() = withController { it.seekToNextMediaItem() }
 
+    /** Tunes in to the live station that's playing again, at what's on now. */
+    fun jumpToLive() = withController { it.sendCustomCommand(SessionCommand(JumpToLiveAction, Bundle.EMPTY), Bundle.EMPTY) }
+
     fun seekTo(positionMs: Long) = withController { it.seekTo(positionMs.coerceAtLeast(0)) }
 
     /** Connects to the music service, so [state] shows what's already playing in the background. */
@@ -206,7 +216,13 @@ class MusicPlayer(
         controller?.takeIf { it.isConnected }?.let { return it }
         val token = SessionToken(context, ComponentName(context, service))
         val c = try {
-            MediaController.Builder(context, token).buildAsync().await()
+            MediaController.Builder(context, token)
+                .setListener(object : MediaController.Listener {
+                    override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
+                        _state.value = _state.value.copy(behindLive = extras.getBoolean(BehindLiveKey))
+                    }
+                })
+                .buildAsync().await()
         } catch (e: Exception) {
             return null
         }
@@ -222,6 +238,7 @@ class MusicPlayer(
             }
         })
         controller = c
+        _state.value = _state.value.copy(behindLive = c.sessionExtras.getBoolean(BehindLiveKey))
         update(c)
         c
     }
@@ -267,7 +284,8 @@ internal fun QueueItem.toMediaItem(historyId: String? = null): MediaItem =
             MediaMetadata.Builder()
                 .setTitle(title)
                 .setArtist(artist)
-                .setAlbumTitle(album)
+                // A live track: the station (and show) where the album goes (RADIO-11).
+                .setAlbumTitle(live?.label ?: album)
                 .setArtworkUri(imageUri.ifEmpty { null }?.let(Uri::parse))
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                 .setExtras(
@@ -275,6 +293,7 @@ internal fun QueueItem.toMediaItem(historyId: String? = null): MediaItem =
                         putString(BackgroundKey, backgroundUri)
                         putBoolean(PodcastKey, podcast)
                         historyId?.let { putString(HistoryKey, it) }
+                        live?.let { putBundle(LiveKey, it.toBundle()); putString(AlbumKey, album) }
                     }
                 )
                 .build()
@@ -298,15 +317,42 @@ internal val MediaItem.isPodcast: Boolean get() = mediaMetadata.extras?.getBoole
 /** A live stream's current "now playing" text in [MediaMetadata.extras]. */
 internal const val StreamTitleKey = "takeout.streamTitle"
 
+/** A live track's [LiveSlot] in [MediaMetadata.extras], and its album (the station shows instead). */
+private const val LiveKey = "takeout.live"
+private const val AlbumKey = "takeout.album"
+
+private fun LiveSlot.toBundle() = Bundle().apply {
+    putString("stationId", stationId)
+    putString("stationName", stationName)
+    putString("show", show)
+    putLong("startMs", startMs)
+    putLong("endMs", endMs)
+    putLong("skewMs", skewMs)
+}
+
+/** Where a live radio track is in its station's schedule; null for anything else. */
+internal val MediaItem.liveSlot: LiveSlot?
+    get() = mediaMetadata.extras?.getBundle(LiveKey)?.let {
+        LiveSlot(
+            stationId = it.getString("stationId").orEmpty(),
+            stationName = it.getString("stationName").orEmpty(),
+            show = it.getString("show").orEmpty(),
+            startMs = it.getLong("startMs"),
+            endMs = it.getLong("endMs"),
+            skewMs = it.getLong("skewMs"),
+        )
+    }
+
 internal fun MediaItem.toQueueItem(): QueueItem = QueueItem(
     title = mediaMetadata.title?.toString().orEmpty(),
     artist = mediaMetadata.artist?.toString().orEmpty(),
-    album = mediaMetadata.albumTitle?.toString().orEmpty(),
+    album = mediaMetadata.extras?.getString(AlbumKey) ?: mediaMetadata.albumTitle?.toString().orEmpty(),
     imageUri = mediaMetadata.artworkUri?.toString().orEmpty(),
     backgroundUri = mediaMetadata.extras?.getString(BackgroundKey).orEmpty(),
     uri = requestMetadata.mediaUri?.toString().orEmpty(),
     etag = mediaId,
     podcast = isPodcast,
+    live = liveSlot,
 )
 
 private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { cont ->

@@ -92,13 +92,18 @@ data class ActivityStats(
     val tracks: List<Counted<Track>> = emptyList(),
 )
 
-/** A radio station ("st-<id>"): a server-made mix (genre, decade, artist…) or a live stream. */
+/**
+ * A radio station ("st-<id>"): a live station, scheduled from the library, or an internet radio
+ * stream.
+ */
 @Serializable
 data class Station(
     val id: String,
     val name: String,
     val description: String,
     val imageUri: String,
+    /** A live station: tuning in plays the track on now, mid-song, and follows the schedule. */
+    val live: Boolean = false,
 )
 
 /** Stations of one kind, as a titled row on the Radio tab. */
@@ -109,7 +114,7 @@ data class StationGroup(
 )
 
 @Serializable
-enum class StationKind { Stream, Genre, Period, Artist, Similar, Series, Other }
+enum class StationKind { Live, Stream }
 
 /** One of the user's playlists ("pl-<id>"). */
 @Serializable
@@ -178,7 +183,32 @@ data class QueueItem(
     val etag: String,
     /** A podcast episode: its position is saved as progress, and it isn't a listen. */
     val podcast: Boolean = false,
+    /** A track scheduled on a live station: where it is in the schedule. Null otherwise. */
+    val live: LiveSlot? = null,
 )
+
+/**
+ * Where a [QueueItem] is on a live station's schedule. The player follows the schedule with it:
+ * no skipping or seeking, the next tracks fetched as these play, and back to live after a long
+ * pause (see `LiveRadio.kt`).
+ */
+@Serializable
+data class LiveSlot(
+    /** The station ("st-<id>"). */
+    val stationId: String,
+    val stationName: String,
+    /** The show this track is part of, or "". */
+    val show: String = "",
+    /** When it's on, server time in epoch ms. */
+    val startMs: Long,
+    val endMs: Long,
+    /** The server's clock minus the device's when this was fetched, so now = device + skew. */
+    val skewMs: Long = 0,
+) {
+    /** "Jazz FM", or "Jazz FM · Jazz at Night" while a show is on. */
+    val label: String get() = if (show.isEmpty()) stationName else "$stationName · $show"
+    val lengthMs: Long get() = endMs - startMs
+}
 
 /** What a "play this" request returns: a titled list of tracks and where to start. */
 @Serializable

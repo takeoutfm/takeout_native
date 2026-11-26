@@ -103,6 +103,9 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music_artist">Artist</string>
     <string name="music_queue">Queue</string>
     <string name="music_live">LIVE</string>
+    <string name="music_behind_live">Behind live</string>
+    <string name="music_jump_to_live">Jump to live</string>
+    <string name="music_up_next_on">Up next on %1$s</string>
     <string name="music_new_release">New release</string>
     <string name="music_stop">Stop</string>
     <string name="music_settings">Music</string>
@@ -129,13 +132,8 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="music_no_stations">No radio stations.</string>
     <string name="music_favorite">Favorite</string>
     <string name="music_add_favorite">Add to favorites</string>
-    <string name="radio_genre">Genres</string>
-    <string name="radio_period">Decades</string>
-    <string name="radio_artist">Artists</string>
-    <string name="radio_similar">Similar</string>
-    <string name="radio_series">Series</string>
-    <string name="radio_other">More Stations</string>
-    <string name="radio_stream">Live Radio</string>
+    <string name="radio_live">Live</string>
+    <string name="radio_stream">Streams</string>
     <string name="music_repeat">Repeat</string>
     <string name="music_now_playing">Now playing</string>
     <string name="music_disc">Disc %1$d</string>

@@ -185,7 +185,8 @@ Element Tofm::renderHelp()
     });
     Element right = vbox({
         group("Playing", {{"space", "play / pause"}, {"< >", "previous / next"}, {"[ ]", "back 10 s / ahead 30 s"},
-                          {"r", "repeat: off, all, one"}, {"p", "Now Playing and the queue"}}),
+                          {"r", "repeat: off, all, one"}, {"L", "jump to live (live radio)"},
+                          {"p", "Now Playing and the queue"}}),
         group("tofm", {{"?", "this help"}, {"S", "sign out"}, {"q", "quit"}}),
         group("Also", {{"playerctl", "-p tofm play-pause, next…"}, {"Videos", "open in mpv"}}),
     });

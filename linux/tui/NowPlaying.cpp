@@ -13,6 +13,15 @@ using namespace ftxui;
 namespace {
 /** Columns [text] takes, counting each character as one (titles are mostly Latin). */
 int textColumns(const QString &text) { return int(text.toUcs4().size()); }
+
+/** A live station's track: "Jazz FM", or "Jazz FM · Jazz at Night" while a show is on. */
+QString liveLabel(const QVariantMap &item)
+{
+    const QVariantMap live = item.value("live").toMap();
+    const QString show = live.value("show").toString();
+    return show.isEmpty() ? live.value("stationName").toString()
+                          : live.value("stationName").toString() + QStringLiteral(" · ") + show;
+}
 }
 
 QString Tofm::marquee(const QString &text, int width) const
@@ -42,7 +51,8 @@ Element Tofm::renderBar()
     const QVariantMap item = m_player->current();
     const QString etag = item.value("etag").toString();
     const bool favorite = !etag.isEmpty() && m_core->favoriteTracks().contains(etag);
-    const QString repeat = m_player->repeatMode() == Player::RepeatOne ? QStringLiteral("↻1")
+    const QString repeat = m_player->liveRadio() ? QString()
+        : m_player->repeatMode() == Player::RepeatOne ? QStringLiteral("↻1")
         : m_player->repeatMode() == Player::RepeatAll ? QStringLiteral("↻ ") : QString();
     const QString subtitle = m_player->displaySubtitle();
 
@@ -61,6 +71,18 @@ Element Tofm::renderBar()
     Element line2;
     if (m_player->live()) {
         line2 = hbox({text(" ● LIVE") | color(Color::Red) | bold, filler()});
+    } else if (m_player->liveRadio()) {
+        // A live station: LIVE or behind it, the track's progress and the time it has left.
+        const double duration = m_player->duration();
+        const double position = m_player->position();
+        Element state = m_player->behindLive()
+            ? hbox({text(" Behind live") | dim, text(" (L: jump to live) ") | dim})
+            : text(" ● LIVE ") | color(Color::Red) | bold;
+        line2 = hbox({
+            state,
+            gauge(duration > 0 ? float(position / duration) : 0.f) | flex | color(Color::Cyan),
+            text(" −" + str(clock(qint64(std::max(0.0, duration - position)))) + " "),
+        });
     } else {
         const double duration = m_player->duration();
         const double position = m_player->position();
@@ -107,9 +129,12 @@ Element Tofm::renderNowPlaying(int height)
     Elements column = {
         text(" " + str(marquee(m_player->displayTitle(), columnWidth - 1))) | bold,
         text(" " + str(m_player->displaySubtitle())),
-        text(" " + str(m_player->live() ? QString() : item.value("album").toString())) | dim,
+        text(" " + str(m_player->live() ? QString() : m_player->liveRadio() ? liveLabel(item) : item.value("album").toString())) | dim,
         text(""),
-        hbox({text(" Queue") | bold, text(QStringLiteral("  %1 of %2").arg(m_player->index() + 1).arg(items.size()).toStdString()) | dim}),
+        // A live station's queue is its schedule.
+        m_player->liveRadio()
+            ? text(" Up next on " + str(item.value("live").toMap().value("stationName").toString())) | bold
+            : hbox({text(" Queue") | bold, text(QStringLiteral("  %1 of %2").arg(m_player->index() + 1).arg(items.size()).toStdString()) | dim}),
     };
     const int rows = std::max(1, height - int(column.size()));
     m_queueSelected = std::clamp(m_queueSelected, 0, std::max(0, int(items.size()) - 1));
@@ -144,7 +169,8 @@ bool Tofm::onPlayerKey(const Event &event)
     else if (event == Event::Character('<')) m_player->previous();
     else if (event == Event::Character('[')) m_player->seek(m_player->position() - 10);
     else if (event == Event::Character(']')) m_player->seek(m_player->position() + 30);
-    else if (event == Event::Character('r')) m_player->cycleRepeat();
+    else if (event == Event::Character('r') && !m_player->liveRadio()) m_player->cycleRepeat();
+    else if (event == Event::Character('L')) m_player->jumpToLive();
     else if (event == Event::Character('p')) {
         m_nowPlaying = !m_nowPlaying;
         m_sidebarFocused = false;

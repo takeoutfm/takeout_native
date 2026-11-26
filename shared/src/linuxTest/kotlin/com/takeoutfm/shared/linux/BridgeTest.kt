@@ -85,7 +85,7 @@ class BridgeTest {
         val radio = call("radio")
         assertNull(radio.error)
         assertEquals(
-            """[{"kind":"Stream","stations":[{"id":"st-3","name":"KEXP","description":"Seattle","imageUri":""}]}]""",
+            """[{"kind":"Stream","stations":[{"id":"st-3","name":"KEXP","description":"Seattle","imageUri":"","live":false}]}]""",
             radio.result,
         )
 

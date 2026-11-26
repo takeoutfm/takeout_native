@@ -30,6 +30,7 @@ AppPage {
 
     /** "Beck · 13 tracks", or just the count when the creator is the title. */
     function detail(entry) {
+        if (entry.items[0]?.live) return KI18n.i18n("Live radio")
         const n = entry.items.length
         const tracks = KI18n.i18np("1 track", "%1 tracks", n)
         return entry.creator && entry.creator !== entry.title ? `${entry.creator} · ${tracks}` : tracks
@@ -89,7 +90,11 @@ AppPage {
             text: queue ? entry.title : song.song
             // song: artist · station
             subtitle: queue ? page.detail(entry) : [song.artist, song.station].filter(s => s).join(" · ")
-            onClicked: if (queue) Player.play(page.toQueue(entry))
+            // A live station tunes in again, to what's on now.
+            onClicked: if (queue) {
+                if (entry.items[0]?.live) applicationWindow().playCall("replayQueue", {id: entry.id})
+                else Player.play(page.toQueue(entry))
+            }
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing

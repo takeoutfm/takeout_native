@@ -80,6 +80,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     /** Favorite tracks for the system controls' ♥ button; null for no button. */
     protected open val music: TakeoutMusicRepository? = null
 
+    /** Where a live station's schedule comes from, to follow it ([LiveFollower]); null not to. */
+    protected open val radio: TakeoutMusicRepository? get() = music
+
     /** Where Repeat All is kept between queues and restarts; null to start each player with repeat off. */
     protected open val repeatSetting: RepeatSetting? = null
 
@@ -98,6 +101,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private var historyProgress: HistoryProgress? = null
     private var savedRepeat: SavedRepeat? = null
     private var playedDownloads: PlayedDownloads? = null
+    private var liveFollower: LiveFollower? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @OptIn(UnstableApi::class)
@@ -132,6 +136,11 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         }
         progress?.let { podcastProgress = PodcastProgress(player, it).also { p -> p.attach() } }
         repeatSetting?.let { savedRepeat = SavedRepeat(player, it).also { r -> r.attach() } }
+        radio?.let { repository ->
+            liveFollower = LiveFollower(player, repository, scope) { behind ->
+                session?.sessionExtras = Bundle().apply { putBoolean(BehindLiveKey, behind) }
+            }.also { it.attach() }
+        }
 
         // Opening the session from the system's now-playing controls returns to the app.
         val openApp = PendingIntent.getActivity(
@@ -168,6 +177,8 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         playedDownloads = null
         savedRepeat?.detach()
         savedRepeat = null
+        liveFollower?.detach()
+        liveFollower = null
         listenTracker = null
         session?.run {
             player.release()
@@ -226,11 +237,12 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private val seekForward = SessionCommand(SeekForwardAction, Bundle.EMPTY)
     private val toggleFavorite = SessionCommand(FavoriteAction, Bundle.EMPTY)
     private val cycleRepeat = SessionCommand(RepeatAction, Bundle.EMPTY)
+    private val jumpToLive = SessionCommand(JumpToLiveAction, Bundle.EMPTY)
 
     /**
      * The system controls' extra buttons (the notification, Android Auto): back 10 s and
      * forward 30 s in place of previous / next for podcast episodes; ♥ (with [music]) and repeat
-     * for tracks; none for live streams.
+     * for tracks; only ♥ for a live station's track; none for live streams.
      */
     private fun mediaButtons(player: Player): List<CommandButton> {
         val item = player.currentMediaItem ?: return emptyList()
@@ -248,15 +260,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                     .build(),
             )
             item.mediaId.isEmpty() -> emptyList()
+            item.liveSlot != null -> listOfNotNull(favoriteButton(item))
             else -> listOfNotNull(
-                music?.let {
-                    val favorite = item.mediaId in it.favoriteTrackEtags.value
-                    CommandButton.Builder(if (favorite) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
-                        .setSessionCommand(toggleFavorite)
-                        .setDisplayName(getString(if (favorite) R.string.unfavorite else R.string.favorite))
-                        .setSlots(CommandButton.SLOT_OVERFLOW)
-                        .build()
-                },
+                favoriteButton(item),
                 CommandButton.Builder(
                     when (player.repeatMode) {
                         Player.REPEAT_MODE_ONE -> CommandButton.ICON_REPEAT_ONE
@@ -280,28 +286,63 @@ abstract class TakeoutMusicService : MediaLibraryService() {
         }
     }
 
+    private fun favoriteButton(item: MediaItem): CommandButton? = music?.let {
+        val favorite = item.mediaId in it.favoriteTrackEtags.value
+        CommandButton.Builder(if (favorite) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+            .setSessionCommand(toggleFavorite)
+            .setDisplayName(getString(if (favorite) R.string.unfavorite else R.string.favorite))
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build()
+    }
+
     private val sessionCommands: SessionCommands =
         MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             .add(seekBack)
             .add(seekForward)
             .add(toggleFavorite)
             .add(cycleRepeat)
+            .add(jumpToLive)
             .build()
 
-    /** Without previous / next for a podcast episode, so its seek buttons take their places. */
-    private fun playerCommands(podcast: Boolean): Player.Commands =
-        if (!podcast) {
-            MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
-        } else {
-            MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
-                .removeAll(
-                    Player.COMMAND_SEEK_TO_PREVIOUS,
-                    Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
-                    Player.COMMAND_SEEK_TO_NEXT,
-                    Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
-                )
-                .build()
+    /** What the system controls offer for what's playing. */
+    private enum class Controls { Tracks, Podcast, Live }
+
+    private val Player.controls: Controls
+        get() = when {
+            currentMediaItem?.isPodcast == true -> Controls.Podcast
+            currentMediaItem?.liveSlot != null -> Controls.Live
+            else -> Controls.Tracks
         }
+
+    /**
+     * Without previous / next for a podcast episode, so its seek buttons take their places; and
+     * only play / pause for a live station's track (RADIO-10): no skipping, no seek bar.
+     */
+    private fun playerCommands(controls: Controls): Player.Commands = when (controls) {
+        Controls.Tracks -> MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+        Controls.Podcast -> MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+            .removeAll(
+                Player.COMMAND_SEEK_TO_PREVIOUS,
+                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                Player.COMMAND_SEEK_TO_NEXT,
+                Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+            )
+            .build()
+        Controls.Live -> MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+            .removeAll(
+                Player.COMMAND_SEEK_TO_PREVIOUS,
+                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                Player.COMMAND_SEEK_TO_NEXT,
+                Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_BACK,
+                Player.COMMAND_SEEK_FORWARD,
+                Player.COMMAND_SEEK_TO_MEDIA_ITEM,
+                Player.COMMAND_SET_REPEAT_MODE,
+                Player.COMMAND_SET_SHUFFLE_MODE,
+            )
+            .build()
+    }
 
     /**
      * The system's controls (the notification, which the platform session and so Android Auto
@@ -311,14 +352,12 @@ abstract class TakeoutMusicService : MediaLibraryService() {
     private fun MediaSession.followsPodcastButtons(controller: MediaSession.ControllerInfo) =
         isMediaNotificationController(controller) || controller.packageName != packageName
 
-    private val Player.playingPodcast: Boolean get() = currentMediaItem?.isPodcast == true
-
     /**
      * Keeps [mediaButtons] current as the playing item, the repeat mode or the favorites change,
      * and switches previous / next off for the system controls while a podcast plays.
      */
     private inner class SessionButtons(private val session: MediaSession) : Player.Listener {
-        private var podcast = false
+        private var controls = Controls.Tracks
 
         init {
             music?.let { music ->
@@ -334,9 +373,9 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                     Player.EVENT_REPEAT_MODE_CHANGED,
                 )
             ) return
-            val now = player.playingPodcast
-            if (now != podcast) {
-                podcast = now
+            val now = player.controls
+            if (now != controls) {
+                controls = now
                 session.connectedControllers.filter { session.followsPodcastButtons(it) }.forEach {
                     session.setAvailableCommands(it, sessionCommands, playerCommands(now))
                 }
@@ -361,10 +400,10 @@ abstract class TakeoutMusicService : MediaLibraryService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
-            val podcast = session.player.playingPodcast
+            val controls = session.player.controls
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(sessionCommands)
-                .apply { if (session.followsPodcastButtons(controller)) setAvailablePlayerCommands(playerCommands(podcast)) }
+                .apply { if (session.followsPodcastButtons(controller)) setAvailablePlayerCommands(playerCommands(controls)) }
                 .setMediaButtonPreferences(mediaButtons(session.player))
                 .build()
         }
@@ -390,6 +429,7 @@ abstract class TakeoutMusicService : MediaLibraryService() {
                     Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
                     else -> Player.REPEAT_MODE_OFF
                 }
+                JumpToLiveAction -> liveFollower?.jumpToLive()
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -502,3 +542,9 @@ private const val SeekBackAction = "takeout.SEEK_BACK"
 private const val SeekForwardAction = "takeout.SEEK_FORWARD"
 private const val FavoriteAction = "takeout.FAVORITE"
 private const val RepeatAction = "takeout.REPEAT"
+
+/** Tunes in to the playing live station again (the app's "Jump to live"). */
+internal const val JumpToLiveAction = "takeout.JUMP_TO_LIVE"
+
+/** True in the session's extras while a live station plays behind live. */
+internal const val BehindLiveKey = "takeout.behindLive"

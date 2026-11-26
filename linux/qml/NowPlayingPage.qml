@@ -20,6 +20,10 @@ Kirigami.Page {
     readonly property bool isTrack: etag.length > 0 && !(item.podcast ?? false)
     readonly property bool favorite: Core.favoriteTracks.includes(etag)
     readonly property bool wide: width > Kirigami.Units.gridUnit * 40
+    /** A live station's track: its station (and show), and the next on its schedule. */
+    readonly property var live: item.live ?? null
+    readonly property string liveLabel: live ? (live.show ? `${live.stationName} · ${live.show}` : live.stationName) : ""
+    readonly property var nextLive: live ? (Player.items[Player.index + 1] ?? null) : null
 
     // The artist's background photo behind it all, as the Mac's and the phone's: faded and
     // only lightly blurred, so it keeps its detail and the text over it stays readable.
@@ -62,6 +66,7 @@ Kirigami.Page {
             onTriggered: Core.call("setTrackFavorite", {etag: page.etag, favorite: !page.favorite})
         },
         Kirigami.Action {
+            visible: !Player.liveRadio
             text: [KI18n.i18n("Repeat: off"), KI18n.i18n("Repeat: all"), KI18n.i18n("Repeat: one")][Player.repeatMode]
             icon.name: Player.repeatMode === Player.RepeatOne ? "media-repeat-single" : "media-repeat-all"
             checkable: true
@@ -125,15 +130,56 @@ Kirigami.Page {
                 Layout.fillWidth: true
                 // A stream's song shows the station above; a track its album.
                 visible: Player.streamTitle.length === 0 && text.length > 0
-                text: page.item.album ?? ""
+                text: page.live ? page.liveLabel : (page.item.album ?? "")
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 opacity: 0.6
             }
 
+            // A live station: LIVE, or behind it after a pause; the track's progress and time left.
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                visible: Player.liveRadio
+                QQC2.Label {
+                    visible: !Player.behindLive
+                    text: KI18n.i18n("LIVE")
+                    color: Kirigami.Theme.negativeTextColor
+                    font.weight: Font.Bold
+                    leftPadding: Kirigami.Units.largeSpacing
+                    rightPadding: Kirigami.Units.largeSpacing
+                    background: Rectangle { color: Kirigami.Theme.negativeBackgroundColor; radius: height / 2 }
+                }
+                QQC2.Label {
+                    visible: Player.behindLive
+                    text: KI18n.i18n("Behind live")
+                    opacity: 0.7
+                }
+                QQC2.Button {
+                    visible: Player.behindLive
+                    flat: true
+                    text: KI18n.i18n("Jump to live")
+                    onClicked: Player.jumpToLive()
+                }
+            }
             RowLayout {
                 Layout.fillWidth: true
-                visible: !Player.live
+                visible: Player.liveRadio
+                QQC2.ProgressBar {
+                    Layout.fillWidth: true
+                    from: 0
+                    to: Math.max(Player.duration, 1)
+                    value: Player.position
+                }
+                QQC2.Label {
+                    text: Player.duration > 0 ? "−" + page.time(Player.duration - Player.position) : ""
+                    font.features: {"tnum": 1}
+                    opacity: 0.7
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !Player.live && !Player.liveRadio
                 QQC2.Label { text: page.time(seek.pressed ? seek.value : Player.position); opacity: 0.7 }
                 QQC2.Slider {
                     id: seek
@@ -159,6 +205,7 @@ Kirigami.Page {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: Kirigami.Units.largeSpacing
                 QQC2.ToolButton {
+                    visible: !Player.liveRadio
                     icon.name: "media-skip-backward"
                     icon.width: Kirigami.Units.iconSizes.medium
                     icon.height: Kirigami.Units.iconSizes.medium
@@ -168,7 +215,7 @@ Kirigami.Page {
                 }
                 // Back 10 s and ahead 30 s, as the other apps' Now Playing (PLAY-9); a stream has no time to move in.
                 QQC2.ToolButton {
-                    visible: !Player.live
+                    visible: !Player.live && !Player.liveRadio
                     enabled: Player.duration > 0
                     icon.name: "media-seek-backward"
                     icon.width: Kirigami.Units.iconSizes.medium
@@ -190,7 +237,7 @@ Kirigami.Page {
                     onClicked: Player.togglePlay()
                 }
                 QQC2.ToolButton {
-                    visible: !Player.live
+                    visible: !Player.live && !Player.liveRadio
                     enabled: Player.duration > 0
                     icon.name: "media-seek-forward"
                     icon.width: Kirigami.Units.iconSizes.medium
@@ -204,6 +251,7 @@ Kirigami.Page {
                     onClicked: Player.seek(Math.min(Player.position + 30, Math.max(0, Player.duration - 1)))
                 }
                 QQC2.ToolButton {
+                    visible: !Player.liveRadio
                     icon.name: "media-skip-forward"
                     icon.width: Kirigami.Units.iconSizes.medium
                     icon.height: Kirigami.Units.iconSizes.medium
@@ -212,6 +260,14 @@ Kirigami.Page {
                     enabled: Player.index + 1 < Player.items.length
                     onClicked: Player.next()
                 }
+            }
+            QQC2.Label {
+                Layout.fillWidth: true
+                visible: page.nextLive !== null
+                text: page.nextLive ? KI18n.i18n("Next: %1", [page.nextLive.artist, page.nextLive.title].filter(s => s).join(" – ")) : ""
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                opacity: 0.7
             }
             Item { Layout.fillHeight: true; visible: page.wide }
         }
@@ -225,7 +281,8 @@ Kirigami.Page {
             Kirigami.Heading {
                 Layout.fillWidth: true
                 level: 4
-                text: Player.queueTitle
+                // A live station's queue is its schedule.
+                text: page.live ? KI18n.i18n("Up next on %1", page.live.stationName) : Player.queueTitle
                 elide: Text.ElideRight
             }
             QQC2.ScrollView {
@@ -245,6 +302,7 @@ Kirigami.Page {
                         subtitle: modelData.artist
                         highlighted: index === Player.index
                         icon.name: index === Player.index ? (Player.playing ? "media-playback-playing" : "media-playback-paused") : ""
+                        hoverEnabled: !Player.liveRadio
                         onClicked: Player.skipTo(index)
                     }
                 }

@@ -1,5 +1,6 @@
 package com.takeoutfm.shared.model
 
+import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -120,16 +121,53 @@ data class ApiStation(
     @SerialName("Description") val description: String = "",
 )
 
-/** /api/radio: the user's stations, grouped by kind. */
+/** /api/radio: live stations on the air and internet radio streams, each in config order. */
 @Serializable
 data class ApiRadioView(
-    @SerialName("Artist") val artist: List<ApiStation>? = null,
-    @SerialName("Genre") val genre: List<ApiStation>? = null,
-    @SerialName("Similar") val similar: List<ApiStation>? = null,
-    @SerialName("Period") val period: List<ApiStation>? = null,
-    @SerialName("Series") val series: List<ApiStation>? = null,
-    @SerialName("Other") val other: List<ApiStation>? = null,
+    @SerialName("Live") val live: List<ApiStation>? = null,
     @SerialName("Stream") val stream: List<ApiStation>? = null,
+)
+
+/** /api/radio/schedule and /api/radio/{id}/schedule: what's on each live station in a range. */
+@Serializable
+data class ApiRadioSchedule(
+    /** The server's clock, epoch ms; offsets into tracks use it, not the device's. */
+    @SerialName("Time") val time: Long = 0,
+    @SerialName("Stations") val stations: List<ApiRadioStation>? = null,
+)
+
+@Serializable
+data class ApiRadioStation(
+    /** The station's ID in /api/radio. */
+    @SerialName("ID") val id: Int = 0,
+    @SerialName("Name") val name: String = "",
+    @SerialName("Image") val image: String = "",
+    @SerialName("Tracks") val tracks: List<ApiRadioTrack>? = null,
+    /** The shows named by [tracks], once each. */
+    @SerialName("Shows") val shows: List<ApiRadioShow>? = null,
+)
+
+@Serializable
+data class ApiRadioShow(
+    @SerialName("Name") val name: String = "",
+    @SerialName("Image") val image: String = "",
+    @SerialName("Description") val description: String = "",
+)
+
+/** A scheduled track; [id] is its track row. */
+@Serializable
+data class ApiRadioTrack(
+    @SerialName("Start") val start: Instant,
+    @SerialName("End") val end: Instant,
+    @SerialName("Title") val title: String = "",
+    @SerialName("Artist") val artist: String = "",
+    @SerialName("Release") val release: String = "",
+    @SerialName("Image") val image: String = "",
+    @SerialName("Location") val location: String = "",
+    @SerialName("ETag") val etag: String = "",
+    @SerialName("ID") val id: Int = 0,
+    /** The show it's part of, or "". */
+    @SerialName("Show") val show: String = "",
 )
 
 @Serializable

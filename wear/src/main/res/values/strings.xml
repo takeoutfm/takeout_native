@@ -34,6 +34,7 @@
     <string name="downloaded">Downloaded</string>
     <string name="delete">Delete</string>
     <string name="live">LIVE</string>
+    <string name="jump_to_live">Jump to live</string>
     <string name="track_activity">Track Activity</string>
     <string name="playback_caching">Playback Caching</string>
     <string name="cache_size">Cache size</string>

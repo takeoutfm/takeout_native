@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +72,7 @@ import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
@@ -89,9 +91,11 @@ import com.takeoutfm.media.offline.CacheStatus
 import com.takeoutfm.shared.api.DeviceCode
 import com.takeoutfm.shared.listen.parseStreamTitle
 import com.takeoutfm.shared.music.ArtistMix
-import com.takeoutfm.shared.music.StationKind
+import com.takeoutfm.shared.music.RadioNow
 import com.takeoutfm.wear.BuildConfig
 import com.takeoutfm.wear.R
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 /** The watch app: sign-in by code until there's a session, then the home list. */
@@ -291,13 +295,33 @@ private fun Pages(vm: WatchViewModel) {
             }
         }
         composable("radio") {
-            val state = load("radio") { vm.music.radio().sortedBy { it.kind != StationKind.Stream }.flatMap { it.stations } }
+            val state = load("radio") { vm.music.radio().flatMap { it.stations } }
+            // What's on each live station, again when the first of those tracks ends.
+            val onNow by produceState<RadioNow?>(null) {
+                while (true) {
+                    value = try {
+                        vm.music.radioNow()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        null
+                    }
+                    val wait = value?.refreshAtMs?.takeIf { it > 0 }?.let { it - System.currentTimeMillis() } ?: 60_000L
+                    delay(wait.coerceIn(2_000L, 10 * 60_000L))
+                }
+            }
             ListPage(stringResource(R.string.radio)) {
                 status(state)
                 val stations = (state as? Load.Loaded)?.value.orEmpty()
                 items(stations.size) { i ->
                     val s = stations[i]
-                    Entry(s.name, onClick = { play { vm.music.stationQueue(s.id) } }, imageUri = s.imageUri)
+                    val on = onNow?.stations?.get(s.id)
+                    Entry(
+                        s.name,
+                        onClick = { play { vm.music.stationQueue(s.id) } },
+                        secondary = on?.line,
+                        imageUri = on?.track?.imageUri?.ifEmpty { null } ?: s.imageUri,
+                    )
                 }
             }
         }
@@ -441,7 +465,13 @@ private fun Player(vm: WatchViewModel) {
             }
             val onAir = playing.streamTitle?.let(::parseStreamTitle)
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 24.dp)) {
-                if (playing.isLive) {
+                if (playing.liveRadio && playing.behindLive) {
+                    // Behind live after a pause: back to what's on now.
+                    CompactChip(
+                        onClick = vm::jumpToLive,
+                        label = { Text(stringResource(R.string.jump_to_live), maxLines = 1) },
+                    )
+                } else if (playing.isLive || playing.liveRadio) {
                     Text(
                         stringResource(R.string.live),
                         color = Color.White,
@@ -471,7 +501,7 @@ private fun Player(vm: WatchViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
-                    if (!playing.isLive) {
+                    if (!playing.isLive && !playing.liveRadio) {
                         Button(onClick = vm::previous, colors = ButtonDefaults.iconButtonColors(), modifier = Modifier.size(ButtonDefaults.SmallButtonSize)) {
                             Icon(Icons.Filled.SkipPrevious, stringResource(R.string.previous))
                         }
@@ -483,7 +513,7 @@ private fun Player(vm: WatchViewModel) {
                             modifier = Modifier.size(32.dp),
                         )
                     }
-                    if (!playing.isLive) {
+                    if (!playing.isLive && !playing.liveRadio) {
                         Button(onClick = vm::next, colors = ButtonDefaults.iconButtonColors(), modifier = Modifier.size(ButtonDefaults.SmallButtonSize)) {
                             Icon(Icons.Filled.SkipNext, stringResource(R.string.next))
                         }

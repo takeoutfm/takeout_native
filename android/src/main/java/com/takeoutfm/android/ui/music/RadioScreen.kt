@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -43,17 +44,18 @@ import com.takeoutfm.android.R
 import com.takeoutfm.android.ui.common.Art
 import com.takeoutfm.android.ui.common.LoadingOrEmpty
 import com.takeoutfm.android.ui.main.MainViewModel
+import com.takeoutfm.shared.music.OnNow
 import com.takeoutfm.shared.music.Station
 import com.takeoutfm.shared.music.StationKind
 
 /**
- * Radio, short enough to take in at a glance: recently played stations and live streams as
- * artwork rows, then genres, decades and the rest as coloured name tiles (as on the TV) in a
- * grid, rather than one long list.
+ * Radio, short enough to take in at a glance: recently played stations as an artwork row, the
+ * live stations as coloured tiles with what's on each (RADIO-1), then streams as an artwork row.
  */
 @Composable
 fun RadioScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewModel()) {
     val page by viewModel.radio.collectAsStateWithLifecycle(initialValue = null)
+    val onNow by viewModel.radioNow.collectAsStateWithLifecycle(initialValue = null)
     TabPage(title = stringResource(R.string.nav_radio)) { padding ->
         val p = page
         if (p == null || p.groups.isEmpty()) {
@@ -87,10 +89,16 @@ fun RadioScreen(main: MainViewModel, viewModel: MusicTabsViewModel = hiltViewMod
                         artworkRow("streams", group.stations, main::playStation)
                     } else {
                         val key = group.kind.name
-                        val limit = columns * CollapsedRows
+                        // Two columns' width, for the station's name and what's on.
+                        val span = if (columns >= 2) 2 else 1
+                        val limit = (columns / span) * CollapsedRows
                         val open = key in expanded
-                        items(if (open) group.stations else group.stations.take(limit), key = { it.id }) { station ->
-                            NameTile(station) { main.playStation(station.id) }
+                        items(
+                            if (open) group.stations else group.stations.take(limit),
+                            key = { it.id },
+                            span = { GridItemSpan(span) },
+                        ) { station ->
+                            LiveTile(station, onNow?.stations?.get(station.id)) { main.playStation(station.id) }
                         }
                         if (group.stations.size > limit) {
                             item(key = "more-$key", span = { GridItemSpan(maxLineSpan) }) {
@@ -155,25 +163,42 @@ private fun Modifier.bleed(edge: Dp) = layout { measurable, constraints ->
     layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
 }
 
-/** A genre, decade or other station: its name on a colour picked from its id. */
+/**
+ * A live station on a colour picked from its id: the cover of what's on, the station's name
+ * (and the show while one is on) and "Artist – Title".
+ */
 @Composable
-private fun NameTile(station: Station, onClick: () -> Unit) {
-    Box(
+private fun LiveTile(station: Station, on: OnNow?, onClick: () -> Unit) {
+    val ink = Color.Black.copy(alpha = 0.87f)
+    Row(
         Modifier
-            .height(56.dp)
+            .height(72.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(TileColors[Math.floorMod(station.id.hashCode(), TileColors.size)])
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.CenterStart,
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            station.name,
-            style = MaterialTheme.typography.titleSmall,
-            color = Color.Black.copy(alpha = 0.87f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        val cover = on?.track?.imageUri?.ifEmpty { null } ?: on?.show?.imageUri?.ifEmpty { null } ?: station.imageUri
+        if (cover.isNotEmpty()) {
+            Art(cover, station.name, Modifier.size(56.dp), RoundedCornerShape(6.dp))
+        }
+        Column(Modifier.padding(horizontal = 8.dp)) {
+            Text(
+                listOfNotNull(station.name, on?.show?.name).joinToString(" · "),
+                style = MaterialTheme.typography.titleSmall,
+                color = ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                on?.line ?: station.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = ink,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -186,11 +211,6 @@ private val TileColors = listOf(
 )
 
 private fun StationKind.label(): Int = when (this) {
+    StationKind.Live -> R.string.radio_live
     StationKind.Stream -> R.string.radio_streams
-    StationKind.Genre -> R.string.radio_genres
-    StationKind.Period -> R.string.radio_decades
-    StationKind.Artist -> R.string.radio_artists
-    StationKind.Similar -> R.string.radio_similar
-    StationKind.Series -> R.string.radio_series
-    StationKind.Other -> R.string.radio_other
 }

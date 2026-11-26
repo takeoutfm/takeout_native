@@ -2,6 +2,7 @@
 
 #include "TakeoutCore.h"
 
+#include <QDateTime>
 #include <QDebug>
 #include <algorithm>
 #include <memory>
@@ -170,6 +171,8 @@ void Player::play(const QVariantMap &queue, bool shuffled, int start)
     if (index < 0 || index >= list.size()) return;
 
     m_historyId.clear();
+    setBehindLive(false);
+    m_livePausedAt = 0;
     m_core->call("recordPlayed", {{"queue", queue}}, [this, generation](const QVariant &id, const QVariant &) {
         if (generation == m_generation) m_historyId = id.toString();
     });
@@ -197,6 +200,7 @@ void Player::load(int start, double seconds)
     // as the old queue (track 1 after track 1) would never be announced, leaving no current
     // item (no title, no cover) until the next track.
     indexChanged(start);
+    if (liveRadio()) liveStarted(seconds);
 }
 
 void Player::loadFile(const QVariantMap &item, const char *flag, int at, double seconds)
@@ -259,18 +263,21 @@ void Player::pause()
 
 void Player::next()
 {
+    if (liveRadio()) return;
     if (m_index + 1 >= m_items.size()) return;
     skipTo(m_index + 1);
 }
 
 void Player::previous()
 {
+    if (liveRadio()) return;
     if (m_position > 3 || m_index <= 0) seek(0);
     else skipTo(m_index - 1);
 }
 
 void Player::skipTo(int index)
 {
+    if (liveRadio()) return;
     if (index < 0 || index >= m_items.size() || (index == m_index && !m_idle)) return;
     saveEpisode();
     if (m_idle) {
@@ -284,6 +291,7 @@ void Player::skipTo(int index)
 
 void Player::seek(double seconds)
 {
+    if (liveRadio()) return;
     const QByteArray to = QByteArray::number(std::max(0.0, seconds));
     command(m_mpv, {"seek", to.constData(), "absolute"});
     m_position = seconds;
@@ -330,6 +338,8 @@ void Player::stop()
     m_index = -1;
     m_historyId.clear();
     m_streamTitle.clear();
+    setBehindLive(false);
+    m_livePausedAt = 0;
     report("listenTrack", {{"item", QVariant()}});
     Q_EMIT itemsChanged();
     Q_EMIT currentChanged();
@@ -346,9 +356,13 @@ void Player::onEvents()
             const QByteArray name(p->name);
             const bool none = p->format == MPV_FORMAT_NONE;
             if (name == "playlist-pos") {
+                const int before = m_index;
                 indexChanged(none ? -1 : int(*static_cast<int64_t *>(p->data)));
+                // Moved on to the next live track, from its top.
+                if (m_index != before && m_index >= 0 && liveRadio()) liveStarted(0);
             } else if (name == "pause") {
                 m_paused = !none && *static_cast<int *>(p->data);
+                livePaused(m_paused);
                 updatePlaying();
             } else if (name == "idle-active") {
                 m_idle = !none && *static_cast<int *>(p->data);
@@ -491,4 +505,112 @@ void Player::saveEpisode()
 void Player::report(const char *name, const QVariantMap &args)
 {
     m_core->call(QString::fromLatin1(name), args, TakeoutCore::Callback{});
+}
+
+// ---- Live radio (the shared LiveRadio rules, through the core) ----
+
+namespace {
+QVariantMap liveSlot(const QVariantMap &item) { return item.value("live").toMap(); }
+}
+
+bool Player::liveRadio() const
+{
+    return !liveSlot(current()).isEmpty();
+}
+
+void Player::setBehindLive(bool behind)
+{
+    if (behind == m_behindLive) return;
+    m_behindLive = behind;
+    Q_EMIT behindLiveChanged();
+}
+
+void Player::liveStarted(double seconds)
+{
+    const QVariantMap slot = liveSlot(current());
+    if (slot.isEmpty()) return;
+    const int generation = m_generation;
+    const int index = m_index;
+    m_core->call("liveCheck", {{"slot", slot}, {"positionMs", qint64(seconds * 1000)}, {"behindLive", m_behindLive}},
+                 [this, generation, index](const QVariant &result, const QVariant &) {
+        if (generation != m_generation || index != m_index) return;
+        const QVariantMap action = result.toMap();
+        const QString what = action.value("action").toString();
+        if (what == "jump") {
+            jumpToLive();
+            return;
+        }
+        if (what == "seek") {
+            // Not seek(), which a live track refuses.
+            const QByteArray to = QByteArray::number(action.value("positionMs").toLongLong() / 1000.0);
+            command(m_mpv, {"seek", to.constData(), "absolute"});
+            Q_EMIT seeked();
+        }
+        fetchMoreLive();
+    });
+}
+
+void Player::livePaused(bool paused)
+{
+    const QVariantMap slot = liveSlot(current());
+    if (slot.isEmpty() || m_idle) return;
+    if (paused) {
+        if (m_livePausedAt == 0) m_livePausedAt = QDateTime::currentMSecsSinceEpoch();
+        return;
+    }
+    if (m_livePausedAt == 0) return;
+    m_livePausedAt = 0;
+    const int generation = m_generation;
+    m_core->call("liveResume", {{"slot", slot}, {"positionMs", qint64(m_position * 1000)}},
+                 [this, generation](const QVariant &result, const QVariant &) {
+        if (generation != m_generation) return;
+        const QString what = result.toMap().value("action").toString();
+        if (what == "jump") jumpToLive();
+        else if (what == "behind") setBehindLive(true);
+    });
+}
+
+void Player::fetchMoreLive()
+{
+    if (m_liveFetching) return;
+    QVariantList live;
+    for (const QVariant &item : std::as_const(m_items))
+        if (!liveSlot(item.toMap()).isEmpty()) live << item;
+    if (live.isEmpty()) return;
+    m_liveFetching = true;
+    const int generation = m_generation;
+    m_core->call("liveMore", {{"items", live}}, [this, generation](const QVariant &result, const QVariant &) {
+        m_liveFetching = false;
+        // A failure plays on; the next track asks again.
+        if (generation != m_generation || m_items.isEmpty()) return;
+        const QVariantMap last = liveSlot(m_items.last().toMap());
+        const QVariantList more = result.toList();
+        bool added = false;
+        for (const QVariant &v : more) {
+            const QVariantMap item = v.toMap();
+            const QVariantMap slot = liveSlot(item);
+            if (slot.value("stationId") != last.value("stationId")
+                || slot.value("startMs").toLongLong() <= last.value("startMs").toLongLong()
+                || (added && slot.value("startMs").toLongLong() <= liveSlot(m_items.last().toMap()).value("startMs").toLongLong()))
+                continue;
+            m_items << item;
+            loadFile(item, "append", -1, 0);
+            added = true;
+        }
+        if (added) Q_EMIT itemsChanged();
+    });
+}
+
+void Player::jumpToLive()
+{
+    const QVariantMap slot = liveSlot(current());
+    if (slot.isEmpty()) return;
+    const int generation = m_generation;
+    m_core->call("stationQueue", {{"stationId", slot.value("stationId")}},
+                 [this, generation](const QVariant &queue, const QVariant &) {
+        if (generation != m_generation || queue.isNull()) return;
+        setBehindLive(false);
+        m_livePausedAt = 0;
+        play(queue.toMap());
+    });
 }

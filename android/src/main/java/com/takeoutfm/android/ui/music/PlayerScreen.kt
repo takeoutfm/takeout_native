@@ -44,6 +44,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -72,7 +73,9 @@ import com.takeoutfm.shared.listen.parseStreamTitle
 /**
  * Now Playing: the artist's background behind a large cover, title / artist / album, the seek
  * bar, previous · −10 s · play/pause · +30 s · next, repeat, ♥ and the queue (a bottom sheet).
- * A live stream shows LIVE, what's on air (its ICY title) and play/pause only.
+ * A live stream shows LIVE, what's on air (its ICY title) and play/pause only. A live station's
+ * track shows the station (and show), LIVE or "Behind live · Jump to live", its progress and
+ * time left, what's next, and play/pause only (RADIO-10, RADIO-11).
  */
 @Composable
 fun PlayerScreen(main: MainViewModel) {
@@ -158,8 +161,12 @@ private fun PlayerDetails(
     val onAir = playing.streamTitle?.let(::parseStreamTitle)
     val title = titleOf(playing)
     val subtitle = onAir?.first ?: item.artist
-    val third = (if (playing.isLive) item.title.takeIf { it != title }.orEmpty() else item.album)
-        .takeIf { it != subtitle }.orEmpty()
+    val third = (
+        when {
+            playing.isLive -> item.title.takeIf { it != title }.orEmpty()
+            else -> item.live?.label ?: item.album
+        }
+        ).takeIf { it != subtitle }.orEmpty()
     // One line each, an error in the last, so nothing below moves from track to track.
     PlayerTitle(playing)
     Text(subtitle, style = MaterialTheme.typography.titleMedium, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -177,6 +184,10 @@ private fun PlayerDetails(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             PlayPause(playing, main)
         }
+        return
+    }
+    if (playing.liveRadio) {
+        LiveRadioDetails(playing, favorite, main, onQueue)
         return
     }
     SeekBar(playing, main)
@@ -201,16 +212,73 @@ private fun PlayerDetails(
                 tint = if (playing.repeatMode == Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             )
         }
-        if (item.etag.isNotEmpty() && !item.podcast) {
-            IconButton(onClick = { main.setTrackFavorite(item.etag, !favorite) }) {
-                Icon(
-                    if (favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = stringResource(if (favorite) R.string.unfavorite else R.string.favorite),
-                    tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        if (item.etag.isNotEmpty() && !item.podcast) FavoriteButton(item.etag, favorite, main)
         IconButton(onClick = onQueue) { Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue)) }
+    }
+}
+
+/** A live station's controls: LIVE or behind it, the track's progress, play / pause, what's next. */
+@Composable
+private fun LiveRadioDetails(playing: NowPlaying, favorite: Boolean, main: MainViewModel, onQueue: () -> Unit) {
+    val item = playing.current ?: return
+    LiveState(playing, main, Modifier.padding(top = 16.dp))
+    LiveProgress(playing, main)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        FavoriteButton(item.etag, favorite, main)
+        PlayPause(playing, main)
+        IconButton(onClick = onQueue) { Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue)) }
+    }
+    val next = playing.items.getOrNull(playing.index + 1)
+    Text(
+        next?.let { stringResource(R.string.next_on_air, listOf(it.artist, it.title).filter(String::isNotEmpty).joinToString(" – ")) }.orEmpty(),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+}
+
+/** LIVE, or "Behind live" with a button to jump to live, as a live station plays. */
+@Composable
+private fun LiveState(playing: NowPlaying, main: MainViewModel, modifier: Modifier = Modifier) {
+    if (!playing.behindLive) {
+        LiveBadge(playing.isPlaying, modifier)
+        return
+    }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.behind_live), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = main::jumpToLive) { Text(stringResource(R.string.jump_to_live)) }
+    }
+}
+
+/** A live track's progress, which can't be dragged, and the time it has left. */
+@Composable
+private fun LiveProgress(playing: NowPlaying, main: MainViewModel) {
+    val positionMs by main.positionMs.collectAsStateWithLifecycle()
+    val duration = playing.durationMs.coerceAtLeast(1)
+    Column(Modifier.padding(vertical = 16.dp)) {
+        LinearProgressIndicator(
+            progress = { (positionMs.toFloat() / duration).coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
+            Text(
+                if (playing.durationMs > 0) "−" + time((playing.durationMs - positionMs).coerceAtLeast(0)) else "",
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FavoriteButton(etag: String, favorite: Boolean, main: MainViewModel) {
+    IconButton(onClick = { main.setTrackFavorite(etag, !favorite) }) {
+        Icon(
+            if (favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            contentDescription = stringResource(if (favorite) R.string.unfavorite else R.string.favorite),
+            tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -269,7 +337,13 @@ fun LiveBadge(playing: Boolean, modifier: Modifier = Modifier) {
 private fun QueueSheet(playing: NowPlaying, onPlay: (Int) -> Unit, onDismiss: () -> Unit) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (playing.index - 2).coerceAtLeast(0))
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Text(stringResource(R.string.queue), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+        // A live station's queue is its schedule: what's on and next, not to be picked from.
+        val station = playing.current?.live?.stationName
+        Text(
+            if (station != null) stringResource(R.string.up_next_on, station) else stringResource(R.string.queue),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
+        )
         LazyColumn(state = listState) {
             itemsIndexed(playing.items) { index, item ->
                 val current = index == playing.index
@@ -278,7 +352,7 @@ private fun QueueSheet(playing: NowPlaying, onPlay: (Int) -> Unit, onDismiss: ()
                     headlineContent = { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (current) FontWeight.Bold else null) },
                     supportingContent = { Text(item.artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     colors = if (current) ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.secondaryContainer) else ListItemDefaults.colors(),
-                    modifier = Modifier.clickable { onPlay(index) },
+                    modifier = if (station != null) Modifier else Modifier.clickable { onPlay(index) },
                 )
             }
         }
@@ -306,11 +380,15 @@ fun MiniPlayer(playing: NowPlaying, main: MainViewModel, onOpen: () -> Unit, mod
                     Text(onAir?.second ?: playing.streamTitle ?: item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(onAir?.first ?: item.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                if (playing.isLive) LiveBadge(playing.isPlaying, Modifier.padding(end = 8.dp))
+                if (playing.liveRadio && playing.behindLive) {
+                    TextButton(onClick = main::jumpToLive) { Text(stringResource(R.string.jump_to_live)) }
+                } else if (playing.isLive || playing.liveRadio) {
+                    LiveBadge(playing.isPlaying, Modifier.padding(end = 8.dp))
+                }
                 IconButton(onClick = main::togglePlay) {
                     Icon(if (playing.playWhenReady) Icons.Filled.Pause else Icons.Filled.PlayArrow, stringResource(if (playing.playWhenReady) R.string.pause else R.string.play))
                 }
-                if (!playing.isLive) {
+                if (!playing.isLive && !playing.liveRadio) {
                     IconButton(onClick = main::next) { Icon(Icons.Filled.SkipNext, stringResource(R.string.next)) }
                 }
             }

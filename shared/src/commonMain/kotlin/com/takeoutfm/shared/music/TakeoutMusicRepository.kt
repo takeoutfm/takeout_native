@@ -6,7 +6,9 @@ import com.takeoutfm.shared.library.TakeoutLibrary
 import com.takeoutfm.shared.model.ApiArtist
 import com.takeoutfm.shared.model.ApiPlaylist
 import com.takeoutfm.shared.model.ApiRelease
+import com.takeoutfm.shared.model.ApiRadioStation
 import com.takeoutfm.shared.model.ApiStation
+import com.takeoutfm.shared.api.HttpException
 import com.takeoutfm.shared.model.ApiTrack
 import com.takeoutfm.shared.util.EditedState
 import com.takeoutfm.shared.util.listFlow
@@ -21,7 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 /**
@@ -193,22 +198,75 @@ class TakeoutMusicRepository(
 
     // ---- Radio and playlists ----
 
-    /** The user's stations by kind (live streams first, then genres and decades). */
+    /** The stations by kind: live stations, then streams, each in the server's order. */
     suspend fun radio(): List<StationGroup> {
         val view = api.radio()
         return listOf(
+            StationKind.Live to view.live,
             StationKind.Stream to view.stream,
-            StationKind.Genre to view.genre,
-            StationKind.Period to view.period,
-            StationKind.Artist to view.artist,
-            StationKind.Similar to view.similar,
-            StationKind.Series to view.series,
-            StationKind.Other to view.other,
         ).mapNotNull { (kind, stations) ->
             stations.orEmpty().takeIf { it.isNotEmpty() }?.let { list ->
                 StationGroup(kind, list.map { it.toStation() })
             }
         }
+    }
+
+    /** What's on each live station now, from one schedule request. */
+    suspend fun radioNow(): RadioNow {
+        val received = Clock.System.now().toEpochMilliseconds()
+        val view = api.radioSchedule()
+        val serverNow = if (view.time > 0) view.time else received
+        val skew = serverNow - received
+        val on = view.stations.orEmpty()
+            .mapNotNull { it.toSchedule(skew).onNow(serverNow) }
+            .associateBy { it.stationId }
+        val firstEnd = on.values.minOfOrNull { it.track.endMs }
+        return RadioNow(on, if (firstEnd == null) 0 else firstEnd - skew)
+    }
+
+    /**
+     * Live station [stationId]'s schedule from [start] (default now) for [window]; null when
+     * it's a stream (or off the air), which the server doesn't schedule.
+     */
+    suspend fun stationSchedule(
+        stationId: String,
+        start: Instant? = null,
+        window: Duration = LiveWindow,
+    ): RadioSchedule? {
+        val received = Clock.System.now()
+        val view = try {
+            api.radioSchedule(
+                numericId(stationId, StationPrefix),
+                start,
+                (start ?: received).plus(window),
+            )
+        } catch (e: HttpException) {
+            if (e.code == 404) return null
+            throw e
+        }
+        val serverNow = if (view.time > 0) view.time else received.toEpochMilliseconds()
+        return view.stations.orEmpty().firstOrNull()?.toSchedule(serverNow - received.toEpochMilliseconds())
+    }
+
+    /**
+     * What tuning in to live station [stationId] plays: the track on now from where it is, then
+     * the next ones for [window]; null when it's a stream or nothing is on.
+     */
+    suspend fun liveQueue(stationId: String, window: Duration = LiveWindow): MusicQueue? {
+        val schedule = stationSchedule(stationId, window = window) ?: return null
+        val now = Clock.System.now().toEpochMilliseconds() + schedule.skewMs
+        return schedule.toQueue(now)
+    }
+
+    /**
+     * The live station's tracks after [queued]'s last one, to add to the queue (empty when it
+     * has none): the schedule from that track's end, so a queue behind live has no gap.
+     */
+    suspend fun liveMore(queued: List<QueueItem>): List<QueueItem> {
+        val last = queued.lastOrNull { it.live != null }?.live ?: return emptyList()
+        val schedule = stationSchedule(last.stationId, Instant.fromEpochMilliseconds(last.endMs))
+            ?: return emptyList()
+        return LiveRadio.after(queued, schedule.tracks.map(schedule::queueItem))
     }
 
     private val playlistsState = EditedState<List<MusicPlaylist>?>(null)
@@ -333,11 +391,19 @@ class TakeoutMusicRepository(
             .toQueue(urls::absolute)
             .startingAt(startIndex)
 
-    /** A station's tracks (a fresh mix each time) or its live stream. */
-    suspend fun stationQueue(stationId: String, startIndex: Int = 0): MusicQueue =
-        api.playlist("/api/radio/${numericId(stationId, StationPrefix)}/playlist")
-            .toQueue(urls::absolute)
-            .startingAt(startIndex)
+    /**
+     * A station: a live one tuned in ([liveQueue], the next [window] of it), else its stream.
+     * A live station with nothing on plays its playlist, the schedule as plain tracks.
+     */
+    suspend fun stationQueue(stationId: String, startIndex: Int = 0, window: Duration = LiveWindow): MusicQueue =
+        liveQueue(stationId, window)
+            ?: api.playlist("/api/radio/${numericId(stationId, StationPrefix)}/playlist")
+                .toQueue(urls::absolute)
+                .startingAt(startIndex)
+
+    /** What replaying Recently Played [entry] plays: a live station tunes in again. */
+    suspend fun replayQueue(entry: PlayedQueue): MusicQueue =
+        entry.liveStationId?.let { liveQueue(it) } ?: entry.toQueue()
 
     suspend fun playlistQueue(playlistId: String, startIndex: Int = 0): MusicQueue =
         api.playlist("/api/playlists/${numericId(playlistId, PlaylistPrefix)}/playlist")
@@ -432,6 +498,29 @@ class TakeoutMusicRepository(
         name = name,
         description = description,
         imageUri = urls.absolute(image),
+        live = type == "live",
+    )
+
+    private fun ApiRadioStation.toSchedule(skewMs: Long) = RadioSchedule(
+        stationId = "$StationPrefix$id",
+        name = name,
+        imageUri = urls.absolute(image),
+        tracks = tracks.orEmpty().filter { it.location.isNotEmpty() }.map {
+            RadioTrack(
+                startMs = it.start.toEpochMilliseconds(),
+                endMs = it.end.toEpochMilliseconds(),
+                title = it.title,
+                artist = it.artist,
+                album = it.release,
+                imageUri = urls.absolute(it.image),
+                uri = urls.absolute(it.location),
+                etag = it.etag,
+                trackId = "$TrackPrefix${it.id}",
+                show = it.show,
+            )
+        },
+        shows = shows.orEmpty().map { RadioShow(it.name, urls.absolute(it.image), it.description) },
+        skewMs = skewMs,
     )
 
     companion object {
@@ -445,6 +534,9 @@ class TakeoutMusicRepository(
         const val StationPrefix = "st-"
         const val PlaylistPrefix = "pl-"
         private const val ArtistsMaxAgeMs = 5 * 60_000L
+
+        /** How much of a live station is queued at a time (RADIO.md: about 6–8 tracks). */
+        val LiveWindow: Duration = 30.minutes
         private const val FeaturedCount = 8
 
         fun numericId(id: String, prefix: String): Int =

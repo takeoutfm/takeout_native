@@ -42,6 +42,9 @@ data class PlayedQueue(
         location = location,
     )
 
+    /** A live station ("st-<id>"): replaying it tunes in to what's on now, not these tracks. */
+    val liveStationId: String? get() = items.firstOrNull()?.live?.stationId
+
     /** The cover shown for it: the queue's own image, else its first track's. */
     val coverUri: String get() = imageUri.ifEmpty { items.firstOrNull()?.imageUri.orEmpty() }
 }
@@ -56,8 +59,10 @@ data class PlayedItem(
     val uri: String,
     val etag: String = "",
     val podcast: Boolean = false,
+    /** A live station's track; replaying the entry tunes in again ([PlayedQueue.liveStationId]). */
+    val live: LiveSlot? = null,
 ) {
-    fun toQueueItem() = QueueItem(title, artist, album, imageUri, backgroundUri, uri, etag, podcast)
+    fun toQueueItem() = QueueItem(title, artist, album, imageUri, backgroundUri, uri, etag, podcast, live)
 }
 
 /**
@@ -186,7 +191,7 @@ class MusicHistory(
                 items = queue.items.map {
                     PlayedItem(
                         it.title, it.artist, it.album, it.imageUri, it.backgroundUri, it.uri,
-                        it.etag, it.podcast,
+                        it.etag, it.podcast, it.live,
                     )
                 },
                 index = queue.startIndex,

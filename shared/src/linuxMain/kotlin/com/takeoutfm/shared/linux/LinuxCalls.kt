@@ -6,6 +6,9 @@ import com.takeoutfm.shared.api.TakeoutApi
 import com.takeoutfm.shared.listen.ListenSession
 import com.takeoutfm.shared.music.ActivityInterval
 import com.takeoutfm.shared.music.ArtistMix
+import com.takeoutfm.shared.music.LiveRadio
+import com.takeoutfm.shared.music.LiveSlot
+import com.takeoutfm.shared.music.LiveStart
 import com.takeoutfm.shared.music.MusicQueue
 import com.takeoutfm.shared.music.QueueItem
 import com.takeoutfm.shared.music.StreamSong
@@ -20,6 +23,7 @@ import com.takeoutfm.shared.guide.GuideLoader
 import com.takeoutfm.shared.guide.page
 import com.takeoutfm.shared.guide.tuneLive
 import kotlinx.coroutines.Job
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -210,6 +214,30 @@ class LinuxCalls(private val core: LinuxCore) {
         call("refQueue") { a -> core.music.refQueue(a.get("ref"), a.get("title")) }
         call("radio") { core.music.radio() }
         call("stationQueue") { a -> core.music.stationQueue(a.get("stationId")) }
+        call("radioNow") { core.music.radioNow() }
+        call("replayQueue") { a ->
+            core.history.find(a.get("id"))?.let { core.music.replayQueue(it) } ?: error("Gone from history")
+        }
+        // The live player's rules (LiveRadio), for Player.cpp.
+        call("liveMore") { a -> core.music.liveMore(a.get<List<QueueItem>>("items")) }
+        call("liveCheck") { a ->
+            val now = Clock.System.now().toEpochMilliseconds()
+            when (val start = LiveRadio.check(a.get("slot"), a.get("positionMs"), now, a.get("behindLive"))) {
+                LiveStart.AsIs -> LiveAction("asIs")
+                is LiveStart.SeekTo -> LiveAction("seek", start.positionMs)
+                LiveStart.JumpToLive -> LiveAction("jump")
+            }
+        }
+        call("liveResume") { a ->
+            val slot = a.get<LiveSlot>("slot")
+            val position = a.get<Long>("positionMs")
+            val behind = LiveRadio.behindMs(slot, position, Clock.System.now().toEpochMilliseconds())
+            when {
+                behind <= LiveRadio.DriftMs -> LiveAction("live")
+                LiveRadio.keepBehind(slot, position, behind) -> LiveAction("behind")
+                else -> LiveAction("jump")
+            }
+        }
         call("playlists") { core.music.playlists() }
         call("playlistQueue") { a ->
             val id = a.get<String>("playlistId")
@@ -386,3 +414,7 @@ class LinuxCalls(private val core: LinuxCore) {
                 name == "streamSongHeard"
     }
 }
+
+/** What [Player.cpp] does next on a live station: "asIs", "seek" (to [positionMs]), "jump", "live", "behind". */
+@Serializable
+data class LiveAction(val action: String, val positionMs: Long = 0)

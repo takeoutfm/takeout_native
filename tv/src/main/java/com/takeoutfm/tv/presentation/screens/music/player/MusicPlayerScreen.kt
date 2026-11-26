@@ -72,6 +72,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
+import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
@@ -235,6 +236,33 @@ private fun NowPlayingContent(
                         isPlaying = state.isPlaying,
                         modifier = Modifier.padding(top = 24.dp),
                     )
+                } else if (state.liveRadio) {
+                    // A live station: LIVE or behind it, then its progress, which can't be moved.
+                    if (state.behindLive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 24.dp),
+                        ) {
+                            Text(
+                                stringResource(R.string.music_behind_live),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                            )
+                            Button(onClick = player::jumpToLive, modifier = Modifier.padding(start = 16.dp)) {
+                                Text(stringResource(R.string.music_jump_to_live))
+                            }
+                        }
+                    } else {
+                        LiveBadge(isPlaying = state.isPlaying, modifier = Modifier.padding(top = 24.dp))
+                    }
+                    val positionMs by player.positionMs.collectAsStateWithLifecycle()
+                    LiveProgress(
+                        positionMs = positionMs,
+                        durationMs = state.durationMs,
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .width(520.dp),
+                    )
                 } else {
                     val positionMs by player.positionMs.collectAsStateWithLifecycle()
                     SeekBar(
@@ -286,7 +314,8 @@ private fun NowPlayingContent(
             QueuePanel(
                 state = state,
                 onPlay = { index ->
-                    player.playAt(index)
+                    // A live station's queue is its schedule: nothing to jump to.
+                    if (!state.liveRadio) player.playAt(index)
                     showQueue = false
                 },
                 onClose = { showQueue = false },
@@ -313,6 +342,8 @@ private data class NowPlayingLines(val title: String, val artist: String, val al
  * just the station while nothing is known. Repeats of the same text are dropped.
  */
 private fun nowPlayingLines(item: QueueItem, state: NowPlaying): NowPlayingLines {
+    // A live station's track: the station (and show) where the album goes.
+    item.live?.let { return NowPlayingLines(item.title, item.artist, it.label) }
     if (!state.isLive) return NowPlayingLines(item.title, item.artist, item.album)
     val station = item.title
     val onAir = state.streamTitle
@@ -410,7 +441,8 @@ private fun QueuePanel(
             .focusGroup()
     ) {
         Text(
-            text = stringResource(R.string.music_queue),
+            text = state.current?.live?.let { stringResource(R.string.music_up_next_on, it.stationName) }
+                ?: stringResource(R.string.music_queue),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(start = 32.dp, bottom = 16.dp),
         )
@@ -517,7 +549,7 @@ private fun Controls(
                 description = stringResource(R.string.music_back_10),
                 onClick = { player.seekBy(-PodcastBackMs) },
             )
-        } else if (!live) {
+        } else if (!live && !state.liveRadio) {
             ControlButton(
                 icon = Icons.Default.SkipPrevious,
                 description = stringResource(R.string.music_previous),
@@ -535,6 +567,26 @@ private fun Controls(
             modifier = Modifier.focusOnInitialVisibility(firstFocus),
         )
         if (live) return@Row
+        // A live station's track: ♥ and its schedule, nothing to skip or repeat.
+        if (state.liveRadio) {
+            if (onToggleFavorite != null) {
+                ControlButton(
+                    icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    description = stringResource(
+                        if (isFavorite) R.string.music_favorite else R.string.music_add_favorite
+                    ),
+                    active = isFavorite,
+                    onClick = onToggleFavorite,
+                )
+            }
+            ControlButton(
+                icon = Icons.AutoMirrored.Filled.QueueMusic,
+                description = stringResource(R.string.music_queue),
+                onClick = onOpenQueue,
+                modifier = Modifier.focusRequester(queueButton),
+            )
+            return@Row
+        }
         if (podcast) {
             ControlButton(
                 icon = Icons.Default.Forward30,
@@ -660,6 +712,35 @@ private fun SeekBar(
             Text(formatTime(positionMs), style = MaterialTheme.typography.bodyMedium)
             Box(Modifier.weight(1f))
             Text(formatTime(durationMs), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+/** A live track's progress and the time it has left; not focusable, as it can't be moved. */
+@Composable
+private fun LiveProgress(positionMs: Long, durationMs: Long, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth()) {
+        val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.White.copy(alpha = 0.3f))
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.onSurface)
+            )
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Box(Modifier.weight(1f))
+            Text(
+                if (durationMs > 0) "−" + formatTime((durationMs - positionMs).coerceAtLeast(0)) else "",
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }
